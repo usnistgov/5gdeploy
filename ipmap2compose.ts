@@ -30,16 +30,16 @@ function buildNetwork(ip: string, cidr: string) {
 function buildService(ct: string) {
   const service = {
     container_name: ct,
-    depends_on: {} as Record<string, unknown>,
+    depends_on: {} as Record<string, unknown>, // eslint-disable-line @typescript-eslint/consistent-type-assertions
     image: "phoenix",
-    command: `/opt/phoenix/cfg/current/start.sh ${ct} 1` as string|undefined,
+    command: `/opt/phoenix/cfg/current/start.sh ${ct} 1` as string | undefined,
     healthcheck: undefined as unknown,
     init: true,
     cap_add: [] as string[],
     devices: [] as string[],
     volumes: [] as unknown[],
     env_file: ["ip-export.env"],
-    environment: {} as Record<string, string>,
+    environment: {} as Record<string, string>, // eslint-disable-line @typescript-eslint/consistent-type-assertions
     networks: {},
   };
 
