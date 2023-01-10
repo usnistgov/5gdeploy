@@ -1,9 +1,12 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { Netmask } from "netmask";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 const args = await yargs(hideBin(process.argv))
   .option("cfg", {
@@ -49,20 +52,22 @@ const CFGDIR = "/opt/phoenix/cfg/current";
 function buildService(ct: string) {
   const service = {
     container_name: ct,
+    hostname: ct,
     depends_on: {} as Record<string, unknown>, // eslint-disable-line @typescript-eslint/consistent-type-assertions
     image: "phoenix",
-    command: `${CFGDIR}/start.sh ${ct} 1` as string | undefined,
+    command: ["/bin/bash", "/entrypoint.sh"] as string[] | undefined,
     healthcheck: undefined as unknown,
     init: true,
     cap_add: [] as string[],
     devices: [] as string[],
+    sysctls: {} as Record<string, unknown>, // eslint-disable-line @typescript-eslint/consistent-type-assertions
     volumes: [] as unknown[],
     env_file: ["ip-export.env"],
     environment: {} as Record<string, string>, // eslint-disable-line @typescript-eslint/consistent-type-assertions
     networks: {},
   };
 
-  switch (ct) {
+  switch (ct.replace(/\d*$/, "")) {
     case "sql": {
       service.image = "bitnami/mariadb:10.9";
       service.command = undefined;
@@ -82,10 +87,19 @@ function buildService(ct: string) {
       service.environment.ALLOW_EMPTY_PASSWORD = "yes";
       break;
     }
-    case "btup":
-    case "upf1":
-    case "upf2": {
-      service.cap_add.push("NET_ADMIN", "SYS_ADMIN");
+    case "gnb": {
+      service.sysctls["net.ipv4.ip_forward"] = 0;
+      break;
+    }
+    case "upf": {
+      service.sysctls["net.ipv4.conf.all.accept_local"] = 1;
+      service.sysctls["net.ipv4.conf.all.rp_filter"] = 2;
+      service.sysctls["net.ipv4.conf.default.accept_local"] = 1;
+      service.sysctls["net.ipv4.conf.default.rp_filter"] = 2;
+      // fallthrough
+    }
+    case "btup": {
+      service.cap_add.push("SYS_ADMIN");
       service.devices.push("/dev/net/tun:/dev/net/tun");
       break;
     }
@@ -93,17 +107,25 @@ function buildService(ct: string) {
     case "igw":
     case "prometheus": {
       service.image = "alpine";
-      service.command = "tail -f";
+      service.command = ["/usr/bin/tail", "-f"];
+      service.cap_add.push("NET_ADMIN");
       break;
     }
   }
 
   if (service.image === "phoenix") {
     service.depends_on.sql = { condition: "service_healthy" };
+    service.cap_add.push("NET_ADMIN");
+    service.sysctls["net.ipv4.ip_forward"] ??= 1;
     service.volumes.push({
       type: "bind",
       source: path.join(args.out, "cfg"),
       target: CFGDIR,
+      read_only: true,
+    }, {
+      type: "bind",
+      source: path.join(__dirname, "entrypoint.sh"),
+      target: "/entrypoint.sh",
       read_only: true,
     });
     service.environment.cfgdir = CFGDIR;
