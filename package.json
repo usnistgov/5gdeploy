@@ -6,17 +6,17 @@
     "start": "node --loader tsm",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@7.22.0",
+  "packageManager": "pnpm@7.24.2",
   "dependencies": {
     "@types/minimalistic-assert": "^1.0.1",
     "@types/netmask": "^1.0.30",
-    "@types/stdout-stream": "^1.4.0",
+    "@types/node": "^18.11.18",
+    "@types/yargs": "^17.0.19",
     "@yoursunny/xo-config": "^0.52.1",
-    "get-stdin": "^9.0.0",
     "minimalistic-assert": "^1.0.1",
     "netmask": "^2.0.2",
-    "stdout-stream": "^2.0.0",
     "tsm": "^2.3.0",
-    "typescript": "^4.9.4"
+    "typescript": "^4.9.4",
+    "yargs": "^17.6.2"
   }
 }
