@@ -1,7 +1,7 @@
 /** @typedef {import("xo").Options} XoOptions */
 
 /** @type {import("@yoursunny/xo-config")} */
-const { js, ts, preact, merge } = require("@yoursunny/xo-config");
+const { js, ts, merge } = require("@yoursunny/xo-config");
 
 /** @type {XoOptions} */
 module.exports = {
@@ -11,13 +11,11 @@ module.exports = {
       files: [
         "./*.ts",
       ],
-      ...merge(js, ts),
-    },
-    {
-      files: [
-        "./src/**/*.(ts|tsx)",
-      ],
-      ...merge(js, ts, preact),
+      ...merge(js, ts, {
+        rules: {
+          "@typescript-eslint/consistent-type-assertions": "off",
+        },
+      }),
     },
   ],
 };

@@ -61,27 +61,26 @@ function buildService(ct: string) {
   const service = {
     container_name: ct,
     hostname: ct,
-    depends_on: {} as Record<string, unknown>, // eslint-disable-line @typescript-eslint/consistent-type-assertions
+    depends_on: {} as Record<string, unknown>,
     image: "phoenix",
     command: ["/bin/bash", "/entrypoint.sh"] as string[] | undefined,
     healthcheck: undefined as unknown,
     init: true,
     cap_add: [] as string[],
     devices: [] as string[],
-    sysctls: {} as Record<string, string | number>, // eslint-disable-line @typescript-eslint/consistent-type-assertions
+    sysctls: {} as Record<string, string | number>,
     volumes: [] as unknown[],
-    env_file: ["ip-export.env"],
-    environment: {} as Record<string, string>, // eslint-disable-line @typescript-eslint/consistent-type-assertions
+    environment: {} as Record<string, string>,
     networks: {},
   } satisfies ComposeService;
 
-  switch (ct.replace(/\d*$/, "")) {
+  switch (ct.replace(/(_.*|\d*)$/, "")) {
     case "sql": {
       service.image = "bitnami/mariadb:10.9";
       service.command = undefined;
       service.healthcheck = {
         test: "mysql -u root -e 'USE smf_db; USE udm_db;'",
-        interval: "30s",
+        interval: "10s",
         timeout: "5s",
         retries: 3,
         start_period: "30s",

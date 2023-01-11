@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
-CFGDIR=/opt/phoenix/cfg/current
 CT=$(hostname -s)
-cd $CFGDIR
+phoenixdir=/opt/phoenix
+cd $cfgdir
 
 ip -j addr | jq -r '.[] | [.ifname, (.addr_info[] | select(.family=="inet") | .local)] | @tsv' | while read IFNAME IP; do
   if [[ -z $IP ]] || [[ $IFNAME == lo ]]; then
@@ -16,12 +16,14 @@ ip -j addr | jq -r '.[] | [.ifname, (.addr_info[] | select(.family=="inet") | .l
   fi
 done
 
+$phoenixdir/tools/ph_init/ip-export.sh < ip-map > /run/phoenix-ip-export.sh
+. /run/phoenix-ip-export.sh
+
 ip route del default || true
 if [[ $CT == hostnat ]]; then
-  IP=$(ip -j addr show mgmt | jq -r '.[] | .addr_info[] | select(.family=="inet") | .local')
-  GW=$(echo $IP | sed 's/\.[0-9]*$/.1/')
-  ip route add default via $GW
-  iptables -t nat -I POSTROUTING -o mgmt -j SNAT --to $IP
+  HOSTNAT_MGMT_GW=$(echo $HOSTNAT_MGMT_IP | sed 's/\.[0-9]*$/.1/')
+  ip route add default via $HOSTNAT_MGMT_GW
+  iptables -t nat -I POSTROUTING -o mgmt -j SNAT --to $HOSTNAT_MGMT_IP
 fi
 
 if [[ -f other ]]; then
@@ -38,8 +40,9 @@ if [[ -f other ]]; then
   ' other
 fi
 
-phoenixdir=/opt/phoenix
-cfgdir=$CFGDIR
+ip addr
+ip route
+
 if [[ -f env.sh ]]; then
   . env.sh
 fi
@@ -48,7 +51,7 @@ if [[ -f $CT.sh ]]; then
 fi
 
 if [[ -f $CT.json ]]; then
-  exec /opt/phoenix/dist/phoenix.sh -p /opt/phoenix/dist/lib -j $CFGDIR/$CT.json
+  exec $phoenixdir/dist/phoenix.sh -j $cfgdir/$CT.json -p $phoenixdir/dist/lib
 else
   exec tail -f
 fi
