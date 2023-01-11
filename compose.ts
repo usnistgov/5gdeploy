@@ -26,6 +26,13 @@ interface Compose {
   services: Record<string, any>;
 }
 
+interface ComposeService {
+  container_name: string;
+  sysctls: Record<string, string | number>;
+  networks: Record<string, any>;
+  [k: string]: any;
+}
+
 const compose: Compose = {
   networks: {},
   services: {},
@@ -33,10 +40,11 @@ const compose: Compose = {
 
 function buildNetwork(net: string, ip: string, cidr: string) {
   const subnet4 = new Netmask(`${ip}/${cidr}`);
+  const masquerade = net === "mgmt" ? 1 : 0;
   return {
     driver_opts: {
       "com.docker.network.bridge.name": `br-${net}`,
-      "com.docker.network.bridge.enable_ip_masquerade": 0,
+      "com.docker.network.bridge.enable_ip_masquerade": masquerade,
     },
     ipam: {
       driver: "default",
@@ -60,12 +68,12 @@ function buildService(ct: string) {
     init: true,
     cap_add: [] as string[],
     devices: [] as string[],
-    sysctls: {} as Record<string, unknown>, // eslint-disable-line @typescript-eslint/consistent-type-assertions
+    sysctls: {} as Record<string, string | number>, // eslint-disable-line @typescript-eslint/consistent-type-assertions
     volumes: [] as unknown[],
     env_file: ["ip-export.env"],
     environment: {} as Record<string, string>, // eslint-disable-line @typescript-eslint/consistent-type-assertions
     networks: {},
-  };
+  } satisfies ComposeService;
 
   switch (ct.replace(/\d*$/, "")) {
     case "sql": {
@@ -91,24 +99,14 @@ function buildService(ct: string) {
       service.sysctls["net.ipv4.ip_forward"] = 0;
       break;
     }
-    case "upf": {
-      service.sysctls["net.ipv4.conf.all.accept_local"] = 1;
-      service.sysctls["net.ipv4.conf.all.rp_filter"] = 2;
-      service.sysctls["net.ipv4.conf.default.accept_local"] = 1;
-      service.sysctls["net.ipv4.conf.default.rp_filter"] = 2;
-      // fallthrough
-    }
+    case "upf":
     case "btup": {
-      service.cap_add.push("SYS_ADMIN");
       service.devices.push("/dev/net/tun:/dev/net/tun");
       break;
     }
-    case "hostnat":
-    case "igw":
     case "prometheus": {
       service.image = "alpine";
       service.command = ["/usr/bin/tail", "-f"];
-      service.cap_add.push("NET_ADMIN");
       break;
     }
   }
@@ -133,12 +131,18 @@ function buildService(ct: string) {
   return service;
 }
 
-function addNetwork({ networks }: { networks: Record<string, any> }, net: string, ip: string) {
+function addNetwork(service: ComposeService, net: string, ip: string) {
+  if (service.container_name.startsWith("upf")) {
+    const netif = `eth${Object.entries(service.networks).length}`;
+    service.sysctls[`net.ipv4.conf.${netif}.accept_local`] = 1;
+    service.sysctls[`net.ipv4.conf.${netif}.rp_filter`] = 2;
+  }
+
   const network: { ipv4_address?: string } = {};
   if (ip !== "0.0.0.0") {
     network.ipv4_address = ip;
   }
-  networks[net] = network;
+  service.networks[net] = network;
 }
 
 for (let line of (await fs.readFile(path.join(args.cfg, "ip-map"), "utf8")).split("\n")) {
