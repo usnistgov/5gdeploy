@@ -7,6 +7,8 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const phoenixdir = "/opt/phoenix";
+const cfgdir = `${phoenixdir}/cfg/current`;
 
 const args = await yargs(hideBin(process.argv))
   .option("cfg", {
@@ -55,15 +57,13 @@ function buildNetwork(net: string, ip: string, cidr: string) {
   };
 }
 
-const CFGDIR = "/opt/phoenix/cfg/current";
-
 function buildService(ct: string) {
   const service = {
     container_name: ct,
     hostname: ct,
     depends_on: {} as Record<string, unknown>,
     image: "phoenix",
-    command: ["/bin/bash", "/entrypoint.sh"] as string[] | undefined,
+    command: undefined as string[] | undefined,
     healthcheck: undefined as unknown,
     init: true,
     cap_add: [] as string[],
@@ -111,13 +111,14 @@ function buildService(ct: string) {
   }
 
   if (service.image === "phoenix") {
+    service.command = ["/bin/bash", "/entrypoint.sh"];
     service.depends_on.sql = { condition: "service_healthy" };
     service.cap_add.push("NET_ADMIN");
     service.sysctls["net.ipv4.ip_forward"] ??= 1;
     service.volumes.push({
       type: "bind",
       source: path.join(args.out, "cfg"),
-      target: CFGDIR,
+      target: cfgdir,
       read_only: true,
     }, {
       type: "bind",
@@ -125,7 +126,7 @@ function buildService(ct: string) {
       target: "/entrypoint.sh",
       read_only: true,
     });
-    service.environment.cfgdir = CFGDIR;
+    Object.assign(service.environment, { phoenixdir, cfgdir });
   }
   return service;
 }
@@ -151,6 +152,9 @@ for (let line of (await fs.readFile(path.join(args.cfg, "ip-map"), "utf8")).spli
     continue;
   }
   const [ct, net, ip, cidr] = tokens;
+  if (cidr === "32") {
+    continue;
+  }
   compose.networks[net] ??= buildNetwork(net, ip, cidr);
   compose.services[ct] ??= buildService(ct);
   addNetwork(compose.services[ct], net, ip);
