@@ -6,13 +6,14 @@
     "start": "node --loader tsm",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@7.24.2",
+  "packageManager": "pnpm@7.26.0",
   "dependencies": {
+    "@nodelib/fs.walk": "^1.2.8",
     "@types/minimalistic-assert": "^1.0.1",
     "@types/netmask": "^1.0.30",
     "@types/node": "^18.11.18",
-    "@types/yargs": "^17.0.19",
-    "@yoursunny/xo-config": "^0.52.1",
+    "@types/yargs": "^17.0.20",
+    "@yoursunny/xo-config": "^0.53.0",
     "minimalistic-assert": "^1.0.1",
     "netmask": "^2.0.2",
     "tsm": "^2.3.0",

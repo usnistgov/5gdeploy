@@ -1,12 +1,15 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
+import fsWalk from "@nodelib/fs.walk";
 import { Netmask } from "netmask";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const fsWalkPromise = promisify(fsWalk.walk);
 const phoenixdir = "/opt/phoenix";
 const cfgdir = `${phoenixdir}/cfg/current`;
 
@@ -22,6 +25,7 @@ const args = await yargs(hideBin(process.argv))
     type: "string",
   })
   .parseAsync();
+await fs.mkdir(args.out, { recursive: true });
 
 interface Compose {
   networks: Record<string, any>;
@@ -160,3 +164,22 @@ for (let line of (await fs.readFile(path.join(args.cfg, "ip-map"), "utf8")).spli
   addNetwork(compose.services[ct], net, ip);
 }
 await fs.writeFile(path.join(args.out, "compose.yml"), JSON.stringify(compose, undefined, 2));
+
+const outCfg = path.join(args.out, "cfg");
+try {
+  await fs.unlink(outCfg);
+} catch {}
+try {
+  await fs.symlink(args.cfg, outCfg);
+} catch {}
+
+const outSql = path.join(args.out, "sql");
+await fs.mkdir(outSql, { recursive: true });
+for (const entry of await fsWalkPromise(outSql)) {
+  await fs.unlink(entry.path);
+}
+for (const entry of await fsWalkPromise(path.join(args.cfg, "sql"), {
+  entryFilter: ({ name }) => name.endsWith(".sql"),
+})) {
+  await fs.copyFile(entry.path, path.join(outSql, entry.name));
+}
