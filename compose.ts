@@ -65,11 +65,11 @@ function buildService(ct: string) {
   const service = {
     container_name: ct,
     hostname: ct,
-    depends_on: {} as Record<string, unknown>,
     image: "phoenix",
     command: undefined as string[] | undefined,
-    healthcheck: undefined as unknown,
     init: true,
+    stdin_open: false,
+    tty: false,
     cap_add: [] as string[],
     devices: [] as string[],
     sysctls: {} as Record<string, string | number>,
@@ -80,15 +80,7 @@ function buildService(ct: string) {
 
   switch (ct.replace(/(_.*|\d*)$/, "")) {
     case "sql": {
-      service.image = "bitnami/mariadb:10.9";
-      service.command = undefined;
-      service.healthcheck = {
-        test: "mysql -u root -e 'USE smf_db; USE udm_db;'",
-        interval: "10s",
-        timeout: "5s",
-        retries: 3,
-        start_period: "30s",
-      };
+      service.image = "bitnami/mariadb:10.6";
       service.volumes.push({
         type: "bind",
         source: path.join(args.out, "sql"),
@@ -116,7 +108,8 @@ function buildService(ct: string) {
 
   if (service.image === "phoenix") {
     service.command = ["/bin/bash", "/entrypoint.sh"];
-    service.depends_on.sql = { condition: "service_healthy" };
+    service.stdin_open = true;
+    service.tty = true;
     service.cap_add.push("NET_ADMIN");
     service.sysctls["net.ipv4.ip_forward"] ??= 1;
     service.volumes.push({

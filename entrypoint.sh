@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 CT=$(hostname -s)
-cd $cfgdir
 
 msg() {
   echo -ne "\e[35m[phoenix-deploy] \e[94m"
@@ -11,6 +10,7 @@ msg() {
 
 msg \$phoenixdir is $phoenixdir
 msg \$cfgdir is $cfgdir
+cd $cfgdir
 
 msg renaming network interfaces
 ip -j addr | jq -r '.[] | [.ifname, (.addr_info[] | select(.family=="inet") | .local)] | @tsv' | while read IFNAME IP; do
@@ -38,6 +38,16 @@ awk -vCT=$CT '
 msg processing ip-export
 $phoenixdir/tools/ph_init/ip-export.sh < ip-map > /run/phoenix-ip-export.sh
 . /run/phoenix-ip-export.sh
+
+if [[ $CT == smf* ]] || [[ $CT == udm* ]]; then
+  msg waiting for database
+  while ! mysql -e '' -h "$SQL_DB_IP" \
+          $(jq -r '.Phoenix.Module[] | select((.name|endswith("smf.so")) or (.name|endswith("udm.so"))) |
+                   .config.Database | ["-u", .username, "-p", .password, "-D", .database] | @sh' $CT.json); do
+    sleep 1
+  done
+  sleep 1
+fi
 
 if [[ $CT == hostnat ]]; then
   HOSTNAT_MGMT_GW=$(echo $HOSTNAT_MGMT_IP | sed 's/\.[0-9]*$/.1/')
