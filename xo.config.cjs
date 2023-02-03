@@ -9,7 +9,7 @@ module.exports = {
   overrides: [
     {
       files: [
-        "./*.ts",
+        "**/*.ts",
       ],
       ...merge(js, ts, {
         rules: {
