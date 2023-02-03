@@ -135,11 +135,9 @@ function addNetwork(service: ComposeService, net: string, ip: string) {
     service.sysctls[`net.ipv4.conf.${netif}.rp_filter`] = 2;
   }
 
-  const network: { ipv4_address?: string } = {};
-  if (ip !== "0.0.0.0") {
-    network.ipv4_address = ip;
-  }
-  service.networks[net] = network;
+  service.networks[net] = {
+    ipv4_address: ip,
+  };
 }
 
 for (let line of (await fs.readFile(path.join(args.cfg, "ip-map"), "utf8")).split("\n")) {
@@ -149,7 +147,7 @@ for (let line of (await fs.readFile(path.join(args.cfg, "ip-map"), "utf8")).spli
     continue;
   }
   const [ct, net, ip, cidr] = tokens;
-  if (cidr === "32") {
+  if (ip === "0.0.0.0" || cidr === "32") {
     continue;
   }
   compose.networks[net] ??= buildNetwork(net, ip, cidr);
