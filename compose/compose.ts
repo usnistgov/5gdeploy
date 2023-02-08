@@ -1,5 +1,3 @@
-import path from "node:path";
-
 import type { Netmask } from "netmask";
 
 import { __dirname, cfgdir, phoenixdir } from "./const.js";
@@ -128,11 +126,6 @@ function updatePhoenix(s: ComposeService): void {
     type: "bind",
     source: "./cfg",
     target: cfgdir,
-    read_only: true,
-  }, {
-    type: "bind",
-    source: path.join(__dirname, "entrypoint.sh"),
-    target: "/entrypoint.sh",
     read_only: true,
   });
   Object.assign(s.environment, { phoenixdir, cfgdir });

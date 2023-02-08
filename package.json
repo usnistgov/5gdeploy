@@ -11,7 +11,7 @@
     "@nodelib/fs.walk": "^1.2.8",
     "@types/minimalistic-assert": "^1.0.1",
     "@types/netmask": "^1.0.30",
-    "@types/node": "^18.11.18",
+    "@types/node": "^18.13.0",
     "@types/yargs": "^17.0.22",
     "@yoursunny/xo-config": "^0.53.0",
     "minimalistic-assert": "^1.0.1",
