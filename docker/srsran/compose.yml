@@ -1,0 +1,59 @@
+---
+networks:
+  main:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.1.0/24
+services:
+  epc:
+    container_name: epc
+    image: srsran
+    command: srsepc --log.filename=/srsran-log/epc.log
+      --mme.mme_bind_addr=192.168.1.20 --spgw.gtpu_bind_addr=192.168.1.20
+    init: true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      main:
+        ipv4_address: 192.168.1.20
+    volumes:
+      - type: bind
+        source: ./logs
+        target: /srsran-log
+  enb:
+    container_name: enb
+    image: srsran
+    command: srsenb --log.filename=/srsran-log/enb.log --pcap.enable=false
+      --expert.metrics_csv_enable=false --expert.report_json_enable=false
+      --enb.mme_addr=192.168.1.20 --enb.gtp_bind_addr=192.168.1.50
+      --enb.s1c_bind_addr=192.168.1.50 --rf.device_name=zmq
+      --rf.device_args="fail_on_disconnect=true,tx_port=tcp://*:2000,rx_port=tcp://192.168.1.55:2001,id=enb,base_srate=23.04e6"
+    init: true
+    networks:
+      main:
+        ipv4_address: 192.168.1.50
+    volumes:
+      - type: bind
+        source: ./logs
+        target: /srsran-log
+  ue:
+    container_name: ue
+    image: srsran
+    command: srsue --log.filename=/srsran-log/ue.log --pcap.enable=none
+      --general.metrics_csv_enable=false --general.metrics_json_enable=false
+      --rf.device_args="tx_port=tcp://*:2001,rx_port=tcp://192.168.1.50:2000,id=ue,base_srate=23.04e6"
+    init: true
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      main:
+        ipv4_address: 192.168.1.55
+    volumes:
+      - type: bind
+        source: ./logs
+        target: /srsran-log

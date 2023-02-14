@@ -6,7 +6,7 @@
     "start": "node --loader tsm",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@7.26.3",
+  "packageManager": "pnpm@7.27.0",
   "dependencies": {
     "@nodelib/fs.walk": "^1.2.8",
     "@types/minimalistic-assert": "^1.0.1",
