@@ -9,7 +9,7 @@ apt-get install -qq --no-install-recommends ca-certificates curl devscripts equi
 
 mkdir -p $DIR
 cd $DIR
-curl -sfLS https://github.com/srsran/srsRAN/archive/release_${SRSRAN_VERSION/./_}.tar.gz | tar xz --strip-components=1
+curl -sfLS https://github.com/srsran/srsRAN_4G/archive/release_${SRSRAN_VERSION/./_}.tar.gz | tar xz --strip-components=1
 
 . /etc/os-release
 cat >debian/changelog <<EOT
