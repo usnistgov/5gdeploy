@@ -45,6 +45,7 @@ export function convert(records: readonly ipmap.Record[]): ComposeFile {
 function buildNetwork(net: string, subnet: Netmask) {
   const masquerade = Number(net === "mgmt");
   return {
+    name: `br-${net}`,
     driver_opts: {
       "com.docker.network.bridge.name": `br-${net}`,
       "com.docker.network.bridge.enable_ip_masquerade": masquerade,

@@ -3,6 +3,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import fsWalk from "@nodelib/fs.walk";
+import stringify from "json-stable-stringify";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -27,7 +28,7 @@ await fs.mkdir(args.out, { recursive: true });
 
 const ipmapRecords = ipmap.parse(await fs.readFile(path.join(args.cfg, "ip-map"), "utf8"));
 const composeFile = compose.convert(ipmapRecords);
-await fs.writeFile(path.join(args.out, "compose.yml"), JSON.stringify(composeFile, undefined, 2));
+await fs.writeFile(path.join(args.out, "compose.yml"), stringify(composeFile, { space: 2 }));
 
 const outCfg = path.join(args.out, "cfg");
 try {
