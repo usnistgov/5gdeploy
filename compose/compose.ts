@@ -118,7 +118,7 @@ const updateService: Record<string, (s: ComposeService) => void> = {
 };
 
 function updatePhoenix(s: ComposeService): void {
-  s.command = ["/bin/bash", "/entrypoint.sh"];
+  s.command = ["/entrypoint.sh", s.hostname];
   s.stdin_open = true;
   s.tty = true;
   s.cap_add.push("NET_ADMIN");

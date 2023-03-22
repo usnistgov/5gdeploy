@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail
-CT=$(hostname -s)
+CT=$1
 
 msg() {
-  echo -ne "\e[35m[phoenix-deploy] \e[94m"
+  echo -ne "\e[35m[5gdeploy] \e[94m"
   echo -n "$*"
   echo -e "\e[0m"
 }

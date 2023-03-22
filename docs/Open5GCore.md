@@ -1,23 +1,29 @@
 # Open5GCore in Docker Compose
 
-## Convert ip-map to Compose file
+Requirements:
 
 * Ubuntu 22.04
 * Node.js 18.x
-* Open5GCore proprietary repository cloned at `~/phoenix-repo`
+* Open5GCore proprietary repository cloned at `~/phoenix-repo` (dependency installation not needed)
 * This repository cloned at `~/5gdeploy`
 
+Build Open5GCore Docker image:
+
 ```bash
-# build phoenix Docker image
 cd ~/phoenix-repo/phoenix-src
 docker build --pull -t localhost/phoenix \
   --build-arg UBUNTU_VERSION=22.04 \
   --build-arg CACHE_PREFIX= \
   -f deploy/docker/Dockerfile .
+
 cd ~/5gdeploy
 docker build -t phoenix docker/phoenix
+```
 
-# convert ph_init to Docker Compose
+## Convert ip-map to Compose file
+
+```bash
+# convert ph_init to Compose
 cd ~/5gdeploy
 corepack pnpm -s start compose/main.ts --cfg ~/phoenix-repo/phoenix-src/cfg/5g --out ~/compose/phoenix
 
