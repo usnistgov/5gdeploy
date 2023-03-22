@@ -54,6 +54,7 @@ services:
     command: ["/entrypoint.sh", "lte_enb"]
     init: true
     cap_add:
+      - IPC_LOCK
       - SYS_NICE
     networks:
       s1:

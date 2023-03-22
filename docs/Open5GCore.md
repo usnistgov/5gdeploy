@@ -1,6 +1,6 @@
 # Open5GCore in Docker Compose
 
-Requirements:
+Requirements / assumptions:
 
 * Ubuntu 22.04
 * Node.js 18.x
