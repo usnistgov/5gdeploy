@@ -3,7 +3,7 @@
 Requirements / assumptions:
 
 * Ubuntu 22.04
-* Installed packages: `httpie jq python3-minimal`
+* Installed packages: `httpie jq`
 * This repository cloned at `~/5gdeploy`
 
 Build srsRAN 4G Docker image:

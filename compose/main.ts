@@ -31,18 +31,19 @@ const composeFile = compose.convert(ipmapRecords);
 await fs.writeFile(path.join(args.out, "compose.yml"), stringify(composeFile, { space: 2 }));
 
 const outCfg = path.join(args.out, "cfg");
-try {
-  await fs.unlink(outCfg);
-} catch {}
-try {
-  await fs.symlink(args.cfg, outCfg);
-} catch {}
+await fs.mkdir(outCfg, { recursive: true });
+for (const entry of await fsWalkPromise(args.cfg, {
+  entryFilter: ({ dirent }) => dirent.isFile(),
+  deepFilter: ({ name }) => !["prometheus", "sql"].includes(name),
+})) {
+  const rel = path.join(outCfg, path.relative(args.cfg, entry.path));
+  await fs.mkdir(path.dirname(rel), { recursive: true });
+  await fs.copyFile(entry.path, rel);
+}
 
 const outSql = path.join(args.out, "sql");
+await fs.rm(outSql, { recursive: true, force: true });
 await fs.mkdir(outSql, { recursive: true });
-for (const entry of await fsWalkPromise(outSql)) {
-  await fs.unlink(entry.path);
-}
 for (const entry of await fsWalkPromise(path.join(args.cfg, "sql"), {
   entryFilter: ({ name }) => name.endsWith(".sql"),
 })) {
