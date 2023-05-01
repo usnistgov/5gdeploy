@@ -1,0 +1,56 @@
+---
+networks:
+  n2:
+    name: n2
+    external: true
+  n3:
+    name: n3
+    external: true
+  air:
+    name: air
+    external: true
+services:
+  gnb:
+    container_name: gnb
+    hostname: gnb
+    image: oai-gnb
+    command: ["/entrypoint.sh", "gnb"]
+    environment:
+      RFSIMULATOR: server
+      USE_SA_TDD_MONO: 'yes'
+      GNB_NAME: gnb-rfsim
+      TAC: 117
+      MCC: '001'
+      MNC: '01'
+      MNC_LENGTH: 2
+      NSSAI_SST: 1
+      AMF_IP_ADDRESS: 192.168.12.20
+      GNB_NGA_IP_ADDRESS: 192.168.12.50
+      GNB_NGU_IP_ADDRESS: 192.168.13.50
+      SDR_ADDRS: serial=XXXXXXX
+      USE_ADDITIONAL_OPTIONS: --sa -E --rfsim --log_config.global_log_options level,nocolor,time
+    privileged: true
+    networks:
+      n2:
+        ipv4_address: 192.168.12.50
+      n3:
+        ipv4_address: 192.168.13.50
+      air:
+        ipv4_address: 192.168.10.50
+  ue:
+    container_name: ue
+    hostname: ue
+    image: oai-nr-ue
+    command: ["/entrypoint.sh", "nr_ue"]
+    environment:
+      RFSIMULATOR: 192.168.10.50
+      FULL_IMSI: '001011234567896'
+      FULL_KEY: '00000000000000000000000000000000'
+      OPC: '66E94BD4EF8A2C3B884CFA59CA342B2E'
+      DNN: default
+      NSSAI_SST: 1
+      USE_ADDITIONAL_OPTIONS: -E --sa --rfsim -r 106 --numerology 1 -C 3619200000 --log_config.global_log_options level,nocolor,time
+    privileged: true
+    networks:
+      air:
+        ipv4_address: 192.168.10.55
