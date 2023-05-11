@@ -6,6 +6,7 @@ Requirements / assumptions:
 * Node.js 18.x
 * Open5GCore proprietary repository cloned at `~/phoenix-repo` (dependency installation not needed)
 * This repository cloned at `~/5gdeploy`
+* `corepack pnpm install`
 
 Build Open5GCore Docker image:
 
@@ -38,6 +39,12 @@ docker attach ue1
 # interact with bash prompt in a container
 # (quit with CTRL+D or 'exit' command)
 docker exec -it ue1 bash
+
+# interact with UE via JSON-RPC
+UE1MGMT=$(docker inspect -f '{{(index .NetworkSettings.Networks "br-mgmt").IPAddress}}' ue1)
+corepack pnpm -s phoenix-rpc --host $UE1MGMT ue-status
+corepack pnpm -s phoenix-rpc --host $UE1MGMT ue-register
+corepack pnpm -s phoenix-rpc --host $UE1MGMT ue-deregister
 
 # shutdown Docker Compose
 cd ~/compose/phoenix
