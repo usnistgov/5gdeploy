@@ -25,7 +25,7 @@ docker build -t phoenix docker/phoenix
 ```bash
 # convert ph_init to Compose
 cd ~/5gdeploy
-corepack pnpm -s start compose/main.ts --cfg ~/phoenix-repo/phoenix-src/cfg/5g --out ~/compose/phoenix
+corepack pnpm -s phoenix-compose --cfg ~/phoenix-repo/phoenix-src/cfg/5g --out ~/compose/phoenix
 
 # start Docker Compose
 cd ~/compose/phoenix
