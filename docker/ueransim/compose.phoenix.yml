@@ -49,6 +49,8 @@ services:
       KEY: '00000000000000000000000000000000'
       OPC: '66E94BD4EF8A2C3B884CFA59CA342B2E'
       GNB_IPS: 192.168.10.50
+      SLICES: 1:1
+      SESSIONS: default:1:1,internet:1:1
     init: true
     cap_add:
       - IPC_LOCK
