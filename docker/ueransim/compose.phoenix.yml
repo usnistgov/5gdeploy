@@ -1,0 +1,61 @@
+---
+networks:
+  n2:
+    name: n2
+    external: true
+  n3:
+    name: n3
+    external: true
+  air:
+    name: air
+    external: true
+services:
+  gnb:
+    container_name: gnb
+    hostname: gnb
+    image: ueransim
+    command: ["/entrypoint.sh", "gnb"]
+    environment:
+      MCC: '001'
+      MNC: '01'
+      NCI: '0x000000010'
+      TAC: 1
+      LINK_IP: 192.168.10.50
+      NGAP_IP: 192.168.12.50
+      GTP_IP: 192.168.13.50
+      AMF_IPS: 192.168.12.20
+      SLICES: 1,1:1,1:d143a5,1:2
+    init: true
+    cap_add:
+      - IPC_LOCK
+      - NET_ADMIN
+      - SYS_NICE
+    networks:
+      n2:
+        ipv4_address: 192.168.12.50
+      n3:
+        ipv4_address: 192.168.13.50
+      air:
+        ipv4_address: 192.168.10.50
+  ue:
+    container_name: ue
+    hostname: ue
+    image: ueransim
+    command: ["/entrypoint.sh", "ue"]
+    environment:
+      IMSI: '001011234567896'
+      MCC: '001'
+      MNC: '01'
+      KEY: '00000000000000000000000000000000'
+      OPC: '66E94BD4EF8A2C3B884CFA59CA342B2E'
+      GNB_IPS: 192.168.10.50
+    init: true
+    cap_add:
+      - IPC_LOCK
+      - NET_ADMIN
+      - SYS_NICE
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      air:
+        ipv4_address: 192.168.10.55
