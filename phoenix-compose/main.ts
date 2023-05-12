@@ -1,8 +1,9 @@
-import { promises as fs } from "node:fs";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
 import fsWalk from "@nodelib/fs.walk";
+import yaml from "js-yaml";
 import stringify from "json-stable-stringify";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -23,11 +24,19 @@ const args = await yargs(hideBin(process.argv))
     desc: "Compose output directory",
     type: "string",
   })
+  .option("ran", {
+    desc: "replace RAN simulator with services in specified Compose file",
+    type: "string",
+  })
   .parseAsync();
 await fs.mkdir(args.out, { recursive: true });
 
 const ipmapRecords = ipmap.parse(await fs.readFile(path.join(args.cfg, "ip-map"), "utf8"));
-const composeFile = compose.convert(ipmapRecords);
+const composeFile = compose.convert(ipmapRecords, !!args.ran);
+if (args.ran && args.ran !== "false") {
+  const ranCompose = yaml.load(await fs.readFile(args.ran, "utf8")) as any;
+  Object.assign(composeFile.services, ranCompose.services);
+}
 await fs.writeFile(path.join(args.out, "compose.yml"), stringify(composeFile, { space: 2 }));
 
 const outCfg = path.join(args.out, "cfg");

@@ -19,21 +19,12 @@ docker build --pull -t oai-nr-ue \
 
 ## Open5GCore + oai-gnb + oai-nr-ue
 
-Additional requirements / assumptions:
-
-* [Open5GCore Compose file](Open5GCore.md) created in `~/compose/phoenix`
-* [dasel](https://github.com/TomWright/dasel/releases) 2.x
+[Open5GCore](Open5GCore.md) requirements must be met and Docker image built.
 
 ```bash
-# duplicate Compose context
-mkdir -p ~/compose/oai-phoenix
-tar -ch -C ~/compose/phoenix . | tar -x -C ~/compose/oai-phoenix
-
-# replace Open5GCore simulated RAN with srsRAN 4G in Compose file
-cd ~/compose/oai-phoenix
-dasel -f ~/compose/phoenix/compose.yml -w json | jq --argjson S "$(dasel -f ~/5gdeploy/docker/oai/compose.phoenix.yml -w json)" '
-  .services |= with_entries(select(.key | startswith("bt") or startswith("gnb") or startswith("ue") | not)) + ($S | .services)
-' >compose.yml
+# prepare Compose context
+cd ~/5gdeploy
+corepack pnpm -s phoenix-compose --cfg ~/phoenix-repo/phoenix-src/cfg/5g --out ~/compose/oai-phoenix --ran docker/oai/compose.phoenix.yml
 
 # start Docker Compose
 cd ~/compose/oai-phoenix

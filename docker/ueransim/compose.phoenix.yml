@@ -19,17 +19,13 @@ services:
       MCC: '001'
       MNC: '01'
       NCI: '0x000000010'
-      TAC: 1
+      TAC: 117
       LINK_IP: 192.168.10.50
       NGAP_IP: 192.168.12.50
       GTP_IP: 192.168.13.50
-      AMF_IPS: 192.168.12.20
+      AMF_IPS: 192.168.12.20,192.168.12.21
       SLICES: 1,1:1,1:d143a5,1:2
     init: true
-    cap_add:
-      - IPC_LOCK
-      - NET_ADMIN
-      - SYS_NICE
     networks:
       n2:
         ipv4_address: 192.168.12.50
@@ -50,12 +46,10 @@ services:
       OPC: '66E94BD4EF8A2C3B884CFA59CA342B2E'
       GNB_IPS: 192.168.10.50
       SLICES: 1:1
-      SESSIONS: default:1:1,internet:1:1
+      SESSIONS: default:1:1,internet:1:2
     init: true
     cap_add:
-      - IPC_LOCK
       - NET_ADMIN
-      - SYS_NICE
     devices:
       - /dev/net/tun:/dev/net/tun
     networks:

@@ -17,25 +17,20 @@ docker build -t ueransim docker/ueransim
 
 ## Open5GCore + UERANSIM
 
-Additional requirements / assumptions:
-
-* [Open5GCore Compose file](Open5GCore.md) created in `~/compose/phoenix`
-* [dasel](https://github.com/TomWright/dasel/releases) 2.x
+[Open5GCore](Open5GCore.md) requirements must be met and Docker image built.
 
 ```bash
-# duplicate Compose context
-mkdir -p ~/compose/ueransim-phoenix
-tar -ch -C ~/compose/phoenix . | tar -x -C ~/compose/ueransim-phoenix
-
-# replace Open5GCore simulated RAN with UERANSIM in Compose file
-cd ~/compose/ueransim-phoenix
-dasel -f ~/compose/phoenix/compose.yml -w json | jq --argjson S "$(dasel -f ~/5gdeploy/docker/ueransim/compose.phoenix.yml -w json)" '
-  .services |= with_entries(select(.key | startswith("bt") or startswith("gnb") or startswith("ue") | not)) + ($S | .services)
-' >compose.yml
+# prepare Compose context
+cd ~/5gdeploy
+corepack pnpm -s phoenix-compose --cfg ~/phoenix-repo/phoenix-src/cfg/5g_nssf --out ~/compose/ueransim-phoenix --ran docker/ueransim/compose.phoenix.yml
 
 # start Docker Compose
 cd ~/compose/ueransim-phoenix
 docker compose up -d
+
+# interact with nr-cli
+# (quit with CTRL+D)
+docker exec -it ue ./nr-cli imsi-001011234567896
 
 # ping test
 docker exec -it ue ping -I uesimtun0 -c4 192.168.15.60

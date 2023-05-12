@@ -25,7 +25,7 @@ interface ComposeService {
 }
 
 /** Convert ip-map to Compose file. */
-export function convert(records: readonly ipmap.Record[]): ComposeFile {
+export function convert(records: readonly ipmap.Record[], deleteRAN = false): ComposeFile {
   const c: ComposeFile = {
     networks: {},
     services: {},
@@ -36,6 +36,9 @@ export function convert(records: readonly ipmap.Record[]): ComposeFile {
   }
 
   for (const [ct, nets] of ipmap.listContainers(records)) {
+    if (deleteRAN && ["bt", "btup", "gnb", "ue"].includes(ipmap.toNf(ct))) {
+      continue;
+    }
     c.services[ct] = buildService(ct, nets);
   }
 

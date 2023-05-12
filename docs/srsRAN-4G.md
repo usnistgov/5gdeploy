@@ -35,28 +35,19 @@ docker compose down
 
 ## 5G scenario: Open5GCore + srsENB + srsUE
 
-Additional requirements / assumptions:
-
-* [Open5GCore Compose file](Open5GCore.md) created in `~/compose/phoenix`
-* [dasel](https://github.com/TomWright/dasel/releases) 2.x
+[Open5GCore](Open5GCore.md) requirements must be met and Docker image built.
 
 ```bash
-# duplicate Compose context
-mkdir -p ~/compose/srsran4g-phoenix
-tar -ch -C ~/compose/phoenix . | tar -x -C ~/compose/srsran4g-phoenix
+# prepare Compose context
+cd ~/5gdeploy
+corepack pnpm -s phoenix-compose --cfg ~/phoenix-repo/phoenix-src/cfg/5g --out ~/compose/srsran4g-phoenix --ran docker/srsran4g/compose.phoenix.yml
 
 # modify Open5GCore config
 cd ~/compose/srsran4g-phoenix
 jq '(.Phoenix.Module[]|select(.binaryFile|endswith("amf.so")).config.trackingArea[].taiList) |= [{tac:117}]' \
-  ~/compose/phoenix/cfg/amf.json >cfg/amf.json
+  ~/phoenix-repo/phoenix-src/cfg/5g/amf.json >cfg/amf.json
 jq '(.Phoenix.Module[]|select(.binaryFile|endswith("pfcp.so"))|.config.hacks.qfi) |= 1' \
-  ~/compose/phoenix/cfg/upf1.json >cfg/upf1.json
-
-# replace Open5GCore simulated RAN with srsRAN 4G in Compose file
-cd ~/compose/srsran4g-phoenix
-dasel -f ~/compose/phoenix/compose.yml -w json | jq --argjson S "$(dasel -f ~/5gdeploy/docker/srsran4g/compose.phoenix.yml -w json)" '
-  .services |= with_entries(select(.key | startswith("bt") or startswith("gnb") or startswith("ue") | not)) + ($S | .services)
-' >compose.yml
+  ~/phoenix-repo/phoenix-src/cfg/5g/upf1.json >cfg/upf1.json
 
 # start Docker Compose
 cd ~/compose/srsran4g-phoenix
