@@ -1,10 +1,6 @@
 # srsRAN 4G in Docker Compose
 
-Requirements / assumptions:
-
-* Ubuntu 22.04
-* Installed packages: `httpie jq`
-* This repository cloned at `~/5gdeploy`
+See [installation](INSTALL.md) for how to install common dependencies.
 
 Build srsRAN 4G Docker image:
 
@@ -35,7 +31,7 @@ docker compose down
 
 ## 5G scenario: Open5GCore + srsENB + srsUE
 
-[Open5GCore](Open5GCore.md) requirements must be met and Docker image built.
+See [Open5GCore](Open5GCore.md) for how to use `phoenix` Docker image.
 
 ```bash
 # prepare Compose context

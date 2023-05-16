@@ -1,9 +1,6 @@
 # UERANSIM in Docker Compose
 
-Requirements / assumptions:
-
-* Ubuntu 22.04
-* This repository cloned at `~/5gdeploy`
+See [installation](INSTALL.md) for how to install common dependencies.
 
 Build UERANSIM Docker images:
 
@@ -17,7 +14,7 @@ docker build -t ueransim docker/ueransim
 
 ## Open5GCore + UERANSIM
 
-[Open5GCore](Open5GCore.md) requirements must be met and Docker image built.
+See [Open5GCore](Open5GCore.md) for how to use `phoenix` Docker image.
 
 ```bash
 # prepare Compose context

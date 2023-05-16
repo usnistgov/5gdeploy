@@ -3,18 +3,18 @@
   "type": "module",
   "scripts": {
     "lint": "xo-yoursunny --fix",
-    "phoenix-compose": "node --loader tsm ./phoenix-compose/main.ts",
+    "phoenix-compose": "node --no-warnings --loader tsm ./phoenix-compose/main.ts",
     "phoenix-rpc": "node --no-warnings --loader tsm ./phoenix-rpc/main.ts",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@8.5.0",
+  "packageManager": "pnpm@8.5.1",
   "dependencies": {
     "@nodelib/fs.walk": "^1.2.8",
     "@types/js-yaml": "^4.0.5",
     "@types/json-stable-stringify": "^1.0.34",
     "@types/minimalistic-assert": "^1.0.1",
     "@types/netmask": "^2.0.0",
-    "@types/node": "^18.16.3",
+    "@types/node": "^20.1.5",
     "@types/yargs": "^17.0.24",
     "@yoursunny/xo-config": "0.54.0",
     "jayson": "^4.1.0",
@@ -29,6 +29,6 @@
     "yargs": "^17.7.2"
   },
   "engines": {
-    "node": "^18.16.0"
+    "node": "^20.1.0"
   }
 }
