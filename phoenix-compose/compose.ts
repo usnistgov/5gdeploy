@@ -21,6 +21,7 @@ interface ComposeService {
   sysctls: Record<string, string | number>;
   volumes: unknown[];
   environment: Record<string, string>;
+  network_mode?: string;
   networks: Record<string, unknown>;
 }
 

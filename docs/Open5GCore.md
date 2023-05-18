@@ -51,3 +51,30 @@ docker compose down
 
 You can change `~/phoenix-repo/phoenix-src/cfg/5g` to another Open5GCore example scenario.
 Some, but not all, examples can work in Docker Compose.
+
+## Run Scenario over Multiple Machines
+
+Build bridge Docker image:
+
+```bash
+cd ~/5gdeploy
+docker build -t bridge docker/bridge
+```
+
+Run a subnet of network functions with bridges:
+
+```bash
+# prepare Compose file with bridge setup
+cd ~/5gdeploy
+corepack pnpm -s phoenix-compose --cfg ~/phoenix-repo/phoenix-src/cfg/5g_scp --out ~/compose/phoenix-scp --bridge-on conn --bridge-to 192.0.2.1,192.0.2.2
+
+# copy ~/compose/phoenix-scp and Docker images to both machines
+
+# start network functions on first machine
+cd ~/compose/phoenix-scp
+docker compose up -d bridge upf1 upf2 igw hostnat sql scp1 nrf1 amf smf gnb1 ue1 ue2
+
+# start network functions on second machine
+cd ~/compose/phoenix-scp
+docker compose up -d bridge sql scp2 nrf2 udm ausf
+```

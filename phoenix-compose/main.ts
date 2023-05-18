@@ -28,6 +28,14 @@ const args = await yargs(hideBin(process.argv))
     desc: "replace RAN simulator with services in specified Compose file",
     type: "string",
   })
+  .option("bridge-on", {
+    desc: "bridge specified networks only",
+    type: "string",
+  })
+  .option("bridge-to", {
+    desc: "bridge to list of IP addresses",
+    type: "string",
+  })
   .parseAsync();
 await fs.mkdir(args.out, { recursive: true });
 
@@ -36,6 +44,26 @@ const composeFile = compose.convert(ipmapRecords, !!args.ran);
 if (args.ran && args.ran !== "false") {
   const ranCompose = yaml.load(await fs.readFile(args.ran, "utf8")) as any;
   Object.assign(composeFile.services, ranCompose.services);
+}
+if (args["bridge-to"]) {
+  const bridgeOn = args["bridge-on"] ? new Set(args["bridge-on"].split(",")) : new Set();
+  const bridges = Object.keys(composeFile.networks)
+    .map((br) => br.replace(/^br-/, ""))
+    .filter((br) => bridgeOn.size === 0 ? br !== "mgmt" : bridgeOn.has(br))
+    .sort((a, b) => a.localeCompare(b));
+  composeFile.services.bridge = {
+    container_name: "bridge",
+    hostname: "bridge",
+    image: "bridge",
+    command: ["/entrypoint.sh", bridges.join(","), args["bridge-to"]],
+    cap_add: ["NET_ADMIN"],
+    devices: [],
+    sysctls: {},
+    volumes: [],
+    environment: {},
+    network_mode: "host",
+    networks: {},
+  };
 }
 await fs.writeFile(path.join(args.out, "compose.yml"), stringify(composeFile, { space: 2 }));
 

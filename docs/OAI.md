@@ -2,7 +2,7 @@
 
 See [installation](INSTALL.md) for how to install common dependencies.
 
-Build OpenAirInterfaces Docker images:
+Build OpenAirInterface Docker images:
 
 ```bash
 cd ~/5gdeploy
