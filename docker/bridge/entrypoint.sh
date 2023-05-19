@@ -40,5 +40,21 @@ for BR in $(echo $BRIDGES | tr ',' '\n'); do
   done
 done
 
+cleanup() {
+  msg Deleting bridge netifs
+  I=0
+  for BR in $(echo $BRIDGES | tr ',' '\n'); do
+    I=$((I+1))
+    J=0
+    for PEER in $(echo $PEERS | tr ',' '\n'); do
+      J=$((J+1))
+      NETIF=vx-$BR-$J
+      ip link del $NETIF 2>/dev/null || true
+    done
+  done
+}
+trap cleanup SIGTERM
+
 msg Idling
-exec tail -f
+tail -f &
+wait $!
