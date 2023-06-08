@@ -66,38 +66,56 @@ await yargs(hideBin(process.argv))
       },
     });
   })
-  .command("$0 <cmd> [args..]", "execute remote command", {}, async (argv) => {
-    await executeRemoteCommand(argv.cmd as string, argv.args as string[]);
-  })
-  .command("introspect", "introspect remote commands", {}, async () => {
-    await requestAndPrint("remote_command.introspect", []);
-  })
-  .command("ue-status", "retrieve UE status", {}, async () => {
-    await requestAndPrint("ue5g.status", []);
-  })
-  .command("ue-register", "register UE", (yargs) => {
-    yargs
+  .command("$0 <cmd> [args..]", "execute remote command",
+    (yargs) => yargs
+      .positional("cmd", {
+        demandOption: true,
+        desc: "command name",
+        type: "string",
+      })
+      .positional("args", {
+        array: true,
+        desc: "command arguments",
+        type: "string",
+      }),
+    async ({ cmd, args = [] }) => {
+      await executeRemoteCommand(cmd, args);
+    },
+  )
+  .command("introspect", "introspect remote commands", {},
+    async () => {
+      await requestAndPrint("remote_command.introspect", []);
+    },
+  )
+  .command("ue-status", "retrieve UE status", {},
+    async () => {
+      await requestAndPrint("ue5g.status", []);
+    },
+  )
+  .command("ue-register", "register UE",
+    (yargs) => yargs
       .option("dnn", {
         desc: "data network name",
         type: "string",
-      });
-  }, async (argv) => {
-    const dnn = argv.dnn as string | undefined;
+      }),
+    async ({ dnn }) => {
+      const status = await requestAndPrint("ue5g.status", []);
+      if (status.access_3gpp.mm_state_str !== "MM_REGISTERED") {
+        await requestAndPrint("ue5g.register", { access_type: 1, no_pdu: !!dnn });
+      }
 
-    const status = await requestAndPrint("ue5g.status", []);
-    if (status.access_3gpp.mm_state_str !== "MM_REGISTERED") {
-      await requestAndPrint("ue5g.register", { access_type: 1, no_pdu: !!dnn });
-    }
-
-    if (dnn && status.pdu[dnn]?.sm_state_str !== "PDU_SESSION_ACTIVE") {
-      await requestAndPrint("ue5g.establish", { access_type: 1, DNN: dnn, route: 1 });
-    }
-  })
-  .command("ue-deregister", "unregister UE", {}, async () => {
-    const status = await requestAndPrint("ue5g.status", []);
-    if (status.access_3gpp.mm_state_str !== "MM_DEREGISTERED") {
-      await requestAndPrint("ue5g.deregister", { access_type: 1 });
-    }
-  })
+      if (dnn && status.pdu[dnn]?.sm_state_str !== "PDU_SESSION_ACTIVE") {
+        await requestAndPrint("ue5g.establish", { access_type: 1, DNN: dnn, route: 1 });
+      }
+    },
+  )
+  .command("ue-deregister", "unregister UE", {},
+    async () => {
+      const status = await requestAndPrint("ue5g.status", []);
+      if (status.access_3gpp.mm_state_str !== "MM_DEREGISTERED") {
+        await requestAndPrint("ue5g.deregister", { access_type: 1 });
+      }
+    },
+  )
   .demandCommand()
   .parseAsync();
