@@ -8,8 +8,8 @@ import stringify from "json-stable-stringify";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
+import { IPMAP } from "../phoenix-config/ipmap.js";
 import * as compose from "./compose.js";
-import * as ipmap from "./ipmap.js";
 
 const fsWalkPromise = promisify(fsWalk.walk);
 
@@ -39,8 +39,8 @@ const args = await yargs(hideBin(process.argv))
   .parseAsync();
 await fs.mkdir(args.out, { recursive: true });
 
-const ipmapRecords = ipmap.parse(await fs.readFile(path.join(args.cfg, "ip-map"), "utf8"));
-const composeFile = compose.convert(ipmapRecords, !!args.ran);
+const ipmap = IPMAP.parse(await fs.readFile(path.join(args.cfg, "ip-map"), "utf8"));
+const composeFile = compose.convert(ipmap, !!args.ran);
 if (args.ran && args.ran !== "false") {
   const ranCompose = yaml.load(await fs.readFile(args.ran, "utf8")) as any;
   Object.assign(composeFile.services, ranCompose.services);

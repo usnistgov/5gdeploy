@@ -1,43 +1,24 @@
 import type { Netmask } from "netmask";
 
-import { __dirname, cfgdir, phoenixdir } from "./const.js";
-import * as ipmap from "./ipmap.js";
+import { IPMAP } from "../phoenix-config/ipmap.js";
+import type { ComposeFile, ComposeService } from "../types/compose";
 
-interface ComposeFile {
-  networks: Record<string, unknown>;
-  services: Record<string, ComposeService>;
-}
-
-interface ComposeService {
-  container_name: string;
-  hostname: string;
-  image: string;
-  command?: string[];
-  init?: boolean;
-  stdin_open?: boolean;
-  tty?: boolean;
-  cap_add: string[];
-  devices: string[];
-  sysctls: Record<string, string | number>;
-  volumes: unknown[];
-  environment: Record<string, string>;
-  network_mode?: string;
-  networks: Record<string, unknown>;
-}
+export const phoenixdir = "/opt/phoenix";
+export const cfgdir = `${phoenixdir}/cfg/current`;
 
 /** Convert ip-map to Compose file. */
-export function convert(records: readonly ipmap.Record[], deleteRAN = false): ComposeFile {
+export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
   const c: ComposeFile = {
     networks: {},
     services: {},
   };
 
-  for (const [net, subnet] of ipmap.listNetworks(records)) {
+  for (const [net, subnet] of ipmap.networks) {
     c.networks[net] = buildNetwork(net, subnet);
   }
 
-  for (const [ct, nets] of ipmap.listContainers(records)) {
-    if (deleteRAN && ["bt", "btup", "gnb", "ue"].includes(ipmap.toNf(ct))) {
+  for (const [ct, nets] of ipmap.containers) {
+    if (deleteRAN && ["bt", "btup", "gnb", "ue"].includes(IPMAP.toNf(ct))) {
       continue;
     }
     c.services[ct] = buildService(ct, nets);
@@ -81,7 +62,7 @@ function buildService(ct: string, nets: ReadonlyMap<string, string>): ComposeSer
     s.networks[net] = { ipv4_address: ip };
   }
 
-  const nf = ipmap.toNf(ct);
+  const nf = IPMAP.toNf(ct);
   updateService[nf]?.(s);
   if (s.image === "phoenix") {
     updatePhoenix(s);
