@@ -8,6 +8,11 @@ export const cfgdir = `${phoenixdir}/cfg/current`;
 
 /** Convert ip-map to Compose file. */
 export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
+  const skipNf = ["prometheus"];
+  if (deleteRAN) {
+    skipNf.push("bt", "btup", "gnb", "ue");
+  }
+
   const c: ComposeFile = {
     networks: {},
     services: {},
@@ -18,7 +23,7 @@ export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
   }
 
   for (const [ct, nets] of ipmap.containers) {
-    if (deleteRAN && ["bt", "btup", "gnb", "ue"].includes(IPMAP.toNf(ct))) {
+    if (skipNf.includes(IPMAP.toNf(ct))) {
       continue;
     }
     c.services[ct] = buildService(ct, nets);
@@ -95,10 +100,6 @@ const updateService: Record<string, (s: ComposeService) => void> = {
   },
   btup(s) {
     s.devices.push("/dev/net/tun:/dev/net/tun");
-  },
-  prometheus(s) {
-    s.image = "alpine";
-    s.command = ["/usr/bin/tail", "-f"];
   },
 };
 

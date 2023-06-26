@@ -1,8 +1,10 @@
+/** Docker Compose file. */
 export interface ComposeFile {
   networks: Record<string, unknown>;
   services: Record<string, ComposeService>;
 }
 
+/** Docker Compose service. */
 export interface ComposeService {
   container_name: string;
   hostname: string;

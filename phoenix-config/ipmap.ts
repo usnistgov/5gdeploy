@@ -1,7 +1,7 @@
 import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
 
-/** Model of ph_init ip-map file. */
+/** ph_init ip-map file. */
 export class IPMAP {
   /** Raw records. */
   public records: IPMAP.Record[] = [];
@@ -32,9 +32,17 @@ export class IPMAP {
     return containers;
   }
 
+  /**
+   * Find containers by network function name.
+   * @returns array of container names.
+   */
+  public findContainerByNf(nf: string): string[] {
+    return Array.from(this.containers.keys()).filter((ct) => IPMAP.toNf(ct) === nf);
+  }
+
   /** Save as ph_init ip-map file. */
   public save(): string {
-    return this.records.map(({ ct, net, ip, cidr }) => [ct, net, ip, cidr].join("\t")).join("");
+    return this.records.map(({ ct, net, ip, cidr }) => `${ct} ${net} ${ip} ${cidr}\n`).join("");
   }
 }
 export namespace IPMAP {

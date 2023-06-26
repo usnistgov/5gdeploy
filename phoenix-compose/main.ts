@@ -1,17 +1,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 
-import fsWalk from "@nodelib/fs.walk";
 import yaml from "js-yaml";
 import stringify from "json-stable-stringify";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-import { IPMAP } from "../phoenix-config/ipmap.js";
+import { NetDef } from "../netdef/netdef.js";
+import { ScenarioFolder } from "../phoenix-config/folder.js";
+import { applyNetdef } from "../phoenix-config/netdef.js";
 import * as compose from "./compose.js";
-
-const fsWalkPromise = promisify(fsWalk.walk);
 
 const args = await yargs(hideBin(process.argv))
   .option("cfg", {
@@ -22,6 +20,10 @@ const args = await yargs(hideBin(process.argv))
   .option("out", {
     demandOption: true,
     desc: "Compose output directory",
+    type: "string",
+  })
+  .option("netdef", {
+    desc: "apply network definition file",
     type: "string",
   })
   .option("ran", {
@@ -37,14 +39,20 @@ const args = await yargs(hideBin(process.argv))
     type: "string",
   })
   .parseAsync();
-await fs.mkdir(args.out, { recursive: true });
 
-const ipmap = IPMAP.parse(await fs.readFile(path.join(args.cfg, "ip-map"), "utf8"));
-const composeFile = compose.convert(ipmap, !!args.ran);
+const folder = await ScenarioFolder.load(args.cfg);
+const composeFile = compose.convert(folder.ipmap, !!args.ran);
+
 if (args.ran && args.ran !== "false") {
   const ranCompose = yaml.load(await fs.readFile(args.ran, "utf8")) as any;
   Object.assign(composeFile.services, ranCompose.services);
 }
+
+if (args.netdef) {
+  const netdef = new NetDef(JSON.parse(await fs.readFile(args.netdef, "utf8")));
+  applyNetdef(folder, netdef);
+}
+
 if (args["bridge-to"]) {
   const bridgeOn = args["bridge-on"] ? new Set(args["bridge-on"].split(",")) : new Set();
   const bridges = Object.keys(composeFile.networks)
@@ -65,24 +73,6 @@ if (args["bridge-to"]) {
     networks: {},
   };
 }
+
+await folder.save(path.join(args.out, "cfg"), path.join(args.out, "sql"));
 await fs.writeFile(path.join(args.out, "compose.yml"), stringify(composeFile, { space: 2 }));
-
-const outCfg = path.join(args.out, "cfg");
-await fs.mkdir(outCfg, { recursive: true });
-for (const entry of await fsWalkPromise(args.cfg, {
-  entryFilter: ({ dirent }) => dirent.isFile(),
-  deepFilter: ({ name }) => !["prometheus", "sql"].includes(name),
-})) {
-  const rel = path.join(outCfg, path.relative(args.cfg, entry.path));
-  await fs.mkdir(path.dirname(rel), { recursive: true });
-  await fs.copyFile(entry.path, rel);
-}
-
-const outSql = path.join(args.out, "sql");
-await fs.rm(outSql, { recursive: true, force: true });
-await fs.mkdir(outSql, { recursive: true });
-for (const entry of await fsWalkPromise(path.join(args.cfg, "sql"), {
-  entryFilter: ({ name }) => name.endsWith(".sql"),
-})) {
-  await fs.copyFile(entry.path, path.join(outSql, entry.name));
-}

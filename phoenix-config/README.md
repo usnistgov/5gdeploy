@@ -1,4 +1,8 @@
 # phoenix-config
 
-Package **phoenix-config** enables reading and writing Open5GCore configuration files.
-This includes the `ip-map` file and network function JSON files.
+Package **phoenix-config** reads and writes Open5GCore configuration files.
+
+* `ipmap.ts`: interpret ph\_init `ip-map` file
+* `nf.ts`: edit network function JSON
+* `folder.ts`: copy scenario folder with edits
+* `netdef.ts`: apply a [network definition](../netdef) to a scenario folder
