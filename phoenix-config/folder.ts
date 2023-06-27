@@ -3,6 +3,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import fsWalk from "@nodelib/fs.walk";
+import * as envfile from "envfile";
 import DefaultMap from "mnemonist/default-map.js";
 import { type AnyIterable, flatten } from "streaming-iterables";
 
@@ -18,31 +19,42 @@ export class ScenarioFolder {
    * @param dir phoenix-src/cfg/*
    */
   public static async load(dir: string): Promise<ScenarioFolder> {
-    return new ScenarioFolder(
-      dir,
-      (await fsWalkPromise(dir, {
-        entryFilter(entry) {
-          if (!entry.dirent.isFile()) {
-            return false;
-          }
-          if (entry.path.includes("/sql/")) {
-            return entry.name.endsWith(".sql");
-          }
-          return !entry.name.endsWith("-root");
-        },
-        deepFilter({ name }) {
-          return name !== "prometheus";
-        },
-      })).map((entry) => path.relative(dir, entry.path)),
-      IPMAP.parse(await fs.readFile(path.resolve(dir, "ip-map"), "utf8")),
-    );
+    const files = (await fsWalkPromise(dir, {
+      entryFilter(entry) {
+        if (!entry.dirent.isFile()) {
+          return false;
+        }
+        if (entry.path.includes("/sql/")) {
+          return entry.name.endsWith(".sql");
+        }
+        return !entry.name.endsWith("-root");
+      },
+      deepFilter({ name }) {
+        return name !== "prometheus";
+      },
+    })).map((entry) => path.relative(dir, entry.path));
+
+    const env = await parseEnv(path.resolve(dir, "env.sh"));
+    const ipmap = IPMAP.parse(await fs.readFile(path.resolve(dir, "ip-map"), "utf8"), env);
+    return new ScenarioFolder(dir, files, ipmap, env);
   }
 
   private constructor(
       private readonly dir: string,
       public readonly files: string[],
       public readonly ipmap: IPMAP,
-  ) {}
+      public readonly env: Map<string, string>,
+  ) {
+    this.edit("ip-map", () => this.ipmap.save());
+
+    this.edit("env.sh", () => {
+      const obj: envfile.Input = {};
+      for (const [k, v] of this.env) {
+        obj[`export ${k}`] = v;
+      }
+      return envfile.stringify(obj);
+    });
+  }
 
   private readonly edits = new DefaultMap<string, ScenarioFolder.EditFunc[]>(() => []);
 
@@ -108,4 +120,13 @@ export class ScenarioFolder {
 }
 export namespace ScenarioFolder {
   export type EditFunc = (body: string) => string | Promise<string>;
+}
+
+async function parseEnv(filename: string): Promise<Map<string, string>> {
+  const obj = envfile.parse(await fs.readFile(filename, "utf8"));
+  const env = new Map<string, string>();
+  for (const [k, v] of Object.entries(obj)) {
+    env.set(k.replace(/^export\s+/, ""), v.replace(/\s*#.*$/, ""));
+  }
+  return env;
 }

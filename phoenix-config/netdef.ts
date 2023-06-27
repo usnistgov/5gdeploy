@@ -25,11 +25,19 @@ class NetDefProcessor {
   private readonly usim = { sqn: "000000000001", amf: "8000" } as const;
 
   public applyTo(f: ScenarioFolder): void {
+    this.applyEnv(f);
     this.applyGNBs(f);
     this.applyUEs(f);
     this.applyAMF(f);
     this.applySMF(f);
     this.applyUDM(f);
+  }
+
+  private applyEnv(f: ScenarioFolder): void {
+    const [mcc, mnc] = NetDef.splitPLMN(this.network.plmn);
+    f.env.set("MCC", mcc);
+    f.env.set("MNC", mnc);
+    f.env.set("PROMETHEUS_ENABLED", "0");
   }
 
   private applyGNBs(f: ScenarioFolder): void {

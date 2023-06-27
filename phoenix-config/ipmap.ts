@@ -1,8 +1,32 @@
 import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
 
-/** ph_init ip-map file. */
+/** Content of ph_init ip-map file. */
 export class IPMAP {
+  /**
+   * Parse ip-map file.
+   * @param body ip-map file content.
+   * @param rejectEnv convert rejected records as ct_net_IP=ip environs.
+   */
+  public static parse(body: string, rejectEnv?: Map<string, string>): IPMAP {
+    const ipmap = new IPMAP();
+    for (let line of body.split("\n")) {
+      line = line.trim();
+      let tokens: [string, string, string, string];
+      if (line.startsWith("#") || (tokens = line.split(/\s+/) as any).length !== 4) {
+        continue;
+      }
+      const [ct, net, ip, cidrS] = tokens;
+      const cidr = Number.parseInt(cidrS, 10);
+      if (ip === "0.0.0.0" || !(cidr >= 8 && cidr < 32)) {
+        rejectEnv?.set(`${ct.toUpperCase()}_${net.toUpperCase()}_IP`, ip);
+        continue;
+      }
+      ipmap.records.push({ ct, net, ip, cidr });
+    }
+    return ipmap;
+  }
+
   /** Raw records. */
   public records: IPMAP.Record[] = [];
 
@@ -40,7 +64,7 @@ export class IPMAP {
     return Array.from(this.containers.keys()).filter((ct) => IPMAP.toNf(ct) === nf);
   }
 
-  /** Save as ph_init ip-map file. */
+  /** Save ip-map file. */
   public save(): string {
     return this.records.map(({ ct, net, ip, cidr }) => `${ct} ${net} ${ip} ${cidr}\n`).join("");
   }
@@ -51,25 +75,6 @@ export namespace IPMAP {
     net: string;
     ip: string;
     cidr: number;
-  }
-
-  /** Parse content of ph_init ip-map file. */
-  export function parse(body: string): IPMAP {
-    const ipmap = new IPMAP();
-    for (let line of body.split("\n")) {
-      line = line.trim();
-      let tokens: [string, string, string, string];
-      if (line.startsWith("#") || (tokens = line.split(/\s+/) as any).length !== 4) {
-        continue;
-      }
-      const [ct, net, ip, cidrS] = tokens;
-      const cidr = Number.parseInt(cidrS, 10);
-      if (ip === "0.0.0.0" || !(cidr >= 8 && cidr < 32)) {
-        continue;
-      }
-      ipmap.records.push({ ct, net, ip, cidr });
-    }
-    return ipmap;
   }
 
   /** Derive network function name from container name. */
