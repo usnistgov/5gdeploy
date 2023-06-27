@@ -3,7 +3,7 @@ import type { Network } from "../types/netdef.js";
 const network: Network = {
   plmn: "001-01",
   gnbIdLength: 24,
-  tac: "0075",
+  tac: "0005",
   subscribers: [
     {
       supi: "001017005550001",

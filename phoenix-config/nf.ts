@@ -27,7 +27,7 @@ export class NetworkFunctionConfig {
   }
 }
 export namespace NetworkFunctionConfig {
-  /** Parse network function JSON content. */
+  /** Parse network function JSON document. */
   export function parse(body: string): NetworkFunctionConfig {
     const cfg = new NetworkFunctionConfig();
     cfg.Phoenix = JSON.parse(body).Phoenix;

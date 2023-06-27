@@ -27,6 +27,7 @@ class NetDefProcessor {
   public applyTo(f: ScenarioFolder): void {
     this.applyGNBs(f);
     this.applyUEs(f);
+    this.applyAMF(f);
     this.applySMF(f);
     this.applyUDM(f);
   }
@@ -81,6 +82,19 @@ class NetDefProcessor {
         }));
       });
     }
+  }
+
+  private applyAMF(f: ScenarioFolder): void {
+    f.editNetworkFunction("amf", (c) => {
+      const { config } = c.getModule("amf");
+      config.trackingArea.splice(0, Infinity, {
+        mcc: "%MCC",
+        mnc: "%MNC",
+        taiList: [
+          { tac: this.netdef.tac },
+        ],
+      });
+    });
   }
 
   private applySMF(f: ScenarioFolder): void {

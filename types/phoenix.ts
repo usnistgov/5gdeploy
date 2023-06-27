@@ -13,9 +13,23 @@ export interface Module<T extends {} = any> {
 }
 
 export interface ModuleConfigMap {
+  amf: amf.Config;
   gnb: gnb.Config;
   sdn_routing_topology: sdn_routing_topology.Config;
   ue_5g_nas_only: ue_5g_nas_only.Config;
+}
+
+export namespace amf {
+  export interface Config {
+    trackingArea: TrackingArea[];
+    [k: string]: unknown;
+  }
+
+  export interface TrackingArea {
+    mcc: string;
+    mnc: string;
+    taiList: Array<{ tac: number }>;
+  }
 }
 
 export namespace gnb {
