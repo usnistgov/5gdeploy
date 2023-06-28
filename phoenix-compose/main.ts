@@ -74,5 +74,5 @@ if (args["bridge-to"]) {
   };
 }
 
-await folder.save(path.join(args.out, "cfg"), path.join(args.out, "sql"));
-await fs.writeFile(path.join(args.out, "compose.yml"), stringify(composeFile, { space: 2 }));
+await folder.save(path.resolve(args.out, "cfg"), path.resolve(args.out, "sql"));
+await fs.writeFile(path.resolve(args.out, "compose.yml"), stringify(composeFile, { space: 2 }));

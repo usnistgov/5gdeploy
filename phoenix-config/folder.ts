@@ -97,8 +97,8 @@ export class ScenarioFolder {
     await fs.rm(sql, { recursive: true, force: true });
     const unusedEdits = new Set(this.edits.keys());
     for (const file of this.files) {
-      const src = path.join(this.dir, file);
-      const dst = file.startsWith("sql/") ? path.join(sql, file.slice(4)) : path.join(cfg, file);
+      const src = path.resolve(this.dir, file);
+      const dst = file.startsWith("sql/") ? path.resolve(sql, file.slice(4)) : path.resolve(cfg, file);
       await fs.mkdir(path.dirname(dst), { recursive: true });
       const edit = this.edits.peek(file);
       if (edit === undefined) {

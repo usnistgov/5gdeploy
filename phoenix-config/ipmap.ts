@@ -22,13 +22,14 @@ export class IPMAP {
         rejectEnv?.set(`${ct.toUpperCase()}_${net.toUpperCase()}_IP`, ip);
         continue;
       }
-      ipmap.records.push({ ct, net, ip, cidr });
+      ipmap.networks_.set(net, new Netmask(ip, `${cidr}`));
+      ipmap.containers_.get(ct).set(net, ip);
     }
     return ipmap;
   }
 
-  /** Raw records. */
-  public records: IPMAP.Record[] = [];
+  private readonly networks_ = new Map<string, Netmask>();
+  private readonly containers_ = new DefaultMap<string, Map<string, string>>(() => new Map());
 
   /**
    * List networks.
@@ -36,11 +37,7 @@ export class IPMAP {
    * Each value is a subnet of the network.
    */
   public get networks(): ReadonlyMap<string, Netmask> {
-    const networks = new Map<string, Netmask>();
-    for (const { net, ip, cidr } of this.records) {
-      networks.set(net, new Netmask(`${ip}/${cidr}`));
-    }
-    return networks;
+    return this.networks_;
   }
 
   /**
@@ -49,34 +46,22 @@ export class IPMAP {
    * Each value is a map whose key is network name and value is IP address in the network.
    */
   public get containers(): ReadonlyMap<string, ReadonlyMap<string, string>> {
-    const containers = new DefaultMap<string, Map<string, string>>(() => new Map<string, string>());
-    for (const { ct, net, ip } of this.records) {
-      containers.get(ct).set(net, ip);
-    }
-    return containers;
-  }
-
-  /**
-   * Find containers by network function name.
-   * @returns array of container names.
-   */
-  public findContainerByNf(nf: string): string[] {
-    return Array.from(this.containers.keys()).filter((ct) => IPMAP.toNf(ct) === nf);
+    return this.containers_;
   }
 
   /** Save ip-map file. */
   public save(): string {
-    return this.records.map(({ ct, net, ip, cidr }) => `${ct} ${net} ${ip} ${cidr}\n`).join("");
+    let lines: string[] = [];
+    for (const [ct, netifs] of this.containers_) {
+      for (const [net, ip] of netifs) {
+        const { bitmask } = this.networks_.get(net)!;
+        lines.push(`${ct} ${net} ${ip} ${bitmask}\n`);
+      }
+    }
+    return lines.join("");
   }
 }
 export namespace IPMAP {
-  export interface Record {
-    ct: string;
-    net: string;
-    ip: string;
-    cidr: number;
-  }
-
   /** Derive network function name from container name. */
   export function toNf(ct: string): string {
     return ct.replace(/(_.*|\d*)$/, "");
