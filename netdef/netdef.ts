@@ -13,13 +13,15 @@ export class NetDef {
   }
 
   /** Split NR Cell Global Identifier as gNB ID and Cell ID. */
-  public splitNCGI(ncgi: string): [gnb: number, cell: number] {
+  public splitNCGI(ncgi: string): NetDef.NCGI {
     assert(/^[\da-f]{9}$/i.test(ncgi));
-    const n = Number.parseInt(ncgi, 16);
-    return [
-      n >> (36 - this.network.gnbIdLength),
-      n & ((1 << (36 - this.network.gnbIdLength)) - 1),
-    ];
+    const n = BigInt(Number.parseInt(ncgi, 16));
+    const cellIdLength = BigInt(36 - this.network.gnbIdLength);
+    return {
+      gnb: Number(n >> cellIdLength),
+      cell: Number(n & ((1n << cellIdLength) - 1n)),
+      ncgi: Number(n),
+    };
   }
 
   /** Find gNB by short name. */
@@ -37,6 +39,13 @@ export namespace NetDef {
   export function splitPLMN(plmn: T.PLMN): [mcc: string, mnc: string] {
     assert(/^\d{3}-\d{2,3}$/.test(plmn));
     return plmn.split("-") as [string, string];
+  }
+
+  /** NR Cell Global Identifier components. */
+  export interface NCGI {
+    gnb: number;
+    cell: number;
+    ncgi: number;
   }
 
   /** Split S-NSSAI to sst and sd. */

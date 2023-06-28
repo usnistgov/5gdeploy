@@ -51,7 +51,7 @@ class NetDefProcessor {
         ];
         config.mcc = "%MCC";
         config.mnc = "%MNC";
-        [config.gnb_id, config.cell_id] = this.netdef.splitNCGI(gnb.ncgi);
+        ({ gnb: config.gnb_id, ncgi: config.cell_id } = this.netdef.splitNCGI(gnb.ncgi));
         config.tac = this.netdef.tac;
       });
     }
@@ -81,9 +81,8 @@ class NetDefProcessor {
         config.DefaultNetwork.dnn = config.dn_list[0]?.dnn ?? "default";
         config.Cell.splice(0, Infinity, ...this.network.gnbs.map((gnb): PH.ue_5g_nas_only.Cell => {
           const ip = `%${gnb.name.toUpperCase()}_AIR_IP`;
-          const [, cell_id] = this.netdef.splitNCGI(gnb.ncgi);
           return {
-            cell_id,
+            cell_id: this.netdef.splitNCGI(gnb.ncgi).ncgi,
             mcc: "%MCC",
             mnc: "%MNC",
             gnb_cp_addr: ip,
@@ -182,10 +181,9 @@ class NetDefProcessor {
       case "gNodeB": {
         assert(peerType === "UPF");
         const gnb = this.netdef.findGNB(node as string)!;
-        const [id] = this.netdef.splitNCGI(gnb.ncgi);
         return {
           type: "gNodeB",
-          id,
+          id: this.netdef.splitNCGI(gnb.ncgi).gnb,
           ip: "255.255.255.255",
         };
       }
