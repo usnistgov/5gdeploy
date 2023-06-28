@@ -64,29 +64,6 @@ export class IPMAP {
     }
   }
 
-  /**
-   * Create a new container.
-   * @param name container name.
-   * @param netifs connected network interfaces.
-   *
-   * When possible, the new container will be assigned IP addresses adjacent to existing containers
-   * of the same network function.
-   */
-  public createContainer(name: string, netifs: string[]): void {
-    assert(!this.containers_.has(name));
-    const lastOctet = this.suggestIPLastOctet(IPMAP.toNf(name));
-    if (lastOctet === undefined) {
-      throw new Error("IP subnet full");
-    }
-
-    for (const netif of netifs) {
-      const net = this.networks_.get(netif);
-      assert(!!net);
-      assert(net.bitmask <= 24);
-      this.containers_.get(name).set(netif, long2ip(net.netLong + lastOctet));
-    }
-  }
-
   private suggestIPLastOctet(nf: string): number | undefined {
     let hint = 1;
     for (const [ct, nets] of this.containers_) {
@@ -117,6 +94,34 @@ export class IPMAP {
     };
 
     return assignBetween(hint + 1, 254) ?? assignBetween(2, hint - 1);
+  }
+
+  /**
+   * Add a container.
+   * @param name container name.
+   * @param netifs connected network interfaces.
+   *
+   * When possible, the new container will be assigned IP addresses adjacent to existing containers
+   * of the same network function.
+   */
+  public addContainer(name: string, netifs: string[]): void {
+    assert(!this.containers_.has(name));
+    const lastOctet = this.suggestIPLastOctet(IPMAP.toNf(name));
+    if (lastOctet === undefined) {
+      throw new Error("IP subnet full");
+    }
+
+    for (const netif of netifs) {
+      const net = this.networks_.get(netif);
+      assert(!!net);
+      assert(net.bitmask <= 24);
+      this.containers_.get(name).set(netif, long2ip(net.netLong + lastOctet));
+    }
+  }
+
+  /** Remove a container. */
+  public removeContainer(name: string): void {
+    this.containers_.delete(name);
   }
 
   /** Save ip-map file. */

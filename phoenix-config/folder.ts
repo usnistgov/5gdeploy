@@ -90,12 +90,17 @@ export class ScenarioFolder {
       const ct = `${nf}${i}`;
       names.push(ct);
       if (!this.ipmap.containers.has(ct)) {
-        this.ipmap.createContainer(ct, netifs);
+        this.ipmap.addContainer(ct, netifs);
       }
       const ctFile = `${ct}.json`;
       this.files.delete(ctFile);
       this.copy(ctFile, `${ct1}.json`);
       this.edit(ctFile, (body) => body.replaceAll(ct1.toUpperCase(), ct.toUpperCase()));
+    }
+    for (let i = count + 1; i < 1000; ++i) {
+      const ct = `${nf}${i}`;
+      this.files.delete(`${ct}.json`);
+      this.ipmap.removeContainer(ct);
     }
     return names;
   }

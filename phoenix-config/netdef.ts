@@ -6,6 +6,7 @@ import { NetDef } from "../netdef/netdef.js";
 import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
 import type { ScenarioFolder } from "./folder.js";
+import { IPMAP } from "./ipmap.js";
 
 /** Apply network definition to scenario. */
 export function applyNetdef(f: ScenarioFolder, netdef: NetDef): void {
@@ -26,6 +27,7 @@ class NetDefProcessor {
     this.applyEnv(f);
     this.applyGNBs(f);
     this.applyUEs(f);
+    this.applyBT(f);
     this.applyAMF(f);
     this.applySMF(f);
     this.applyUDM(f);
@@ -90,6 +92,15 @@ class NetDefProcessor {
           };
         }));
       });
+    }
+  }
+
+  private applyBT(f: ScenarioFolder): void {
+    for (const ct of f.ipmap.containers.keys()) {
+      if (["bt", "btup"].includes(IPMAP.toNf(ct))) {
+        f.ipmap.removeContainer(ct);
+        f.files.delete(`${ct}.json`);
+      }
     }
   }
 
