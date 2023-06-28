@@ -4,11 +4,12 @@ import { promisify } from "node:util";
 
 import fsWalk from "@nodelib/fs.walk";
 import * as envfile from "envfile";
+import assert from "minimalistic-assert";
 import DefaultMap from "mnemonist/default-map.js";
 import { type AnyIterable, collect, flatten } from "streaming-iterables";
 
-import { IPMAP } from "./ipmap";
-import { NetworkFunctionConfig } from "./nf";
+import { IPMAP } from "./ipmap.js";
+import { NetworkFunctionConfig } from "./nf.js";
 
 const fsWalkPromise = promisify(fsWalk.walk);
 
@@ -53,6 +54,50 @@ export class ScenarioFolder {
   /** Edit a file. */
   public edit(file: string, f: ScenarioFolder.EditFunc): void {
     this.edits.get(file).push(f);
+  }
+
+  /**
+   * Resize network function to specified quantity.
+   * @param nf network function name.
+   * @param count desired quantity.
+   * @returns container names.
+   */
+  public resizeNetworkFunction(nf: string, count: number): string[];
+
+  /**
+   * Resize network function to specified quantity.
+   * @param nf network function name.
+   * @param list relevant objects.
+   * @returns tuples of container name and relavant object.
+   */
+  public resizeNetworkFunction<T>(nf: string, list: readonly T[]): Array<[string, T]>;
+
+  public resizeNetworkFunction(nf: string, arg2: any): any {
+    if (Array.isArray(arg2)) {
+      const list = arg2 as unknown[];
+      return this.resizeNetworkFunction(nf, list.length).map((ct, i) => [ct, list[i]]);
+    }
+
+    const count = arg2 as number;
+    assert(count >= 1);
+    const ct1 = `${nf}1`;
+    assert(this.ipmap.containers.has(ct1));
+    const netifs = Array.from(this.ipmap.containers.get(ct1)!.keys());
+    assert(this.files.has(`${ct1}.json`));
+
+    const names = [ct1];
+    for (let i = 2; i <= count; ++i) {
+      const ct = `${nf}${i}`;
+      names.push(ct);
+      if (!this.ipmap.containers.has(ct)) {
+        this.ipmap.createContainer(ct, netifs);
+      }
+      const ctFile = `${ct}.json`;
+      this.files.delete(ctFile);
+      this.copy(ctFile, `${ct1}.json`);
+      this.edit(ctFile, (body) => body.replaceAll(ct1.toUpperCase(), ct.toUpperCase()));
+    }
+    return names;
   }
 
   /** Edit a network function .json file. */

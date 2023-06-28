@@ -29,6 +29,10 @@ const network: Network = {
       name: "gnb1",
       ncgi: "000001001",
     },
+    {
+      name: "gnb2",
+      ncgi: "000002002",
+    },
   ],
   upfs: [
     { name: "upf1" },
@@ -44,8 +48,9 @@ const network: Network = {
       ["gnb1", "upf1"],
       ["upf1", { snssai: "01", dnn: "net6" }],
       ["upf1", { snssai: "90000001", dnn: "net3" }],
-      ["gnb1", "upf2"],
+      ["gnb2", "upf2"],
       ["upf2", { snssai: "90000002", dnn: "net5" }],
+      ["upf1", "upf2"],
     ],
   },
 };

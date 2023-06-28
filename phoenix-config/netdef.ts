@@ -39,8 +39,8 @@ class NetDefProcessor {
   }
 
   private applyGNBs(f: ScenarioFolder): void {
-    for (const gnb of this.network.gnbs) {
-      f.editNetworkFunction(gnb.name, (c) => {
+    for (const [ct, gnb] of f.resizeNetworkFunction("gnb", this.network.gnbs)) {
+      f.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("gnb");
         delete config.amf_addr;
         delete config.amf_port;
@@ -56,16 +56,7 @@ class NetDefProcessor {
   }
 
   private applyUEs(f: ScenarioFolder): void {
-    assert(f.files.has("ue1.json"));
-    for (const [i, subscriber] of this.network.subscribers.entries()) {
-      const ct = `ue${1 + i}`;
-      const ctFile = `${ct}.json`;
-      if (!f.files.has(ctFile)) {
-        f.ipmap.createContainer(ct, ["mgmt", "air"]);
-        f.copy(ctFile, "ue1.json");
-        f.edit(ctFile, (body) => body.replaceAll("UE1", ct.toUpperCase()));
-      }
-
+    for (const [ct, subscriber] of f.resizeNetworkFunction("ue", this.network.subscribers)) {
       f.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("ue_5g_nas_only");
         config.usim = {
