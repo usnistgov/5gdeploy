@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 import fsWalk from "@nodelib/fs.walk";
 import * as envfile from "envfile";
 import DefaultMap from "mnemonist/default-map.js";
-import { type AnyIterable, flatten } from "streaming-iterables";
+import { type AnyIterable, collect, flatten } from "streaming-iterables";
 
 import { IPMAP } from "./ipmap";
 import { NetworkFunctionConfig } from "./nf";
@@ -19,29 +19,15 @@ export class ScenarioFolder {
    * @param dir phoenix-src/cfg/*
    */
   public static async load(dir: string): Promise<ScenarioFolder> {
-    const files = (await fsWalkPromise(dir, {
-      entryFilter(entry) {
-        if (!entry.dirent.isFile()) {
-          return false;
-        }
-        if (entry.path.includes("/sql/")) {
-          return entry.name.endsWith(".sql");
-        }
-        return !entry.name.endsWith("-root");
-      },
-      deepFilter({ name }) {
-        return name !== "prometheus";
-      },
-    })).map((entry) => path.relative(dir, entry.path));
-
-    const env = await parseEnv(path.resolve(dir, "env.sh"));
+    const files = new Set(await collect(scanFiles(dir)));
+    const env = await parseEnv(await fs.readFile(path.resolve(dir, "env.sh"), "utf8"));
     const ipmap = IPMAP.parse(await fs.readFile(path.resolve(dir, "ip-map"), "utf8"), env);
     return new ScenarioFolder(dir, files, ipmap, env);
   }
 
   private constructor(
       private readonly dir: string,
-      public readonly files: string[],
+      public readonly files: Set<string>,
       public readonly ipmap: IPMAP,
       public readonly env: Map<string, string>,
   ) {
@@ -56,7 +42,13 @@ export class ScenarioFolder {
     });
   }
 
+  private readonly copies = new DefaultMap<string, string[]>(() => []);
   private readonly edits = new DefaultMap<string, ScenarioFolder.EditFunc[]>(() => []);
+
+  /** Copy a file. */
+  public copy(dst: string, src: string): void {
+    this.copies.get(src).push(dst);
+  }
 
   /** Edit a file. */
   public edit(file: string, f: ScenarioFolder.EditFunc): void {
@@ -95,26 +87,29 @@ export class ScenarioFolder {
   public async save(cfg: string, sql: string): Promise<void> {
     await fs.rm(cfg, { recursive: true, force: true });
     await fs.rm(sql, { recursive: true, force: true });
-    const unusedEdits = new Set(this.edits.keys());
-    for (const file of this.files) {
-      const src = path.resolve(this.dir, file);
-      const dst = file.startsWith("sql/") ? path.resolve(sql, file.slice(4)) : path.resolve(cfg, file);
-      await fs.mkdir(path.dirname(dst), { recursive: true });
-      const edit = this.edits.peek(file);
-      if (edit === undefined) {
-        await fs.copyFile(src, dst);
-      } else {
-        let body = await fs.readFile(src, "utf8");
-        for (const f of edit) {
-          body = await f(body);
+    const unusedFiles = new Set([...this.copies.keys(), ...this.edits.keys()]);
+    for (const src of this.files) {
+      const srcPath = path.resolve(this.dir, src);
+      unusedFiles.delete(src);
+      for (const dst of [src, ...(this.copies.peek(src) ?? [])]) {
+        unusedFiles.delete(dst);
+        const dstPath = dst.startsWith("sql/") ? path.resolve(sql, dst.slice(4)) : path.resolve(cfg, dst);
+        await fs.mkdir(path.dirname(dstPath), { recursive: true });
+        const edit = this.edits.peek(dst);
+        if (edit === undefined) {
+          await fs.copyFile(srcPath, dstPath);
+        } else {
+          let body = await fs.readFile(srcPath, "utf8");
+          for (const f of edit) {
+            body = await f(body);
+          }
+          await fs.writeFile(dstPath, body);
         }
-        await fs.writeFile(dst, body);
-        unusedEdits.delete(file);
       }
     }
 
-    if (unusedEdits.size > 0) {
-      throw new Error(`missing files for editing: ${Array.from(unusedEdits).join(",")}`);
+    if (unusedFiles.size > 0) {
+      throw new Error(`missing files: ${Array.from(unusedFiles).join(" ")}`);
     }
   }
 }
@@ -122,10 +117,29 @@ export namespace ScenarioFolder {
   export type EditFunc = (body: string) => string | Promise<string>;
 }
 
-async function parseEnv(filename: string): Promise<Map<string, string>> {
-  const obj = envfile.parse(await fs.readFile(filename, "utf8"));
+async function* scanFiles(dir: string): AsyncIterable<string> {
+  const walk = await fsWalkPromise(dir, {
+    entryFilter(entry) {
+      if (!entry.dirent.isFile()) {
+        return false;
+      }
+      if (entry.path.includes("/sql/")) {
+        return entry.name.endsWith(".sql");
+      }
+      return !entry.name.endsWith("-root");
+    },
+    deepFilter({ name }) {
+      return name !== "prometheus";
+    },
+  });
+  for await (const entry of walk) {
+    yield path.relative(dir, entry.path);
+  }
+}
+
+async function parseEnv(body: string): Promise<Map<string, string>> {
   const env = new Map<string, string>();
-  for (const [k, v] of Object.entries(obj)) {
+  for (const [k, v] of Object.entries(envfile.parse(body))) {
     env.set(k.replace(/^export\s+/, ""), v.replace(/\s*#.*$/, ""));
   }
   return env;

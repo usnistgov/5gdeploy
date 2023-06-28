@@ -17,6 +17,12 @@ const network: Network = {
       opc: "E3B7A2C7EFA7770E7509F33FA8716194",
       requestedNSSAI: ["90000001", "90000002"],
     },
+    {
+      supi: "001017005550003",
+      k: "0C960B6EC2D7CDACA44619BA12840F87",
+      opc: "56D3A340EA37AFFA8265624FC0ACD70B",
+      requestedNSSAI: ["01", "90000002"],
+    },
   ],
   gnbs: [
     {

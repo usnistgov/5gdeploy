@@ -41,16 +41,16 @@ const args = await yargs(hideBin(process.argv))
   .parseAsync();
 
 const folder = await ScenarioFolder.load(args.cfg);
-const composeFile = compose.convert(folder.ipmap, !!args.ran);
-
-if (args.ran && args.ran !== "false") {
-  const ranCompose = yaml.load(await fs.readFile(args.ran, "utf8")) as any;
-  Object.assign(composeFile.services, ranCompose.services);
-}
-
 if (args.netdef) {
   const netdef = new NetDef(JSON.parse(await fs.readFile(args.netdef, "utf8")));
   applyNetdef(folder, netdef);
+}
+await folder.save(path.resolve(args.out, "cfg"), path.resolve(args.out, "sql"));
+
+const composeFile = compose.convert(folder.ipmap, !!args.ran);
+if (args.ran && args.ran !== "false") {
+  const ranCompose = yaml.load(await fs.readFile(args.ran, "utf8")) as any;
+  Object.assign(composeFile.services, ranCompose.services);
 }
 
 if (args["bridge-to"]) {
@@ -74,5 +74,4 @@ if (args["bridge-to"]) {
   };
 }
 
-await folder.save(path.resolve(args.out, "cfg"), path.resolve(args.out, "sql"));
 await fs.writeFile(path.resolve(args.out, "compose.yml"), stringify(composeFile, { space: 2 }));

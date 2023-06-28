@@ -1,5 +1,3 @@
-import path from "node:path";
-
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import SqlString from "sqlstring";
@@ -58,23 +56,28 @@ class NetDefProcessor {
   }
 
   private applyUEs(f: ScenarioFolder): void {
-    for (const [i, file] of f.files.filter((file) => /ue\d+\.json/.test(file)).entries()) {
-      const ue = this.network.subscribers[i];
-      if (!ue) {
-        break;
+    assert(f.files.has("ue1.json"));
+    for (const [i, subscriber] of this.network.subscribers.entries()) {
+      const ct = `ue${1 + i}`;
+      const ctFile = `${ct}.json`;
+      if (!f.files.has(ctFile)) {
+        f.ipmap.createContainer(ct, ["mgmt", "air"]);
+        f.copy(ctFile, "ue1.json");
+        f.edit(ctFile, (body) => body.replaceAll("UE1", ct.toUpperCase()));
       }
-      f.editNetworkFunction(path.basename(file, ".json"), (c) => {
+
+      f.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("ue_5g_nas_only");
         config.usim = {
-          supi: ue.supi,
-          k: ue.k,
+          supi: subscriber.supi,
+          k: subscriber.k,
           amf: this.usim.amf,
-          opc: ue.opc,
+          opc: subscriber.opc,
           start_sqn: this.usim.sqn,
         };
         delete config["usim-test-vector19"];
         config.dn_list.splice(0, Infinity, ...this.network.dataNetworks.flatMap((dn): PH.ue_5g_nas_only.DN[] => {
-          if (dn.type === "IPv6" || ue.requestedNSSAI?.includes(dn.snssai) === false) {
+          if (dn.type === "IPv6" || subscriber.requestedNSSAI?.includes(dn.snssai) === false) {
             return [];
           }
           return [{
