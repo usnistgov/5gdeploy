@@ -26,9 +26,13 @@ export namespace amf {
   }
 
   export interface TrackingArea {
-    mcc: string;
-    mnc: string;
-    taiList: Array<{ tac: number }>;
+    mcc: "%MCC";
+    mnc: "%MNC";
+    taiList: TAI[];
+  }
+
+  export interface TAI {
+    tac: number;
   }
 }
 
@@ -37,11 +41,20 @@ export namespace gnb {
     ngap_c_addr: string;
     ngap_u_addr: string;
     gnb_RAN_addr: string;
-    amf_addr: string;
+    amf_addr?: unknown;
+    amf_port?: unknown;
+    amf_list: AMF[];
     gnb_id: number;
     cell_id: number;
+    mcc: "%MCC";
+    mnc: "%MNC";
     tac: number;
     [k: string]: unknown;
+  }
+
+  export interface AMF {
+    ngc_addr: string;
+    ngc_sctp_port: 38412;
   }
 }
 
@@ -109,8 +122,8 @@ export namespace ue_5g_nas_only {
 
   export interface Cell {
     cell_id: number;
-    mnc: "%MNC";
     mcc: "%MCC";
+    mnc: "%MNC";
     gnb_cp_addr: string;
     gnb_up_addr: string;
     gnb_port: 10000;

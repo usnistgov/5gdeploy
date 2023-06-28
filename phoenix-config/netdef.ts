@@ -44,6 +44,13 @@ class NetDefProcessor {
     for (const gnb of this.network.gnbs) {
       f.editNetworkFunction(gnb.name, (c) => {
         const { config } = c.getModule("gnb");
+        delete config.amf_addr;
+        delete config.amf_port;
+        config.amf_list = [
+          { ngc_addr: "%AMF_N2_IP", ngc_sctp_port: 38412 },
+        ];
+        config.mcc = "%MCC";
+        config.mnc = "%MNC";
         [config.gnb_id, config.cell_id] = this.netdef.splitNCGI(gnb.ncgi);
         config.tac = this.netdef.tac;
       });
@@ -81,8 +88,8 @@ class NetDefProcessor {
           const [, cell_id] = this.netdef.splitNCGI(gnb.ncgi);
           return {
             cell_id,
-            mnc: "%MNC",
             mcc: "%MCC",
+            mnc: "%MNC",
             gnb_cp_addr: ip,
             gnb_up_addr: ip,
             gnb_port: 10000,
