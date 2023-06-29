@@ -1,15 +1,12 @@
 /** 5G network definition. */
 export interface Network {
-  /** PLMN code. */
+  /** PLMN ID. */
   plmn: PLMN;
 
   /** gNB ID length in bits (22~32). */
   gnbIdLength: number;
 
-  /**
-   * Tracking Area Code (16 bits, 4 hexadecimal digits).
-   * @see https://cros-legacy.ec.europa.eu/content/Glossary:Location_Area_Code/Tracking_Area_Code_(LAC/TAC)_en
-   */
+  /** Tracking Area Code (24 bits, 6 hexadecimal digits). */
   tac: string;
 
   /** USIM cards. */
@@ -29,7 +26,7 @@ export interface Network {
 }
 
 /**
- * PLMN code.
+ * PLMN ID.
  * Example: "001-01", "001-001".
  */
 export type PLMN = string;

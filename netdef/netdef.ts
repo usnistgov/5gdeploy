@@ -8,7 +8,7 @@ export class NetDef {
 
   /** Return Tracking Area Code (TAC). */
   public get tac(): number {
-    assert(/^[\da-f]{4}$/.test(this.network.tac));
+    assert(/^[\da-f]{6}$/i.test(this.network.tac));
     return Number.parseInt(this.network.tac, 16);
   }
 
@@ -50,7 +50,7 @@ export namespace NetDef {
 
   /** Split S-NSSAI to sst and sd. */
   export function splitSNSSAI(snssai: T.SNSSAI): [sst: string] | [sst: string, sd: string] {
-    assert(/^[\da-f]{2}(?:[\da-f]{6})?$/.test(snssai));
+    assert(/^[\da-f]{2}(?:[\da-f]{6})?$/i.test(snssai));
     if (snssai.length === 2) {
       return [snssai];
     }
