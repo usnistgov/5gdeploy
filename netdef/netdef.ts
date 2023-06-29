@@ -33,6 +33,11 @@ export class NetDef {
   public findUPF(name: string): T.UPF | undefined {
     return this.network.upfs.find((upf) => upf.name === name);
   }
+
+  /** Find Data Network by dnn and optional snssai. */
+  public findDN(dnn: string, snssai?: string): T.DataNetwork | undefined {
+    return this.network.dataNetworks.find((dn) => dn.dnn === dnn && (snssai === undefined || dn.snssai === snssai));
+  }
 }
 export namespace NetDef {
   /** Split PLMN to MCC and MNC. */

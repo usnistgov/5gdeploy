@@ -70,16 +70,20 @@ class NetDefProcessor {
           start_sqn: this.usim.sqn,
         };
         delete config["usim-test-vector19"];
-        config.dn_list.splice(0, Infinity, ...this.network.dataNetworks.flatMap((dn): PH.ue_5g_nas_only.DN[] => {
-          if (dn.type === "IPv6" || subscriber.requestedNSSAI?.includes(dn.snssai) === false) {
-            return [];
-          }
-          return [{
-            dnn: dn.dnn,
-            dn_type: dn.type,
-          }];
-        }));
+
+        const nssai = subscriber.requestedNSSAI ?? subscriber.subscribedNSSAI ?? [];
+        config.dn_list.splice(0, Infinity, ...nssai.flatMap(({ snssai, dnns }): PH.ue_5g_nas_only.DN[] => dnns.map(
+          (dnn): PH.ue_5g_nas_only.DN => {
+            const dn = this.netdef.findDN(dnn, snssai);
+            assert(dn && dn.type !== "IPv6");
+            return {
+              dnn: dn.dnn,
+              dn_type: dn.type,
+            };
+          },
+        )));
         config.DefaultNetwork.dnn = config.dn_list[0]?.dnn ?? "default";
+
         config.Cell.splice(0, Infinity, ...this.network.gnbs.map((gnb): PH.ue_5g_nas_only.Cell => {
           const ip = `%${gnb.name.toUpperCase()}_AIR_IP`;
           return {

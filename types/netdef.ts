@@ -10,7 +10,7 @@ export interface Network {
   tac: string;
 
   /** USIM cards. */
-  subscribers: USIM[];
+  subscribers: Subscriber[];
 
   /** gNodeBs. */
   gnbs: GNB[];
@@ -40,10 +40,10 @@ export type PLMN = string;
 export type SNSSAI = string;
 
 /**
- * USIM card definition.
+ * Subscriber SIM card definition.
  * @see https://nickvsnetworking.com/hss-usim-authentication-in-lte-nr-4g-5g/
  */
-export interface USIM {
+export interface Subscriber {
   /** Subscriber identifier (15 decimal digits). */
   supi: string;
 
@@ -53,11 +53,17 @@ export interface USIM {
   /** Operator secret key (32 hexadecimal digits). */
   opc: string;
 
-  /** Subscribed S-NSSAIs (stored in the UDM). */
-  subscribedNSSAI?: SNSSAI[];
+  /** Subscribed S-NSSAIs and DNNs (stored in the UDM). */
+  subscribedNSSAI?: SubscriberSNSSAI[];
 
-  /** Requested NSSAI (requested by the UE). */
-  requestedNSSAI?: SNSSAI[];
+  /** Configured/requested NSSAI and DNNs (requested by the UE). */
+  requestedNSSAI?: SubscriberSNSSAI[];
+}
+
+/** Subscriber S-NSSAI and DNNs. */
+export interface SubscriberSNSSAI {
+  snssai: SNSSAI;
+  dnns: string[];
 }
 
 /** gNodeB definition. */
