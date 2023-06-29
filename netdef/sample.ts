@@ -37,6 +37,7 @@ const network: Network = {
   upfs: [
     { name: "upf1" },
     { name: "upf2" },
+    { name: "upf3" },
   ],
   dataNetworks: [
     { snssai: "01", dnn: "net6", type: "IPv4", subnet: "192.168.6.0/24" },
@@ -46,11 +47,12 @@ const network: Network = {
   dataPaths: {
     links: [
       ["gnb1", "upf1"],
+      ["gnb2", "upf2"],
+      ["upf1", "upf2"],
+      ["upf1", "upf3"],
       ["upf1", { snssai: "01", dnn: "net6" }],
       ["upf1", { snssai: "90000001", dnn: "net3" }],
-      ["gnb2", "upf2"],
-      ["upf2", { snssai: "90000002", dnn: "net5" }],
-      ["upf1", "upf2"],
+      ["upf3", { snssai: "90000002", dnn: "net5" }],
     ],
   },
 };

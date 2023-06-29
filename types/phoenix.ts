@@ -15,6 +15,7 @@ export interface Module<T extends {} = any> {
 export interface ModuleConfigMap {
   amf: amf.Config;
   gnb: gnb.Config;
+  pfcp: pfcp.Config;
   sdn_routing_topology: sdn_routing_topology.Config;
   ue_5g_nas_only: ue_5g_nas_only.Config;
 }
@@ -38,14 +39,14 @@ export namespace amf {
 
 export namespace gnb {
   export interface Config {
-    ngap_c_addr: string;
-    ngap_u_addr: string;
-    gnb_RAN_addr: string;
-    amf_addr?: unknown;
-    amf_port?: unknown;
+    ngap_c_addr: string; // gNB N2 IP
+    ngap_u_addr: string; // gNB N3 IP
+    gnb_RAN_addr: string; // gNB air IP
+    amf_addr?: never;
+    amf_port?: never;
     amf_list: AMF[];
-    gnb_id: number;
-    cell_id: number;
+    gnb_id: number; // gNB ID
+    cell_id: number; // NCGI
     mcc: "%MCC";
     mnc: "%MNC";
     tac: number;
@@ -53,8 +54,73 @@ export namespace gnb {
   }
 
   export interface AMF {
-    ngc_addr: string;
+    ngc_addr: string; // AMF N2 IP
     ngc_sctp_port: 38412;
+  }
+}
+
+export namespace pfcp {
+  export type Config = UP | CP;
+
+  export interface CP {
+    mode: "CP";
+    LocalNodeID: NodeID;
+    Associations: Associations;
+    [k: string]: unknown;
+  }
+
+  export interface UP {
+    mode: "UP";
+    data_plane_mode: "integrated";
+    ethernet_session_identifier?: string;
+    LocalNodeID: NodeID;
+    DataPlane: DataPlane;
+    Associations: Associations;
+    hacks: Hacks;
+    [k: string]: unknown;
+  }
+
+  export interface NodeID {
+    IPv4: string;
+  }
+
+  export interface DataPlane {
+    threads: number;
+    interfaces: Interface[]; // up to 8 items
+    xdp?: never;
+  }
+
+  export type Interface = InterfaceL3 | InterfaceL2;
+
+  interface InterfaceCommon {
+    name: string; // UPF netif name
+    mode: "single_thread" | "thread_pool";
+  }
+
+  export interface InterfaceL3 extends InterfaceCommon {
+    type: "n3_n9" | "n6_l3" | "n3_n9_n6_l3";
+    bind_ip: string; // UPF N3/N9/N6 IP
+  }
+
+  export interface InterfaceL2 extends InterfaceCommon {
+    type: "n6_l2";
+  }
+
+  export interface Associations {
+    Acceptor: Acceptor[];
+    Peer: Acceptor[];
+    [k: string]: unknown;
+  }
+
+  export interface Acceptor {
+    type: "udp";
+    port: 8805;
+    bind: string; // SMF/UPF N4 IP
+  }
+
+  export interface Hacks {
+    qfi: number;
+    [k: string]: unknown;
   }
 }
 
@@ -75,19 +141,19 @@ export namespace sdn_routing_topology {
   export type Node = gNB | UPF | DNN;
   export interface gNB {
     type: "gNodeB";
-    id: number;
+    id: number; // gNB ID
     ip: "255.255.255.255"; // no effect but prevents an error
   }
   export interface UPF {
     type: "UPF";
-    id: string;
+    id: string; // UPF N4 IP
     port?: number;
-    ip: string;
+    ip: string; // UPF N6/N3/N9 IP toward DNN/gNB/UPF
     external_ip?: string;
   }
   export interface DNN {
     type: "DNN";
-    id: string;
+    id: string; // DNN
     ip: "255.255.255.255"; // no effect but prevents an error
   }
 }
@@ -106,6 +172,7 @@ export namespace ue_5g_nas_only {
     supi: string;
     k: string;
     amf: string;
+    op?: never;
     opc: string;
     start_sqn: string;
   }
@@ -121,11 +188,11 @@ export namespace ue_5g_nas_only {
   }
 
   export interface Cell {
-    cell_id: number;
+    cell_id: number; // NCGI
     mcc: "%MCC";
     mnc: "%MNC";
-    gnb_cp_addr: string;
-    gnb_up_addr: string;
+    gnb_cp_addr: string; // gNB air IP
+    gnb_up_addr: string; // gNB air IP
     gnb_port: 10000;
   }
 }

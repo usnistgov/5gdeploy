@@ -30,6 +30,7 @@ class NetDefProcessor {
     this.applyBT(f);
     this.applyAMF(f);
     this.applySMF(f);
+    this.applyUPF(f);
     this.applyUDM(f);
   }
 
@@ -133,6 +134,15 @@ class NetDefProcessor {
       });
     });
 
+    f.editNetworkFunction("smf", (c) => {
+      const { config } = c.getModule("pfcp");
+      config.Associations.Peer.splice(0, Infinity, ...this.network.upfs.map((upf): PH.pfcp.Acceptor => ({
+        type: "udp",
+        port: 8805,
+        bind: `%${upf.name.toUpperCase()}_N4_IP`,
+      })));
+    });
+
     f.appendSQL("smf_db", function*() {
       yield "DELETE FROM dn_dns";
       yield "DELETE FROM dn_info";
@@ -199,6 +209,80 @@ class NetDefProcessor {
         UPF: "N9",
       }[peerType]}_IP`,
     };
+  }
+
+  private applyUPF(f: ScenarioFolder): void {
+    for (const [ct, upf] of f.resizeNetworkFunction("upf", this.network.upfs)) {
+      f.editNetworkFunction(ct, (c) => {
+        const { config } = c.getModule("pfcp");
+        assert(config.mode === "UP");
+        assert(config.data_plane_mode === "integrated");
+
+        let hasN3 = false;
+        let hasN9 = false;
+        let hasN6L3 = false;
+        delete config.ethernet_session_identifier;
+        for (let link of this.network.dataPaths.links) {
+          link = NetDef.normalizeDataPathLink(link);
+          const peer = link.a === upf.name ? link.b : link.b === upf.name ? link.a : undefined;
+          if (peer === undefined) {
+            continue;
+          }
+          if (typeof peer === "string") {
+            hasN3 ||= this.netdef.findGNB(peer) !== undefined;
+            hasN9 ||= this.netdef.findUPF(peer) !== undefined;
+          } else {
+            const dn = this.network.dataNetworks.find((dn) => dn.snssai === peer.snssai && dn.dnn === peer.dnn);
+            assert(dn);
+            switch (dn.type) {
+              case "Ethernet": {
+                assert(config.ethernet_session_identifier === undefined, "UPF only supports one Ethernet DN");
+                config.ethernet_session_identifier = dn.dnn;
+                break;
+              }
+              case "IPv4": {
+                hasN6L3 = true;
+              }
+            }
+          }
+        }
+
+        config.DataPlane.interfaces.splice(0, Infinity);
+        if (hasN3) {
+          config.DataPlane.interfaces.push({
+            type: "n3_n9",
+            name: `%${ct.toUpperCase()}_N3_IF`,
+            bind_ip: `%${ct.toUpperCase()}_N3_IP`,
+            mode: "single_thread",
+          });
+        }
+        if (hasN9) {
+          config.DataPlane.interfaces.push({
+            type: "n3_n9",
+            name: `%${ct.toUpperCase()}_N9_IF`,
+            bind_ip: `%${ct.toUpperCase()}_N9_IP`,
+            mode: "thread_pool",
+          });
+        }
+        if (hasN6L3) {
+          config.DataPlane.interfaces.push({
+            type: "n6_l3",
+            name: "n6_tun",
+            bind_ip: `%${ct.toUpperCase()}_N6_IP`,
+            mode: "thread_pool",
+          });
+        }
+        if (config.ethernet_session_identifier) {
+          config.DataPlane.interfaces.push({
+            type: "n6_l2",
+            name: "n6_eth",
+            mode: "thread_pool",
+          });
+        }
+        assert(config.DataPlane.interfaces.length <= 8);
+        delete config.DataPlane.xdp;
+      });
+    }
   }
 
   private applyUDM(f: ScenarioFolder): void {
