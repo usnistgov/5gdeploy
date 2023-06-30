@@ -9,6 +9,9 @@ const network: Network = {
       supi: "001017005550001",
       k: "06CEC946EF2062CC797073B5BBA4CF4E",
       opc: "5F4D5BF95F2C2899895127D3532F4B7C",
+      subscribedNSSAI: [
+        { snssai: "01", dnns: ["net6", "net3"] },
+      ],
       requestedNSSAI: [
         { snssai: "01", dnns: ["net6", "net3"] },
       ],
@@ -47,6 +50,7 @@ const network: Network = {
     { name: "upf3" },
   ],
   dataNetworks: [
+    { snssai: "01", dnn: "ethernet", type: "Ethernet" },
     { snssai: "01", dnn: "net6", type: "IPv4", subnet: "192.168.6.0/24" },
     { snssai: "01", dnn: "net3", type: "IPv4", subnet: "192.168.3.0/24" },
     { snssai: "90000001", dnn: "net5", type: "IPv4", subnet: "192.168.5.0/24" },
@@ -60,6 +64,7 @@ const network: Network = {
       ["upf1", { snssai: "01", dnn: "net6" }],
       ["upf1", { snssai: "01", dnn: "net3" }],
       ["upf2", { snssai: "90000001", dnn: "net5" }],
+      ["upf3", { snssai: "01", dnn: "ethernet" }],
     ],
   },
 };

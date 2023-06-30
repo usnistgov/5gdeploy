@@ -295,20 +295,47 @@ class NetDefProcessor {
     f.appendSQL("udm_db", function*() {
       yield SqlString.format("SELECT @dnn_json := json FROM dnn_configurations WHERE supi=? LIMIT 1", ["default_data"]);
       yield "DELETE FROM dnn_configurations";
-      yield* network.dataNetworks.map(function*({ dnn, snssai }) {
+      yield* network.dataNetworks.map(({ dnn, snssai, type }) => {
         const [sst] = NetDef.splitSNSSAI(snssai);
-        yield SqlString.format("INSERT dnn_configurations (supi,sst,dnn,json) VALUES (?,?,?,@dnn_json)",
-          ["default_data", Number.parseInt(sst, 16), dnn]);
+        const patch = {
+          pduSessionTypes: {
+            defaultSessionType: type.toUpperCase(),
+          },
+        };
+        return SqlString.format("INSERT dnn_configurations (supi,sst,dnn,json) VALUES (?,?,?,JSON_MERGE_PATCH(@dnn_json,?))",
+          ["default_data", Number.parseInt(sst, 16), dnn, JSON.stringify(patch)]);
       });
     });
 
     f.appendSQL("udm_db", function*() {
       yield "DELETE FROM supi";
-      yield* network.subscribers.map(function*({ supi, k, opc }) {
+      yield* network.subscribers.map(({ supi, k, opc }) => SqlString.format(
+        "INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type) VALUES (?,UNHEX(?),UNHEX(?),UNHEX(?),UNHEX(?),?,?,?)",
+        [supi, k, usim.amf, opc, usim.sqn, 0, 1, 0]));
+    });
+
+    f.appendSQL("udm_db", function*() {
+      yield SqlString.format("SELECT @am_json := access_and_mobility_sub_data FROM am_data WHERE supi=?", ["0"]);
+      yield SqlString.format("DELETE FROM am_data WHERE supi!=?", ["0"]);
+      yield* network.subscribers.map(function*({ supi, subscribedNSSAI }) {
+        if (subscribedNSSAI === undefined) {
+          return;
+        }
+        const patch = {
+          nssai: {
+            defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => toSstSd(snssai)),
+          },
+        };
         yield SqlString.format(
-          "INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type) VALUES (?,UNHEX(?),UNHEX(?),UNHEX(?),UNHEX(?),?,?,?)",
-          [supi, k, usim.amf, opc, usim.sqn, 0, 1, 0]);
+          "INSERT am_data (supi,access_and_mobility_sub_data) VALUES (?,JSON_MERGE_PATCH(@am_json,?))",
+          [supi, JSON.stringify(patch)]);
       });
     });
   }
+}
+
+function toSstSd(snssai: N.SNSSAI): { sst: number; sd?: string } {
+  const [sstHex, sd] = NetDef.splitSNSSAI(snssai);
+  const sst = Number.parseInt(sstHex, 16);
+  return sd === undefined ? { sst } : { sst, sd };
 }
