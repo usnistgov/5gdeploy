@@ -72,10 +72,10 @@ export interface GNB {
   name: string;
 
   /**
-   * NR Cell Global Identifier (gNB ID + cell ID, 36 bits, 9 hexadecimal digits).
+   * NR Cell Identity (gNB ID + cell ID, 36 bits, 9 hexadecimal digits).
    * @see https://www.techplayon.com/5g-nr-cell-global-identity-planning/
    */
-  ncgi: string;
+  nci: string;
 }
 
 /** User Plane Function (UPF) definition. */

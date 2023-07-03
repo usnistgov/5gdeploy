@@ -37,11 +37,11 @@ const network: Network = {
   gnbs: [
     {
       name: "gnb1",
-      ncgi: "000001001",
+      nci: "000001001",
     },
     {
       name: "gnb2",
-      ncgi: "000002002",
+      nci: "000002002",
     },
   ],
   upfs: [

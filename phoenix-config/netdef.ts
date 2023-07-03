@@ -52,7 +52,7 @@ class NetDefProcessor {
         ];
         config.mcc = "%MCC";
         config.mnc = "%MNC";
-        ({ gnb: config.gnb_id, ncgi: config.cell_id } = this.netdef.splitNCGI(gnb.ncgi));
+        ({ gnb: config.gnb_id, nci: config.cell_id } = this.netdef.splitNCI(gnb.nci));
         config.tac = this.netdef.tac;
       });
     }
@@ -87,7 +87,7 @@ class NetDefProcessor {
         config.Cell.splice(0, Infinity, ...this.network.gnbs.map((gnb): PH.ue_5g_nas_only.Cell => {
           const ip = `%${gnb.name.toUpperCase()}_AIR_IP`;
           return {
-            cell_id: this.netdef.splitNCGI(gnb.ncgi).ncgi,
+            cell_id: this.netdef.splitNCI(gnb.nci).nci,
             mcc: "%MCC",
             mnc: "%MNC",
             gnb_cp_addr: ip,
@@ -197,7 +197,7 @@ class NetDefProcessor {
         const gnb = this.netdef.findGNB(node as string)!;
         return {
           type: "gNodeB",
-          id: this.netdef.splitNCGI(gnb.ncgi).gnb,
+          id: this.netdef.splitNCI(gnb.nci).gnb,
           ip: "255.255.255.255",
         };
       }
