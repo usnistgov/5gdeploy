@@ -4,18 +4,20 @@ import assert from "minimalistic-assert";
 import type * as PH from "../types/phoenix.js";
 
 /** Open5GCore network function configuration. */
-export class NetworkFunctionConfig {
-  public Phoenix: PH.NetworkFunction["Phoenix"] = {
+export class NetworkFunction {
+  public Phoenix: PH.Phoenix = {
     Platform: {},
     Module: [],
   };
 
   /** Retrieve module by module binary name (without path or .so prefix). */
   public getModule<K extends keyof PH.ModuleConfigMap>(binaryName: K): PH.Module<PH.ModuleConfigMap[K]>;
+  public getModule<K extends keyof PH.ModuleConfigMap>(binaryName: K, optional: true): PH.Module<PH.ModuleConfigMap[K]> | undefined;
   public getModule(binaryName: string): PH.Module;
-  public getModule(binaryName: string): any {
+  public getModule(binaryName: string, optional: true): PH.Module | undefined;
+  public getModule(binaryName: string, optional?: boolean): any {
     const m = this.Phoenix.Module.find((m) => m.binaryFile.endsWith(`/${binaryName}.so`));
-    if (m === undefined) {
+    if (m === undefined && !optional) {
       throw new Error(`module ${binaryName} not found`);
     }
     return m;
@@ -26,10 +28,10 @@ export class NetworkFunctionConfig {
     return stringify({ Phoenix: this.Phoenix }, { space: 2 });
   }
 }
-export namespace NetworkFunctionConfig {
+export namespace NetworkFunction {
   /** Parse network function JSON document. */
-  export function parse(body: string): NetworkFunctionConfig {
-    const cfg = new NetworkFunctionConfig();
+  export function parse(body: string): NetworkFunction {
+    const cfg = new NetworkFunction();
     cfg.Phoenix = JSON.parse(body).Phoenix;
     assert(!!cfg.Phoenix);
     assert(cfg.Phoenix.Platform);

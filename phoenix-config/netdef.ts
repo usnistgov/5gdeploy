@@ -6,8 +6,7 @@ import { NetDef } from "../netdef/netdef.js";
 import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
 import type { ScenarioFolder } from "./folder.js";
-import { IPMAP } from "./ipmap.js";
-import type { NetworkFunctionConfig } from "./nf.js";
+import type { NetworkFunction } from "./nf.js";
 
 /** Apply network definition to scenario. */
 export function applyNetdef(f: ScenarioFolder, netdef: NetDef): void {
@@ -47,7 +46,7 @@ class NetDefProcessor {
     const slices = listUniqueSNSSAIs(this.network);
     assert(slices.length <= sliceKeys.length);
 
-    for (const [ct, gnb] of f.resizeNetworkFunction("gnb", this.network.gnbs)) {
+    for (const [ct, gnb] of f.scaleNetworkFunction("gnb1", this.network.gnbs)) {
       f.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("gnb");
         delete config.amf_addr;
@@ -72,7 +71,7 @@ class NetDefProcessor {
   }
 
   private applyUEs(f: ScenarioFolder): void {
-    for (const [ct, subscriber] of f.resizeNetworkFunction("ue", this.network.subscribers)) {
+    for (const [ct, subscriber] of f.scaleNetworkFunction("ue1", this.network.subscribers)) {
       f.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("ue_5g_nas_only");
         config.usim = {
@@ -113,8 +112,8 @@ class NetDefProcessor {
   }
 
   private applyBT(f: ScenarioFolder): void {
-    for (const ct of f.ipmap.containers.keys()) {
-      if (["bt", "btup"].includes(IPMAP.toNf(ct))) {
+    for (const nf of ["bt", "btup"]) {
+      for (const ct of f.ipmap.listContainersByNf(nf)) {
         f.ipmap.removeContainer(ct);
         f.files.delete(`${ct}.json`);
       }
@@ -181,7 +180,7 @@ class NetDefProcessor {
     });
   }
 
-  private setNrfClientSlices(c: NetworkFunctionConfig): void {
+  private setNrfClientSlices(c: NetworkFunction): void {
     const { config } = c.getModule("nrf_client");
     config.nf_profile.sNssais.splice(0, Infinity, ...listUniqueSNSSAIs(this.network));
   }
@@ -238,7 +237,7 @@ class NetDefProcessor {
   }
 
   private applyUPF(f: ScenarioFolder): void {
-    for (const [ct, upf] of f.resizeNetworkFunction("upf", this.network.upfs)) {
+    for (const [ct, upf] of f.scaleNetworkFunction("upf1", this.network.upfs)) {
       f.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("pfcp");
         assert(config.mode === "UP");
@@ -258,7 +257,7 @@ class NetDefProcessor {
             hasN3 ||= this.netdef.findGNB(peer) !== undefined;
             hasN9 ||= this.netdef.findUPF(peer) !== undefined;
           } else {
-            const dn = this.network.dataNetworks.find((dn) => dn.snssai === peer.snssai && dn.dnn === peer.dnn);
+            const dn = this.netdef.findDN(peer);
             assert(dn);
             switch (dn.type) {
               case "Ethernet": {
@@ -313,19 +312,6 @@ class NetDefProcessor {
 
   private applyUDM(f: ScenarioFolder): void {
     const { netdef, network, usim } = this;
-
-    f.appendSQL("udm_db", function*() {
-      for (const { dnn, snssai, type } of network.dataNetworks) {
-        const [sst] = NetDef.splitSNSSAI(snssai);
-        const patch = {
-          pduSessionTypes: {
-            defaultSessionType: type.toUpperCase(),
-          },
-        };
-        yield SqlString.format("INSERT dnn_configurations (supi,sst,dnn,json) VALUES (?,?,?,JSON_MERGE_PATCH(@dnn_json,?))",
-          ["default_data", Number.parseInt(sst, 16), dnn, JSON.stringify(patch)]);
-      }
-    });
 
     f.appendSQL("udm_db", function*() {
       yield "DELETE FROM gpsi_supi_association";

@@ -50,6 +50,15 @@ export class IPMAP {
     return this.containers_;
   }
 
+  /** List container names by network function. */
+  public *listContainersByNf(nf: string): Iterable<string> {
+    for (const ct of this.containers_.keys()) {
+      if (IPMAP.toNf(ct) === nf) {
+        yield ct;
+      }
+    }
+  }
+
   /**
    * Suggest unused sequential container name.
    * @param nf network function name.

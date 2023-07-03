@@ -1,8 +1,6 @@
-export interface NetworkFunction {
-  Phoenix: {
-    Platform: unknown;
-    Module: Module[];
-  };
+export interface Phoenix {
+  Platform: unknown;
+  Module: Module[];
 }
 
 export interface Module<T extends {} = any> {
@@ -14,6 +12,7 @@ export interface Module<T extends {} = any> {
 
 export interface ModuleConfigMap {
   amf: amf.Config;
+  command: command.Config;
   gnb: gnb.Config;
   nrf_client: nrf_client.Config;
   pfcp: pfcp.Config;
@@ -40,6 +39,13 @@ export namespace amf {
 
   export interface TAI {
     tac: number;
+  }
+}
+
+export namespace command {
+  export interface Config {
+    GreetingText: string;
+    [k: string]: unknown;
   }
 }
 

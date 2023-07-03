@@ -9,7 +9,7 @@ import DefaultMap from "mnemonist/default-map.js";
 import { type AnyIterable, collect } from "streaming-iterables";
 
 import { IPMAP } from "./ipmap.js";
-import { NetworkFunctionConfig } from "./nf.js";
+import { NetworkFunction } from "./nf.js";
 
 const fsWalkPromise = promisify(fsWalk.walk);
 
@@ -57,58 +57,60 @@ export class ScenarioFolder {
   }
 
   /**
-   * Resize network function to specified quantity.
-   * @param nf network function name.
-   * @param count desired quantity.
-   * @returns container names.
+   * Scale network function to specified quantity.
+   * @param tpl template container name.
+   * @param list relevant config objects.
+   * If a config object has a .name property, it must reflect the templated network function.
    */
-  public resizeNetworkFunction(nf: string, count: number): string[];
+  public scaleNetworkFunction<T>(tpl: string, list: readonly T[]): Map<string, T> {
+    assert(this.ipmap.containers.has(tpl));
+    const netifs = Array.from(this.ipmap.containers.get(tpl)!.keys());
+    assert(this.files.has(`${tpl}.json`));
 
-  /**
-   * Resize network function to specified quantity.
-   * @param nf network function name.
-   * @param list relevant objects.
-   * @returns tuples of container name and relavant object.
-   */
-  public resizeNetworkFunction<T>(nf: string, list: readonly T[]): Array<[string, T]>;
+    const nf = IPMAP.toNf(tpl);
+    const existing = new Set(this.ipmap.listContainersByNf(nf));
+    assert(list.length > 0);
 
-  public resizeNetworkFunction(nf: string, arg2: any): any {
-    if (Array.isArray(arg2)) {
-      const list = arg2 as unknown[];
-      return this.resizeNetworkFunction(nf, list.length).map((ct, i) => [ct, list[i]]);
-    }
+    const m = new Map<string, T>();
+    for (const [i, item] of list.entries()) {
+      let ct = (item as any).name as string;
+      if (typeof ct !== "string") {
+        ct = `${nf}${i}`;
+      }
+      assert.equal(IPMAP.toNf(ct), nf);
 
-    const count = arg2 as number;
-    assert(count >= 1);
-    const ct1 = `${nf}1`;
-    assert(this.ipmap.containers.has(ct1));
-    const netifs = Array.from(this.ipmap.containers.get(ct1)!.keys());
-    assert(this.files.has(`${ct1}.json`));
-
-    const names = [ct1];
-    for (let i = 2; i <= count; ++i) {
-      const ct = `${nf}${i}`;
-      names.push(ct);
-      if (!this.ipmap.containers.has(ct)) {
+      m.set(ct, item);
+      if (!existing.delete(ct)) {
         this.ipmap.addContainer(ct, netifs);
       }
       const ctFile = `${ct}.json`;
-      this.files.delete(ctFile);
-      this.copy(ctFile, `${ct1}.json`);
-      this.edit(ctFile, (body) => body.replaceAll(ct1.toUpperCase(), ct.toUpperCase()));
+      if (ct !== tpl) {
+        this.files.delete(ctFile);
+        this.copy(ctFile, `${tpl}.json`);
+        this.edit(ctFile, (body) => body.replaceAll(tpl.toUpperCase(), ct.toUpperCase()));
+      }
+      this.editNetworkFunction(ct, (c) => {
+        const commandModule = c.getModule("command", true);
+        if (!commandModule) {
+          return;
+        }
+        commandModule.config.GreetingText = `${ct.toUpperCase()}>`;
+      });
     }
-    for (let i = count + 1; i < 1000; ++i) {
-      const ct = `${nf}${i}`;
-      this.files.delete(`${ct}.json`);
+
+    for (const ct of existing) {
       this.ipmap.removeContainer(ct);
+      if (ct !== tpl) {
+        this.files.delete(`${ct}.json`);
+      }
     }
-    return names;
+    return m;
   }
 
   /** Edit a network function .json file. */
-  public editNetworkFunction(ct: string, f: (c: NetworkFunctionConfig) => void | Promise<void>): void {
+  public editNetworkFunction(ct: string, f: (c: NetworkFunction) => void | Promise<void>): void {
     this.edit(`${ct}.json`, async (body) => {
-      const c = NetworkFunctionConfig.parse(body);
+      const c = NetworkFunction.parse(body);
       await f(c);
       return c.save();
     });

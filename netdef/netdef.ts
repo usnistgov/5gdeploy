@@ -35,7 +35,12 @@ export class NetDef {
   }
 
   /** Find Data Network by dnn and optional snssai. */
-  public findDN(dnn: string, snssai?: string): T.DataNetwork | undefined {
+  public findDN(dnn: string, snssai?: string): T.DataNetwork | undefined;
+  public findDN(id: T.DataNetworkID): T.DataNetwork | undefined;
+  public findDN(dnn: T.DataNetworkID | string, snssai?: string): T.DataNetwork | undefined {
+    if (typeof dnn !== "string") {
+      return this.findDN(dnn.dnn, dnn.snssai);
+    }
     return this.network.dataNetworks.find((dn) => dn.dnn === dnn && (snssai === undefined || dn.snssai === snssai));
   }
 }
