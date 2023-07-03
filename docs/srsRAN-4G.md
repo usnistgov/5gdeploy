@@ -6,7 +6,7 @@ Build srsRAN 4G Docker image:
 
 ```bash
 cd ~/5gdeploy
-docker build --pull -t srsran4g docker/srsran4g
+docker build --pull -t 5gdeploy.localhost/srsran4g docker/srsran4g
 ```
 
 ## LTE scenario: srsEPC + srsENB + srsUE
@@ -31,7 +31,7 @@ docker compose down
 
 ## 5G scenario: Open5GCore + srsENB + srsUE
 
-See [Open5GCore](Open5GCore.md) for how to use `phoenix` Docker image.
+See [Open5GCore](Open5GCore.md) for how to use `5gdeploy.localhost/phoenix` Docker image.
 
 ```bash
 # prepare Compose context

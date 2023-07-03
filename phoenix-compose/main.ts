@@ -62,7 +62,7 @@ if (args["bridge-to"]) {
   composeFile.services.bridge = {
     container_name: "bridge",
     hostname: "bridge",
-    image: "bridge",
+    image: "5gdeploy.localhost/bridge",
     command: ["/entrypoint.sh", bridges.join(","), args["bridge-to"]],
     cap_add: ["NET_ADMIN"],
     devices: [],

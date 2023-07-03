@@ -13,7 +13,7 @@ services:
   gnb:
     container_name: gnb
     hostname: gnb
-    image: oai-gnb
+    image: 5gdeploy.localhost/oai-gnb
     command: ["/entrypoint.sh", "gnb"]
     environment:
       RFSIMULATOR: server
@@ -40,7 +40,7 @@ services:
   ue:
     container_name: ue
     hostname: ue
-    image: oai-nr-ue
+    image: 5gdeploy.localhost/oai-nr-ue
     command: ["/entrypoint.sh", "nr_ue"]
     environment:
       RFSIMULATOR: 192.168.10.50

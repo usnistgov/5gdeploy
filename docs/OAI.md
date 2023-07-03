@@ -6,17 +6,17 @@ Build OpenAirInterface Docker images:
 
 ```bash
 cd ~/5gdeploy
-docker build --pull -t oai-gnb \
+docker build --pull -t 5gdeploy.localhost/oai-gnb \
   --build-arg BASE=oaisoftwarealliance/oai-gnb:develop \
   docker/oai
-docker build --pull -t oai-nr-ue \
+docker build --pull -t 5gdeploy.localhost/oai-nr-ue \
   --build-arg BASE=oaisoftwarealliance/oai-nr-ue:develop \
   docker/oai
 ```
 
 ## Open5GCore + oai-gnb + oai-nr-ue
 
-See [Open5GCore](Open5GCore.md) for how to use `phoenix` Docker image.
+See [Open5GCore](Open5GCore.md) for how to use `5gdeploy.localhost/phoenix` Docker image.
 
 ```bash
 # prepare Compose context

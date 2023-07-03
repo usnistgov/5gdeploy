@@ -13,7 +13,7 @@ services:
   gnb:
     container_name: gnb
     hostname: gnb
-    image: ueransim
+    image: 5gdeploy.localhost/ueransim
     command: ["/entrypoint.sh", "gnb"]
     environment:
       MCC: '001'
@@ -36,7 +36,7 @@ services:
   ue:
     container_name: ue
     hostname: ue
-    image: ueransim
+    image: 5gdeploy.localhost/ueransim
     command: ["/entrypoint.sh", "ue"]
     environment:
       IMSI: '001011234567896'

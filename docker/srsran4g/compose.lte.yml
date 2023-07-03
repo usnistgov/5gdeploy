@@ -31,7 +31,7 @@ services:
   epc:
     container_name: epc
     hostname: epc
-    image: srsran4g
+    image: 5gdeploy.localhost/srsran4g
     command: ["/entrypoint.sh", "lte_epc"]
     init: true
     cap_add:
@@ -50,7 +50,7 @@ services:
   enb:
     container_name: enb
     hostname: enb
-    image: srsran4g
+    image: 5gdeploy.localhost/srsran4g
     command: ["/entrypoint.sh", "lte_enb"]
     init: true
     cap_add:
@@ -68,7 +68,7 @@ services:
   ue:
     container_name: ue
     hostname: ue
-    image: srsran4g
+    image: 5gdeploy.localhost/srsran4g
     command: ["/entrypoint.sh", "lte_ue"]
     init: true
     cap_add:

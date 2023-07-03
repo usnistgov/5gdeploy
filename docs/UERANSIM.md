@@ -9,12 +9,12 @@ docker build --pull -t herlesupreeth/ueransim \
   'https://github.com/herlesupreeth/docker_open5gs.git#master:ueransim'
 
 cd ~/5gdeploy
-docker build -t ueransim docker/ueransim
+docker build -t 5gdeploy.localhost/ueransim docker/ueransim
 ```
 
 ## Open5GCore + UERANSIM
 
-See [Open5GCore](Open5GCore.md) for how to use `phoenix` Docker image.
+See [Open5GCore](Open5GCore.md) for how to use `5gdeploy.localhost/phoenix` Docker image.
 
 ```bash
 # prepare Compose context

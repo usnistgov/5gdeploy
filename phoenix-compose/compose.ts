@@ -53,7 +53,7 @@ function buildService(ct: string, nets: ReadonlyMap<string, string>): ComposeSer
   const s: ComposeService = {
     container_name: ct,
     hostname: ct,
-    image: "phoenix",
+    image: "5gdeploy.localhost/phoenix",
     init: true,
     cap_add: [],
     devices: [],
@@ -69,7 +69,7 @@ function buildService(ct: string, nets: ReadonlyMap<string, string>): ComposeSer
 
   const nf = IPMAP.toNf(ct);
   updateService[nf]?.(s);
-  if (s.image === "phoenix") {
+  if (s.image === "5gdeploy.localhost/phoenix") {
     updatePhoenix(s);
   }
 
