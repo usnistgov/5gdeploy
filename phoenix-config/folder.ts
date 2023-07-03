@@ -120,7 +120,8 @@ export class ScenarioFolder {
   public appendSQL(db: string, g: () => AnyIterable<string>): void {
     this.edit(`sql/${db}.sql`, async (body) => {
       body += "\n";
-      for await (const stmt of g()) {
+      for await (let stmt of g()) {
+        stmt = stmt.trim().replace(/\n\s+/g, " ");
         if (stmt.endsWith(";")) {
           body += `${stmt}\n`;
         } else {

@@ -1,12 +1,15 @@
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
-import SqlString from "sqlstring";
+/// @ts-expect-error no typing
+import sqlT from "sql-tagged-template-literal";
 
 import { NetDef } from "../netdef/netdef.js";
 import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
 import type { ScenarioFolder } from "./folder.js";
 import type { NetworkFunction } from "./nf.js";
+
+const sql = sqlT as (queryParts: readonly string[], ...values: readonly unknown[]) => string;
 
 /** Apply network definition to scenario. */
 export function applyNetdef(f: ScenarioFolder, netdef: NetDef): void {
@@ -169,12 +172,12 @@ class NetDefProcessor {
       yield "DELETE FROM dn_ipv4_allocations";
       yield "DELETE FROM dnn";
       for (const { dnn, type, subnet } of network.dataNetworks) {
-        yield SqlString.format("INSERT dnn (dnn) VALUES (?) RETURNING @dn_id:=dn_id", [dnn]);
+        yield sql`INSERT dnn (dnn) VALUES (${dnn}) RETURNING @dn_id:=dn_id`;
         if (type === "IPv4") {
           assert(!!subnet);
           const net = new Netmask(subnet);
-          yield SqlString.format("INSERT dn_dns (dn_id,addr,ai_family) VALUES (@dn_id,?,?)", ["1.1.1.1", 2]);
-          yield SqlString.format("INSERT dn_info (dnn,network,prefix) VALUES (?,?,?)", [dnn, net.base, net.bitmask]);
+          yield "INSERT dn_dns (dn_id,addr,ai_family) VALUES (@dn_id,'1.1.1.1',2)";
+          yield sql`INSERT dn_info (dnn,network,prefix) VALUES (${dnn},${net.base},${net.bitmask})`;
         }
       }
     });
@@ -267,6 +270,7 @@ class NetDefProcessor {
               }
               case "IPv4": {
                 hasN6L3 = true;
+                break;
               }
             }
           }
@@ -317,21 +321,22 @@ class NetDefProcessor {
       yield "DELETE FROM gpsi_supi_association";
       yield "DELETE FROM supi";
       yield "DELETE FROM gpsi";
-      yield SqlString.format("SELECT @am_json:=access_and_mobility_sub_data FROM am_data WHERE supi=?", ["0"]);
-      yield SqlString.format("DELETE FROM am_data WHERE supi!=?", ["0"]);
-      yield SqlString.format("SELECT @dnn_json:=json FROM dnn_configurations WHERE supi=? LIMIT 1", ["default_data"]);
+      yield "SELECT @am_json:=access_and_mobility_sub_data FROM am_data WHERE supi='0'";
+      yield "DELETE FROM am_data WHERE supi!=0";
+      yield "SELECT @dnn_json:=json FROM dnn_configurations WHERE supi='default_data' LIMIT 1";
       yield "DELETE FROM dnn_configurations";
 
-      let everySubscriberHaveSubscribedNSSAI = true;
+      let everySubscriberHasSubscribedNSSAI = true;
       for (const { supi, k, opc, subscribedNSSAI } of network.subscribers) {
-        yield SqlString.format(
-          "INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type) " +
-          "VALUES (?,UNHEX(?),UNHEX(?),UNHEX(?),UNHEX(?),?,?,?) RETURNING @supi_id:=id",
-          [supi, k, usim.amf, opc, usim.sqn, 0, 1, 0]);
-        yield SqlString.format("INSERT gpsi (identity) VALUES (?) RETURNING @gpsi_id:=id", [`msisdn-${supi}`]);
+        yield sql`
+          INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type)
+          VALUES (${supi},UNHEX(${k}),UNHEX(${usim.amf}),UNHEX(${opc}),UNHEX(${usim.sqn}),0,1,0)
+          RETURNING @supi_id:=id
+        `;
+        yield sql`INSERT gpsi (identity) VALUES (${`msisdn-${supi}`}) RETURNING @gpsi_id:=id`;
         yield "INSERT gpsi_supi_association (gpsi_id,supi_id) VALUES (@gpsi_id,@supi_id)";
         if (subscribedNSSAI === undefined) {
-          everySubscriberHaveSubscribedNSSAI = false;
+          everySubscriberHasSubscribedNSSAI = false;
           continue;
         }
 
@@ -340,26 +345,22 @@ class NetDefProcessor {
             defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => expandSNSSAI(snssai)),
           },
         };
-        yield SqlString.format(
-          "INSERT am_data (supi,access_and_mobility_sub_data) VALUES (?,JSON_MERGE_PATCH(@am_json,?))",
-          [supi, JSON.stringify(amPatch)]);
+        yield sql`INSERT am_data (supi,access_and_mobility_sub_data) VALUES (${supi},JSON_MERGE_PATCH(@am_json,${amPatch}))`;
 
         for (const { snssai, dnns } of subscribedNSSAI) {
           for (const dnn of dnns) {
             const dn = netdef.findDN(dnn, snssai);
             assert(!!dn);
-            yield SqlString.format("INSERT dnn_configurations (supi,sst,dnn,json) VALUES (?,?,?,JSON_MERGE_PATCH(@dnn_json,?))",
-              [supi, ...toDnnConfigurationsColumns(dn)]);
+            yield insertDnnConfigurations(supi, dn);
           }
         }
       }
 
-      if (everySubscriberHaveSubscribedNSSAI) {
-        yield SqlString.format("DELETE FROM am_data WHERE supi=?", ["0"]);
+      if (everySubscriberHasSubscribedNSSAI) {
+        yield "DELETE FROM am_data WHERE supi='0'";
       } else {
         for (const dn of network.dataNetworks) {
-          yield SqlString.format("INSERT dnn_configurations (supi,sst,dnn,json) VALUES (?,?,?,JSON_MERGE_PATCH(@dnn_json,?))",
-            ["default_data", ...toDnnConfigurationsColumns(dn)]);
+          yield insertDnnConfigurations("default_data", dn);
         }
       }
     });
@@ -377,12 +378,12 @@ function listUniqueSNSSAIs(network: N.Network): PH.SNSSAI[] {
   return Array.from(set, (snssai) => expandSNSSAI(snssai));
 }
 
-function toDnnConfigurationsColumns({ dnn, snssai, type }: N.DataNetwork): [number, string, string] {
+function insertDnnConfigurations(supi: string, { dnn, snssai, type }: N.DataNetwork): string {
   const { sst } = expandSNSSAI(snssai);
   const patch = {
     pduSessionTypes: {
       defaultSessionType: type.toUpperCase(),
     },
   };
-  return [sst, dnn, JSON.stringify(patch)];
+  return sql`INSERT dnn_configurations (supi,sst,dnn,json) VALUES (${supi},${sst},${dnn},JSON_MERGE_PATCH(@dnn_json,${patch}))`;
 }
