@@ -7,6 +7,7 @@ import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
 import type { ScenarioFolder } from "./folder.js";
 import { IPMAP } from "./ipmap.js";
+import type { NetworkFunctionConfig } from "./nf.js";
 
 /** Apply network definition to scenario. */
 export function applyNetdef(f: ScenarioFolder, netdef: NetDef): void {
@@ -42,6 +43,10 @@ class NetDefProcessor {
   }
 
   private applyGNBs(f: ScenarioFolder): void {
+    const sliceKeys = ["slice", "slice2"] as const;
+    const slices = listUniqueSNSSAIs(this.network);
+    assert(slices.length <= sliceKeys.length);
+
     for (const [ct, gnb] of f.resizeNetworkFunction("gnb", this.network.gnbs)) {
       f.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("gnb");
@@ -54,6 +59,14 @@ class NetDefProcessor {
         config.mnc = "%MNC";
         ({ gnb: config.gnb_id, nci: config.cell_id } = this.netdef.splitNCI(gnb.nci));
         config.tac = this.netdef.tac;
+
+        for (const [i, k] of sliceKeys.entries()) {
+          if (slices.length > i) {
+            config[k] = slices[i];
+          } else {
+            delete config[k]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+          }
+        }
       });
     }
   }
@@ -109,6 +122,8 @@ class NetDefProcessor {
   }
 
   private applyAMF(f: ScenarioFolder): void {
+    f.editNetworkFunction("amf", (c) => this.setNrfClientSlices(c));
+
     f.editNetworkFunction("amf", (c) => {
       const { config } = c.getModule("amf");
       config.trackingArea.splice(0, Infinity, {
@@ -123,6 +138,8 @@ class NetDefProcessor {
 
   private applySMF(f: ScenarioFolder): void {
     const { network } = this;
+
+    f.editNetworkFunction("smf", (c) => this.setNrfClientSlices(c));
 
     f.editNetworkFunction("smf", (c) => {
       const { config } = c.getModule("sdn_routing_topology");
@@ -162,6 +179,11 @@ class NetDefProcessor {
         }
       }
     });
+  }
+
+  private setNrfClientSlices(c: NetworkFunctionConfig): void {
+    const { config } = c.getModule("nrf_client");
+    config.nf_profile.sNssais.splice(0, Infinity, ...listUniqueSNSSAIs(this.network));
   }
 
   private determineDataPathNodeType(node: string | N.DataNetworkID): PH.sdn_routing_topology.Node["type"] {
@@ -329,7 +351,7 @@ class NetDefProcessor {
 
         const amPatch = {
           nssai: {
-            defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => toSstSd(snssai)),
+            defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => expandSNSSAI(snssai)),
           },
         };
         yield SqlString.format(
@@ -358,14 +380,19 @@ class NetDefProcessor {
   }
 }
 
-function toSstSd(snssai: N.SNSSAI): { sst: number; sd?: string } {
+function expandSNSSAI(snssai: N.SNSSAI): PH.SNSSAI {
   const [sstHex, sd] = NetDef.splitSNSSAI(snssai);
   const sst = Number.parseInt(sstHex, 16);
   return sd === undefined ? { sst } : { sst, sd };
 }
 
+function listUniqueSNSSAIs(network: N.Network): PH.SNSSAI[] {
+  const set = new Set<string>(Array.from(network.dataNetworks, (dn) => dn.snssai));
+  return Array.from(set, (snssai) => expandSNSSAI(snssai));
+}
+
 function toDnnConfigurationsColumns({ dnn, snssai, type }: N.DataNetwork): [number, string, string] {
-  const { sst } = toSstSd(snssai);
+  const { sst } = expandSNSSAI(snssai);
   const patch = {
     pduSessionTypes: {
       defaultSessionType: type.toUpperCase(),

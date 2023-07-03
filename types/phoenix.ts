@@ -15,9 +15,15 @@ export interface Module<T extends {} = any> {
 export interface ModuleConfigMap {
   amf: amf.Config;
   gnb: gnb.Config;
+  nrf_client: nrf_client.Config;
   pfcp: pfcp.Config;
   sdn_routing_topology: sdn_routing_topology.Config;
   ue_5g_nas_only: ue_5g_nas_only.Config;
+}
+
+export interface SNSSAI {
+  sst: number;
+  sd?: string;
 }
 
 export namespace amf {
@@ -50,12 +56,28 @@ export namespace gnb {
     mcc: "%MCC";
     mnc: "%MNC";
     tac: number;
+    slice?: SNSSAI;
+    slice2?: SNSSAI;
     [k: string]: unknown;
   }
 
   export interface AMF {
     ngc_addr: string; // AMF N2 IP
     ngc_sctp_port: 38412;
+  }
+}
+
+export namespace nrf_client {
+  export interface Config {
+    nf_profile: Profile;
+    [k: string]: unknown;
+  }
+
+  export interface Profile {
+    nfType: string;
+    nfInstanceId: string;
+    sNssais: SNSSAI[];
+    [k: string]: unknown;
   }
 }
 
