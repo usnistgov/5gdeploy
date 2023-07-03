@@ -6,7 +6,7 @@ import fsWalk from "@nodelib/fs.walk";
 import * as envfile from "envfile";
 import assert from "minimalistic-assert";
 import DefaultMap from "mnemonist/default-map.js";
-import { type AnyIterable, collect, flatten } from "streaming-iterables";
+import { type AnyIterable, collect } from "streaming-iterables";
 
 import { IPMAP } from "./ipmap.js";
 import { NetworkFunctionConfig } from "./nf.js";
@@ -115,10 +115,10 @@ export class ScenarioFolder {
   }
 
   /** Append SQL statements to a database. */
-  public appendSQL(db: string, g: () => AnyIterable<string | AnyIterable<string>>): void {
+  public appendSQL(db: string, g: () => AnyIterable<string>): void {
     this.edit(`sql/${db}.sql`, async (body) => {
       body += "\n";
-      for await (const stmt of flatten(g())) {
+      for await (const stmt of g()) {
         if (stmt.endsWith(";")) {
           body += `${stmt}\n`;
         } else {

@@ -152,15 +152,15 @@ class NetDefProcessor {
       yield "DELETE FROM dn_info";
       yield "DELETE FROM dn_ipv4_allocations";
       yield "DELETE FROM dnn";
-      yield* network.dataNetworks.map(function*({ dnn, type, subnet }) {
-        yield SqlString.format("INSERT dnn (dnn) VALUES (?) RETURNING @dnid := dn_id", [dnn]);
+      for (const { dnn, type, subnet } of network.dataNetworks) {
+        yield SqlString.format("INSERT dnn (dnn) VALUES (?) RETURNING @dn_id:=dn_id", [dnn]);
         if (type === "IPv4") {
           assert(!!subnet);
           const net = new Netmask(subnet);
-          yield SqlString.format("INSERT dn_dns (dn_id,addr,ai_family) VALUES (@dnid,?,?)", ["1.1.1.1", 2]);
+          yield SqlString.format("INSERT dn_dns (dn_id,addr,ai_family) VALUES (@dn_id,?,?)", ["1.1.1.1", 2]);
           yield SqlString.format("INSERT dn_info (dnn,network,prefix) VALUES (?,?,?)", [dnn, net.base, net.bitmask]);
         }
-      });
+      }
     });
   }
 
@@ -290,46 +290,70 @@ class NetDefProcessor {
   }
 
   private applyUDM(f: ScenarioFolder): void {
-    const { network, usim } = this;
+    const { netdef, network, usim } = this;
 
     f.appendSQL("udm_db", function*() {
-      yield SqlString.format("SELECT @dnn_json := json FROM dnn_configurations WHERE supi=? LIMIT 1", ["default_data"]);
-      yield "DELETE FROM dnn_configurations";
-      yield* network.dataNetworks.map(({ dnn, snssai, type }) => {
+      for (const { dnn, snssai, type } of network.dataNetworks) {
         const [sst] = NetDef.splitSNSSAI(snssai);
         const patch = {
           pduSessionTypes: {
             defaultSessionType: type.toUpperCase(),
           },
         };
-        return SqlString.format("INSERT dnn_configurations (supi,sst,dnn,json) VALUES (?,?,?,JSON_MERGE_PATCH(@dnn_json,?))",
+        yield SqlString.format("INSERT dnn_configurations (supi,sst,dnn,json) VALUES (?,?,?,JSON_MERGE_PATCH(@dnn_json,?))",
           ["default_data", Number.parseInt(sst, 16), dnn, JSON.stringify(patch)]);
-      });
+      }
     });
 
     f.appendSQL("udm_db", function*() {
+      yield "DELETE FROM gpsi_supi_association";
       yield "DELETE FROM supi";
-      yield* network.subscribers.map(({ supi, k, opc }) => SqlString.format(
-        "INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type) VALUES (?,UNHEX(?),UNHEX(?),UNHEX(?),UNHEX(?),?,?,?)",
-        [supi, k, usim.amf, opc, usim.sqn, 0, 1, 0]));
-    });
-
-    f.appendSQL("udm_db", function*() {
-      yield SqlString.format("SELECT @am_json := access_and_mobility_sub_data FROM am_data WHERE supi=?", ["0"]);
+      yield "DELETE FROM gpsi";
+      yield SqlString.format("SELECT @am_json:=access_and_mobility_sub_data FROM am_data WHERE supi=?", ["0"]);
       yield SqlString.format("DELETE FROM am_data WHERE supi!=?", ["0"]);
-      yield* network.subscribers.map(function*({ supi, subscribedNSSAI }) {
+      yield SqlString.format("SELECT @dnn_json:=json FROM dnn_configurations WHERE supi=? LIMIT 1", ["default_data"]);
+      yield "DELETE FROM dnn_configurations";
+
+      let everySubscriberHaveSubscribedNSSAI = true;
+      for (const { supi, k, opc, subscribedNSSAI } of network.subscribers) {
+        yield SqlString.format(
+          "INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type) " +
+          "VALUES (?,UNHEX(?),UNHEX(?),UNHEX(?),UNHEX(?),?,?,?) RETURNING @supi_id:=id",
+          [supi, k, usim.amf, opc, usim.sqn, 0, 1, 0]);
+        yield SqlString.format("INSERT gpsi (identity) VALUES (?) RETURNING @gpsi_id:=id", [`msisdn-${supi}`]);
+        yield "INSERT gpsi_supi_association (gpsi_id,supi_id) VALUES (@gpsi_id,@supi_id)";
         if (subscribedNSSAI === undefined) {
-          return;
+          everySubscriberHaveSubscribedNSSAI = false;
+          continue;
         }
-        const patch = {
+
+        const amPatch = {
           nssai: {
             defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => toSstSd(snssai)),
           },
         };
         yield SqlString.format(
           "INSERT am_data (supi,access_and_mobility_sub_data) VALUES (?,JSON_MERGE_PATCH(@am_json,?))",
-          [supi, JSON.stringify(patch)]);
-      });
+          [supi, JSON.stringify(amPatch)]);
+
+        for (const { snssai, dnns } of subscribedNSSAI) {
+          for (const dnn of dnns) {
+            const dn = netdef.findDN(dnn, snssai);
+            assert(!!dn);
+            yield SqlString.format("INSERT dnn_configurations (supi,sst,dnn,json) VALUES (?,?,?,JSON_MERGE_PATCH(@dnn_json,?))",
+              [supi, ...toDnnConfigurationsColumns(dn)]);
+          }
+        }
+      }
+
+      if (everySubscriberHaveSubscribedNSSAI) {
+        yield SqlString.format("DELETE FROM am_data WHERE supi=?", ["0"]);
+      } else {
+        for (const dn of network.dataNetworks) {
+          yield SqlString.format("INSERT dnn_configurations (supi,sst,dnn,json) VALUES (?,?,?,JSON_MERGE_PATCH(@dnn_json,?))",
+            ["default_data", ...toDnnConfigurationsColumns(dn)]);
+        }
+      }
     });
   }
 }
@@ -338,4 +362,14 @@ function toSstSd(snssai: N.SNSSAI): { sst: number; sd?: string } {
   const [sstHex, sd] = NetDef.splitSNSSAI(snssai);
   const sst = Number.parseInt(sstHex, 16);
   return sd === undefined ? { sst } : { sst, sd };
+}
+
+function toDnnConfigurationsColumns({ dnn, snssai, type }: N.DataNetwork): [number, string, string] {
+  const { sst } = toSstSd(snssai);
+  const patch = {
+    pduSessionTypes: {
+      defaultSessionType: type.toUpperCase(),
+    },
+  };
+  return [sst, dnn, JSON.stringify(patch)];
 }
