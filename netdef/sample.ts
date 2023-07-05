@@ -32,6 +32,7 @@ const network: Network = {
         { snssai: "90000001", dnns: ["net5"] },
         { snssai: "01", dnns: ["net6"] },
       ],
+      gnbs: ["gnb2"],
     },
   ],
   gnbs: [

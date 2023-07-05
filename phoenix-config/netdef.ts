@@ -74,6 +74,7 @@ class NetDefProcessor {
   }
 
   private applyUEs(f: ScenarioFolder): void {
+    const allGNBs = this.network.gnbs.map((gnb) => gnb.name);
     for (const [ct, subscriber] of f.scaleNetworkFunction("ue1", this.network.subscribers)) {
       f.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("ue_5g_nas_only");
@@ -99,8 +100,10 @@ class NetDefProcessor {
         )));
         config.DefaultNetwork.dnn = config.dn_list[0]?.dnn ?? "default";
 
-        config.Cell.splice(0, Infinity, ...this.network.gnbs.map((gnb): PH.ue_5g_nas_only.Cell => {
-          const ip = `%${gnb.name.toUpperCase()}_AIR_IP`;
+        config.Cell.splice(0, Infinity, ...(subscriber.gnbs ?? allGNBs).map((name): PH.ue_5g_nas_only.Cell => {
+          const ip = `%${name.toUpperCase()}_AIR_IP`;
+          const gnb = this.netdef.findGNB(name);
+          assert(!!gnb);
           return {
             cell_id: this.netdef.splitNCI(gnb.nci).nci,
             mcc: "%MCC",

@@ -58,6 +58,12 @@ export interface Subscriber {
 
   /** Configured/requested NSSAI and DNNs (requested by the UE). */
   requestedNSSAI?: SubscriberSNSSAI[];
+
+  /**
+   * Detected gNBs (short names).
+   * Default is all defined gNBs.
+   */
+  gnbs?: string[];
 }
 
 /** Subscriber S-NSSAI and DNNs. */

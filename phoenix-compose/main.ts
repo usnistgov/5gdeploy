@@ -7,8 +7,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 import { NetDef } from "../netdef/netdef.js";
-import { ScenarioFolder } from "../phoenix-config/folder.js";
-import { applyNetdef } from "../phoenix-config/netdef.js";
+import { applyNetdef as phApplyNetdef, ScenarioFolder } from "../phoenix-config/mod.js";
 import * as compose from "./compose.js";
 
 const args = await yargs(hideBin(process.argv))
@@ -41,9 +40,10 @@ const args = await yargs(hideBin(process.argv))
   .parseAsync();
 
 const folder = await ScenarioFolder.load(args.cfg);
+let netdef: NetDef | undefined;
 if (args.netdef) {
-  const netdef = new NetDef(JSON.parse(await fs.readFile(args.netdef, "utf8")));
-  applyNetdef(folder, netdef);
+  netdef = new NetDef(JSON.parse(await fs.readFile(args.netdef, "utf8")));
+  phApplyNetdef(folder, netdef);
 }
 await folder.save(path.resolve(args.out, "cfg"), path.resolve(args.out, "sql"));
 
