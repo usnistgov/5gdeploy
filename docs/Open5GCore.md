@@ -9,10 +9,11 @@ Build Open5GCore Docker image:
 
 ```bash
 cd ~/phoenix-repo/phoenix-src
-docker build --pull -t 5gdeploy.localhost/phoenix-base \
+sed 's/cmake -G Ninja/\0 -DWITH_4G=OFF -DWITH_5G=ON/' deploy/docker/Dockerfile \
+| docker build --pull -t 5gdeploy.localhost/phoenix-base \
   --build-arg UBUNTU_VERSION=22.04 \
   --build-arg CACHE_PREFIX= \
-  -f deploy/docker/Dockerfile .
+  -f - .
 
 cd ~/5gdeploy
 docker build -t 5gdeploy.localhost/phoenix docker/phoenix
