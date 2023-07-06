@@ -26,6 +26,7 @@
     "minimalistic-assert": "^1.0.1",
     "mnemonist": "^0.39.5",
     "netmask": "^2.0.2",
+    "p-event": "^6.0.0",
     "sql-tagged-template-literal": "^1.2.0",
     "streaming-iterables": "^7.1.0",
     "strip-ansi": "^7.1.0",

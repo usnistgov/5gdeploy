@@ -1,45 +1,29 @@
-import jayson from "jayson/promise/index.js";
-import stripAnsi from "strip-ansi";
+import fs from "node:fs/promises";
+import path from "node:path";
+
+import assert from "minimalistic-assert";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-let client: jayson.Client;
+import { IPMAP, NetworkFunction } from "../phoenix-config/mod.js";
+import { type PhoenixClient, PhoenixClientJSONRPC, PhoenixClientUDP } from "./client.js";
 
-async function request(method: string, params: jayson.RequestParamsLike): Promise<any> {
-  const { error, result } = await client.request(method, params);
-  if (error) {
-    process.stderr.write(`${JSON.stringify(error)}\n`);
-    process.exit(1); // eslint-disable-line unicorn/no-process-exit
+let clientJ: PhoenixClientJSONRPC;
+let clientU: PhoenixClientUDP;
+
+function print<T>(value: T): T {
+  const { color } = (value as PhoenixClient.ExecuteCommandResult);
+  if (typeof color === "string") {
+    process.stdout.write(`${color}\n`);
+    return value;
   }
-  return result;
-}
 
-async function requestAndPrint(method: string, params: jayson.RequestParamsLike): Promise<any> {
-  const result = await request(method, params);
-  if (typeof result === "string") {
-    process.stdout.write(`${result}\n`);
+  if (typeof value === "string") {
+    process.stdout.write(`${value}\n`);
   } else {
-    process.stdout.write(`${JSON.stringify(result)}\n`);
+    process.stdout.write(`${JSON.stringify(value)}\n`);
   }
-  return result;
-}
-
-async function executeRemoteCommand(cmd: string, args: readonly string[]): Promise<string> {
-  const result = await request("remote_command.cmd", { command_name: cmd, command_parameters: args.join(" ") });
-  let reply = "";
-  if (result.command_reply) {
-    reply = result.command_reply;
-  } else if (Array.isArray(result.command_reply_list)) {
-    reply = result.command_reply_list.join("\n");
-  }
-
-  const noColor = stripAnsi(reply);
-  if (process.env.NO_COLOR) {
-    reply = noColor;
-  }
-
-  process.stdout.write(`${reply}\n`);
-  return noColor;
+  return value;
 }
 
 await yargs(hideBin(process.argv))
@@ -48,23 +32,35 @@ await yargs(hideBin(process.argv))
   .scriptName("phoenix-rpc")
   .option("host", {
     demandOption: true,
-    desc: "server IP address",
+    desc: "network function IP address or JSON filename",
     type: "string",
   })
-  .option("port", {
+  .option("jsonrpc-port", {
     default: 10010,
-    desc: "server port number",
+    desc: "JSON-RPC port number",
     type: "number",
   })
-  .middleware(({ host, port }) => {
-    client = jayson.Client.http({
-      host,
-      port,
-      path: "/jsonrpc",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  .option("udp-port", {
+    default: 10000,
+    desc: "UDP port number",
+    type: "number",
+  })
+  .middleware(async ({ host, jsonrpcPort, udpPort }) => {
+    const addrs: Record<"j" | "u", [string, number]> = { j: [host, jsonrpcPort], u: [host, udpPort] };
+    if (host.endsWith(".json")) {
+      const ipmap = IPMAP.parse(await fs.readFile(path.resolve(path.dirname(host), "ip-map"), "utf8"));
+      const nf = NetworkFunction.parse(await fs.readFile(host, "utf8"));
+      for (const [module, addrKey] of [["httpd", "j"], ["command", "u"]] as const) {
+        const { config } = nf.getModule(module);
+        assert(config.Acceptor.length > 0);
+        const { bind, port } = config.Acceptor[0]!;
+        const addr = bind.startsWith("%") ? ipmap.resolveEnv(bind.slice(1)) : bind;
+        assert(!!addr);
+        addrs[addrKey] = [addr, port];
+      }
+    }
+    clientJ = new PhoenixClientJSONRPC(...addrs.j);
+    clientU = new PhoenixClientUDP(...addrs.u);
   })
   .command("$0 <cmd> [args..]", "execute remote command",
     (yargs) => yargs
@@ -79,17 +75,27 @@ await yargs(hideBin(process.argv))
         type: "string",
       }),
     async ({ cmd, args = [] }) => {
-      await executeRemoteCommand(cmd, args);
+      print(await clientU.executeCommand(cmd, args));
     },
   )
-  .command("introspect", "introspect remote commands", {},
-    async () => {
-      await requestAndPrint("remote_command.introspect", []);
+  .command("introspect", "introspect remote commands",
+    (yargs) => yargs
+      .option("json", {
+        default: false,
+        desc: "want JSON output",
+        type: "boolean",
+      }),
+    async ({ json }) => {
+      if (json) {
+        print(await clientJ.request("remote_command.introspect", []));
+      } else {
+        print(await clientU.executeCommand("help", []));
+      }
     },
   )
   .command("ue-status", "retrieve UE status", {},
     async () => {
-      await requestAndPrint("ue5g.status", []);
+      print(await clientJ.request("ue5g.status", []));
     },
   )
   .command("ue-register", "register UE",
@@ -99,21 +105,21 @@ await yargs(hideBin(process.argv))
         type: "string",
       }),
     async ({ dnn }) => {
-      const status = await requestAndPrint("ue5g.status", []);
+      const status = print(await clientJ.request("ue5g.status", []));
       if (status.access_3gpp.mm_state_str !== "MM_REGISTERED") {
-        await requestAndPrint("ue5g.register", { access_type: 1, no_pdu: !!dnn });
+        print(await clientJ.request("ue5g.register", { access_type: 1, no_pdu: !!dnn }));
       }
 
       if (dnn && status.pdu[dnn]?.sm_state_str !== "PDU_SESSION_ACTIVE") {
-        await requestAndPrint("ue5g.establish", { access_type: 1, DNN: dnn, route: 1 });
+        print(await clientJ.request("ue5g.establish", { access_type: 1, DNN: dnn, route: 1 }));
       }
     },
   )
   .command("ue-deregister", "unregister UE", {},
     async () => {
-      const status = await requestAndPrint("ue5g.status", []);
+      const status = print(await clientJ.request("ue5g.status", []));
       if (status.access_3gpp.mm_state_str !== "MM_DEREGISTERED") {
-        await requestAndPrint("ue5g.deregister", { access_type: 1 });
+        print(await clientJ.request("ue5g.deregister", { access_type: 1 }));
       }
     },
   )

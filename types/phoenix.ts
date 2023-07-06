@@ -14,6 +14,7 @@ export interface ModuleConfigMap {
   amf: amf.Config;
   command: command.Config;
   gnb: gnb.Config;
+  httpd: httpd.Config;
   nrf_client: nrf_client.Config;
   pfcp: pfcp.Config;
   sdn_routing_topology: sdn_routing_topology.Config;
@@ -44,8 +45,15 @@ export namespace amf {
 
 export namespace command {
   export interface Config {
+    Acceptor: Acceptor[];
     GreetingText: string;
     [k: string]: unknown;
+  }
+
+  export interface Acceptor {
+    bind: string;
+    port: number;
+    type: "udp";
   }
 }
 
@@ -70,6 +78,19 @@ export namespace gnb {
   export interface AMF {
     ngc_addr: string; // AMF N2 IP
     ngc_sctp_port: 38412;
+  }
+}
+
+export namespace httpd {
+  export interface Config {
+    Acceptor: Acceptor[];
+    [k: string]: unknown;
+  }
+
+  export interface Acceptor {
+    bind: string;
+    port: number;
+    [k: string]: unknown;
   }
 }
 

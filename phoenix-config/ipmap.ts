@@ -10,7 +10,8 @@ export class IPMAP {
    * @param rejectEnv convert rejected records as ct_net_IP=ip environs.
    */
   public static parse(body: string, rejectEnv?: Map<string, string>): IPMAP {
-    const ipmap = new IPMAP();
+    const networks = new Map<string, Netmask>();
+    const containers = new DefaultMap<string, Map<string, string>>(() => new Map());
     for (let line of body.split("\n")) {
       line = line.trim();
       let tokens: [string, string, string, string];
@@ -23,14 +24,16 @@ export class IPMAP {
         rejectEnv?.set(`${ct.toUpperCase()}_${net.toUpperCase()}_IP`, ip);
         continue;
       }
-      ipmap.networks_.set(net, new Netmask(ip, cidr));
-      ipmap.containers_.get(ct).set(net, ip);
+      networks.set(net, new Netmask(ip, cidr));
+      containers.get(ct).set(net, ip);
     }
-    return ipmap;
+    return new IPMAP(networks, new Map<string, Map<string, string>>(containers));
   }
 
-  private readonly networks_ = new Map<string, Netmask>();
-  private readonly containers_ = new DefaultMap<string, Map<string, string>>(() => new Map());
+  private constructor(
+      private readonly networks_: Map<string, Netmask>,
+      private readonly containers_: Map<string, Map<string, string>>,
+  ) {}
 
   /**
    * List networks.
@@ -57,6 +60,17 @@ export class IPMAP {
         yield ct;
       }
     }
+  }
+
+  /** Resolve ct_net_IP environment variable. */
+  public resolveEnv(env: string): string | undefined {
+    let tokens: string[];
+    if ((tokens = env.toLowerCase().split("_")).length < 3 || tokens.at(-1) !== "ip") {
+      return undefined;
+    }
+    const net = tokens.at(-2)!;
+    const ct = tokens.slice(0, -2).join("_");
+    return this.containers_.get(ct)?.get(net);
   }
 
   private suggestIPLastOctet(nf: string): number | undefined {
@@ -110,7 +124,7 @@ export class IPMAP {
       const net = this.networks_.get(netif);
       assert(!!net);
       assert(net.bitmask <= 24);
-      this.containers_.get(name).set(netif, long2ip(net.netLong + lastOctet));
+      this.containers_.get(name)!.set(netif, long2ip(net.netLong + lastOctet));
     }
   }
 
