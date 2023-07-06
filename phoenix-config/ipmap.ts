@@ -59,20 +59,6 @@ export class IPMAP {
     }
   }
 
-  /**
-   * Suggest unused sequential container name.
-   * @param nf network function name.
-   */
-  public suggestContainerName(nf: string): string {
-    assert.equal(nf, IPMAP.toNf(nf));
-    for (let i = 1; ; ++i) {
-      const name = `${nf}${i}`;
-      if (!this.containers_.has(name)) {
-        return name;
-      }
-    }
-  }
-
   private suggestIPLastOctet(nf: string): number | undefined {
     let hint = 1;
     for (const [ct, nets] of this.containers_) {
@@ -113,7 +99,7 @@ export class IPMAP {
    * When possible, the new container will be assigned IP addresses adjacent to existing containers
    * of the same network function.
    */
-  public addContainer(name: string, netifs: string[]): void {
+  public addContainer(name: string, netifs: readonly string[]): void {
     assert(!this.containers_.has(name));
     const lastOctet = this.suggestIPLastOctet(IPMAP.toNf(name));
     if (lastOctet === undefined) {

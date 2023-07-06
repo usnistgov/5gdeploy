@@ -1,10 +1,10 @@
 import assert from "minimalistic-assert";
 
-import type * as T from "../types/netdef.js";
+import type * as N from "../types/netdef.js";
 
 /** 5G network definition model. */
 export class NetDef {
-  constructor(public network: T.Network) {}
+  constructor(public network: N.Network) {}
 
   /** Return Tracking Area Code (TAC). */
   public get tac(): number {
@@ -25,19 +25,19 @@ export class NetDef {
   }
 
   /** Find gNB by short name. */
-  public findGNB(name: string): T.GNB | undefined {
+  public findGNB(name: string): N.GNB | undefined {
     return this.network.gnbs.find((gnb) => gnb.name === name);
   }
 
   /** Find UPF by short name. */
-  public findUPF(name: string): T.UPF | undefined {
+  public findUPF(name: string): N.UPF | undefined {
     return this.network.upfs.find((upf) => upf.name === name);
   }
 
   /** Find Data Network by dnn and optional snssai. */
-  public findDN(dnn: string, snssai?: string): T.DataNetwork | undefined;
-  public findDN(id: T.DataNetworkID): T.DataNetwork | undefined;
-  public findDN(dnn: T.DataNetworkID | string, snssai?: string): T.DataNetwork | undefined {
+  public findDN(dnn: string, snssai?: string): N.DataNetwork | undefined;
+  public findDN(id: N.DataNetworkID): N.DataNetwork | undefined;
+  public findDN(dnn: N.DataNetworkID | string, snssai?: string): N.DataNetwork | undefined {
     if (typeof dnn !== "string") {
       return this.findDN(dnn.dnn, dnn.snssai);
     }
@@ -46,7 +46,7 @@ export class NetDef {
 }
 export namespace NetDef {
   /** Split PLMN to MCC and MNC. */
-  export function splitPLMN(plmn: T.PLMN): [mcc: string, mnc: string] {
+  export function splitPLMN(plmn: N.PLMN): [mcc: string, mnc: string] {
     assert(/^\d{3}-\d{2,3}$/.test(plmn));
     return plmn.split("-") as [string, string];
   }
@@ -59,7 +59,7 @@ export namespace NetDef {
   }
 
   /** Split S-NSSAI to sst and sd. */
-  export function splitSNSSAI(snssai: T.SNSSAI): [sst: string] | [sst: string, sd: string] {
+  export function splitSNSSAI(snssai: N.SNSSAI): [sst: string] | [sst: string, sd: string] {
     assert(/^[\da-f]{2}(?:[\da-f]{6})?$/i.test(snssai));
     if (snssai.length === 2) {
       return [snssai];
@@ -68,7 +68,7 @@ export namespace NetDef {
   }
 
   /** Normalize data path link as object form. */
-  export function normalizeDataPathLink(link: T.DataPathLink): T.DataPathLink.Object {
+  export function normalizeDataPathLink(link: N.DataPathLink): N.DataPathLink.Object {
     if (Array.isArray(link)) {
       return { a: link[0], b: link[1] };
     }

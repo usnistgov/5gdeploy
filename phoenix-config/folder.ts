@@ -52,8 +52,8 @@ export class ScenarioFolder {
   }
 
   /** Edit a file. */
-  public edit(file: string, f: ScenarioFolder.EditFunc): void {
-    this.edits.get(file).push(f);
+  public edit(file: string, sf: ScenarioFolder.EditFunc): void {
+    this.edits.get(file).push(sf);
   }
 
   /**
@@ -77,7 +77,7 @@ export class ScenarioFolder {
       if (typeof ct !== "string") {
         ct = `${nf}${i}`;
       }
-      assert.equal(IPMAP.toNf(ct), nf);
+      assert(IPMAP.toNf(ct) === nf);
 
       m.set(ct, item);
       if (!existing.delete(ct)) {

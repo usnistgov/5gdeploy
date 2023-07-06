@@ -1,7 +1,6 @@
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
-/// @ts-expect-error no typing
-import sqlT from "sql-tagged-template-literal";
+import sql from "sql-tagged-template-literal";
 
 import { NetDef } from "../netdef/netdef.js";
 import type * as N from "../types/netdef.js";
@@ -9,16 +8,15 @@ import type * as PH from "../types/phoenix.js";
 import type { ScenarioFolder } from "./folder.js";
 import type { NetworkFunction } from "./nf.js";
 
-const sql = sqlT as (queryParts: readonly string[], ...values: readonly unknown[]) => string;
-
 /** Apply network definition to scenario. */
-export function applyNetdef(f: ScenarioFolder, netdef: NetDef): void {
-  new NetDefProcessor(netdef).applyTo(f);
+export function applyNetdef(sf: ScenarioFolder, netdef: NetDef): void {
+  new NetDefProcessor(netdef, sf).process();
 }
 
 class NetDefProcessor {
   constructor(
       private readonly netdef: NetDef,
+      private readonly sf: ScenarioFolder,
   ) {
     this.network = this.netdef.network;
   }
@@ -26,31 +24,32 @@ class NetDefProcessor {
   private readonly network: N.Network;
   private readonly usim = { sqn: "000000000001", amf: "8000" } as const;
 
-  public applyTo(f: ScenarioFolder): void {
-    this.applyEnv(f);
-    this.applyGNBs(f);
-    this.applyUEs(f);
-    this.applyBT(f);
-    this.applyAMF(f);
-    this.applySMF(f);
-    this.applyUPF(f);
-    this.applyUDM(f);
+  public process(): void {
+    this.applyEnv();
+    this.applyGNBs();
+    this.applyUEs();
+    this.applyBT();
+    this.applyAMF();
+    this.applySMF();
+    this.applyUPF();
+    this.applyUDM();
   }
 
-  private applyEnv(f: ScenarioFolder): void {
+  private applyEnv(): void {
     const [mcc, mnc] = NetDef.splitPLMN(this.network.plmn);
-    f.env.set("MCC", mcc);
-    f.env.set("MNC", mnc);
-    f.env.set("PROMETHEUS_ENABLED", "0");
+    assert(mnc.length === 2, "Open5GCore only supports 2-digit MNC");
+    this.sf.env.set("MCC", mcc);
+    this.sf.env.set("MNC", mnc);
+    this.sf.env.set("PROMETHEUS_ENABLED", "0");
   }
 
-  private applyGNBs(f: ScenarioFolder): void {
+  private applyGNBs(): void {
     const sliceKeys = ["slice", "slice2"] as const;
     const slices = listUniqueSNSSAIs(this.network);
-    assert(slices.length <= sliceKeys.length);
+    assert(slices.length <= sliceKeys.length, `gNB allows up to ${sliceKeys.length} slices`);
 
-    for (const [ct, gnb] of f.scaleNetworkFunction("gnb1", this.network.gnbs)) {
-      f.editNetworkFunction(ct, (c) => {
+    for (const [ct, gnb] of this.sf.scaleNetworkFunction("gnb1", this.network.gnbs)) {
+      this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("gnb");
         delete config.amf_addr;
         delete config.amf_port;
@@ -73,10 +72,10 @@ class NetDefProcessor {
     }
   }
 
-  private applyUEs(f: ScenarioFolder): void {
+  private applyUEs(): void {
     const allGNBs = this.network.gnbs.map((gnb) => gnb.name);
-    for (const [ct, subscriber] of f.scaleNetworkFunction("ue1", this.network.subscribers)) {
-      f.editNetworkFunction(ct, (c) => {
+    for (const [ct, subscriber] of this.sf.scaleNetworkFunction("ue1", this.network.subscribers)) {
+      this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("ue_5g_nas_only");
         config.usim = {
           supi: subscriber.supi,
@@ -117,19 +116,19 @@ class NetDefProcessor {
     }
   }
 
-  private applyBT(f: ScenarioFolder): void {
+  private applyBT(): void {
     for (const nf of ["bt", "btup"]) {
-      for (const ct of f.ipmap.listContainersByNf(nf)) {
-        f.ipmap.removeContainer(ct);
-        f.files.delete(`${ct}.json`);
+      for (const ct of this.sf.ipmap.listContainersByNf(nf)) {
+        this.sf.ipmap.removeContainer(ct);
+        this.sf.files.delete(`${ct}.json`);
       }
     }
   }
 
-  private applyAMF(f: ScenarioFolder): void {
-    f.editNetworkFunction("amf", (c) => this.setNrfClientSlices(c));
+  private applyAMF(): void {
+    this.sf.editNetworkFunction("amf", (c) => this.setNrfClientSlices(c));
 
-    f.editNetworkFunction("amf", (c) => {
+    this.sf.editNetworkFunction("amf", (c) => {
       const { config } = c.getModule("amf");
       config.trackingArea.splice(0, Infinity, {
         mcc: "%MCC",
@@ -141,12 +140,12 @@ class NetDefProcessor {
     });
   }
 
-  private applySMF(f: ScenarioFolder): void {
+  private applySMF(): void {
     const { network } = this;
 
-    f.editNetworkFunction("smf", (c) => this.setNrfClientSlices(c));
+    this.sf.editNetworkFunction("smf", (c) => this.setNrfClientSlices(c));
 
-    f.editNetworkFunction("smf", (c) => {
+    this.sf.editNetworkFunction("smf", (c) => {
       const { config } = c.getModule("sdn_routing_topology");
       config.Topology.Link = this.network.dataPaths.links.map((link) => {
         const { a: nodeA, b: nodeB, cost = 1 } = NetDef.normalizeDataPathLink(link);
@@ -160,7 +159,7 @@ class NetDefProcessor {
       });
     });
 
-    f.editNetworkFunction("smf", (c) => {
+    this.sf.editNetworkFunction("smf", (c) => {
       const { config } = c.getModule("pfcp");
       config.Associations.Peer.splice(0, Infinity, ...this.network.upfs.map((upf): PH.pfcp.Acceptor => ({
         type: "udp",
@@ -169,7 +168,7 @@ class NetDefProcessor {
       })));
     });
 
-    f.appendSQL("smf_db", function*() {
+    this.sf.appendSQL("smf_db", function*() {
       yield "DELETE FROM dn_dns";
       yield "DELETE FROM dn_info";
       yield "DELETE FROM dn_ipv4_allocations";
@@ -242,9 +241,9 @@ class NetDefProcessor {
     };
   }
 
-  private applyUPF(f: ScenarioFolder): void {
-    for (const [ct, upf] of f.scaleNetworkFunction("upf1", this.network.upfs)) {
-      f.editNetworkFunction(ct, (c) => {
+  private applyUPF(): void {
+    for (const [ct, upf] of this.sf.scaleNetworkFunction("upf1", this.network.upfs)) {
+      this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("pfcp");
         assert(config.mode === "UP");
         assert(config.data_plane_mode === "integrated");
@@ -260,11 +259,11 @@ class NetDefProcessor {
             continue;
           }
           if (typeof peer === "string") {
-            hasN3 ||= this.netdef.findGNB(peer) !== undefined;
-            hasN9 ||= this.netdef.findUPF(peer) !== undefined;
+            hasN3 ||= !!this.netdef.findGNB(peer);
+            hasN9 ||= !!this.netdef.findUPF(peer);
           } else {
             const dn = this.netdef.findDN(peer);
-            assert(dn);
+            assert(!!dn);
             switch (dn.type) {
               case "Ethernet": {
                 assert(config.ethernet_session_identifier === undefined, "UPF only supports one Ethernet DN");
@@ -311,16 +310,16 @@ class NetDefProcessor {
             mode: "thread_pool",
           });
         }
-        assert(config.DataPlane.interfaces.length <= 8);
+        assert(config.DataPlane.interfaces.length <= 8, "pfcp.so allows up to 8 interfaces");
         delete config.DataPlane.xdp;
       });
     }
   }
 
-  private applyUDM(f: ScenarioFolder): void {
+  private applyUDM(): void {
     const { netdef, network, usim } = this;
 
-    f.appendSQL("udm_db", function*() {
+    this.sf.appendSQL("udm_db", function*() {
       yield "DELETE FROM gpsi_supi_association";
       yield "DELETE FROM supi";
       yield "DELETE FROM gpsi";
