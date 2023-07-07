@@ -7,6 +7,7 @@ import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
 import type { ScenarioFolder } from "./folder.js";
 import type { NetworkFunction } from "./nf.js";
+import { type OtherTable } from "./other.js";
 
 /** Apply network definition to scenario. */
 export function applyNetdef(sf: ScenarioFolder, netdef: NetDef): void {
@@ -242,42 +243,44 @@ class NetDefProcessor {
   }
 
   private applyUPF(): void {
+    this.deleteNonDefaultRoutes("igw");
     for (const [ct, upf] of this.sf.scaleNetworkFunction("upf1", this.network.upfs)) {
+      let hasN3 = false;
+      let hasN9 = false;
+      const subnetsN6L3: string[] = [];
+      let dnnN6L2: string | undefined;
+      for (let link of this.network.dataPaths.links) {
+        link = NetDef.normalizeDataPathLink(link);
+        const peer = link.a === upf.name ? link.b : link.b === upf.name ? link.a : undefined;
+        if (peer === undefined) {
+          continue;
+        }
+
+        if (typeof peer === "string") {
+          hasN3 ||= !!this.netdef.findGNB(peer);
+          hasN9 ||= !!this.netdef.findUPF(peer);
+        } else {
+          const dn = this.netdef.findDN(peer);
+          assert(!!dn);
+          switch (dn.type) {
+            case "Ethernet": {
+              assert(!dnnN6L2, "UPF only supports one Ethernet DN");
+              dnnN6L2 = dn.dnn;
+              break;
+            }
+            case "IPv4": {
+              subnetsN6L3.push(dn.subnet!);
+              break;
+            }
+          }
+        }
+      }
+
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("pfcp");
         assert(config.mode === "UP");
         assert(config.data_plane_mode === "integrated");
-
-        let hasN3 = false;
-        let hasN9 = false;
-        let hasN6L3 = false;
-        delete config.ethernet_session_identifier;
-        for (let link of this.network.dataPaths.links) {
-          link = NetDef.normalizeDataPathLink(link);
-          const peer = link.a === upf.name ? link.b : link.b === upf.name ? link.a : undefined;
-          if (peer === undefined) {
-            continue;
-          }
-          if (typeof peer === "string") {
-            hasN3 ||= !!this.netdef.findGNB(peer);
-            hasN9 ||= !!this.netdef.findUPF(peer);
-          } else {
-            const dn = this.netdef.findDN(peer);
-            assert(!!dn);
-            switch (dn.type) {
-              case "Ethernet": {
-                assert(config.ethernet_session_identifier === undefined, "UPF only supports one Ethernet DN");
-                config.ethernet_session_identifier = dn.dnn;
-                break;
-              }
-              case "IPv4": {
-                hasN6L3 = true;
-                break;
-              }
-            }
-          }
-        }
-
+        config.ethernet_session_identifier = dnnN6L2;
         config.DataPlane.interfaces.splice(0, Infinity);
         if (hasN3) {
           config.DataPlane.interfaces.push({
@@ -295,7 +298,7 @@ class NetDefProcessor {
             mode: "thread_pool",
           });
         }
-        if (hasN6L3) {
+        if (subnetsN6L3.length > 0) {
           config.DataPlane.interfaces.push({
             type: "n6_l3",
             name: "n6_tun",
@@ -303,16 +306,52 @@ class NetDefProcessor {
             mode: "thread_pool",
           });
         }
-        if (config.ethernet_session_identifier) {
+        if (dnnN6L2) {
           config.DataPlane.interfaces.push({
             type: "n6_l2",
-            name: "n6_eth",
+            name: "n6_tap",
             mode: "thread_pool",
           });
         }
         assert(config.DataPlane.interfaces.length <= 8, "pfcp.so allows up to 8 interfaces");
         delete config.DataPlane.xdp;
       });
+
+      this.sf.initCommands.get(ct).splice(0, Infinity, ...(function*() {
+        if (subnetsN6L3.length > 0 || dnnN6L2) {
+          yield "ip link set n6 mtu 1456";
+        }
+        if (subnetsN6L3.length > 0) {
+          yield "ip tuntap add mode tun user root name n6_tun";
+          yield "ip link set n6_tun up";
+        }
+        if (dnnN6L2) {
+          yield "ip link add name br-eth type bridge";
+          yield "ip link set br-eth up";
+          yield "ip tuntap add mode tap user root name n6_tap";
+          yield "ip link set n6_tap up master br-eth";
+        }
+      })());
+
+      this.deleteNonDefaultRoutes(ct);
+      for (const subnet of subnetsN6L3) {
+        const dest = new Netmask(subnet);
+        this.sf.routes.set(ct, { dest, dev: "n6_tun" });
+        this.sf.routes.set("igw", { dest, via: this.sf.ipmap.containers.get(ct)!.get("n6")! });
+      }
+    }
+  }
+
+  private deleteNonDefaultRoutes(ct: string): void {
+    let dflt: OtherTable.Route | undefined;
+    for (const route of (this.sf.routes.get(ct) ?? [])) {
+      if (route.dest.netLong === 0) {
+        dflt = route;
+      }
+    }
+    this.sf.routes.delete(ct);
+    if (dflt) {
+      this.sf.routes.set(ct, dflt);
     }
   }
 

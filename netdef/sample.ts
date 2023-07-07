@@ -63,7 +63,7 @@ const network: Network = {
       ["upf1", "upf2"],
       ["upf1", "upf3"],
       ["upf1", { snssai: "01", dnn: "net6" }],
-      ["upf1", { snssai: "01", dnn: "net3" }],
+      ["upf2", { snssai: "01", dnn: "net3" }],
       ["upf2", { snssai: "90000001", dnn: "net5" }],
       ["upf3", { snssai: "01", dnn: "ethernet" }],
     ],

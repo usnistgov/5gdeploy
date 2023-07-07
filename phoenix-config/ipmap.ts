@@ -120,12 +120,14 @@ export class IPMAP {
       throw new Error("IP subnet full");
     }
 
+    const nets = new Map<string, string>();
     for (const netif of netifs) {
       const net = this.networks_.get(netif);
       assert(!!net);
       assert(net.bitmask <= 24);
-      this.containers_.get(name)!.set(netif, long2ip(net.netLong + lastOctet));
+      nets.set(netif, long2ip(net.netLong + lastOctet));
     }
+    this.containers_.set(name, nets);
   }
 
   /** Remove a container. */

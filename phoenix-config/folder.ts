@@ -6,10 +6,12 @@ import fsWalk from "@nodelib/fs.walk";
 import * as envfile from "envfile";
 import assert from "minimalistic-assert";
 import DefaultMap from "mnemonist/default-map.js";
+import type MultiMap from "mnemonist/multi-map.js";
 import { type AnyIterable, collect } from "streaming-iterables";
 
 import { IPMAP } from "./ipmap.js";
 import { NetworkFunction } from "./nf.js";
+import { OtherTable } from "./other.js";
 
 const fsWalkPromise = promisify(fsWalk.walk);
 
@@ -23,16 +25,19 @@ export class ScenarioFolder {
     const files = new Set(await collect(scanFiles(dir)));
     const env = await parseEnv(await fs.readFile(path.resolve(dir, "env.sh"), "utf8"));
     const ipmap = IPMAP.parse(await fs.readFile(path.resolve(dir, "ip-map"), "utf8"), env);
-    return new ScenarioFolder(dir, files, ipmap, env);
+    const other = OtherTable.parse(await fs.readFile(path.resolve(dir, "other"), "utf8"));
+    return new ScenarioFolder(dir, files, ipmap, other, env);
   }
 
   private constructor(
       private readonly dir: string,
       public readonly files: Set<string>,
       public readonly ipmap: IPMAP,
+      private readonly other: OtherTable,
       public readonly env: Map<string, string>,
   ) {
     this.edit("ip-map", () => this.ipmap.save());
+    this.edit("other", () => this.other.save());
 
     this.edit("env.sh", () => {
       const obj: envfile.Input = {};
@@ -41,6 +46,14 @@ export class ScenarioFolder {
       }
       return envfile.stringify(obj);
     });
+  }
+
+  public get initCommands(): DefaultMap<string, string[]> {
+    return this.other.commands;
+  }
+
+  public get routes(): MultiMap<string, OtherTable.Route> {
+    return this.other.routes;
   }
 
   private readonly copies = new DefaultMap<string, string[]>(() => []);
@@ -88,6 +101,10 @@ export class ScenarioFolder {
         this.files.delete(ctFile);
         this.copy(ctFile, `${tpl}.json`);
         this.edit(ctFile, (body) => body.replaceAll(tpl.toUpperCase(), ct.toUpperCase()));
+        this.initCommands.get(ct).push(...(this.initCommands.peek(tpl) ?? []));
+        for (const route of (this.routes.get(tpl) ?? [])) {
+          this.routes.set(ct, route);
+        }
       }
       this.editNetworkFunction(ct, (c) => {
         const commandModule = c.getModule("command", true);
@@ -102,6 +119,8 @@ export class ScenarioFolder {
       this.ipmap.removeContainer(ct);
       if (ct !== tpl) {
         this.files.delete(`${ct}.json`);
+        this.initCommands.delete(ct);
+        this.routes.delete(ct);
       }
     }
     return m;
