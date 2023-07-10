@@ -16,15 +16,14 @@ services:
     image: 5gdeploy.localhost/ueransim
     command: ["/entrypoint.sh", "gnb"]
     environment:
-      MCC: '001'
-      MNC: '01'
-      NCI: '0x000000010'
-      TAC: 117
+      PLMN: '001-01'
+      NCI: '000000010'
+      TAC: '000075'
       LINK_IP: 192.168.10.50
       NGAP_IP: 192.168.12.50
       GTP_IP: 192.168.13.50
       AMF_IPS: 192.168.12.20,192.168.12.21
-      SLICES: 1,1:1,1:d143a5,1:2
+      SLICES: 01,01000001,01D143A5,01000002
     init: true
     networks:
       n2:
@@ -39,14 +38,13 @@ services:
     image: 5gdeploy.localhost/ueransim
     command: ["/entrypoint.sh", "ue"]
     environment:
+      PLMN: '001-01'
       IMSI: '001011234567896'
-      MCC: '001'
-      MNC: '01'
       KEY: '00000000000000000000000000000000'
       OPC: '66E94BD4EF8A2C3B884CFA59CA342B2E'
       GNB_IPS: 192.168.10.50
-      SLICES: 1:1,1:2
-      SESSIONS: default:1:1,internet:1:2
+      SLICES: 01000001,01000002
+      SESSIONS: default:01000001,internet:01000002
     init: true
     cap_add:
       - NET_ADMIN

@@ -12,11 +12,11 @@ sudo DEBIAN_FRONTEND=noninteractive apt install -y httpie jq wireshark-common
 sudo adduser $(id -un) wireshark
 
 # install Node.js 20.x
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+http --ignore-stdin GET https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo DEBIAN_FRONTEND=noninteractive apt install -y nodejs
 
 # install and configure Docker
-curl -fsLS https://get.docker.com | bash
+http --ignore-stdin GET https://get.docker.com | bash
 sudo adduser $(id -un) docker
 sudo mkdir -p /etc/docker
 jq -n '{
