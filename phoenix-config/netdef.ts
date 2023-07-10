@@ -7,7 +7,7 @@ import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
 import type { ScenarioFolder } from "./folder.js";
 import type { NetworkFunction } from "./nf.js";
-import { type OtherTable } from "./other.js";
+import type { OtherTable } from "./other.js";
 
 /** Apply network definition to scenario. */
 export function applyNetdef(sf: ScenarioFolder, netdef: NetDef): void {
@@ -415,7 +415,7 @@ function expandSNSSAI(snssai: N.SNSSAI): PH.SNSSAI {
 }
 
 function listUniqueSNSSAIs(network: N.Network): PH.SNSSAI[] {
-  const set = new Set<string>(Array.from(network.dataNetworks, (dn) => dn.snssai));
+  const set = new Set(Array.from(network.dataNetworks, (dn) => dn.snssai));
   return Array.from(set, (snssai) => expandSNSSAI(snssai));
 }
 

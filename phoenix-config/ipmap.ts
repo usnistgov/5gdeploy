@@ -1,5 +1,6 @@
 import assert from "minimalistic-assert";
 import DefaultMap from "mnemonist/default-map.js";
+import set from "mnemonist/set.js";
 import { ip2long, long2ip, Netmask } from "netmask";
 
 /** Content of ph_init ip-map file. */
@@ -71,6 +72,57 @@ export class IPMAP {
     const net = tokens.at(-2)!;
     const ct = tokens.slice(0, -2).join("_");
     return this.containers_.get(ct)?.get(net);
+  }
+
+  /**
+   * Scale network function containers to specified quantity.
+   * @param names wanted container names, must refer to same network function.
+   * @param netifs network interfaces of each container.
+   * @returns added, reused, and removed container names.
+   */
+  public scaleContainers(names: readonly string[], netifs: readonly string[]): Record<"added" | "reused" | "removed", ReadonlySet<string>> {
+    const added = new Set<string>();
+    const reused = new Set<string>();
+    const removed = new Set<string>();
+
+    assert(names.length > 0);
+    let nf: string | undefined;
+    const wantNetifs = new Set(netifs);
+
+    const readd: string[] = [];
+    for (const ct of names) {
+      nf ||= IPMAP.toNf(ct);
+      assert(nf === IPMAP.toNf(ct));
+      const ctNets = this.containers_.get(ct);
+      if (ctNets) {
+        const ctNetifs = new Set(ctNets.keys());
+        if (set.isSuperset(ctNetifs, wantNetifs)) {
+          for (const netif of set.difference(ctNetifs, wantNetifs)) {
+            ctNets.delete(netif);
+          }
+        } else {
+          readd.push(ct);
+        }
+        reused.add(ct);
+      } else {
+        this.addContainer(ct, netifs);
+        added.add(ct);
+      }
+    }
+
+    for (const ct of this.listContainersByNf(nf!)) {
+      if (!added.has(ct) && !reused.has(ct)) {
+        this.removeContainer(ct);
+        removed.add(ct);
+      }
+    }
+
+    for (const ct of readd) {
+      this.removeContainer(ct);
+      this.addContainer(ct, netifs);
+    }
+
+    return { added, reused, removed };
   }
 
   private suggestIPLastOctet(nf: string): number | undefined {
@@ -152,4 +204,19 @@ export namespace IPMAP {
   export function toNf(ct: string): string {
     return ct.replace(/(_.*|\d*)$/, "");
   }
+
+  export function suggestNames<T>(nf: string, list: readonly T[]): Map<string, T> {
+    const m = new Map<string, T>();
+    for (const [i, item] of list.entries()) {
+      let ct = (item as any).name as string;
+      if (typeof ct !== "string") {
+        ct = `${nf}${i}`;
+      }
+      assert(toNf(ct) === nf);
+
+      m.set(ct, item);
+    }
+    return m;
+  }
+
 }

@@ -77,25 +77,15 @@ export class ScenarioFolder {
    */
   public scaleNetworkFunction<T>(tpl: string, list: readonly T[]): Map<string, T> {
     assert(this.ipmap.containers.has(tpl));
+    assert(list.length > 0);
+
+    const nf = IPMAP.toNf(tpl);
     const netifs = Array.from(this.ipmap.containers.get(tpl)!.keys());
     assert(this.files.has(`${tpl}.json`));
 
-    const nf = IPMAP.toNf(tpl);
-    const existing = new Set(this.ipmap.listContainersByNf(nf));
-    assert(list.length > 0);
-
-    const m = new Map<string, T>();
-    for (const [i, item] of list.entries()) {
-      let ct = (item as any).name as string;
-      if (typeof ct !== "string") {
-        ct = `${nf}${i}`;
-      }
-      assert(IPMAP.toNf(ct) === nf);
-
-      m.set(ct, item);
-      if (!existing.delete(ct)) {
-        this.ipmap.addContainer(ct, netifs);
-      }
+    const m = IPMAP.suggestNames(nf, list);
+    const { removed } = this.ipmap.scaleContainers([...m.keys()], netifs);
+    for (const ct of m.keys()) {
       const ctFile = `${ct}.json`;
       if (ct !== tpl) {
         this.files.delete(ctFile);
@@ -115,8 +105,7 @@ export class ScenarioFolder {
       });
     }
 
-    for (const ct of existing) {
-      this.ipmap.removeContainer(ct);
+    for (const ct of removed) {
       if (ct !== tpl) {
         this.files.delete(`${ct}.json`);
         this.initCommands.delete(ct);

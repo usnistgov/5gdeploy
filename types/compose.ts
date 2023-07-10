@@ -1,10 +1,10 @@
-/** Docker Compose file. */
+/** Compose file. */
 export interface ComposeFile {
   networks: Record<string, unknown>;
   services: Record<string, ComposeService>;
 }
 
-/** Docker Compose service. */
+/** Compose service. */
 export interface ComposeService {
   container_name: string;
   hostname: string;
@@ -19,5 +19,10 @@ export interface ComposeService {
   volumes: unknown[];
   environment: Record<string, string>;
   network_mode?: string;
-  networks: Record<string, unknown>;
+  networks: Record<string, ComposeNetif>;
+}
+
+/** Compose service network interface. */
+export interface ComposeNetif {
+  ipv4_address: string;
 }

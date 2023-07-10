@@ -18,6 +18,7 @@ services:
     environment:
       PLMN: '001-01'
       NCI: '000000010'
+      GNBIDLEN: 32
       TAC: '000075'
       LINK_IP: 192.168.10.50
       NGAP_IP: 192.168.12.50

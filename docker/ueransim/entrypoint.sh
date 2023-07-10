@@ -32,7 +32,8 @@ gnb() {
   dasel -f /UERANSIM/config/custom-gnb.yaml -w json | jq "$JQ_FUNCS"'
     .mcc |= (env.PLMN | split("-")[0]) |
     .mnc |= (env.PLMN | split("-")[1]) |
-    .nci |= ("0x" + env.NCI) |
+    .nci |= (env.NCI | hex2number) |
+    .idLength |= (env.GNBIDLEN | tonumber) |
     .tac |= (env.TAC | hex2number) |
     .linkIp |= env.LINK_IP |
     .ngapIp |= env.NGAP_IP |

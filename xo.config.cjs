@@ -11,11 +11,7 @@ module.exports = {
       files: [
         "**/*.ts",
       ],
-      ...merge(js, ts, {
-        rules: {
-          "@typescript-eslint/consistent-type-assertions": "off",
-        },
-      }),
+      ...merge(js, ts),
     },
   ],
 };

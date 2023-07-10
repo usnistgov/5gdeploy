@@ -8,6 +8,7 @@ import { hideBin } from "yargs/helpers";
 
 import { NetDef } from "../netdef/netdef.js";
 import { applyNetdef as phApplyNetdef, ScenarioFolder } from "../phoenix-config/mod.js";
+import type { ComposeFile } from "../types/compose.js";
 import * as compose from "./compose.js";
 
 const args = await yargs(hideBin(process.argv))
@@ -39,18 +40,22 @@ const args = await yargs(hideBin(process.argv))
   })
   .parseAsync();
 
-const folder = await ScenarioFolder.load(args.cfg);
+const sf = await ScenarioFolder.load(args.cfg);
 let netdef: NetDef | undefined;
 if (args.netdef) {
   netdef = new NetDef(JSON.parse(await fs.readFile(args.netdef, "utf8")));
-  phApplyNetdef(folder, netdef);
+  phApplyNetdef(sf, netdef);
 }
-await folder.save(path.resolve(args.out, "cfg"), path.resolve(args.out, "sql"));
+await sf.save(path.resolve(args.out, "cfg"), path.resolve(args.out, "sql"));
 
-const composeFile = compose.convert(folder.ipmap, !!args.ran);
+const composeFile = compose.convert(sf.ipmap, !!args.ran);
 if (args.ran && args.ran !== "false") {
-  const ranCompose = yaml.load(await fs.readFile(args.ran, "utf8")) as any;
-  Object.assign(composeFile.services, ranCompose.services);
+  const ranCompose = yaml.load(await fs.readFile(args.ran, "utf8")) as ComposeFile;
+  if (netdef) {
+    compose.mergeRAN(composeFile, ranCompose, sf.ipmap, netdef);
+  } else {
+    Object.assign(composeFile.services, ranCompose.services);
+  }
 }
 
 if (args["bridge-to"]) {
