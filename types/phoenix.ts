@@ -28,8 +28,18 @@ export interface SNSSAI {
 
 export namespace amf {
   export interface Config {
+    id: string;
+    guami: GUAMI;
     trackingArea: TrackingArea[];
     [k: string]: unknown;
+  }
+
+  export interface GUAMI {
+    mcc: "%MCC";
+    mnc: "%MNC";
+    regionId: number;
+    amfSetId: number;
+    amfPointer: number;
   }
 
   export interface TrackingArea {

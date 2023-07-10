@@ -12,6 +12,11 @@ export class NetDef {
     return Number.parseInt(this.network.tac, 16);
   }
 
+  /** Return all unique S-NSSAIs. */
+  public get nssai(): N.SNSSAI[] {
+    return [...new Set(Array.from(this.network.dataNetworks, (dn) => dn.snssai))];
+  }
+
   /** Split NR Cell Identity (NCI) as gNB ID and Cell ID. */
   public splitNCI(nci: string): NetDef.NCI {
     assert(/^[\da-f]{9}$/i.test(nci));

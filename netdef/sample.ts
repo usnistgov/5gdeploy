@@ -45,6 +45,16 @@ const network: Network = {
       nci: "000002002",
     },
   ],
+  amfs: [
+    {
+      name: "amf1",
+      // nssai: ["01"],
+    },
+    {
+      name: "amf2",
+      // nssai: ["90000001"],
+    },
+  ],
   upfs: [
     { name: "upf1" },
     { name: "upf2" },

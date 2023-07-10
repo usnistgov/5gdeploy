@@ -32,8 +32,7 @@ export interface RANServiceGen {
 }
 
 const ueransim: RANServiceGen = {
-  gnb({ network, compose }, gnb, s) {
-    const slices = new Set(Array.from(network.dataNetworks, (dn) => dn.snssai));
+  gnb({ netdef, network, compose }, gnb, s) {
     s.environment = {
       PLMN: network.plmn,
       NCI: gnb.nci,
@@ -42,8 +41,8 @@ const ueransim: RANServiceGen = {
       LINK_IP: s.networks.air!.ipv4_address,
       NGAP_IP: s.networks.n2!.ipv4_address,
       GTP_IP: s.networks.n3!.ipv4_address,
-      AMF_IPS: [compose.services.amf!.networks.n2!.ipv4_address].join(","),
-      SLICES: [...slices].join(","),
+      AMF_IPS: network.amfs.map((amf) => compose.services[amf.name]!.networks.n2!.ipv4_address).join(","),
+      SLICES: netdef.nssai.join(","),
     };
   },
   ue({ network, compose }, subscriber, s) {

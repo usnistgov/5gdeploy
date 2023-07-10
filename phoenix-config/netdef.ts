@@ -46,7 +46,7 @@ class NetDefProcessor {
 
   private applyGNBs(): void {
     const sliceKeys = ["slice", "slice2"] as const;
-    const slices = listUniqueSNSSAIs(this.network);
+    const slices = this.netdef.nssai.map((snssai) => expandSNSSAI(snssai));
     assert(slices.length <= sliceKeys.length, `gNB allows up to ${sliceKeys.length} slices`);
 
     for (const [ct, gnb] of this.sf.scaleNetworkFunction("gnb1", this.network.gnbs)) {
@@ -54,9 +54,10 @@ class NetDefProcessor {
         const { config } = c.getModule("gnb");
         delete config.amf_addr;
         delete config.amf_port;
-        config.amf_list = [
-          { ngc_addr: "%AMF_N2_IP", ngc_sctp_port: 38412 },
-        ];
+        config.amf_list = this.network.amfs.map((amf): PH.gnb.AMF => ({
+          ngc_addr: `%${amf.name.toUpperCase()}_N2_IP`,
+          ngc_sctp_port: 38412,
+        }));
         config.mcc = "%MCC";
         config.mnc = "%MNC";
         ({ gnb: config.gnb_id, nci: config.cell_id } = this.netdef.splitNCI(gnb.nci));
@@ -127,18 +128,29 @@ class NetDefProcessor {
   }
 
   private applyAMF(): void {
-    this.sf.editNetworkFunction("amf", (c) => this.setNrfClientSlices(c));
-
-    this.sf.editNetworkFunction("amf", (c) => {
-      const { config } = c.getModule("amf");
-      config.trackingArea.splice(0, Infinity, {
-        mcc: "%MCC",
-        mnc: "%MNC",
-        taiList: [
-          { tac: this.netdef.tac },
-        ],
+    let i = 0;
+    for (const [ct, amf] of this.sf.scaleNetworkFunction(this.sf.ipmap.containers.has("amf1") ? "amf1" : "amf", this.network.amfs)) {
+      const amfSetId = ++i;
+      this.sf.editNetworkFunction(ct, (c) => this.setNrfClientSlices(c, amf.nssai));
+      this.sf.editNetworkFunction(ct, (c) => {
+        const { config } = c.getModule("amf");
+        config.id = ct;
+        config.guami = {
+          mcc: "%MCC",
+          mnc: "%MNC",
+          regionId: 1,
+          amfSetId,
+          amfPointer: 0,
+        };
+        config.trackingArea.splice(0, Infinity, {
+          mcc: "%MCC",
+          mnc: "%MNC",
+          taiList: [
+            { tac: this.netdef.tac },
+          ],
+        });
       });
-    });
+    }
   }
 
   private applySMF(): void {
@@ -186,9 +198,9 @@ class NetDefProcessor {
     });
   }
 
-  private setNrfClientSlices(c: NetworkFunction): void {
+  private setNrfClientSlices(c: NetworkFunction, nssai: readonly N.SNSSAI[] = this.netdef.nssai): void {
     const { config } = c.getModule("nrf_client");
-    config.nf_profile.sNssais.splice(0, Infinity, ...listUniqueSNSSAIs(this.network));
+    config.nf_profile.sNssais.splice(0, Infinity, ...nssai.map((snssai) => expandSNSSAI(snssai)));
   }
 
   private determineDataPathNodeType(node: string | N.DataNetworkID): PH.sdn_routing_topology.Node["type"] {
@@ -412,11 +424,6 @@ function expandSNSSAI(snssai: N.SNSSAI): PH.SNSSAI {
   const [sstHex, sd] = NetDef.splitSNSSAI(snssai);
   const sst = Number.parseInt(sstHex, 16);
   return sd === undefined ? { sst } : { sst, sd };
-}
-
-function listUniqueSNSSAIs(network: N.Network): PH.SNSSAI[] {
-  const set = new Set(Array.from(network.dataNetworks, (dn) => dn.snssai));
-  return Array.from(set, (snssai) => expandSNSSAI(snssai));
 }
 
 function insertDnnConfigurations(supi: string, { dnn, snssai, type }: N.DataNetwork): string {

@@ -15,6 +15,9 @@ export interface Network {
   /** gNodeBs. */
   gnbs: GNB[];
 
+  /** AMFs. */
+  amfs: AMF[];
+
   /** UPFs. */
   upfs: UPF[];
 
@@ -88,6 +91,18 @@ export interface GNB {
 export interface UPF {
   /** Short name. */
   name: string;
+}
+
+/** Access and Mobility Management Function (AMF) definition. */
+export interface AMF {
+  /** Short name. */
+  name: string;
+
+  /**
+   * Served S-NSSAIs.
+   * Default is all S-NSSAIs defined in DataNetworks.
+   */
+  nssai?: SNSSAI[];
 }
 
 /** DN identifier. */

@@ -90,7 +90,7 @@ export class ScenarioFolder {
       if (ct !== tpl) {
         this.files.delete(ctFile);
         this.copy(ctFile, `${tpl}.json`);
-        this.edit(ctFile, (body) => body.replaceAll(tpl.toUpperCase(), ct.toUpperCase()));
+        this.edit(ctFile, (body) => body.replaceAll(`%${tpl.toUpperCase()}_`, `%${ct.toUpperCase()}_`));
         this.initCommands.get(ct).push(...(this.initCommands.peek(tpl) ?? []));
         for (const route of (this.routes.get(tpl) ?? [])) {
           this.routes.set(ct, route);
