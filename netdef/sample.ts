@@ -57,6 +57,16 @@ const network: Network = {
       // nssai: ["90000001"],
     },
   ],
+  smfs: [
+    {
+      name: "smf1",
+      nssai: ["01"],
+    },
+    {
+      name: "smf2",
+      nssai: ["90000001"],
+    },
+  ],
   upfs: [
     { name: "upf1" },
     { name: "upf2" },

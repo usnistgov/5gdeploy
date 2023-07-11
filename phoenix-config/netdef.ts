@@ -177,14 +177,20 @@ class NetDefProcessor {
 
   private applySMF(): void {
     const { network } = this;
-    for (const [ct] of this.sf.scaleNetworkFunction(["smf", "smf1"], [{ name: "smf" }])) {
-      this.sf.editNetworkFunction(ct, (c) => this.setNrfClientSlices(c));
+    for (const [ct, smf] of this.sf.scaleNetworkFunction(["smf", "smf1"], network.smfs)) {
+      this.sf.editNetworkFunction(ct, (c) => this.setNrfClientSlices(c, smf.nssai));
 
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("sdn_routing_topology");
-        config.Topology.Link = this.netdef.dataPathLinks.map(({ a: nodeA, b: nodeB, cost }) => {
+        config.Topology.Link = this.netdef.dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
           const typeA = this.determineDataPathNodeType(nodeA);
           const typeB = this.determineDataPathNodeType(nodeB);
+          if (smf.nssai) {
+            const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
+            if (dn && !smf.nssai.includes(dn.snssai)) {
+              return [];
+            }
+          }
           return {
             weight: cost,
             Node_A: this.makeDataPathTopoNode(nodeA, typeA, typeB),

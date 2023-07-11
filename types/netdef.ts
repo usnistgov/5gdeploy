@@ -18,6 +18,9 @@ export interface Network {
   /** AMFs. */
   amfs: AMF[];
 
+  /** SMFs. */
+  smfs: SMF[];
+
   /** UPFs. */
   upfs: UPF[];
 
@@ -103,6 +106,18 @@ export interface AMF {
 
   /** AMF Identifier. */
   amfi: AMFI;
+
+  /**
+   * Served S-NSSAIs.
+   * Default is all S-NSSAIs defined in DataNetworks.
+   */
+  nssai?: SNSSAI[];
+}
+
+/** Session Management Function (SMF) definition. */
+export interface SMF {
+  /** Short name. */
+  name: string;
 
   /**
    * Served S-NSSAIs.

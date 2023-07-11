@@ -5,6 +5,16 @@ import type * as PH from "../types/phoenix.js";
 
 /** Open5GCore network function configuration. */
 export class NetworkFunction {
+  /** Parse network function JSON document. */
+  public static parse(body: string): NetworkFunction {
+    const cfg = new NetworkFunction();
+    cfg.Phoenix = JSON.parse(body).Phoenix;
+    assert(!!cfg.Phoenix);
+    assert(cfg.Phoenix.Platform);
+    assert(Array.isArray(cfg.Phoenix.Module));
+    return cfg;
+  }
+
   public Phoenix: PH.Phoenix = {
     Platform: {},
     Module: [],
@@ -26,16 +36,5 @@ export class NetworkFunction {
   /** Save as network function JSON. */
   public save(): string {
     return stringify({ Phoenix: this.Phoenix }, { space: 2 });
-  }
-}
-export namespace NetworkFunction {
-  /** Parse network function JSON document. */
-  export function parse(body: string): NetworkFunction {
-    const cfg = new NetworkFunction();
-    cfg.Phoenix = JSON.parse(body).Phoenix;
-    assert(!!cfg.Phoenix);
-    assert(cfg.Phoenix.Platform);
-    assert(Array.isArray(cfg.Phoenix.Module));
-    return cfg;
   }
 }
