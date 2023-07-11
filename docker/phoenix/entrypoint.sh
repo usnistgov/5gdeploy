@@ -39,15 +39,20 @@ msg Processing ip-export
 $phoenixdir/tools/ph_init/ip-export.sh < ip-map > /run/phoenix-ip-export.sh
 . /run/phoenix-ip-export.sh
 
-if [[ $CT == smf* ]] || [[ $CT == udm* ]]; then
-  msg Waiting for database
-  while ! mysql -e '' -h "$SQL_DB_IP" \
-          $(jq -r '.Phoenix.Module[] | select((.name|endswith("smf.so")) or (.name|endswith("udm.so"))) |
-                   .config.Database | ["-u", .username, "-p", .password, "-D", .database] | @sh' $CT.json); do
+for NF in nssf smf udm udr; do
+  if [[ $CT != ${NF}* ]]; then
+    continue
+  fi
+  msg Waiting for $NF database
+  while ! mysql -eQUIT $(jq -r --arg NF "$NF" '
+    .Phoenix.Module[] | select(.binaryFile|endswith("/"+$NF+".so")) | .config.Database | [
+      "-h" + (.hostname | if .|startswith("%") then env[.[1:]] else . end),
+      "-u" + .username, "-p" + .password, "-D" + .database, "-s"
+    ] | join(" ")' $CT.json); do
     sleep 1
   done
   sleep 1
-fi
+done
 
 if [[ $CT == hostnat ]]; then
   HOSTNAT_MGMT_GW=$(echo $HOSTNAT_MGMT_IP | sed 's/\.[0-9]*$/.1/')
