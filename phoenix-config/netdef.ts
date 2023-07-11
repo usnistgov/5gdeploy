@@ -177,8 +177,20 @@ class NetDefProcessor {
 
   private applySMF(): void {
     const { network } = this;
+    let nextTeid = 0x10000000;
+    const eachTeid = Math.floor(0xE0000000 / network.smfs.length);
     for (const [ct, smf] of this.sf.scaleNetworkFunction(["smf", "smf1"], network.smfs)) {
+      const startTeid = nextTeid;
+      nextTeid += eachTeid;
+
       this.sf.editNetworkFunction(ct, (c) => this.setNrfClientSlices(c, smf.nssai));
+
+      this.sf.editNetworkFunction(ct, (c) => {
+        const { config } = c.getModule("smf");
+        config.id = ct;
+        config.mtu = 1456;
+        config.startTeid = startTeid;
+      });
 
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("sdn_routing_topology");

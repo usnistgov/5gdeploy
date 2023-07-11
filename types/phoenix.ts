@@ -18,6 +18,7 @@ export interface ModuleConfigMap {
   nrf_client: nrf_client.Config;
   pfcp: pfcp.Config;
   sdn_routing_topology: sdn_routing_topology.Config;
+  smf: smf.Config;
   ue_5g_nas_only: ue_5g_nas_only.Config;
 }
 
@@ -214,6 +215,15 @@ export namespace sdn_routing_topology {
     type: "DNN";
     id: string; // DNN
     ip: "255.255.255.255"; // no effect but prevents an error
+  }
+}
+
+export namespace smf {
+  export interface Config {
+    id: string;
+    mtu: 1456;
+    startTeid: number;
+    [k: string]: unknown;
   }
 }
 
