@@ -56,7 +56,10 @@ export interface Subscriber {
   /** Operator secret key (32 hexadecimal digits). */
   opc: string;
 
-  /** Subscribed S-NSSAIs and DNNs (stored in the UDM). */
+  /**
+   * Subscribed S-NSSAIs and DNNs (stored in the UDM).
+   * Default is all defined S-NSSAIs and DataNetworks.
+   */
   subscribedNSSAI?: SubscriberSNSSAI[];
 
   /** Configured/requested NSSAI and DNNs (requested by the UE). */
@@ -98,12 +101,23 @@ export interface AMF {
   /** Short name. */
   name: string;
 
+  /** AMF Identifier. */
+  amfi: AMFI;
+
   /**
    * Served S-NSSAIs.
    * Default is all S-NSSAIs defined in DataNetworks.
    */
   nssai?: SNSSAI[];
 }
+
+/**
+ * AMF Identifier.
+ * AMF Region ID: 8 bits.
+ * AMF Set ID: 10 bits.
+ * AMF Pointer: 6 bits.
+ */
+export type AMFI = [region: number, set: number, pointer: number];
 
 /** DN identifier. */
 export interface DataNetworkID {
@@ -134,6 +148,9 @@ export interface DataPaths {
   links: DataPathLink[];
 }
 
+/** DN data path node. */
+export type DataPathNode = string | DataNetworkID;
+
 /**
  * Link in DN data path.
  *
@@ -147,17 +164,14 @@ export namespace DataPathLink {
    * Two ends of a link.
    * Cost is the default.
    */
-  export type Tuple = [
-    a: string | DataNetworkID,
-    b: string | DataNetworkID,
-  ];
+  export type Tuple = [a: DataPathNode, b: DataPathNode];
 
   export interface Object {
     /** One end of a link. */
-    a: string | DataNetworkID;
+    a: DataPathNode;
 
     /** One end of a link. */
-    b: string | DataNetworkID;
+    b: DataPathNode;
 
     /** Link cost (positive integer, default is 1). */
     cost?: number;

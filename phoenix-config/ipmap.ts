@@ -80,7 +80,7 @@ export class IPMAP {
    * @param netifs network interfaces of each container.
    * @returns added, reused, and removed container names.
    */
-  public scaleContainers(names: readonly string[], netifs: readonly string[]): Record<"added" | "reused" | "removed", ReadonlySet<string>> {
+  public scaleContainers(names: readonly string[], netifs: readonly string[]): Record<"added" | "reused" | "removed", Set<string>> {
     const added = new Set<string>();
     const reused = new Set<string>();
     const removed = new Set<string>();

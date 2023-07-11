@@ -71,17 +71,18 @@ export class ScenarioFolder {
 
   /**
    * Scale network function to specified quantity.
-   * @param tpl template container name.
+   * @param tpl template container name(s); if multiple, try in order.
    * @param list relevant config objects.
    * If a config object has a .name property, it must reflect the templated network function.
    */
-  public scaleNetworkFunction<T>(tpl: string, list: readonly T[]): Map<string, T> {
-    assert(this.ipmap.containers.has(tpl));
+  public scaleNetworkFunction<T>(tplNames: string | readonly string[], list: readonly T[]): Map<string, T> {
+    const tpl = (typeof tplNames === "string" ? [tplNames] : tplNames).find((tpl) => this.ipmap.containers.has(tpl));
+    assert(tpl, "template container not found");
+    assert(this.files.has(`${tpl}.json`));
     assert(list.length > 0);
 
     const nf = IPMAP.toNf(tpl);
     const netifs = Array.from(this.ipmap.containers.get(tpl)!.keys());
-    assert(this.files.has(`${tpl}.json`));
 
     const m = IPMAP.suggestNames(nf, list);
     const { removed } = this.ipmap.scaleContainers([...m.keys()], netifs);
@@ -97,20 +98,22 @@ export class ScenarioFolder {
         }
       }
       this.editNetworkFunction(ct, (c) => {
-        const commandModule = c.getModule("command", true);
-        if (!commandModule) {
-          return;
+        const command = c.getModule("command", true);
+        if (command) {
+          command.config.GreetingText = `${ct.toUpperCase()}>`;
         }
-        commandModule.config.GreetingText = `${ct.toUpperCase()}>`;
+        const nrfClient = c.getModule("nrf_client", true);
+        if (nrfClient) {
+          nrfClient.config.nf_profile.nfInstanceId = globalThis.crypto.randomUUID();
+        }
       });
     }
 
+    removed.delete(tpl);
     for (const ct of removed) {
-      if (ct !== tpl) {
-        this.files.delete(`${ct}.json`);
-        this.initCommands.delete(ct);
-        this.routes.delete(ct);
-      }
+      this.files.delete(`${ct}.json`);
+      this.initCommands.delete(ct);
+      this.routes.delete(ct);
     }
     return m;
   }
@@ -148,12 +151,13 @@ export class ScenarioFolder {
   public async save(cfg: string, sql: string): Promise<void> {
     await fs.rm(cfg, { recursive: true, force: true });
     await fs.rm(sql, { recursive: true, force: true });
-    const unusedFiles = new Set([...this.copies.keys(), ...this.edits.keys()]);
+
+    const missingFiles = new Set([...this.copies.keys(), ...this.edits.keys()]);
     for (const src of this.files) {
       const srcPath = path.resolve(this.dir, src);
-      unusedFiles.delete(src);
+      missingFiles.delete(src);
       for (const dst of [src, ...(this.copies.peek(src) ?? [])]) {
-        unusedFiles.delete(dst);
+        missingFiles.delete(dst);
         const dstPath = dst.startsWith("sql/") ? path.resolve(sql, dst.slice(4)) : path.resolve(cfg, dst);
         await fs.mkdir(path.dirname(dstPath), { recursive: true });
         const edit = this.edits.peek(dst);
@@ -169,8 +173,8 @@ export class ScenarioFolder {
       }
     }
 
-    if (unusedFiles.size > 0) {
-      throw new Error(`missing files: ${Array.from(unusedFiles).join(" ")}`);
+    if (missingFiles.size > 0) {
+      throw new Error(`missing files: ${Array.from(missingFiles).join(" ")}`);
     }
   }
 }
@@ -193,7 +197,7 @@ async function* scanFiles(dir: string): AsyncIterable<string> {
       return name !== "prometheus";
     },
   });
-  for await (const entry of walk) {
+  for (const entry of walk) {
     yield path.relative(dir, entry.path);
   }
 }

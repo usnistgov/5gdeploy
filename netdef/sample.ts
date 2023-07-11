@@ -48,10 +48,12 @@ const network: Network = {
   amfs: [
     {
       name: "amf1",
+      amfi: [1, 1, 0],
       // nssai: ["01"],
     },
     {
       name: "amf2",
+      amfi: [1, 2, 0],
       // nssai: ["90000001"],
     },
   ],

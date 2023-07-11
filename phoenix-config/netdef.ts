@@ -30,6 +30,7 @@ class NetDefProcessor {
     this.applyGNBs();
     this.applyUEs();
     this.applyBT();
+    this.applyNSSF();
     this.applyAMF();
     this.applySMF();
     this.applyUPF();
@@ -127,20 +128,41 @@ class NetDefProcessor {
     }
   }
 
+  private applyNSSF(): void {
+    if (!this.sf.files.has("sql/nssf_db.sql")) {
+      return;
+    }
+    const { netdef, network } = this;
+
+    this.sf.appendSQL("nssf_db", function*() {
+      yield "DELETE FROM snssai_nsi_mapping";
+      yield "DELETE FROM nsi";
+      yield "DELETE FROM snssai";
+      for (const [i, amf] of network.amfs.entries()) {
+        const [, set] = NetDef.validateAMFI(amf.amfi);
+        yield sql`INSERT nsi (nsi_id,nrf_id,target_amf_set) VALUES (${`nsi_id_${i}`},${`nrf_id_${i}`},${`${set}`}) RETURNING @nsi_id:=row_id`;
+        for (const snssai of amf.nssai ?? netdef.nssai) {
+          const { sst, sd = "" } = expandSNSSAI(snssai);
+          yield sql`INSERT snssai (sst,sd) VALUES (${sst},${sd}) RETURNING @snssai_id:=row_id`;
+          yield "INSERT snssai_nsi_mapping (row_id_snssai,row_id_nsi) VALUES (@snssai_id,@nsi_id)";
+        }
+      }
+    });
+  }
+
   private applyAMF(): void {
-    let i = 0;
-    for (const [ct, amf] of this.sf.scaleNetworkFunction(this.sf.ipmap.containers.has("amf1") ? "amf1" : "amf", this.network.amfs)) {
-      const amfSetId = ++i;
+    for (const [ct, amf] of this.sf.scaleNetworkFunction(["amf", "amf1"], this.network.amfs)) {
       this.sf.editNetworkFunction(ct, (c) => this.setNrfClientSlices(c, amf.nssai));
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("amf");
         config.id = ct;
+        const [regionId, amfSetId, amfPointer] = NetDef.validateAMFI(amf.amfi);
         config.guami = {
           mcc: "%MCC",
           mnc: "%MNC",
-          regionId: 1,
+          regionId,
           amfSetId,
-          amfPointer: 0,
+          amfPointer,
         };
         config.trackingArea.splice(0, Infinity, {
           mcc: "%MCC",
@@ -155,31 +177,31 @@ class NetDefProcessor {
 
   private applySMF(): void {
     const { network } = this;
+    for (const [ct] of this.sf.scaleNetworkFunction(["smf", "smf1"], [{ name: "smf" }])) {
+      this.sf.editNetworkFunction(ct, (c) => this.setNrfClientSlices(c));
 
-    this.sf.editNetworkFunction("smf", (c) => this.setNrfClientSlices(c));
-
-    this.sf.editNetworkFunction("smf", (c) => {
-      const { config } = c.getModule("sdn_routing_topology");
-      config.Topology.Link = this.network.dataPaths.links.map((link) => {
-        const { a: nodeA, b: nodeB, cost = 1 } = NetDef.normalizeDataPathLink(link);
-        const typeA = this.determineDataPathNodeType(nodeA);
-        const typeB = this.determineDataPathNodeType(nodeB);
-        return {
-          weight: cost,
-          Node_A: this.makeDataPathTopoNode(nodeA, typeA, typeB),
-          Node_B: this.makeDataPathTopoNode(nodeB, typeB, typeA),
-        };
+      this.sf.editNetworkFunction(ct, (c) => {
+        const { config } = c.getModule("sdn_routing_topology");
+        config.Topology.Link = this.netdef.dataPathLinks.map(({ a: nodeA, b: nodeB, cost }) => {
+          const typeA = this.determineDataPathNodeType(nodeA);
+          const typeB = this.determineDataPathNodeType(nodeB);
+          return {
+            weight: cost,
+            Node_A: this.makeDataPathTopoNode(nodeA, typeA, typeB),
+            Node_B: this.makeDataPathTopoNode(nodeB, typeB, typeA),
+          };
+        });
       });
-    });
 
-    this.sf.editNetworkFunction("smf", (c) => {
-      const { config } = c.getModule("pfcp");
-      config.Associations.Peer.splice(0, Infinity, ...this.network.upfs.map((upf): PH.pfcp.Acceptor => ({
-        type: "udp",
-        port: 8805,
-        bind: `%${upf.name.toUpperCase()}_N4_IP`,
-      })));
-    });
+      this.sf.editNetworkFunction(ct, (c) => {
+        const { config } = c.getModule("pfcp");
+        config.Associations.Peer.splice(0, Infinity, ...this.network.upfs.map((upf): PH.pfcp.Acceptor => ({
+          type: "udp",
+          port: 8805,
+          bind: `%${upf.name.toUpperCase()}_N4_IP`,
+        })));
+      });
+    }
 
     this.sf.appendSQL("smf_db", function*() {
       yield "DELETE FROM dn_dns";
@@ -210,7 +232,6 @@ class NetDefProcessor {
     if (this.netdef.findGNB(node) !== undefined) {
       return "gNodeB";
     }
-
     if (this.netdef.findUPF(node) !== undefined) {
       return "UPF";
     }
@@ -261,13 +282,7 @@ class NetDefProcessor {
       let hasN9 = false;
       const subnetsN6L3: string[] = [];
       let dnnN6L2: string | undefined;
-      for (let link of this.network.dataPaths.links) {
-        link = NetDef.normalizeDataPathLink(link);
-        const peer = link.a === upf.name ? link.b : link.b === upf.name ? link.a : undefined;
-        if (peer === undefined) {
-          continue;
-        }
-
+      for (const [peer] of this.netdef.listDataPathPeers(upf.name)) {
         if (typeof peer === "string") {
           hasN3 ||= !!this.netdef.findGNB(peer);
           hasN9 ||= !!this.netdef.findUPF(peer);
@@ -369,18 +384,21 @@ class NetDefProcessor {
 
   private applyUDM(): void {
     const { netdef, network, usim } = this;
+    const dfltSubscribedNSSAI = netdef.nssai.map((snssai): N.SubscriberSNSSAI => ({
+      snssai,
+      dnns: network.dataNetworks.filter((dn) => dn.snssai === snssai).map((dn) => dn.dnn),
+    }));
 
     this.sf.appendSQL("udm_db", function*() {
       yield "DELETE FROM gpsi_supi_association";
       yield "DELETE FROM supi";
       yield "DELETE FROM gpsi";
       yield "SELECT @am_json:=access_and_mobility_sub_data FROM am_data WHERE supi='0'";
-      yield "DELETE FROM am_data WHERE supi!=0";
+      yield "DELETE FROM am_data";
       yield "SELECT @dnn_json:=json FROM dnn_configurations WHERE supi='default_data' LIMIT 1";
       yield "DELETE FROM dnn_configurations";
 
-      let everySubscriberHasSubscribedNSSAI = true;
-      for (const { supi, k, opc, subscribedNSSAI } of network.subscribers) {
+      for (const { supi, k, opc, subscribedNSSAI = dfltSubscribedNSSAI } of network.subscribers) {
         yield sql`
           INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type)
           VALUES (${supi},UNHEX(${k}),UNHEX(${usim.amf}),UNHEX(${opc}),UNHEX(${usim.sqn}),0,1,0)
@@ -388,10 +406,6 @@ class NetDefProcessor {
         `;
         yield sql`INSERT gpsi (identity) VALUES (${`msisdn-${supi}`}) RETURNING @gpsi_id:=id`;
         yield "INSERT gpsi_supi_association (gpsi_id,supi_id) VALUES (@gpsi_id,@supi_id)";
-        if (subscribedNSSAI === undefined) {
-          everySubscriberHasSubscribedNSSAI = false;
-          continue;
-        }
 
         const amPatch = {
           nssai: {
@@ -404,16 +418,14 @@ class NetDefProcessor {
           for (const dnn of dnns) {
             const dn = netdef.findDN(dnn, snssai);
             assert(!!dn);
-            yield insertDnnConfigurations(supi, dn);
+            const { sst } = expandSNSSAI(snssai);
+            const dnnPatch = {
+              pduSessionTypes: {
+                defaultSessionType: dn.type.toUpperCase(),
+              },
+            };
+            yield sql`INSERT dnn_configurations (supi,sst,dnn,json) VALUES (${supi},${sst},${dnn},JSON_MERGE_PATCH(@dnn_json,${dnnPatch}))`;
           }
-        }
-      }
-
-      if (everySubscriberHasSubscribedNSSAI) {
-        yield "DELETE FROM am_data WHERE supi='0'";
-      } else {
-        for (const dn of network.dataNetworks) {
-          yield insertDnnConfigurations("default_data", dn);
         }
       }
     });
@@ -424,14 +436,4 @@ function expandSNSSAI(snssai: N.SNSSAI): PH.SNSSAI {
   const [sstHex, sd] = NetDef.splitSNSSAI(snssai);
   const sst = Number.parseInt(sstHex, 16);
   return sd === undefined ? { sst } : { sst, sd };
-}
-
-function insertDnnConfigurations(supi: string, { dnn, snssai, type }: N.DataNetwork): string {
-  const { sst } = expandSNSSAI(snssai);
-  const patch = {
-    pduSessionTypes: {
-      defaultSessionType: type.toUpperCase(),
-    },
-  };
-  return sql`INSERT dnn_configurations (supi,sst,dnn,json) VALUES (${supi},${sst},${dnn},JSON_MERGE_PATCH(@dnn_json,${patch}))`;
 }
