@@ -10,6 +10,7 @@
   "packageManager": "pnpm@8.6.8",
   "dependencies": {
     "@nodelib/fs.walk": "^1.2.8",
+    "@types/dockerode": "^3.3.19",
     "@types/js-yaml": "^4.0.5",
     "@types/json-stable-stringify": "^1.0.34",
     "@types/minimalistic-assert": "^1.0.1",
@@ -17,6 +18,7 @@
     "@types/node": "^20.4.2",
     "@types/sql-tagged-template-literal": "^1.2.0",
     "@types/yargs": "^17.0.24",
+    "dockerode": "^3.3.5",
     "envfile": "^6.18.0",
     "get-stdin": "^9.0.0",
     "jayson": "^4.1.0",

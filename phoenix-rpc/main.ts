@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import Dockerode from "dockerode";
 import assert from "minimalistic-assert";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -52,12 +53,18 @@ await yargs(hideBin(process.argv))
       const nf = NetworkFunction.parse(await fs.readFile(host, "utf8"));
       for (const [module, addrKey] of [["httpd", "j"], ["command", "u"]] as const) {
         const { config } = nf.getModule(module);
-        assert(config.Acceptor.length > 0);
+        assert(config.Acceptor.length > 0, "no acceptor");
         const { bind, port } = config.Acceptor[0]!;
         const addr = bind.startsWith("%") ? ipmap.resolveEnv(bind.slice(1)) : bind;
-        assert(!!addr);
+        assert(!!addr, "no acceptor IP address");
         addrs[addrKey] = [addr, port];
       }
+    } else if (!/^(?:\d{1,3}\.){3}\d{1,3}$/.exec(host)) {
+      const ct = await new Dockerode().getContainer(host).inspect();
+      const ip = ct.NetworkSettings.Networks["br-mgmt"]?.IPAddress;
+      assert(!!ip, "no br-mgmt IP address");
+      addrs.j[0] = ip;
+      addrs.u[0] = ip;
     }
     clientJ = new PhoenixClientJSONRPC(...addrs.j);
     clientU = new PhoenixClientUDP(...addrs.u);

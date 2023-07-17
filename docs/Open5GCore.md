@@ -40,10 +40,9 @@ docker exec -it ue1 bash
 
 # interact with UE via JSON-RPC
 cd ~/5gdeploy
-UE1MGMT=$(docker inspect -f '{{(index .NetworkSettings.Networks "br-mgmt").IPAddress}}' ue1)
-corepack pnpm -s phoenix-rpc --host $UE1MGMT ue-status
-corepack pnpm -s phoenix-rpc --host $UE1MGMT ue-register
-corepack pnpm -s phoenix-rpc --host $UE1MGMT ue-deregister
+corepack pnpm -s phoenix-rpc --host ue1 ue-status
+corepack pnpm -s phoenix-rpc --host ue1 ue-register
+corepack pnpm -s phoenix-rpc --host ue1 ue-deregister
 
 # shutdown Docker Compose
 cd ~/compose/phoenix
