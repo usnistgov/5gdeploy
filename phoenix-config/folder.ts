@@ -132,7 +132,7 @@ export class ScenarioFolder {
     this.edit(`sql/${db}.sql`, async (body) => {
       body += "\n";
       for await (let stmt of g()) {
-        stmt = stmt.trim().replace(/\n\s+/g, " ");
+        stmt = stmt.trim().replaceAll(/\n\s+/g, " ");
         if (stmt.endsWith(";")) {
           body += `${stmt}\n`;
         } else {

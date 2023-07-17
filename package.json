@@ -7,17 +7,16 @@
     "phoenix-rpc": "node --no-warnings --loader tsm ./phoenix-rpc/main.ts",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@8.6.7",
+  "packageManager": "pnpm@8.6.8",
   "dependencies": {
     "@nodelib/fs.walk": "^1.2.8",
     "@types/js-yaml": "^4.0.5",
     "@types/json-stable-stringify": "^1.0.34",
     "@types/minimalistic-assert": "^1.0.1",
     "@types/netmask": "^2.0.2",
-    "@types/node": "^20.4.1",
+    "@types/node": "^20.4.2",
     "@types/sql-tagged-template-literal": "^1.2.0",
     "@types/yargs": "^17.0.24",
-    "@yoursunny/xo-config": "0.54.0",
     "envfile": "^6.18.0",
     "get-stdin": "^9.0.0",
     "jayson": "^4.1.0",
@@ -34,6 +33,9 @@
     "tsm": "^2.3.0",
     "typescript": "~5.1.6",
     "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@yoursunny/xo-config": "0.55.0"
   },
   "engines": {
     "node": "^20.3.0"
