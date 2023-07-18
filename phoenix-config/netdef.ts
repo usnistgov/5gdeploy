@@ -123,13 +123,13 @@ class NetDefProcessor {
     for (const nf of ["bt", "btup"]) {
       for (const ct of this.sf.ipmap.listContainersByNf(nf)) {
         this.sf.ipmap.removeContainer(ct);
-        this.sf.files.delete(`${ct}.json`);
+        this.sf.delete(`${ct}.json`);
       }
     }
   }
 
   private applyNSSF(): void {
-    if (!this.sf.files.has("sql/nssf_db.sql")) {
+    if (!this.sf.hasFile("sql/nssf_db.sql")) {
       return;
     }
     const { netdef, network } = this;

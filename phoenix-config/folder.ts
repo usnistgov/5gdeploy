@@ -5,9 +5,9 @@ import { promisify } from "node:util";
 import fsWalk from "@nodelib/fs.walk";
 import * as envfile from "envfile";
 import assert from "minimalistic-assert";
-import DefaultMap from "mnemonist/default-map.js";
+import type DefaultMap from "mnemonist/default-map.js";
 import type MultiMap from "mnemonist/multi-map.js";
-import { type AnyIterable, collect } from "streaming-iterables";
+import { type AnyIterable } from "streaming-iterables";
 
 import { IPMAP } from "./ipmap.js";
 import { NetworkFunction } from "./nf.js";
@@ -22,31 +22,36 @@ export class ScenarioFolder {
    * @param dir phoenix-src/cfg/*
    */
   public static async load(dir: string): Promise<ScenarioFolder> {
-    const files = new Set(await collect(scanFiles(dir)));
-    const env = await parseEnv(await fs.readFile(path.resolve(dir, "env.sh"), "utf8"));
-    const ipmap = IPMAP.parse(await fs.readFile(path.resolve(dir, "ip-map"), "utf8"), env);
-    const other = OtherTable.parse(await fs.readFile(path.resolve(dir, "other"), "utf8"));
-    return new ScenarioFolder(dir, files, ipmap, other, env);
-  }
+    const sf = new ScenarioFolder();
 
-  private constructor(
-      private readonly dir: string,
-      public readonly files: Set<string>,
-      public readonly ipmap: IPMAP,
-      private readonly other: OtherTable,
-      public readonly env: Map<string, string>,
-  ) {
-    this.edit("ip-map", () => this.ipmap.save());
-    this.edit("other", () => this.other.save());
-
-    this.edit("env.sh", () => {
-      const obj: envfile.Input = {};
-      for (const [k, v] of this.env) {
-        obj[`export ${k}`] = v;
-      }
-      return envfile.stringify(obj);
+    const walk = await fsWalkPromise(dir, {
+      entryFilter(entry) {
+        if (!entry.dirent.isFile()) {
+          return false;
+        }
+        if (entry.path.includes("/sql/")) {
+          return entry.name.endsWith(".sql");
+        }
+        return !["env.sh", "ip-map", "other"].includes(entry.name) && !entry.name.endsWith("-root");
+      },
+      deepFilter({ name }) {
+        return name !== "prometheus";
+      },
     });
+    for (const entry of walk) {
+      sf.files.set(path.relative(dir, entry.path), { readFromFile: entry.path, edits: [] });
+    }
+
+    sf.env = parseEnv(await fs.readFile(path.resolve(dir, "env.sh"), "utf8"));
+    sf.ipmap = IPMAP.parse(await fs.readFile(path.resolve(dir, "ip-map"), "utf8"), sf.env);
+    sf.other = OtherTable.parse(await fs.readFile(path.resolve(dir, "other"), "utf8"));
+    return sf;
   }
+
+  private files = new Map<string, FileAction>();
+  public env = new Map<string, string>();
+  public ipmap = IPMAP.parse("");
+  private other = new OtherTable();
 
   public get initCommands(): DefaultMap<string, string[]> {
     return this.other.commands;
@@ -56,17 +61,28 @@ export class ScenarioFolder {
     return this.other.routes;
   }
 
-  private readonly copies = new DefaultMap<string, string[]>(() => []);
-  private readonly edits = new DefaultMap<string, ScenarioFolder.EditFunc[]>(() => []);
+  /** Report whether a file exists. */
+  public hasFile(file: string): boolean {
+    return this.files.has(file);
+  }
 
-  /** Copy a file. */
+  /** Delete a file. */
+  public delete(file: string): void {
+    this.files.delete(file);
+  }
+
+  /** Duplicate a file from its initial contents. */
   public copy(dst: string, src: string): void {
-    this.copies.get(src).push(dst);
+    const fa = this.files.get(src);
+    assert(fa, "source file not found");
+    this.files.set(dst, { readFromFile: fa.readFromFile, initialContent: fa.initialContent, edits: [] });
   }
 
   /** Edit a file. */
-  public edit(file: string, sf: ScenarioFolder.EditFunc): void {
-    this.edits.get(file).push(sf);
+  public edit(file: string, f: ScenarioFolder.EditFunc): void {
+    const fa = this.files.get(file);
+    assert(fa, "file not found");
+    fa.edits.push(f);
   }
 
   /**
@@ -78,7 +94,7 @@ export class ScenarioFolder {
   public scaleNetworkFunction<T>(tplNames: string | readonly string[], list: readonly T[]): Map<string, T> {
     const tpl = (typeof tplNames === "string" ? [tplNames] : tplNames).find((tpl) => this.ipmap.containers.has(tpl));
     assert(tpl, "template container not found");
-    assert(this.files.has(`${tpl}.json`));
+    assert(this.hasFile(`${tpl}.json`));
     assert(list.length > 0);
 
     const nf = IPMAP.toNf(tpl);
@@ -109,9 +125,8 @@ export class ScenarioFolder {
       });
     }
 
-    removed.delete(tpl);
     for (const ct of removed) {
-      this.files.delete(`${ct}.json`);
+      this.delete(`${ct}.json`);
       this.initCommands.delete(ct);
       this.routes.delete(ct);
     }
@@ -152,60 +167,48 @@ export class ScenarioFolder {
     await fs.rm(cfg, { recursive: true, force: true });
     await fs.rm(sql, { recursive: true, force: true });
 
-    const missingFiles = new Set([...this.copies.keys(), ...this.edits.keys()]);
-    for (const src of this.files) {
-      const srcPath = path.resolve(this.dir, src);
-      missingFiles.delete(src);
-      for (const dst of [src, ...(this.copies.peek(src) ?? [])]) {
-        missingFiles.delete(dst);
-        const dstPath = dst.startsWith("sql/") ? path.resolve(sql, dst.slice(4)) : path.resolve(cfg, dst);
-        await fs.mkdir(path.dirname(dstPath), { recursive: true });
-        const edit = this.edits.peek(dst);
-        if (edit === undefined) {
-          await fs.copyFile(srcPath, dstPath);
-        } else {
-          let body = await fs.readFile(srcPath, "utf8");
-          for (const f of edit) {
-            body = await f(body);
-          }
-          await fs.writeFile(dstPath, body);
-        }
+    for (const [dst, fa] of this.files) {
+      const dstPath = dst.startsWith("sql/") ? path.resolve(sql, dst.slice(4)) : path.resolve(cfg, dst);
+      await fs.mkdir(path.dirname(dstPath), { recursive: true });
+      if (fa.readFromFile && fa.edits.length === 0) {
+        await fs.copyFile(fa.readFromFile, dstPath);
+        continue;
       }
+
+      let body = fa.readFromFile ? await fs.readFile(fa.readFromFile, "utf8") : fa.initialContent ?? "";
+      for (const f of fa.edits) {
+        body = await f(body);
+      }
+      await fs.writeFile(dstPath, body);
     }
 
-    if (missingFiles.size > 0) {
-      throw new Error(`missing files: ${Array.from(missingFiles).join(" ")}`);
-    }
+    await fs.writeFile(path.resolve(cfg, "env.sh"), saveEnv(this.env));
+    await fs.writeFile(path.resolve(cfg, "ip-map"), this.ipmap.save());
+    await fs.writeFile(path.resolve(cfg, "other"), this.other.save());
   }
 }
 export namespace ScenarioFolder {
   export type EditFunc = (body: string) => string | Promise<string>;
 }
 
-async function* scanFiles(dir: string): AsyncIterable<string> {
-  const walk = await fsWalkPromise(dir, {
-    entryFilter(entry) {
-      if (!entry.dirent.isFile()) {
-        return false;
-      }
-      if (entry.path.includes("/sql/")) {
-        return entry.name.endsWith(".sql");
-      }
-      return !entry.name.endsWith("-root");
-    },
-    deepFilter({ name }) {
-      return name !== "prometheus";
-    },
-  });
-  for (const entry of walk) {
-    yield path.relative(dir, entry.path);
-  }
+interface FileAction {
+  initialContent?: string;
+  readFromFile?: string;
+  edits: ScenarioFolder.EditFunc[];
 }
 
-async function parseEnv(body: string): Promise<Map<string, string>> {
+function parseEnv(body: string): Map<string, string> {
   const env = new Map<string, string>();
   for (const [k, v] of Object.entries(envfile.parse(body))) {
     env.set(k.replace(/^export\s+/, ""), v.replace(/\s*#.*$/, ""));
   }
   return env;
+}
+
+function saveEnv(env: Map<string, string>): string {
+  const obj: envfile.Input = {};
+  for (const [k, v] of env) {
+    obj[`export ${k}`] = v;
+  }
+  return envfile.stringify(obj);
 }
