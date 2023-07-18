@@ -63,6 +63,13 @@ export class IPMAP {
     }
   }
 
+  /** Format ct_net_IP environment variable name, and ensure it exists. */
+  public formatEnv(ct: string, net: string, prefix = "%"): string {
+    const varName = IPMAP.formatEnv(ct, net, prefix);
+    assert(this.containers_.has(ct) && this.networks_.has(net), `${varName} undefined`);
+    return varName;
+  }
+
   /** Resolve ct_net_IP environment variable. */
   public resolveEnv(env: string): string | undefined {
     let tokens: string[];
@@ -203,6 +210,10 @@ export namespace IPMAP {
   /** Derive network function name from container name. */
   export function toNf(ct: string): string {
     return ct.replace(/(_.*|\d*)$/, "");
+  }
+
+  export function formatEnv(ct: string, net: string, prefix = "%"): string {
+    return `${prefix}${ct.toUpperCase()}_${net.toUpperCase()}_IP`;
   }
 
   export function suggestNames<T>(nf: string, list: readonly T[]): Map<string, T> {

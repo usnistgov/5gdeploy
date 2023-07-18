@@ -6,6 +6,7 @@ import { NetDef } from "../netdef/netdef.js";
 import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
 import type { ScenarioFolder } from "./folder.js";
+import type { IPMAP } from "./ipmap.js";
 import type { NetworkFunction } from "./nf.js";
 import { OtherTable } from "./other.js";
 
@@ -20,9 +21,11 @@ class NetDefProcessor {
       private readonly sf: ScenarioFolder,
   ) {
     this.network = this.netdef.network;
+    this.ipmap = this.sf.ipmap;
   }
 
   private readonly network: N.Network;
+  private readonly ipmap: IPMAP;
   private readonly usim = { sqn: "000000000001", amf: "8000" } as const;
 
   public process(): void {
@@ -56,7 +59,7 @@ class NetDefProcessor {
         delete config.amf_addr;
         delete config.amf_port;
         config.amf_list = this.network.amfs.map((amf): PH.gnb.AMF => ({
-          ngc_addr: `%${amf.name.toUpperCase()}_N2_IP`,
+          ngc_addr: this.ipmap.formatEnv(amf.name, "n2"),
           ngc_sctp_port: 38412,
         }));
         config.mcc = "%MCC";
@@ -103,7 +106,7 @@ class NetDefProcessor {
         config.DefaultNetwork.dnn = config.dn_list[0]?.dnn ?? "default";
 
         config.Cell.splice(0, Infinity, ...(subscriber.gnbs ?? allGNBs).map((name): PH.ue_5g_nas_only.Cell => {
-          const ip = `%${name.toUpperCase()}_AIR_IP`;
+          const ip = this.ipmap.formatEnv(name, "air");
           const gnb = this.netdef.findGNB(name);
           assert(!!gnb);
           return {
@@ -121,8 +124,8 @@ class NetDefProcessor {
 
   private applyBT(): void {
     for (const nf of ["bt", "btup"]) {
-      for (const ct of this.sf.ipmap.listContainersByNf(nf)) {
-        this.sf.ipmap.removeContainer(ct);
+      for (const ct of this.ipmap.listContainersByNf(nf)) {
+        this.ipmap.removeContainer(ct);
         this.sf.delete(`${ct}.json`);
       }
     }
@@ -216,7 +219,7 @@ class NetDefProcessor {
         config.Associations.Peer.splice(0, Infinity, ...this.network.upfs.map((upf): PH.pfcp.Acceptor => ({
           type: "udp",
           port: 8805,
-          bind: `%${upf.name.toUpperCase()}_N4_IP`,
+          bind: this.ipmap.formatEnv(upf.name, "n4"),
         })));
       });
     }
@@ -284,12 +287,12 @@ class NetDefProcessor {
     const upf = this.netdef.findUPF(node as string)!;
     return {
       type: "UPF",
-      id: `%${upf.name.toUpperCase()}_N4_IP`,
-      ip: `%${upf.name.toUpperCase()}_${{
-        DNN: "N6",
-        gNodeB: "N3",
-        UPF: "N9",
-      }[peerType]}_IP`,
+      id: this.ipmap.formatEnv(upf.name, "n4"),
+      ip: this.ipmap.formatEnv(upf.name, {
+        DNN: "n6",
+        gNodeB: "n3",
+        UPF: "n9",
+      }[peerType]),
     };
   }
 
@@ -331,16 +334,16 @@ class NetDefProcessor {
         if (hasN3) {
           config.DataPlane.interfaces.push({
             type: "n3_n9",
-            name: `%${ct.toUpperCase()}_N3_IF`,
-            bind_ip: `%${ct.toUpperCase()}_N3_IP`,
+            name: "n3",
+            bind_ip: this.ipmap.formatEnv(ct, "n3"),
             mode: "single_thread",
           });
         }
         if (hasN9) {
           config.DataPlane.interfaces.push({
             type: "n3_n9",
-            name: `%${ct.toUpperCase()}_N9_IF`,
-            bind_ip: `%${ct.toUpperCase()}_N9_IP`,
+            name: "n9",
+            bind_ip: this.ipmap.formatEnv(ct, "n9"),
             mode: "thread_pool",
           });
         }
@@ -348,7 +351,7 @@ class NetDefProcessor {
           config.DataPlane.interfaces.push({
             type: "n6_l3",
             name: "n6_tun",
-            bind_ip: `%${ct.toUpperCase()}_N6_IP`,
+            bind_ip: this.ipmap.formatEnv(ct, "n6"),
             mode: "thread_pool",
           });
         }
@@ -384,7 +387,7 @@ class NetDefProcessor {
       for (const subnet of subnetsN6L3) {
         const dest = new Netmask(subnet);
         this.sf.routes.set(ct, { dest, dev: "n6_tun" });
-        this.sf.routes.set("igw", { dest, via: `$${ct.toUpperCase()}_N6_IP` });
+        this.sf.routes.set("igw", { dest, via: this.ipmap.formatEnv(ct, "n6", "$") });
       }
     }
   }
