@@ -3,11 +3,12 @@
   "type": "module",
   "scripts": {
     "lint": "xo-yoursunny --fix",
+    "netdef-compose": "node --no-warnings --loader tsm ./netdef-compose/main.ts",
     "phoenix-compose": "node --no-warnings --loader tsm ./phoenix-compose/main.ts",
     "phoenix-rpc": "node --no-warnings --loader tsm ./phoenix-rpc/main.ts",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@8.6.8",
+  "packageManager": "pnpm@8.6.9",
   "dependencies": {
     "@nodelib/fs.walk": "^1.2.8",
     "@types/dockerode": "^3.3.19",
@@ -19,6 +20,7 @@
     "@types/sql-tagged-template-literal": "^1.2.0",
     "@types/yargs": "^17.0.24",
     "dockerode": "^3.3.5",
+    "env-schema": "^5.2.0",
     "envfile": "^6.18.0",
     "get-stdin": "^9.0.0",
     "jayson": "^4.1.0",
@@ -34,6 +36,7 @@
     "tslib": "^2.6.0",
     "tsm": "^2.3.0",
     "typescript": "~5.1.6",
+    "untildify": "^5.0.0",
     "yargs": "^17.7.2"
   },
   "devDependencies": {

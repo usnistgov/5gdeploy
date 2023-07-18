@@ -2,7 +2,7 @@ import assert from "minimalistic-assert";
 import type { Netmask } from "netmask";
 
 import type { NetDef } from "../netdef/netdef.js";
-import { IPMAP } from "../phoenix-config/ipmap.js";
+import { IPMAP } from "../phoenix-config/mod.js";
 import type { ComposeFile, ComposeService } from "../types/compose.js";
 import { type RANServiceGenContext, RANServiceGens } from "./ran.js";
 
@@ -70,16 +70,19 @@ function buildService(ct: string, nets: ReadonlyMap<string, string>): ComposeSer
     s.networks[net] = { ipv4_address: ip };
   }
 
-  const nf = IPMAP.toNf(ct);
-  updateService[nf]?.(s);
-  if (s.image === "5gdeploy.localhost/phoenix") {
-    updatePhoenix(s);
-  }
-
+  updateService(s);
   return s;
 }
 
-const updateService: Record<string, (s: ComposeService) => void> = {
+export function updateService(s: ComposeService): void {
+  const nf = IPMAP.toNf(s.container_name);
+  updateNf[nf]?.(s);
+  if (s.image === "5gdeploy.localhost/phoenix") {
+    updatePhoenix(s);
+  }
+}
+
+const updateNf: Record<string, (s: ComposeService) => void> = {
   sql(s) {
     s.image = "bitnami/mariadb:10.6";
     s.volumes.push({
