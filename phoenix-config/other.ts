@@ -35,11 +35,11 @@ export class OtherTable {
         const ct = m[1]!;
         const cmd = m[2]!;
 
-        m = /^ip\s+route\s+add\s+([\d./]+)(?:\s+via\s+([\d.]+))?(?:\s+dev\s+(\w+))?$/.exec(cmd);
+        m = /^ip\s+route\s+add\s+([\d./]+)(?:\s+via\s+([\d.]+|\$[A-Z\d_]+))?(?:\s+dev\s+(\w+))?$/.exec(cmd);
         if (m) {
           this.routes.set(ct, {
             dest: new Netmask(m[1]!),
-            via: m[2] && new Netmask(m[2]!).base,
+            via: m[2] && (m[2].startsWith("$") ? m[2] : new Netmask(m[2]).base),
             dev: m[3],
           });
         } else {
@@ -68,6 +68,8 @@ export class OtherTable {
   }
 }
 export namespace OtherTable {
+  export const DefaultDest = new Netmask("0.0.0.0/0");
+
   export interface Route {
     dest: Netmask;
     via?: string;

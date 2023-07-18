@@ -12,23 +12,12 @@ export async function phoenixCore(ctx: NetDefComposeContext): Promise<void> {
   for (const net of sf.ipmap.networks.keys()) {
     ctx.defineNetwork(net, net === "mgmt");
   }
-  const ipRepl = new Map<string, string>();
   for (const [ct, netifs] of sf.ipmap.containers) {
     const s = ctx.defineService(ct, "5gdeploy.localhost/phoenix", Array.from(netifs.keys()));
     for (const [net, netif] of Object.entries(s.networks)) {
-      ipRepl.set(netifs.get(net)!, netif.ipv4_address);
       (netifs as Map<string, string>).set(net, netif.ipv4_address);
     }
     updateService(s);
-  }
-
-  for (const [, route] of sf.routes) {
-    if (route.via) {
-      const via = ipRepl.get(route.via);
-      if (via) {
-        route.via = via;
-      }
-    }
   }
 
   await sf.save(path.resolve(ctx.out, "cfg"), path.resolve(ctx.out, "sql"));

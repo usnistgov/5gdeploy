@@ -7,7 +7,7 @@ import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
 import type { ScenarioFolder } from "./folder.js";
 import type { NetworkFunction } from "./nf.js";
-import type { OtherTable } from "./other.js";
+import { OtherTable } from "./other.js";
 
 /** Apply network definition to scenario. */
 export function applyNetdef(sf: ScenarioFolder, netdef: NetDef): void {
@@ -294,7 +294,8 @@ class NetDefProcessor {
   }
 
   private applyUPF(): void {
-    this.deleteNonDefaultRoutes("igw");
+    this.sf.routes.delete("igw");
+    this.sf.routes.set("igw", { dest: OtherTable.DefaultDest, via: "$HOSTNAT_HNET_IP" });
     for (const [ct, upf] of this.sf.scaleNetworkFunction("upf1", this.network.upfs)) {
       let hasN3 = false;
       let hasN9 = false;
@@ -378,25 +379,13 @@ class NetDefProcessor {
         }
       })());
 
-      this.deleteNonDefaultRoutes(ct);
+      this.sf.routes.delete(ct);
+      this.sf.routes.set(ct, { dest: OtherTable.DefaultDest, via: "$IGW_N6_IP" });
       for (const subnet of subnetsN6L3) {
         const dest = new Netmask(subnet);
         this.sf.routes.set(ct, { dest, dev: "n6_tun" });
-        this.sf.routes.set("igw", { dest, via: this.sf.ipmap.containers.get(ct)!.get("n6")! });
+        this.sf.routes.set("igw", { dest, via: `$${ct.toUpperCase()}_N6_IP` });
       }
-    }
-  }
-
-  private deleteNonDefaultRoutes(ct: string): void {
-    let dflt: OtherTable.Route | undefined;
-    for (const route of (this.sf.routes.get(ct) ?? [])) {
-      if (route.dest.netLong === 0) {
-        dflt = route;
-      }
-    }
-    this.sf.routes.delete(ct);
-    if (dflt) {
-      this.sf.routes.set(ct, dflt);
     }
   }
 
