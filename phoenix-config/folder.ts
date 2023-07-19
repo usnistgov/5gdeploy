@@ -23,6 +23,9 @@ export class ScenarioFolder {
    */
   public static async load(dir: string): Promise<ScenarioFolder> {
     const sf = new ScenarioFolder();
+    sf.env = parseEnv(await fs.readFile(path.resolve(dir, "env.sh"), "utf8"));
+    sf.ipmap = IPMAP.parse(await fs.readFile(path.resolve(dir, "ip-map"), "utf8"), sf.env);
+    sf.other = OtherTable.parse(await fs.readFile(path.resolve(dir, "other"), "utf8"));
 
     const walk = await fsWalkPromise(dir, {
       entryFilter(entry) {
@@ -39,39 +42,39 @@ export class ScenarioFolder {
       },
     });
     for (const entry of walk) {
-      sf.files.set(path.relative(dir, entry.path), { readFromFile: entry.path, edits: [] });
+      sf.createFrom(path.relative(dir, entry.path), entry.path);
     }
-
-    sf.env = parseEnv(await fs.readFile(path.resolve(dir, "env.sh"), "utf8"));
-    sf.ipmap = IPMAP.parse(await fs.readFile(path.resolve(dir, "ip-map"), "utf8"), sf.env);
-    sf.other = OtherTable.parse(await fs.readFile(path.resolve(dir, "other"), "utf8"));
     return sf;
   }
 
   private files = new Map<string, FileAction>();
+  /** Environment variables in env.sh. */
   public env = new Map<string, string>();
+  /** IP address assignments (ip-map). */
   public ipmap = IPMAP.parse("");
   private other = new OtherTable();
 
+  /** Per-container initialization commands. */
   public get initCommands(): DefaultMap<string, string[]> {
     return this.other.commands;
   }
 
+  /** Per-container IPv4 routes. */
   public get routes(): MultiMap<string, OtherTable.Route> {
     return this.other.routes;
   }
 
   /** Report whether a file exists. */
-  public hasFile(file: string): boolean {
+  public has(file: string): boolean {
     return this.files.has(file);
   }
 
-  /** Delete a file. */
-  public delete(file: string): void {
-    this.files.delete(file);
+  /** Create a file from an external file. */
+  public createFrom(dst: string, src: string): void {
+    this.files.set(dst, { readFromFile: src, edits: [] });
   }
 
-  /** Duplicate a file from its initial contents. */
+  /** Duplicate a file without pending edits. */
   public copy(dst: string, src: string): void {
     const fa = this.files.get(src);
     assert(fa, "source file not found");
@@ -85,6 +88,11 @@ export class ScenarioFolder {
     fa.edits.push(f);
   }
 
+  /** Delete a file. */
+  public delete(file: string): void {
+    this.files.delete(file);
+  }
+
   /**
    * Scale network function to specified quantity.
    * @param tpl template container name(s); if multiple, try in order.
@@ -94,7 +102,7 @@ export class ScenarioFolder {
   public scaleNetworkFunction<T>(tplNames: string | readonly string[], list: readonly T[]): Map<string, T> {
     const tpl = (typeof tplNames === "string" ? [tplNames] : tplNames).find((tpl) => this.ipmap.containers.has(tpl));
     assert(tpl, "template container not found");
-    assert(this.hasFile(`${tpl}.json`));
+    assert(this.has(`${tpl}.json`));
     assert(list.length > 0);
 
     const nf = IPMAP.toNf(tpl);
@@ -134,10 +142,12 @@ export class ScenarioFolder {
   }
 
   /** Edit a network function .json file. */
-  public editNetworkFunction(ct: string, f: (c: NetworkFunction) => void | Promise<void>): void {
+  public editNetworkFunction(ct: string, ...edits: ReadonlyArray<(c: NetworkFunction) => void | Promise<void>>): void {
     this.edit(`${ct}.json`, async (body) => {
       const c = NetworkFunction.parse(body);
-      await f(c);
+      for (const edit of edits) {
+        await edit(c);
+      }
       return c.save();
     });
   }
@@ -175,9 +185,9 @@ export class ScenarioFolder {
         continue;
       }
 
-      let body = fa.readFromFile ? await fs.readFile(fa.readFromFile, "utf8") : fa.initialContent ?? "";
-      for (const f of fa.edits) {
-        body = await f(body);
+      let body = fa.readFromFile ? await fs.readFile(fa.readFromFile, "utf8") : (fa.initialContent ?? "");
+      for (const edit of fa.edits) {
+        body = await edit(body);
       }
       await fs.writeFile(dstPath, body);
     }

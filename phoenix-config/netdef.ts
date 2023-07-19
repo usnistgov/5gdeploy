@@ -132,7 +132,7 @@ class NetDefProcessor {
   }
 
   private applyNSSF(): void {
-    if (!this.sf.hasFile("sql/nssf_db.sql")) {
+    if (!this.sf.has("sql/nssf_db.sql")) {
       return;
     }
     const { netdef, network } = this;
@@ -155,26 +155,28 @@ class NetDefProcessor {
 
   private applyAMF(): void {
     for (const [ct, amf] of this.sf.scaleNetworkFunction(["amf", "amf1"], this.network.amfs)) {
-      this.sf.editNetworkFunction(ct, (c) => this.setNrfClientSlices(c, amf.nssai));
-      this.sf.editNetworkFunction(ct, (c) => {
-        const { config } = c.getModule("amf");
-        config.id = ct;
-        const [regionId, amfSetId, amfPointer] = NetDef.validateAMFI(amf.amfi);
-        config.guami = {
-          mcc: "%MCC",
-          mnc: "%MNC",
-          regionId,
-          amfSetId,
-          amfPointer,
-        };
-        config.trackingArea.splice(0, Infinity, {
-          mcc: "%MCC",
-          mnc: "%MNC",
-          taiList: [
-            { tac: this.netdef.tac },
-          ],
-        });
-      });
+      this.sf.editNetworkFunction(ct,
+        (c) => this.setNrfClientSlices(c, amf.nssai),
+        (c) => {
+          const { config } = c.getModule("amf");
+          config.id = ct;
+          const [regionId, amfSetId, amfPointer] = NetDef.validateAMFI(amf.amfi);
+          config.guami = {
+            mcc: "%MCC",
+            mnc: "%MNC",
+            regionId,
+            amfSetId,
+            amfPointer,
+          };
+          config.trackingArea.splice(0, Infinity, {
+            mcc: "%MCC",
+            mnc: "%MNC",
+            taiList: [
+              { tac: this.netdef.tac },
+            ],
+          });
+        },
+      );
     }
   }
 
@@ -186,42 +188,41 @@ class NetDefProcessor {
       const startTeid = nextTeid;
       nextTeid += eachTeid;
 
-      this.sf.editNetworkFunction(ct, (c) => this.setNrfClientSlices(c, smf.nssai));
-
-      this.sf.editNetworkFunction(ct, (c) => {
-        const { config } = c.getModule("smf");
-        config.id = ct;
-        config.mtu = 1456;
-        config.startTeid = startTeid;
-      });
-
-      this.sf.editNetworkFunction(ct, (c) => {
-        const { config } = c.getModule("sdn_routing_topology");
-        config.Topology.Link = this.netdef.dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
-          const typeA = this.determineDataPathNodeType(nodeA);
-          const typeB = this.determineDataPathNodeType(nodeB);
-          if (smf.nssai) {
-            const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
-            if (dn && !smf.nssai.includes(dn.snssai)) {
-              return [];
+      this.sf.editNetworkFunction(ct,
+        (c) => this.setNrfClientSlices(c, smf.nssai),
+        (c) => {
+          const { config } = c.getModule("smf");
+          config.id = ct;
+          config.mtu = 1456;
+          config.startTeid = startTeid;
+        },
+        (c) => {
+          const { config } = c.getModule("sdn_routing_topology");
+          config.Topology.Link = this.netdef.dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
+            const typeA = this.determineDataPathNodeType(nodeA);
+            const typeB = this.determineDataPathNodeType(nodeB);
+            if (smf.nssai) {
+              const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
+              if (dn && !smf.nssai.includes(dn.snssai)) {
+                return [];
+              }
             }
-          }
-          return {
-            weight: cost,
-            Node_A: this.makeDataPathTopoNode(nodeA, typeA, typeB),
-            Node_B: this.makeDataPathTopoNode(nodeB, typeB, typeA),
-          };
-        });
-      });
-
-      this.sf.editNetworkFunction(ct, (c) => {
-        const { config } = c.getModule("pfcp");
-        config.Associations.Peer.splice(0, Infinity, ...this.network.upfs.map((upf): PH.pfcp.Acceptor => ({
-          type: "udp",
-          port: 8805,
-          bind: this.ipmap.formatEnv(upf.name, "n4"),
-        })));
-      });
+            return {
+              weight: cost,
+              Node_A: this.makeDataPathTopoNode(nodeA, typeA, typeB),
+              Node_B: this.makeDataPathTopoNode(nodeB, typeB, typeA),
+            };
+          });
+        },
+        (c) => {
+          const { config } = c.getModule("pfcp");
+          config.Associations.Peer.splice(0, Infinity, ...this.network.upfs.map((upf): PH.pfcp.Acceptor => ({
+            type: "udp",
+            port: 8805,
+            bind: this.ipmap.formatEnv(upf.name, "n4"),
+          })));
+        },
+      );
     }
 
     this.sf.appendSQL("smf_db", function*() {
