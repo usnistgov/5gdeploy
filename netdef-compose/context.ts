@@ -32,7 +32,7 @@ export class NetDefComposeContext {
     };
   }
 
-  public defineService(ct: string, image: string, nets: string[]): ComposeService {
+  public defineService(ct: string, image: string, nets: readonly string[]): ComposeService {
     const s: ComposeService = {
       container_name: ct,
       hostname: ct,

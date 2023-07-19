@@ -1,7 +1,17 @@
 /** Compose file. */
 export interface ComposeFile {
-  networks: Record<string, unknown>;
+  networks: Record<string, ComposeNetwork>;
   services: Record<string, ComposeService>;
+}
+
+/** Compose network. */
+export interface ComposeNetwork {
+  name: string;
+  driver_opts?: Record<string, string | number>;
+  ipam: {
+    driver: "default";
+    config: Array<{ subnet: string }>;
+  };
 }
 
 /** Compose service. */
@@ -16,10 +26,18 @@ export interface ComposeService {
   cap_add: string[];
   devices: string[];
   sysctls: Record<string, string | number>;
-  volumes: unknown[];
+  volumes: ComposeVolume[];
   environment: Record<string, string>;
   network_mode?: string;
   networks: Record<string, ComposeNetif>;
+}
+
+/** Compose service bind volume. */
+export interface ComposeVolume {
+  type: "bind";
+  source: string;
+  target: string;
+  read_only?: boolean;
 }
 
 /** Compose service network interface. */

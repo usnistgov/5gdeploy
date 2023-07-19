@@ -3,11 +3,12 @@ import type { Netmask } from "netmask";
 
 import type { NetDef } from "../netdef/netdef.js";
 import { IPMAP } from "../phoenix-config/mod.js";
-import type { ComposeFile, ComposeService } from "../types/compose.js";
+import type { ComposeFile, ComposeNetwork, ComposeService } from "../types/compose.js";
 import { type RANServiceGenContext, RANServiceGens } from "./ran.js";
 
 export const phoenixdir = "/opt/phoenix";
 export const cfgdir = `${phoenixdir}/cfg/current`;
+export const phoenixDockerImage = "5gdeploy.localhost/phoenix";
 
 /** Convert ip-map to Compose file. */
 export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
@@ -35,7 +36,7 @@ export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
   return c;
 }
 
-function buildNetwork(net: string, subnet: Netmask) {
+function buildNetwork(net: string, subnet: Netmask): ComposeNetwork {
   const masquerade = Number(net === "mgmt");
   return {
     name: `br-${net}`,
@@ -56,7 +57,7 @@ function buildService(ct: string, nets: ReadonlyMap<string, string>): ComposeSer
   const s: ComposeService = {
     container_name: ct,
     hostname: ct,
-    image: "5gdeploy.localhost/phoenix",
+    image: phoenixDockerImage,
     init: true,
     cap_add: [],
     devices: [],
@@ -77,7 +78,7 @@ function buildService(ct: string, nets: ReadonlyMap<string, string>): ComposeSer
 export function updateService(s: ComposeService): void {
   const nf = IPMAP.toNf(s.container_name);
   updateNf[nf]?.(s);
-  if (s.image === "5gdeploy.localhost/phoenix") {
+  if (s.image === phoenixDockerImage) {
     updatePhoenix(s);
   }
 }

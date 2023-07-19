@@ -11,8 +11,8 @@ import type { NetworkFunction } from "./nf.js";
 import { OtherTable } from "./other.js";
 
 /** Apply network definition to scenario. */
-export function applyNetdef(sf: ScenarioFolder, netdef: NetDef): void {
-  new NetDefProcessor(netdef, sf).process();
+export function applyNetdef(sf: ScenarioFolder, netdef: NetDef, only?: "core" | "ran"): void {
+  new NetDefProcessor(netdef, sf).process(only);
 }
 
 class NetDefProcessor {
@@ -28,16 +28,20 @@ class NetDefProcessor {
   private readonly ipmap: IPMAP;
   private readonly usim = { sqn: "000000000001", amf: "8000" } as const;
 
-  public process(): void {
+  public process(only?: "core" | "ran"): void {
     this.applyEnv();
-    this.applyGNBs();
-    this.applyUEs();
-    this.applyBT();
-    this.applyNSSF();
-    this.applyAMF();
-    this.applySMF();
-    this.applyUPF();
-    this.applyUDM();
+    if (!only || only === "ran") {
+      this.applyGNBs();
+      this.applyUEs();
+      this.applyBT();
+    }
+    if (!only || only === "core") {
+      this.applyNSSF();
+      this.applyAMF();
+      this.applySMF();
+      this.applyUPF();
+      this.applyUDM();
+    }
   }
 
   private applyEnv(): void {
@@ -46,6 +50,8 @@ class NetDefProcessor {
     this.sf.env.set("MCC", mcc);
     this.sf.env.set("MNC", mnc);
     this.sf.env.set("PROMETHEUS_ENABLED", "0");
+    this.sf.env.set("COMMAND_DISABLED", "0");
+    this.sf.env.set("DISABLE_REMOTE_COMMAND", "0");
   }
 
   private applyGNBs(): void {
@@ -75,6 +81,9 @@ class NetDefProcessor {
           }
         }
       });
+      this.sf.initCommands.set(ct, [
+        "iptables -I OUTPUT -p icmp --icmp-type destination-unreachable -j DROP",
+      ]);
     }
   }
 
@@ -119,6 +128,9 @@ class NetDefProcessor {
           };
         }));
       });
+      this.sf.initCommands.set(ct, [
+        "ip link set air mtu 1470",
+      ]);
     }
   }
 
@@ -367,7 +379,7 @@ class NetDefProcessor {
         delete config.DataPlane.xdp;
       });
 
-      this.sf.initCommands.get(ct).splice(0, Infinity, ...(function*() {
+      this.sf.initCommands.set(ct, [...(function*() {
         if (subnetsN6L3.length > 0 || dnnN6L2) {
           yield "ip link set n6 mtu 1456";
         }
@@ -381,7 +393,7 @@ class NetDefProcessor {
           yield "ip tuntap add mode tap user root name n6_tap";
           yield "ip link set n6_tap up master br-eth";
         }
-      })());
+      })()]);
 
       this.sf.routes.delete(ct);
       this.sf.routes.set(ct, { dest: OtherTable.DefaultDest, via: "$IGW_N6_IP" });

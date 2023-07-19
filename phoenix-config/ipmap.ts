@@ -3,6 +3,8 @@ import DefaultMap from "mnemonist/default-map.js";
 import set from "mnemonist/set.js";
 import { ip2long, long2ip, Netmask } from "netmask";
 
+import { type ComposeFile } from "../types/compose.js";
+
 /** Content of ph_init ip-map file. */
 export class IPMAP {
   /**
@@ -28,7 +30,25 @@ export class IPMAP {
       networks.set(net, new Netmask(ip, cidr));
       containers.get(ct).set(net, ip);
     }
-    return new IPMAP(networks, new Map<string, Map<string, string>>(containers));
+    return new IPMAP(networks, new Map(containers));
+  }
+
+  /** Convert from Compose file. */
+  public static fromCompose(c: ComposeFile): IPMAP {
+    const networks = new Map<string, Netmask>();
+    const containers = new Map<string, Map<string, string>>();
+    for (const [net, { ipam: { config: [ipam0] } }] of Object.entries(c.networks)) {
+      assert(ipam0?.subnet, `missing .networks.${net}.ipam.config[0].subnet`);
+      networks.set(net, new Netmask(ipam0.subnet));
+    }
+    for (const [ct, { networks }] of Object.entries(c.services)) {
+      const netifs = new Map<string, string>();
+      for (const [net, { ipv4_address }] of Object.entries(networks)) {
+        netifs.set(net, ipv4_address);
+      }
+      containers.set(ct, netifs);
+    }
+    return new IPMAP(networks, containers);
   }
 
   private constructor(

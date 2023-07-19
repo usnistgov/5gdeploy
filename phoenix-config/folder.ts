@@ -94,6 +94,12 @@ export class ScenarioFolder {
   }
 
   /**
+   * Indicate that scaleNetworkFunction cannot add or remove containers.
+   * Instead, the caller (PhoenixScenarioBuilder) has pre-created these containers.
+   */
+  public preScaled = false;
+
+  /**
    * Scale network function to specified quantity.
    * @param tpl template container name(s); if multiple, try in order.
    * @param list relevant config objects.
@@ -102,13 +108,20 @@ export class ScenarioFolder {
   public scaleNetworkFunction<T>(tplNames: string | readonly string[], list: readonly T[]): Map<string, T> {
     const tpl = (typeof tplNames === "string" ? [tplNames] : tplNames).find((tpl) => this.ipmap.containers.has(tpl));
     assert(tpl, "template container not found");
-    assert(this.has(`${tpl}.json`));
-    assert(list.length > 0);
+    assert(this.has(`${tpl}.json`), `missing template ${tpl}.json`);
+    assert(list.length > 0, "empty network function instances list");
 
     const nf = IPMAP.toNf(tpl);
     const netifs = Array.from(this.ipmap.containers.get(tpl)!.keys());
-
     const m = IPMAP.suggestNames(nf, list);
+
+    if (this.preScaled) {
+      for (const ct of m.keys()) {
+        assert(this.has(`${ct}.json`), `missing pre-scaled ${ct}.json`);
+      }
+      return m;
+    }
+
     const { removed } = this.ipmap.scaleContainers([...m.keys()], netifs);
     for (const ct of m.keys()) {
       const ctFile = `${ct}.json`;
