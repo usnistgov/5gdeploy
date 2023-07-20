@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import yaml from "js-yaml";
-import stringify from "json-stable-stringify";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -79,4 +78,4 @@ if (args["bridge-to"]) {
   };
 }
 
-await fs.writeFile(path.resolve(args.out, "compose.yml"), stringify(composeFile, { space: 2 }));
+await fs.writeFile(path.resolve(args.out, "compose.yml"), yaml.dump(composeFile, { forceQuotes: true, sortKeys: true }));

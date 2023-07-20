@@ -2,9 +2,9 @@ import assert from "minimalistic-assert";
 import type { Netmask } from "netmask";
 
 import type { NetDef } from "../netdef/netdef.js";
+import { type RANServiceGenContext, RANServiceGens } from "../netdef-compose/ran.js";
 import { IPMAP } from "../phoenix-config/mod.js";
 import type { ComposeFile, ComposeNetwork, ComposeService } from "../types/compose.js";
-import { type RANServiceGenContext, RANServiceGens } from "./ran.js";
 
 export const phoenixdir = "/opt/phoenix";
 export const cfgdir = `${phoenixdir}/cfg/current`;
@@ -134,7 +134,7 @@ export function mergeRAN(compose: ComposeFile, ranCompose: ComposeFile, ipmap: I
   const ctx: RANServiceGenContext = {
     netdef,
     network,
-    compose,
+    c: compose,
   };
 
   scaleRAN(ctx, ipmap, gnbTpl, network.gnbs);
@@ -154,7 +154,7 @@ function scaleRAN<T>(ctx: RANServiceGenContext, ipmap: IPMAP, tpl: ComposeServic
     for (const [net, ip] of ipmap.containers.get(ct)!) {
       s.networks[net] = { ipv4_address: ip };
     }
-    ctx.compose.services[ct] = s;
-    RANServiceGens[s.image.replace("5gdeploy.localhost/", "")]?.[nf]?.(ctx, item as any, s);
+    ctx.c.services[ct] = s;
+    RANServiceGens[s.image.split("/").at(-1)!]?.[nf]?.(ctx, item as any, s);
   }
 }

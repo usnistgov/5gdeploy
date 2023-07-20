@@ -1,19 +1,21 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import stringify from "json-stable-stringify";
+import yaml from "js-yaml";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 import { NetDef } from "../netdef/netdef.js";
 import { NetDefComposeContext } from "./context.js";
 import { phoenixCore, phoenixRAN } from "./phoenix.js";
+import { RANProviders } from "./ran.js";
 
 const coreProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
   phoenix: phoenixCore,
 };
 
 const ranProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
+  ...RANProviders,
   phoenix: phoenixRAN,
 };
 
@@ -46,4 +48,4 @@ const netdef = new NetDef(JSON.parse(await fs.readFile(args.netdef, "utf8")));
 const ctx = new NetDefComposeContext(netdef, args.out);
 await coreProviders[args.core]!(ctx);
 await ranProviders[args.ran]!(ctx);
-await fs.writeFile(path.resolve(args.out, "compose.yml"), stringify(ctx.c, { space: 2 }));
+await fs.writeFile(path.resolve(args.out, "compose.yml"), yaml.dump(ctx.c, { forceQuotes: true, sortKeys: true }));
