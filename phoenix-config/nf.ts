@@ -1,4 +1,4 @@
-import stringify from "json-stable-stringify";
+import stringify from "json-stringify-deterministic";
 import assert from "minimalistic-assert";
 
 import type * as PH from "../types/phoenix.js";
@@ -35,6 +35,6 @@ export class NetworkFunction {
 
   /** Save as network function JSON. */
   public save(): string {
-    return stringify({ Phoenix: this.Phoenix }, { space: 2 });
+    return stringify({ Phoenix: this.Phoenix }, { space: "  " });
   }
 }

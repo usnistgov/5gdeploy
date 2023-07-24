@@ -269,7 +269,7 @@ class NetDefProcessor {
     if (this.netdef.findUPF(node) !== undefined) {
       return "UPF";
     }
-    throw new Error("data path node not found");
+    throw new Error(`data path node ${node} not found`);
   }
 
   private makeDataPathTopoNode(

@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 
 import yaml from "js-yaml";
 
-import type { NetDef } from "../netdef/netdef.js";
+import { NetDef } from "../netdef/netdef.js";
 import { IPMAP } from "../phoenix-config/ipmap.js";
 import type { ComposeFile, ComposeService } from "../types/compose.js";
 import type * as N from "../types/netdef.js";
@@ -75,14 +75,52 @@ const ueransim: RANServiceGen = {
   },
 };
 
+const oai: RANServiceGen = {
+  gnb({ netdef, network, c }, gnb, s) {
+    const [mcc, mnc] = NetDef.splitPLMN(network.plmn);
+    const [sst] = NetDef.splitSNSSAI(netdef.nssai[0]!);
+    Object.assign(s.environment, {
+      MCC: mcc,
+      MNC: mnc,
+      MNC_LENGTH: mnc.length,
+      TAC: netdef.tac, // decimal
+      GNB_NAME: gnb.name,
+      NSSAI_SST: Number.parseInt(sst, 16),
+      AMF_IP_ADDRESS: c.services[network.amfs[0]!.name]!.networks.n2!.ipv4_address,
+      GNB_NGA_IP_ADDRESS: s.networks.n2!.ipv4_address,
+      GNB_NGU_IP_ADDRESS: s.networks.n3!.ipv4_address,
+    });
+  },
+  ue({ network, c }, subscriber, s) {
+    let sst = Number.parseInt(NetDef.splitSNSSAI(network.dataNetworks[0]!.snssai)[0], 16);
+    let dnn = network.dataNetworks[0]!.dnn;
+    for (const { snssai, dnns } of (subscriber.requestedNSSAI ?? subscriber.subscribedNSSAI ?? [])) {
+      sst = Number.parseInt(NetDef.splitSNSSAI(snssai)[0], 16);
+      dnn = dnns[0]!;
+    }
+
+    Object.assign(s.environment, {
+      RFSIMULATOR: c.services[network.gnbs[0]!.name]!.networks.air!.ipv4_address,
+      FULL_IMSI: subscriber.supi,
+      FULL_KEY: subscriber.k,
+      OPC: subscriber.opc,
+      DNN: dnn,
+      NSSAI_SST: sst,
+    });
+  },
+};
+
 /** Parameter generators for RAN services, by container image name suffix. */
 export const RANServiceGens: Record<string, RANServiceGen> = {
   ueransim,
+  "oai-gnb": oai,
+  "oai-nr-ue": oai,
 };
 
 /** Topology generators for RAN services. */
 export const RANProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
   ueransim: wrapRANProvider(ueransim, "docker/ueransim/compose.phoenix.yml"),
+  oai: wrapRANProvider(oai, "docker/oai/compose.phoenix.yml"),
 };
 
 function wrapRANProvider(sg: RANServiceGen, composeFile: string): (ctx: NetDefComposeContext) => Promise<void> {

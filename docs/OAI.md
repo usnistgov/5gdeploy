@@ -7,10 +7,10 @@ Build OpenAirInterface Docker images:
 ```bash
 cd ~/5gdeploy
 docker build --pull -t 5gdeploy.localhost/oai-gnb \
-  --build-arg BASE=oaisoftwarealliance/oai-gnb:develop \
+  --build-arg BASE=oaisoftwarealliance/oai-gnb:2023.w18 \
   docker/oai
 docker build --pull -t 5gdeploy.localhost/oai-nr-ue \
-  --build-arg BASE=oaisoftwarealliance/oai-nr-ue:develop \
+  --build-arg BASE=oaisoftwarealliance/oai-nr-ue:2023.w18 \
   docker/oai
 ```
 
