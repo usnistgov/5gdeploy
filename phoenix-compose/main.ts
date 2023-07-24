@@ -1,14 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import yaml from "js-yaml";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
+import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import { applyNetdef as phApplyNetdef, ScenarioFolder } from "../phoenix-config/mod.js";
-import type { ComposeFile } from "../types/compose.js";
-import * as compose from "./compose.js";
+import * as ph_compose from "./compose.js";
 
 const args = await yargs(hideBin(process.argv))
   .option("cfg", {
@@ -29,14 +28,7 @@ const args = await yargs(hideBin(process.argv))
     desc: "replace RAN simulator with services in specified Compose file",
     type: "string",
   })
-  .option("bridge-on", {
-    desc: "bridge specified networks only",
-    type: "string",
-  })
-  .option("bridge-to", {
-    desc: "bridge to list of IP addresses",
-    type: "string",
-  })
+  .option(compose.bridgeOptions)
   .parseAsync();
 
 const sf = await ScenarioFolder.load(args.cfg);
@@ -47,35 +39,18 @@ if (args.netdef) {
 }
 await sf.save(path.resolve(args.out, "cfg"), path.resolve(args.out, "sql"));
 
-const composeFile = compose.convert(sf.ipmap, !!args.ran);
+const composeFile = ph_compose.convert(sf.ipmap, !!args.ran);
 if (args.ran && args.ran !== "false") {
-  const ranCompose = yaml.load(await fs.readFile(args.ran, "utf8")) as ComposeFile;
+  const ranCompose = compose.parse(await fs.readFile(args.ran, "utf8"));
   if (netdef) {
-    compose.mergeRAN(composeFile, ranCompose, sf.ipmap, netdef);
+    ph_compose.mergeRAN(composeFile, ranCompose, sf.ipmap, netdef);
   } else {
     Object.assign(composeFile.services, ranCompose.services);
   }
 }
 
-if (args["bridge-to"]) {
-  const bridgeOn = args["bridge-on"] ? new Set(args["bridge-on"].split(",")) : new Set();
-  const bridges = Object.keys(composeFile.networks)
-    .map((br) => br.replace(/^br-/, ""))
-    .filter((br) => bridgeOn.size === 0 ? br !== "mgmt" : bridgeOn.has(br))
-    .sort((a, b) => a.localeCompare(b));
-  composeFile.services.bridge = {
-    container_name: "bridge",
-    hostname: "bridge",
-    image: "5gdeploy.localhost/bridge",
-    command: ["/entrypoint.sh", bridges.join(","), args["bridge-to"]],
-    cap_add: ["NET_ADMIN"],
-    devices: [],
-    sysctls: {},
-    volumes: [],
-    environment: {},
-    network_mode: "host",
-    networks: {},
-  };
+if (args.bridgeTo) {
+  compose.defineBridge(composeFile, args.bridgeTo, args.bridgeOn);
 }
 
-await fs.writeFile(path.resolve(args.out, "compose.yml"), yaml.dump(composeFile, { forceQuotes: true, sortKeys: true }));
+await fs.writeFile(path.resolve(args.out, "compose.yml"), compose.save(composeFile));

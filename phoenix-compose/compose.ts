@@ -1,10 +1,10 @@
 import assert from "minimalistic-assert";
-import type { Netmask } from "netmask";
 
+import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import { type RANServiceGenContext, RANServiceGens } from "../netdef-compose/ran.js";
 import { IPMAP } from "../phoenix-config/mod.js";
-import type { ComposeFile, ComposeNetwork, ComposeService } from "../types/compose.js";
+import type { ComposeFile, ComposeService } from "../types/compose.js";
 
 export const phoenixdir = "/opt/phoenix";
 export const cfgdir = `${phoenixdir}/cfg/current`;
@@ -17,62 +17,23 @@ export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
     skipNf.push("bt", "btup", "gnb", "ue");
   }
 
-  const c: ComposeFile = {
-    networks: {},
-    services: {},
-  };
-
+  const c = compose.create();
   for (const [net, subnet] of ipmap.networks) {
-    c.networks[net] = buildNetwork(net, subnet);
+    compose.defineNetwork(c, net, subnet.toString(), net === "mgmt");
   }
 
   for (const [ct, nets] of ipmap.containers) {
     if (skipNf.includes(IPMAP.toNf(ct))) {
       continue;
     }
-    c.services[ct] = buildService(ct, nets);
+    const service = compose.defineService(c, ct, phoenixDockerImage);
+    for (const [net, ip] of nets) {
+      compose.connectNetif(c, ct, net, ip);
+    }
+    updateService(service);
   }
 
   return c;
-}
-
-function buildNetwork(net: string, subnet: Netmask): ComposeNetwork {
-  const masquerade = Number(net === "mgmt");
-  return {
-    name: `br-${net}`,
-    driver_opts: {
-      "com.docker.network.bridge.name": `br-${net}`,
-      "com.docker.network.bridge.enable_ip_masquerade": masquerade,
-    },
-    ipam: {
-      driver: "default",
-      config: [{
-        subnet: subnet.toString(),
-      }],
-    },
-  };
-}
-
-function buildService(ct: string, nets: ReadonlyMap<string, string>): ComposeService {
-  const s: ComposeService = {
-    container_name: ct,
-    hostname: ct,
-    image: phoenixDockerImage,
-    init: true,
-    cap_add: [],
-    devices: [],
-    sysctls: {},
-    volumes: [],
-    environment: {},
-    networks: {},
-  };
-
-  for (const [net, ip] of nets) {
-    s.networks[net] = { ipv4_address: ip };
-  }
-
-  updateService(s);
-  return s;
 }
 
 export function updateService(s: ComposeService): void {

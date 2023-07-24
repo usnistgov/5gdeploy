@@ -5,6 +5,7 @@ import yaml from "js-yaml";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
+import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import { NetDefComposeContext } from "./context.js";
 import { phoenixCore, phoenixRAN } from "./phoenix.js";
@@ -42,10 +43,14 @@ const args = await yargs(hideBin(process.argv))
     choices: Object.keys(ranProviders),
     type: "string",
   })
+  .option(compose.bridgeOptions)
   .parseAsync();
 
 const netdef = new NetDef(JSON.parse(await fs.readFile(args.netdef, "utf8")));
 const ctx = new NetDefComposeContext(netdef, args.out);
 await coreProviders[args.core]!(ctx);
 await ranProviders[args.ran]!(ctx);
+if (args.bridgeTo) {
+  compose.defineBridge(ctx.c, args.bridgeTo, args.bridgeOn);
+}
 await fs.writeFile(path.resolve(args.out, "compose.yml"), yaml.dump(ctx.c, { forceQuotes: true, sortKeys: true }));

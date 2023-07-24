@@ -1,5 +1,3 @@
-FROM debian:bookworm
-RUN apt-get update \
- && env DEBIAN_FRONTEND=noninteractive apt-get install -qq --no-install-recommends iproute2 jq \
- && rm -rf /var/lib/apt/lists/*
+FROM alpine:3.18
+RUN apk add --no-cache iproute2 jq
 ADD --chmod=755 entrypoint.sh /

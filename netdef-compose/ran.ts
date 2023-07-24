@@ -1,9 +1,8 @@
 import fs from "node:fs/promises";
 
-import yaml from "js-yaml";
-
+import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
-import { IPMAP } from "../phoenix-config/ipmap.js";
+import { IPMAP } from "../phoenix-config/mod.js";
 import type { ComposeFile, ComposeService } from "../types/compose.js";
 import type * as N from "../types/netdef.js";
 import { type NetDefComposeContext } from "./context.js";
@@ -119,14 +118,14 @@ export const RANServiceGens: Record<string, RANServiceGen> = {
 
 /** Topology generators for RAN services. */
 export const RANProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
-  ueransim: wrapRANProvider(ueransim, "docker/ueransim/compose.phoenix.yml"),
-  oai: wrapRANProvider(oai, "docker/oai/compose.phoenix.yml"),
+  ueransim: makeRANProvider(ueransim, "docker/ueransim/compose.phoenix.yml"),
+  oai: makeRANProvider(oai, "docker/oai/compose.phoenix.yml"),
 };
 
-function wrapRANProvider(sg: RANServiceGen, composeFile: string): (ctx: NetDefComposeContext) => Promise<void> {
+function makeRANProvider(sg: RANServiceGen, composeFile: string): (ctx: NetDefComposeContext) => Promise<void> {
   let ranCompose: ComposeFile | undefined;
   return async (ctx: NetDefComposeContext) => {
-    ranCompose ??= yaml.load(await fs.readFile(composeFile, "utf8")) as ComposeFile;
+    ranCompose ??= compose.parse(await fs.readFile(composeFile, "utf8"));
     ctx.defineNetwork("air");
     for (const [ct, gnb] of IPMAP.suggestNames("gnb", ctx.network.gnbs)) {
       const service = ctx.defineService(ct, "", ["air", "n2", "n3"]);

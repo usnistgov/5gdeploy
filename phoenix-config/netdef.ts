@@ -89,7 +89,7 @@ class NetDefProcessor {
 
   private applyUEs(): void {
     const allGNBs = this.network.gnbs.map((gnb) => gnb.name);
-    for (const [ct, subscriber] of this.sf.scaleNetworkFunction("ue1", this.network.subscribers)) {
+    for (const [ct, subscriber] of this.sf.scaleNetworkFunction(["ue1", "ue0"], this.network.subscribers)) {
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("ue_5g_nas_only");
         config.usim = {
