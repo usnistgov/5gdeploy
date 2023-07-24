@@ -1,8 +1,4 @@
-import assert from "minimalistic-assert";
-
 import * as compose from "../compose/mod.js";
-import type { NetDef } from "../netdef/netdef.js";
-import { type RANServiceGenContext, RANServiceGens } from "../netdef-compose/ran.js";
 import { IPMAP } from "../phoenix-config/mod.js";
 import type { ComposeFile, ComposeService } from "../types/compose.js";
 
@@ -84,38 +80,4 @@ function updatePhoenix(s: ComposeService): void {
     read_only: true,
   });
   Object.assign(s.environment, { phoenixdir, cfgdir });
-}
-
-export function mergeRAN(compose: ComposeFile, ranCompose: ComposeFile, ipmap: IPMAP, netdef: NetDef): void {
-  const { gnb: gnbTpl, ue: ueTpl } = ranCompose.services;
-  assert(!!gnbTpl, "missing 'gnb' container");
-  assert(!!ueTpl, "missing 'ue' container");
-
-  const { network } = netdef;
-  const ctx: RANServiceGenContext = {
-    netdef,
-    network,
-    c: compose,
-  };
-
-  scaleRAN(ctx, ipmap, gnbTpl, network.gnbs);
-  scaleRAN(ctx, ipmap, ueTpl, network.subscribers);
-}
-
-function scaleRAN<T>(ctx: RANServiceGenContext, ipmap: IPMAP, tpl: ComposeService, items: readonly T[]): void {
-  const nf = tpl.container_name as "gnb" | "ue";
-  const netifs = Object.keys(tpl.networks);
-  const containers = IPMAP.suggestNames(nf, items);
-  ipmap.scaleContainers([...containers.keys()], netifs);
-  for (const [ct, item] of containers) {
-    const s = JSON.parse(JSON.stringify(tpl)) as ComposeService;
-    s.container_name = ct;
-    s.hostname = ct;
-    s.networks = {};
-    for (const [net, ip] of ipmap.containers.get(ct)!) {
-      s.networks[net] = { ipv4_address: ip };
-    }
-    ctx.c.services[ct] = s;
-    RANServiceGens[s.image.split("/").at(-1)!]?.[nf]?.(ctx, item as any, s);
-  }
 }

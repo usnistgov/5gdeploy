@@ -1,5 +1,6 @@
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
+import { IPMAP } from "../phoenix-config/mod.js";
 import { type ComposeFile, type ComposeService } from "../types/compose.js";
 import { env } from "./env.js";
 import { IPAlloc } from "./ipalloc.js";
@@ -26,5 +27,21 @@ export class NetDefComposeContext {
       compose.connectNetif(this.c, ct, net, this.ipAlloc.allocNetif(net, ct));
     }
     return service;
+  }
+
+  /** Gather IP addresses of a network function or containers on a network. */
+  public gatherIPs(nf: string | string[], net: string): string[] {
+    const list: string[] = [];
+    for (const [ct, s] of Object.entries(this.c.services)) {
+      if ((typeof nf === "string") ? (IPMAP.toNf(ct) !== nf) : (!nf.includes(ct))) {
+        continue;
+      }
+      const netif = s.networks[net];
+      if (!netif) {
+        continue;
+      }
+      list.push(netif.ipv4_address);
+    }
+    return list;
   }
 }

@@ -65,6 +65,20 @@ export class NetDef {
       }
     }
   }
+
+  /** Iterate over requested or subscribed data networks. */
+  public *listSubscriberDNs(subscriber: N.Subscriber, requested?: boolean): Iterable<N.DataNetworkID> {
+    const nssai = (requested ? subscriber.requestedNSSAI : undefined) ?? subscriber.subscribedNSSAI;
+    if (nssai) {
+      for (const { snssai, dnns } of nssai) {
+        for (const dnn of dnns) {
+          yield { snssai, dnn };
+        }
+      }
+    } else {
+      yield* this.network.dataNetworks;
+    }
+  }
 }
 export namespace NetDef {
   /** Split PLMN to MCC and MNC. */

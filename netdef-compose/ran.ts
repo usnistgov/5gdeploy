@@ -1,149 +1,94 @@
-import fs from "node:fs/promises";
-
-import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import { IPMAP } from "../phoenix-config/mod.js";
-import type { ComposeFile, ComposeService } from "../types/compose.js";
-import type * as N from "../types/netdef.js";
 import { type NetDefComposeContext } from "./context.js";
 
-/** Contextual information for RANServiceGen. */
-export interface RANServiceGenContext {
-  /** Network definition. */
-  readonly netdef: NetDef;
-  /** Network definition. */
-  readonly network: N.Network;
-  /** Compose file with core services pre-filled. */
-  c: ComposeFile;
-}
+async function ueransim(ctx: NetDefComposeContext): Promise<void> {
+  ctx.defineNetwork("air");
 
-/** Parameter generator for a RAN service. */
-export interface RANServiceGen {
-  /**
-   * Generate parameter for a gNB.
-   * @param ctx contextual information.
-   * @param gnb gNB definition.
-   * @param s Compose service with networks pre-filled.
-   */
-  gnb(ctx: RANServiceGenContext, gnb: N.GNB, s: ComposeService): void;
-
-  /**
-   * Generate parameter for a UE.
-   * @param ctx contextual information.
-   * @param subscriber subscriber definition.
-   * @param s Compose service with networks pre-filled.
-   */
-  ue(ctx: RANServiceGenContext, subscriber: N.Subscriber, s: ComposeService): void;
-}
-
-const ueransim: RANServiceGen = {
-  gnb({ netdef, network, c }, gnb, s) {
+  for (const [ct, gnb] of IPMAP.suggestNames("gnb", ctx.network.gnbs)) {
+    const s = ctx.defineService(ct, "5gdeploy.localhost/ueransim", ["air", "n2", "n3"]);
+    s.command = ["/entrypoint.sh", "gnb"];
     s.environment = {
-      PLMN: network.plmn,
+      PLMN: ctx.network.plmn,
       NCI: gnb.nci,
-      GNBIDLEN: network.gnbIdLength.toString(),
-      TAC: network.tac,
+      GNBIDLEN: ctx.network.gnbIdLength.toString(),
+      TAC: ctx.network.tac,
       LINK_IP: s.networks.air!.ipv4_address,
       NGAP_IP: s.networks.n2!.ipv4_address,
       GTP_IP: s.networks.n3!.ipv4_address,
-      AMF_IPS: network.amfs.map((amf) => c.services[amf.name]!.networks.n2!.ipv4_address).join(","),
-      SLICES: netdef.nssai.join(","),
+      AMF_IPS: ctx.gatherIPs("amf", "n2").join(","),
+      SLICES: ctx.netdef.nssai.join(","),
     };
-  },
-  ue({ network, c }, subscriber, s) {
-    const allGNBs = network.gnbs.map((gnb) => gnb.name);
+  }
+
+  for (const [ct, subscriber] of IPMAP.suggestNames("ue", ctx.network.subscribers)) {
     const slices = new Set<string>();
     const sessions = new Set<string>();
-    for (const { snssai, dnns } of (subscriber.requestedNSSAI ?? subscriber.subscribedNSSAI ?? [])) {
+    for (const { snssai, dnn } of ctx.netdef.listSubscriberDNs(subscriber, true)) {
       slices.add(snssai);
-      for (const dnn of dnns) {
-        sessions.add(`${dnn}:${snssai}`);
-      }
+      sessions.add(`${dnn}:${snssai}`);
     }
+    const s = ctx.defineService(ct, "5gdeploy.localhost/ueransim", ["air"]);
+    s.command = ["/entrypoint.sh", "ue"];
     s.environment = {
-      PLMN: network.plmn,
+      PLMN: ctx.network.plmn,
       IMSI: subscriber.supi,
       KEY: subscriber.k,
       OPC: subscriber.opc,
-      GNB_IPS: (subscriber.gnbs ?? allGNBs).map(
-        (name) => c.services[name]!.networks.air!.ipv4_address,
-      ).join(","),
+      GNB_IPS: ctx.gatherIPs(subscriber.gnbs ?? "gnb", "air").join(","),
       SLICES: [...slices].join(","),
       SESSIONS: [...sessions].join(","),
     };
-  },
-};
+    s.cap_add.push("NET_ADMIN");
+    s.devices.push("/dev/net/tun:/dev/net/tun");
+  }
+}
 
-const oai: RANServiceGen = {
-  gnb({ netdef, network, c }, gnb, s) {
-    const [mcc, mnc] = NetDef.splitPLMN(network.plmn);
-    const [sst] = NetDef.splitSNSSAI(netdef.nssai[0]!);
-    Object.assign(s.environment, {
+async function oai(ctx: NetDefComposeContext): Promise<void> {
+  const [mcc, mnc] = NetDef.splitPLMN(ctx.network.plmn);
+  const sst = Number.parseInt(NetDef.splitSNSSAI(ctx.netdef.nssai[0]!)[0], 16);
+
+  ctx.defineNetwork("air");
+
+  for (const [ct, gnb] of IPMAP.suggestNames("gnb", ctx.network.gnbs)) {
+    const s = ctx.defineService(ct, "5gdeploy.localhost/oai-gnb", ["air", "n2", "n3"]);
+    s.command = ["/entrypoint.sh", "gnb"];
+    s.environment = {
+      RFSIMULATOR: "server",
+      USE_SA_TDD_MONO: "yes",
+      SDR_ADDRS: "serial=XXXXXXX",
+      USE_ADDITIONAL_OPTIONS: "--sa -E --rfsim --log_config.global_log_options level,nocolor,time",
       MCC: mcc,
       MNC: mnc,
-      MNC_LENGTH: mnc.length,
-      TAC: netdef.tac, // decimal
+      MNC_LENGTH: mnc.length.toString(),
+      TAC: ctx.netdef.tac.toString(),
       GNB_NAME: gnb.name,
-      NSSAI_SST: Number.parseInt(sst, 16),
-      AMF_IP_ADDRESS: c.services[network.amfs[0]!.name]!.networks.n2!.ipv4_address,
+      NSSAI_SST: sst.toString(),
+      AMF_IP_ADDRESS: ctx.gatherIPs("amf", "n2").join(","),
       GNB_NGA_IP_ADDRESS: s.networks.n2!.ipv4_address,
       GNB_NGU_IP_ADDRESS: s.networks.n3!.ipv4_address,
-    });
-  },
-  ue({ network, c }, subscriber, s) {
-    let sst = Number.parseInt(NetDef.splitSNSSAI(network.dataNetworks[0]!.snssai)[0], 16);
-    let dnn = network.dataNetworks[0]!.dnn;
-    for (const { snssai, dnns } of (subscriber.requestedNSSAI ?? subscriber.subscribedNSSAI ?? [])) {
-      sst = Number.parseInt(NetDef.splitSNSSAI(snssai)[0], 16);
-      dnn = dnns[0]!;
-    }
+    };
+    s.privileged = true;
+  }
 
-    Object.assign(s.environment, {
-      RFSIMULATOR: c.services[network.gnbs[0]!.name]!.networks.air!.ipv4_address,
+  for (const [ct, subscriber] of IPMAP.suggestNames("ue", ctx.network.subscribers)) {
+    const dn = [...ctx.netdef.listSubscriberDNs(subscriber, true)][0]!;
+    const s = ctx.defineService(ct, "5gdeploy.localhost/oai-nr-ue", ["air"]);
+    s.command = ["/entrypoint.sh", "nr_ue"];
+    s.environment = {
+      RFSIMULATOR: ctx.gatherIPs("gnb", "air")[0]!,
       FULL_IMSI: subscriber.supi,
       FULL_KEY: subscriber.k,
       OPC: subscriber.opc,
-      DNN: dnn,
-      NSSAI_SST: sst,
-    });
-  },
-};
-
-/** Parameter generators for RAN services, by container image name suffix. */
-export const RANServiceGens: Record<string, RANServiceGen> = {
-  ueransim,
-  "oai-gnb": oai,
-  "oai-nr-ue": oai,
-};
+      DNN: dn.dnn,
+      NSSAI_SST: Number.parseInt(NetDef.splitSNSSAI(dn.snssai)[0], 16).toString(),
+    };
+    s.privileged = true;
+  }
+}
 
 /** Topology generators for RAN services. */
 export const RANProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
-  ueransim: makeRANProvider(ueransim, "docker/ueransim/compose.phoenix.yml"),
-  oai: makeRANProvider(oai, "docker/oai/compose.phoenix.yml"),
+  ueransim,
+  oai,
 };
-
-function makeRANProvider(sg: RANServiceGen, composeFile: string): (ctx: NetDefComposeContext) => Promise<void> {
-  let ranCompose: ComposeFile | undefined;
-  return async (ctx: NetDefComposeContext) => {
-    ranCompose ??= compose.parse(await fs.readFile(composeFile, "utf8"));
-    ctx.defineNetwork("air");
-    for (const [ct, gnb] of IPMAP.suggestNames("gnb", ctx.network.gnbs)) {
-      const service = ctx.defineService(ct, "", ["air", "n2", "n3"]);
-      copyComposeServiceFields(service, ranCompose.services.gnb!);
-      sg.gnb(ctx, gnb, service);
-    }
-    for (const [ct, ue] of IPMAP.suggestNames("ue", ctx.network.subscribers)) {
-      const service = ctx.defineService(ct, "", ["air"]);
-      copyComposeServiceFields(service, ranCompose.services.ue!);
-      sg.ue(ctx, ue, service);
-    }
-  };
-}
-
-function copyComposeServiceFields(dst: ComposeService, src: ComposeService): void {
-  for (const [key, value] of Object.entries(src)) {
-    if (!["container_name", "hostname", "networks"].includes(key)) {
-      (dst as any)[key] = JSON.parse(JSON.stringify(value));
-    }
-  }
-}

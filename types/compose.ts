@@ -23,6 +23,7 @@ export interface ComposeService {
   init?: boolean;
   stdin_open?: boolean;
   tty?: boolean;
+  privileged?: boolean;
   cap_add: string[];
   devices: string[];
   sysctls: Record<string, string | number>;
