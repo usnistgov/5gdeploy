@@ -1,7 +1,14 @@
 import path from "node:path";
 
+import assert from "minimalistic-assert";
+import { Netmask } from "netmask";
+import sql from "sql-tagged-template-literal";
+
+import { NetDef } from "../netdef/netdef.js";
 import { phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
-import { applyNetdef, IPMAP, ScenarioFolder } from "../phoenix-config/mod.js";
+import { applyNetdef, IPMAP, type NetworkFunction, ScenarioFolder } from "../phoenix-config/mod.js";
+import type * as N from "../types/netdef.js";
+import type * as PH from "../types/phoenix.js";
 import type { NetDefComposeContext } from "./context.js";
 import { env } from "./env.js";
 
@@ -23,6 +30,8 @@ class PhoenixScenarioBuilder {
   }
 
   public readonly sf = new ScenarioFolder();
+  protected readonly netdef = this.ctx.netdef;
+  protected readonly network = this.ctx.network;
 
   protected tplFile(relPath: string): string {
     return path.resolve(env.D5G_PHOENIX_CFG, relPath);
@@ -59,7 +68,7 @@ class PhoenixScenarioBuilder {
     return m;
   }
 
-  protected createDatabase(tpl: string, db?: string): void {
+  protected createDatabase(tpl: string, db?: string): string {
     const tplName = path.basename(tpl, ".sql");
     db ??= tplName;
     const dbFile = `sql/${db}.sql`;
@@ -67,11 +76,13 @@ class PhoenixScenarioBuilder {
     if (db !== tplName) {
       this.sf.edit(dbFile, (body) => {
         body = body.replace(/^create database .*;$/im, `CREATE OR REPLACE DATABASE ${db};`);
-        body = body.replace(/^use .*;$/im, `USE ${db};`);
-        body = body.replaceAll(/^grant ([a-z,]*) on \w+\.\* to (.*);$/gim, `GRANT $1 ON ${db}.* TO $3;`);
+        body = body.replaceAll(/^create database .*;$/gim, "");
+        body = body.replaceAll(/^use .*;$/gim, `USE ${db};`);
+        body = body.replaceAll(/^grant ([a-z,]*) on \w+\.\* to (.*);$/gim, `GRANT $1 ON ${db}.* TO $2;`);
         return body;
       });
     }
+    return db;
   }
 
   public async save(kind: "core" | "ran"): Promise<void> {
@@ -137,8 +148,116 @@ class PhoenixCoreBuilder extends PhoenixScenarioBuilder {
   }
 
   private buildSMFs(): void {
-    this.createDatabase("5g/sql/smf_db.sql");
-    this.createNetworkFunction("5g/smf.json", ["cp", "db", "n4"], this.ctx.network.smfs);
+    const { network, netdef } = this;
+    let nextTeid = 0x10000000;
+    const eachTeid = Math.floor(0xE0000000 / network.smfs.length);
+    for (const [ct, smf] of this.createNetworkFunction("5g/smf.json", ["cp", "db", "n4"], network.smfs)) {
+      const db = this.createDatabase("5g/sql/smf_db.sql", ct);
+      this.sf.appendSQL(db, function*() {
+        yield "DELETE FROM dn_dns";
+        yield "DELETE FROM dn_info";
+        yield "DELETE FROM dn_ipv4_allocations";
+        yield "DELETE FROM dnn";
+        for (const { dnn, type, subnet } of network.dataNetworks) {
+          yield sql`INSERT dnn (dnn) VALUES (${dnn}) RETURNING @dn_id:=dn_id`;
+          if (type === "IPv4") {
+            assert(!!subnet);
+            const net = new Netmask(subnet);
+            yield "INSERT dn_dns (dn_id,addr,ai_family) VALUES (@dn_id,'1.1.1.1',2)";
+            yield sql`INSERT dn_info (dnn,network,prefix) VALUES (${dnn},${net.base},${net.bitmask})`;
+          }
+        }
+      });
+
+      const startTeid = nextTeid;
+      nextTeid += eachTeid;
+      this.sf.editNetworkFunction(ct,
+        (c) => setNrfClientSlices(c, smf.nssai ?? netdef.nssai),
+        (c) => {
+          const { config } = c.getModule("smf");
+          config.Database.database = db;
+          config.id = ct;
+          config.mtu = 1456;
+          config.startTeid = startTeid;
+        },
+        (c) => {
+          const { config } = c.getModule("sdn_routing_topology");
+          config.Topology.Link = netdef.dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
+            const typeA = this.determineDataPathNodeType(nodeA);
+            const typeB = this.determineDataPathNodeType(nodeB);
+            if (smf.nssai) {
+              const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
+              if (dn && !smf.nssai.includes(dn.snssai)) {
+                return [];
+              }
+            }
+            return {
+              weight: cost,
+              Node_A: this.makeDataPathTopoNode(nodeA, typeA, typeB),
+              Node_B: this.makeDataPathTopoNode(nodeB, typeB, typeA),
+            };
+          });
+        },
+        (c) => {
+          const { config } = c.getModule("pfcp");
+          config.Associations.Peer.splice(0, Infinity, ...network.upfs.map((upf): PH.pfcp.Acceptor => ({
+            type: "udp",
+            port: 8805,
+            bind: IPMAP.formatEnv(upf.name, "n4"),
+          })));
+        },
+      );
+    }
+  }
+
+  private determineDataPathNodeType(node: string | N.DataNetworkID): PH.sdn_routing_topology.Node["type"] {
+    if (typeof node !== "string") {
+      return "DNN";
+    }
+    if (this.netdef.findGNB(node) !== undefined) {
+      return "gNodeB";
+    }
+    if (this.netdef.findUPF(node) !== undefined) {
+      return "UPF";
+    }
+    throw new Error(`data path node ${node} not found`);
+  }
+
+  private makeDataPathTopoNode(
+      node: string | N.DataNetworkID,
+      nodeType: PH.sdn_routing_topology.Node["type"],
+      peerType: PH.sdn_routing_topology.Node["type"],
+  ): PH.sdn_routing_topology.Node {
+    switch (nodeType) {
+      case "DNN": {
+        assert(peerType === "UPF");
+        return {
+          type: "DNN",
+          id: (node as N.DataNetworkID).dnn,
+          ip: "255.255.255.255",
+        };
+      }
+      case "gNodeB": {
+        assert(peerType === "UPF");
+        const gnb = this.netdef.findGNB(node as string)!;
+        return {
+          type: "gNodeB",
+          id: this.netdef.splitNCI(gnb.nci).gnb,
+          ip: "255.255.255.255",
+        };
+      }
+    }
+
+    const upf = this.netdef.findUPF(node as string)!;
+    return {
+      type: "UPF",
+      id: IPMAP.formatEnv(upf.name, "n4"),
+      ip: IPMAP.formatEnv(upf.name, {
+        DNN: "n6",
+        gNodeB: "n3",
+        UPF: "n9",
+      }[peerType]),
+    };
   }
 
   private buildDataPath(): void {
@@ -168,4 +287,15 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     this.sf.createFrom("ue-tunnel-mgmt.sh", this.tplFile("5g/ue-tunnel-mgmt.sh"));
     this.createNetworkFunction("5g/ue1.json", ["air"], this.ctx.network.subscribers);
   }
+}
+
+function expandSNSSAI(snssai: N.SNSSAI): PH.SNSSAI {
+  const [sstHex, sd] = NetDef.splitSNSSAI(snssai);
+  const sst = Number.parseInt(sstHex, 16);
+  return sd === undefined ? { sst } : { sst, sd };
+}
+
+function setNrfClientSlices(c: NetworkFunction, nssai: readonly N.SNSSAI[]): void {
+  const { config } = c.getModule("nrf_client");
+  config.nf_profile.sNssais.splice(0, Infinity, ...nssai.map((snssai) => expandSNSSAI(snssai)));
 }

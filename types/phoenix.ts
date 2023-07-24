@@ -27,6 +27,13 @@ export interface SNSSAI {
   sd?: string;
 }
 
+export interface Database {
+  hostname: string;
+  username: string;
+  password: string;
+  database: string;
+}
+
 export namespace amf {
   export interface Config {
     id: string;
@@ -220,6 +227,7 @@ export namespace sdn_routing_topology {
 
 export namespace smf {
   export interface Config {
+    Database: Database;
     id: string;
     mtu: 1456;
     startTeid: number;

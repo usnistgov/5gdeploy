@@ -33,12 +33,10 @@ class NetDefProcessor {
     if (!only || only === "ran") {
       this.applyGNBs();
       this.applyUEs();
-      this.applyBT();
     }
     if (!only || only === "core") {
       this.applyNSSF();
       this.applyAMF();
-      this.applySMF();
       this.applyUPF();
       this.applyUDM();
     }
@@ -134,15 +132,6 @@ class NetDefProcessor {
     }
   }
 
-  private applyBT(): void {
-    for (const nf of ["bt", "btup"]) {
-      for (const ct of this.ipmap.listContainersByNf(nf)) {
-        this.ipmap.removeContainer(ct);
-        this.sf.delete(`${ct}.json`);
-      }
-    }
-  }
-
   private applyNSSF(): void {
     if (!this.sf.has("sql/nssf_db.sql")) {
       return;
@@ -192,121 +181,9 @@ class NetDefProcessor {
     }
   }
 
-  private applySMF(): void {
-    const { network } = this;
-    let nextTeid = 0x10000000;
-    const eachTeid = Math.floor(0xE0000000 / network.smfs.length);
-    for (const [ct, smf] of this.sf.scaleNetworkFunction(["smf", "smf1"], network.smfs)) {
-      const startTeid = nextTeid;
-      nextTeid += eachTeid;
-
-      this.sf.editNetworkFunction(ct,
-        (c) => this.setNrfClientSlices(c, smf.nssai),
-        (c) => {
-          const { config } = c.getModule("smf");
-          config.id = ct;
-          config.mtu = 1456;
-          config.startTeid = startTeid;
-        },
-        (c) => {
-          const { config } = c.getModule("sdn_routing_topology");
-          config.Topology.Link = this.netdef.dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
-            const typeA = this.determineDataPathNodeType(nodeA);
-            const typeB = this.determineDataPathNodeType(nodeB);
-            if (smf.nssai) {
-              const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
-              if (dn && !smf.nssai.includes(dn.snssai)) {
-                return [];
-              }
-            }
-            return {
-              weight: cost,
-              Node_A: this.makeDataPathTopoNode(nodeA, typeA, typeB),
-              Node_B: this.makeDataPathTopoNode(nodeB, typeB, typeA),
-            };
-          });
-        },
-        (c) => {
-          const { config } = c.getModule("pfcp");
-          config.Associations.Peer.splice(0, Infinity, ...this.network.upfs.map((upf): PH.pfcp.Acceptor => ({
-            type: "udp",
-            port: 8805,
-            bind: this.ipmap.formatEnv(upf.name, "n4"),
-          })));
-        },
-      );
-    }
-
-    this.sf.appendSQL("smf_db", function*() {
-      yield "DELETE FROM dn_dns";
-      yield "DELETE FROM dn_info";
-      yield "DELETE FROM dn_ipv4_allocations";
-      yield "DELETE FROM dnn";
-      for (const { dnn, type, subnet } of network.dataNetworks) {
-        yield sql`INSERT dnn (dnn) VALUES (${dnn}) RETURNING @dn_id:=dn_id`;
-        if (type === "IPv4") {
-          assert(!!subnet);
-          const net = new Netmask(subnet);
-          yield "INSERT dn_dns (dn_id,addr,ai_family) VALUES (@dn_id,'1.1.1.1',2)";
-          yield sql`INSERT dn_info (dnn,network,prefix) VALUES (${dnn},${net.base},${net.bitmask})`;
-        }
-      }
-    });
-  }
-
   private setNrfClientSlices(c: NetworkFunction, nssai: readonly N.SNSSAI[] = this.netdef.nssai): void {
     const { config } = c.getModule("nrf_client");
     config.nf_profile.sNssais.splice(0, Infinity, ...nssai.map((snssai) => expandSNSSAI(snssai)));
-  }
-
-  private determineDataPathNodeType(node: string | N.DataNetworkID): PH.sdn_routing_topology.Node["type"] {
-    if (typeof node !== "string") {
-      return "DNN";
-    }
-    if (this.netdef.findGNB(node) !== undefined) {
-      return "gNodeB";
-    }
-    if (this.netdef.findUPF(node) !== undefined) {
-      return "UPF";
-    }
-    throw new Error(`data path node ${node} not found`);
-  }
-
-  private makeDataPathTopoNode(
-      node: string | N.DataNetworkID,
-      nodeType: PH.sdn_routing_topology.Node["type"],
-      peerType: PH.sdn_routing_topology.Node["type"],
-  ): PH.sdn_routing_topology.Node {
-    switch (nodeType) {
-      case "DNN": {
-        assert(peerType === "UPF");
-        return {
-          type: "DNN",
-          id: (node as N.DataNetworkID).dnn,
-          ip: "255.255.255.255",
-        };
-      }
-      case "gNodeB": {
-        assert(peerType === "UPF");
-        const gnb = this.netdef.findGNB(node as string)!;
-        return {
-          type: "gNodeB",
-          id: this.netdef.splitNCI(gnb.nci).gnb,
-          ip: "255.255.255.255",
-        };
-      }
-    }
-
-    const upf = this.netdef.findUPF(node as string)!;
-    return {
-      type: "UPF",
-      id: this.ipmap.formatEnv(upf.name, "n4"),
-      ip: this.ipmap.formatEnv(upf.name, {
-        DNN: "n6",
-        gNodeB: "n3",
-        UPF: "n9",
-      }[peerType]),
-    };
   }
 
   private applyUPF(): void {
