@@ -153,7 +153,6 @@ class NetDefProcessor {
 }
 
 function expandSNSSAI(snssai: N.SNSSAI): PH.SNSSAI {
-  const [sstHex, sd] = NetDef.splitSNSSAI(snssai);
-  const sst = Number.parseInt(sstHex, 16);
-  return sd === undefined ? { sst } : { sst, sd };
+  const { int: { sst }, hex: { sd } } = NetDef.splitSNSSAI(snssai);
+  return { sst, sd };
 }

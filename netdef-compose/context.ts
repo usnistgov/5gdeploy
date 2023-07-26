@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import { IPMAP } from "../phoenix-config/mod.js";
@@ -43,5 +46,11 @@ export class NetDefComposeContext {
       list.push(netif.ipv4_address);
     }
     return list;
+  }
+
+  public async writeFile(filename: string, body: string | Uint8Array): Promise<void> {
+    filename = path.resolve(this.out, filename);
+    await fs.mkdir(path.dirname(filename), { recursive: true });
+    await fs.writeFile(filename, body);
   }
 }

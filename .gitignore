@@ -1,3 +1,4 @@
 /.vscode
+/oai-config/conf_files
 /pnpm-lock.yaml
 node_modules

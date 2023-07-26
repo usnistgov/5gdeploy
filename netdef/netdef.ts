@@ -6,7 +6,7 @@ import type * as N from "../types/netdef.js";
 export class NetDef {
   constructor(public network: N.Network) {}
 
-  /** Return Tracking Area Code (TAC). */
+  /** Return Tracking Area Code (TAC) as int. */
   public get tac(): number {
     assert(/^[\da-f]{6}$/i.test(this.network.tac));
     return Number.parseInt(this.network.tac, 16);
@@ -94,13 +94,33 @@ export namespace NetDef {
     nci: number;
   }
 
+  /** S-NSSAI components. */
+  export interface SNSSAI {
+    hex: {
+      sst: string;
+      sd?: string;
+    };
+    int: {
+      sst: number;
+      sd?: number;
+    };
+  }
+
   /** Split S-NSSAI to sst and sd. */
-  export function splitSNSSAI(snssai: N.SNSSAI): [sst: string] | [sst: string, sd: string] {
+  export function splitSNSSAI(snssai: N.SNSSAI): SNSSAI {
     assert(/^[\da-f]{2}(?:[\da-f]{6})?$/i.test(snssai));
     if (snssai.length === 2) {
-      return [snssai];
+      return {
+        hex: { sst: snssai },
+        int: { sst: Number.parseInt(snssai, 16) },
+      };
     }
-    return [snssai.slice(0, 2), snssai.slice(2)];
+    const sst = snssai.slice(0, 2);
+    const sd = snssai.slice(2);
+    return {
+      hex: { sst, sd },
+      int: { sst: Number.parseInt(sst, 16), sd: Number.parseInt(sd, 16) },
+    };
   }
 
   /** Validate AMF Identifier. */
