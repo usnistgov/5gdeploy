@@ -39,6 +39,7 @@ export namespace amf {
     id: string;
     guami: GUAMI;
     trackingArea: TrackingArea[];
+    hacks: Hacks;
     [k: string]: unknown;
   }
 
@@ -58,6 +59,11 @@ export namespace amf {
 
   export interface TAI {
     tac: number;
+  }
+
+  export interface Hacks {
+    enable_reroute_nas: boolean;
+    [k: string]: unknown;
   }
 }
 

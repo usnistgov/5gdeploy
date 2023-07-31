@@ -128,6 +128,7 @@ class PhoenixCoreBuilder extends PhoenixScenarioBuilder {
     this.buildNRF();
     this.buildUDM();
     this.buildAUSF();
+    this.buildNSSF();
     this.buildAMFs();
     this.buildSMFs();
     this.buildDataPath();
@@ -191,11 +192,42 @@ class PhoenixCoreBuilder extends PhoenixScenarioBuilder {
       }
     });
 
-    this.createNetworkFunction("5g/udm.json", ["cp", "db"]);
+    this.createNetworkFunction("5g/udm.json", ["db", "cp"]);
   }
 
   private buildAUSF(): void {
     this.createNetworkFunction("5g/ausf.json", ["cp"]);
+  }
+
+  private buildNSSF(): void {
+    const { network, netdef: { nssai: defaultNSSAI } } = this;
+    const amfNSSAIs = new Set<string>();
+    for (const amf of network.amfs) {
+      const { nssai = defaultNSSAI } = amf;
+      nssai.sort((a, b) => a.localeCompare(b));
+      amfNSSAIs.add(nssai.join(","));
+    }
+    if (amfNSSAIs.size <= 1) {
+      return;
+    }
+
+    const db = this.createDatabase("5g_nssf/sql/nssf_db.sql");
+    this.sf.appendSQL(db, function*() {
+      yield "DELETE FROM snssai_nsi_mapping";
+      yield "DELETE FROM nsi";
+      yield "DELETE FROM snssai";
+      for (const [i, amf] of network.amfs.entries()) {
+        const [, set] = NetDef.validateAMFI(amf.amfi);
+        yield sql`INSERT nsi (nsi_id,nrf_id,target_amf_set) VALUES (${`nsi_id_${i}`},${`nrf_id_${i}`},${`${set}`}) RETURNING @nsi_id:=row_id`;
+        for (const snssai of amf.nssai ?? defaultNSSAI) {
+          const { sst, sd = "" } = expandSNSSAI(snssai);
+          yield sql`INSERT snssai (sst,sd) VALUES (${sst},${sd}) RETURNING @snssai_id:=row_id`;
+          yield "INSERT snssai_nsi_mapping (row_id_snssai,row_id_nsi) VALUES (@snssai_id,@nsi_id)";
+        }
+      }
+    });
+
+    this.createNetworkFunction("5g_nssf/nssf.json", ["db", "cp"]);
   }
 
   private buildAMFs(): void {
@@ -220,6 +252,7 @@ class PhoenixCoreBuilder extends PhoenixScenarioBuilder {
               { tac: this.netdef.tac },
             ],
           });
+          config.hacks.enable_reroute_nas = this.sf.has("nssf.json");
         },
       );
     }
@@ -229,7 +262,7 @@ class PhoenixCoreBuilder extends PhoenixScenarioBuilder {
     const { network, netdef } = this;
     let nextTeid = 0x10000000;
     const eachTeid = Math.floor(0xE0000000 / network.smfs.length);
-    for (const [ct, smf] of this.createNetworkFunction("5g/smf.json", ["cp", "db", "n4"], network.smfs)) {
+    for (const [ct, smf] of this.createNetworkFunction("5g/smf.json", ["db", "cp", "n4"], network.smfs)) {
       const db = this.createDatabase("5g/sql/smf_db.sql", ct);
       this.sf.appendSQL(db, function*() {
         yield "DELETE FROM dn_dns";

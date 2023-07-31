@@ -39,13 +39,14 @@ msg Processing ip-export
 $phoenixdir/tools/ph_init/ip-export.sh < ip-map > /run/phoenix-ip-export.sh
 . /run/phoenix-ip-export.sh
 
-for NF in nssf smf udm udr; do
+for NFDB in nssf:database smf:Database udm:Database udr:Database; do
+  NF=${NFDB%:*}
   if [[ $CT != ${NF}* ]]; then
     continue
   fi
   msg Waiting for $NF database
-  while ! mysql -eQUIT $(jq -r --arg NF "$NF" '
-    .Phoenix.Module[] | select(.binaryFile|endswith("/"+$NF+".so")) | .config.Database | [
+  while ! mysql -eQUIT $(jq -r --arg NF "$NF" --arg DB "${NFDB#*:}" '
+    .Phoenix.Module[] | select(.binaryFile|endswith("/"+$NF+".so")) | .config[$DB] | [
       "-h" + (.hostname | if .|startswith("%") then env[.[1:]] else . end),
       "-u" + .username, "-p" + .password, "-D" + .database, "-s"
     ] | join(" ")' $CT.json); do

@@ -8,9 +8,9 @@
     "phoenix-rpc": "node --no-warnings --loader tsm ./phoenix-rpc/main.ts",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@8.6.10",
+  "packageManager": "pnpm@8.6.11",
   "dependencies": {
-    "@nodelib/fs.walk": "^1.2.8",
+    "@nodelib/fs.walk": "^2.0.0",
     "@types/dockerode": "^3.3.19",
     "@types/js-yaml": "^4.0.5",
     "@types/minimalistic-assert": "^1.0.1",
@@ -21,7 +21,7 @@
     "dockerode": "^3.3.5",
     "env-schema": "^5.2.0",
     "envfile": "^6.18.0",
-    "execa": "^7.1.1",
+    "execa": "^7.2.0",
     "get-stdin": "^9.0.0",
     "jayson": "^4.1.0",
     "js-yaml": "^4.1.0",

@@ -1,10 +1,8 @@
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
-import sql from "sql-tagged-template-literal";
 
-import { NetDef } from "../netdef/netdef.js";
+import { type NetDef } from "../netdef/netdef.js";
 import type * as N from "../types/netdef.js";
-import type * as PH from "../types/phoenix.js";
 import type { ScenarioFolder } from "./folder.js";
 import type { IPMAP } from "./ipmap.js";
 import { OtherTable } from "./other.js";
@@ -28,31 +26,8 @@ class NetDefProcessor {
 
   public process(only?: "core" | "ran"): void {
     if (!only || only === "core") {
-      this.applyNSSF();
       this.applyUPF();
     }
-  }
-
-  private applyNSSF(): void {
-    if (!this.sf.has("sql/nssf_db.sql")) {
-      return;
-    }
-    const { netdef, network } = this;
-
-    this.sf.appendSQL("nssf_db", function*() {
-      yield "DELETE FROM snssai_nsi_mapping";
-      yield "DELETE FROM nsi";
-      yield "DELETE FROM snssai";
-      for (const [i, amf] of network.amfs.entries()) {
-        const [, set] = NetDef.validateAMFI(amf.amfi);
-        yield sql`INSERT nsi (nsi_id,nrf_id,target_amf_set) VALUES (${`nsi_id_${i}`},${`nrf_id_${i}`},${`${set}`}) RETURNING @nsi_id:=row_id`;
-        for (const snssai of amf.nssai ?? netdef.nssai) {
-          const { sst, sd = "" } = expandSNSSAI(snssai);
-          yield sql`INSERT snssai (sst,sd) VALUES (${sst},${sd}) RETURNING @snssai_id:=row_id`;
-          yield "INSERT snssai_nsi_mapping (row_id_snssai,row_id_nsi) VALUES (@snssai_id,@nsi_id)";
-        }
-      }
-    });
   }
 
   private applyUPF(): void {
@@ -150,9 +125,4 @@ class NetDefProcessor {
       }
     }
   }
-}
-
-function expandSNSSAI(snssai: N.SNSSAI): PH.SNSSAI {
-  const { int: { sst }, hex: { sd } } = NetDef.splitSNSSAI(snssai);
-  return { sst, sd };
 }
