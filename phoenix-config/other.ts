@@ -68,10 +68,8 @@ export class OtherTable {
   }
 }
 export namespace OtherTable {
-  export const DefaultDest = new Netmask("0.0.0.0/0");
-
   export interface Route {
-    dest: Netmask;
+    dest: "default" | Netmask;
     via?: string;
     dev?: string;
   }

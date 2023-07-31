@@ -8,11 +8,15 @@ import { hideBin } from "yargs/helpers";
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import { NetDefComposeContext } from "./context.js";
-import { phoenixCore, phoenixRAN } from "./phoenix.js";
+import { phoenixCP, phoenixRAN, phoenixUP } from "./phoenix.js";
 import { RANProviders } from "./ran.js";
 
-const coreProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
-  phoenix: phoenixCore,
+const cpProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
+  phoenix: phoenixCP,
+};
+
+const upProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
+  phoenix: phoenixUP,
 };
 
 const ranProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
@@ -31,14 +35,20 @@ const args = await yargs(hideBin(process.argv))
     desc: "Compose output directory",
     type: "string",
   })
-  .option("core", {
-    desc: "core provider",
+  .option("cp", {
+    desc: "Control Plane provider",
     default: "phoenix",
-    choices: Object.keys(coreProviders),
+    choices: Object.keys(cpProviders),
+    type: "string",
+  })
+  .option("up", {
+    desc: "User Plane provider",
+    default: "phoenix",
+    choices: Object.keys(upProviders),
     type: "string",
   })
   .option("ran", {
-    desc: "RAN provider",
+    desc: "Radio Access Network provider",
     default: "phoenix",
     choices: Object.keys(ranProviders),
     type: "string",
@@ -48,7 +58,8 @@ const args = await yargs(hideBin(process.argv))
 
 const netdef = new NetDef(JSON.parse(await fs.readFile(args.netdef, "utf8")));
 const ctx = new NetDefComposeContext(netdef, args.out);
-await coreProviders[args.core]!(ctx);
+await upProviders[args.up]!(ctx);
+await cpProviders[args.cp]!(ctx);
 await ranProviders[args.ran]!(ctx);
 if (args.bridgeTo) {
   compose.defineBridge(ctx.c, args.bridgeTo, args.bridgeOn);
