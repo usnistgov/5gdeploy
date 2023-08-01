@@ -1,13 +1,84 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
 import assert from "minimalistic-assert";
+import { Netmask } from "netmask";
+import * as shlex from "shlex";
 import { collect, take } from "streaming-iterables";
 
 import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
+import { phoenixUP } from "../netdef-compose/phoenix.js";
 import type * as N from "../types/netdef.js";
 import type * as OAI from "../types/oai.js";
 import * as oai_conf from "./conf.js";
 
 const TAG = await oai_conf.getTag();
+
+/** Build UP functions. */
+export async function buildUP(ctx: NetDefComposeContext): Promise<void> {
+  await phoenixUP(ctx);
+
+  for (const upf of ctx.network.upfs) {
+    const s = ctx.c.services[upf.name];
+    assert(!!s);
+    await fs.unlink(path.resolve(ctx.out, `up-cfg/${upf.name}.json`));
+    const phoenixVolumeIndex = s.volumes.findIndex((volume) => volume.target.startsWith("/opt/phoenix"));
+    assert(phoenixVolumeIndex >= 0);
+    s.volumes.splice(phoenixVolumeIndex, 1);
+
+    s.image = "oaisoftwarealliance/oai-spgwu-tiny:v1.5.1";
+    // encode the command so that oai_spgwu does not detect the entrypoint script as "redundant process"
+    const cmd = [
+      "cat /openair-spgwu-tiny/etc/spgw_u.conf",
+      "/openair-spgwu-tiny/bin/oai_spgwu -c /openair-spgwu-tiny/etc/spgw_u.conf -o",
+    ].join("\n");
+    s.command = ["sh", "-c", `echo ${shlex.quote(Buffer.from(cmd).toString("base64"))} | base64 -d | sh`];
+
+    s.environment = {
+      TZ: "Etc/UTC",
+      SGW_INTERFACE_NAME_FOR_S1U_S12_S4_UP: "eth1", // n3
+      SGW_INTERFACE_NAME_FOR_SX: "eth2", // n4
+      PGW_INTERFACE_NAME_FOR_SGI: "eth3", // n6
+      NETWORK_UE_IP: "255.255.255.255/32",
+      ENABLE_5G_FEATURES: "yes",
+      REGISTER_NRF: "no",
+      NRF_IPV4_ADDRESS: "255.255.255.255",
+      UPF_FQDN_5G: "",
+    };
+
+    let i = 0;
+    const subnets: Netmask[] = [];
+    for (const [peer] of ctx.netdef.listDataPathPeers(upf.name)) {
+      if (typeof peer === "string") {
+        continue;
+      }
+      const dn = ctx.netdef.findDN(peer);
+      assert(!!dn);
+      if (dn.type !== "IPv4") {
+        continue;
+      }
+
+      assert(i < 4, `UPF ${upf.name} can handle up to 4 DNs`);
+      const { int: { sst }, hex: { sd = "FFFFFF" } } = NetDef.splitSNSSAI(dn.snssai);
+      s.environment[`NSSAI_SST_${i}`] = `${sst}`;
+      s.environment[`NSSAI_SD_${i}`] = `0x${sd}`;
+      s.environment[`DNN_${i}`] = dn.dnn;
+      ++i;
+
+      subnets.push(new Netmask(dn.subnet!));
+    }
+
+    if (subnets.length > 0) {
+      let ueSubnet = new Netmask(`${subnets[0]}`);
+      const isCovered = (subnet: Netmask) => ueSubnet.contains(subnet);
+      while (ueSubnet.bitmask > 8 && !subnets.every(isCovered)) {
+        ueSubnet = new Netmask(ueSubnet.base, ueSubnet.bitmask - 1);
+      }
+      s.environment.NETWORK_UE_IP = ueSubnet.toString();
+    }
+  }
+}
 
 /** Define gNB container and generate configuration */
 export async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB): Promise<void> {
