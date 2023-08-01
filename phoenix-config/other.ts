@@ -61,8 +61,15 @@ export class OtherTable {
         lines.push(`c ${ct} ${cmd}\n`);
       }
     }
-    for (const [ct, { dest, via, dev }] of this.routes) {
-      lines.push(`c ${ct} ip route add ${dest}${via ? ` via ${via}` : ""}${dev ? ` dev ${dev}` : ""}\n`);
+    for (const [ct, route] of this.routes) {
+      const routeSpec = routeKeys.map((k) => {
+        const v = route[k];
+        if (v === undefined) {
+          return "";
+        }
+        return ` ${k} ${v}`;
+      });
+      lines.push(`c ${ct} ip route add ${route.dest}${routeSpec.join("")}\n`);
     }
     return lines.join("");
   }
@@ -70,7 +77,11 @@ export class OtherTable {
 export namespace OtherTable {
   export interface Route {
     dest: "default" | Netmask;
+    table?: number;
+    metric?: number;
     via?: string;
     dev?: string;
   }
 }
+
+const routeKeys: ReadonlyArray<keyof OtherTable.Route> = ["table", "metric", "via", "dev"];

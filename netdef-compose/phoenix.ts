@@ -54,21 +54,31 @@ abstract class PhoenixScenarioBuilder {
     return path.resolve(env.D5G_PHOENIX_CFG, relPath);
   }
 
-  protected createNetworkFunction<T>(tpl: string, nets: readonly string[], list?: readonly T[]): Map<string, T> {
+  protected createNetworkFunction<T>(tpl: `${string}/${string}.json` | `nf:${string}`, nets: readonly string[], list?: readonly T[]): Map<string, T> {
     for (const net of nets) {
       this.ctx.defineNetwork(net);
     }
     nets = ["mgmt", ...nets];
 
-    const tplCt = path.basename(tpl, ".json");
-    const nf = IPMAP.toNf(tplCt);
+    const [nf, tplCt, tplFile] = (() => {
+      if (tpl.startsWith("nf:")) {
+        return [tpl.slice(3), "", undefined];
+      }
+      const tplCt = path.basename(tpl, ".json");
+      const nf = IPMAP.toNf(tplCt);
+      return [nf, tplCt, this.tplFile(tpl)];
+    })();
     list ??= [{ name: nf } as any];
     const m = IPMAP.suggestNames(nf, list);
 
     for (const ct of m.keys()) {
       this.ctx.defineService(ct, phoenixDockerImage, nets);
+      if (!tplFile) {
+        continue;
+      }
+
       const ctFile = `${ct}.json`;
-      this.sf.createFrom(ctFile, this.tplFile(tpl));
+      this.sf.createFrom(ctFile, tplFile);
       this.sf.edit(ctFile, (body) => body.replaceAll(`%${tplCt.toUpperCase()}_`, `%${ct.toUpperCase()}_`));
       this.sf.editNetworkFunction(ct, (c) => {
         c.Phoenix.Module.sort((a, b) => a.binaryFile.localeCompare(b.binaryFile));
@@ -384,32 +394,41 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
 
 class PhoenixUPBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "up";
-  protected override nfFilter = ["upf", "igw", "hostnat"];
+  protected override nfFilter = ["upf", "dn", "igw", "hostnat"];
+  private static ipRulePriority = 100;
+  private static ipRuleTableBase = 5000;
 
   public build(): void {
-    this.buildIGW();
+    this.buildDNs();
     this.buildUPFs();
   }
 
-  private buildIGW(): void {
-    this.ctx.defineNetwork("hnet");
-    this.ctx.defineNetwork("n6");
-    this.ctx.defineService("hostnat", phoenixDockerImage, ["mgmt", "hnet"]);
-    this.ctx.defineService("igw", phoenixDockerImage, ["mgmt", "n6", "hnet"]);
-    this.sf.initCommands.get("igw").push(
-      "ip link set n6 mtu 1456",
-      "iptables -w -t nat -A POSTROUTING -o hnet -j MASQUERADE",
-    );
-    this.sf.routes.set("igw", { dest: "default", via: IPMAP.formatEnv("hostnat", "hnet", "$") });
+  private buildDNs(): void {
+    for (const [ct, dn] of this.createNetworkFunction("nf:dn", ["n6"], this.ctx.network.dataNetworks)) {
+      this.sf.initCommands.get(ct).push(
+        "ip link set n6 mtu 1456",
+      );
+      if (dn.type !== "IPv4") {
+        continue;
+      }
+      const dest = new Netmask(dn.subnet!);
+
+      for (const [upfName, cost] of this.netdef.listDataPathPeers(dn)) {
+        assert(typeof upfName === "string");
+        const upf = this.netdef.findUPF(upfName);
+        assert(!!upf);
+        this.sf.routes.set(ct, { dest, metric: cost, via: IPMAP.formatEnv(upf.name, "n6", "$") });
+      }
+    }
   }
 
   private buildUPFs(): void {
     for (const [ct, upf] of this.createNetworkFunction("5g/upf2.json", ["n3", "n4", "n6", "n9"], this.ctx.network.upfs)) {
       let hasN3 = false;
       let hasN9 = false;
-      const subnetsN6L3: string[] = [];
+      const subnetsN6L3: Array<[index: number, subnet: string, cost: number]> = [];
       let dnnN6L2: string | undefined;
-      for (const [peer] of this.netdef.listDataPathPeers(upf.name)) {
+      for (const [peer, cost] of this.netdef.listDataPathPeers(upf.name)) {
         if (typeof peer === "string") {
           hasN3 ||= !!this.netdef.findGNB(peer);
           hasN9 ||= !!this.netdef.findUPF(peer);
@@ -423,8 +442,13 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
               break;
             }
             case "IPv4": {
-              subnetsN6L3.push(dn.subnet!);
+              const index = this.network.dataNetworks.indexOf(dn);
+              assert(index >= 0);
+              subnetsN6L3.push([index, dn.subnet!, cost]);
               break;
+            }
+            default: {
+              throw new Error(`UPF does not support ${dn.type} DN`);
             }
           }
         }
@@ -487,12 +511,14 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         }
       })()]);
 
-      this.sf.routes.delete(ct);
-      this.sf.routes.set(ct, { dest: "default", via: IPMAP.formatEnv("igw", "n6", "$") });
-      for (const subnet of subnetsN6L3) {
+      for (const [index, subnet, cost] of subnetsN6L3) {
         const dest = new Netmask(subnet);
+        const table = PhoenixUPBuilder.ipRuleTableBase + index;
+        this.sf.initCommands.get(ct).push(
+          `ip rule add from ${dest} iif n6_tun priority ${PhoenixUPBuilder.ipRulePriority} table ${table}`,
+        );
+        this.sf.routes.set(ct, { dest: "default", table, metric: cost, via: IPMAP.formatEnv(`dn${index}`, "n6", "$") });
         this.sf.routes.set(ct, { dest, dev: "n6_tun" });
-        this.sf.routes.set("igw", { dest, via: IPMAP.formatEnv(ct, "n6", "$") });
       }
     }
   }
