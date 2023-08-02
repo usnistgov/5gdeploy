@@ -7,7 +7,7 @@ import { hideBin } from "yargs/helpers";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
-import { buildUP as oaiUP } from "../oai-config/netdef.js";
+import { buildUPtiny as oaiUPtiny, buildUPvpp as oaiUPvpp } from "../oai-config/netdef.js";
 import { NetDefComposeContext } from "./context.js";
 import { phoenixCP, phoenixRAN, phoenixUP } from "./phoenix.js";
 import { RANProviders } from "./ran.js";
@@ -18,7 +18,8 @@ const cpProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> 
 
 const upProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
   phoenix: phoenixUP,
-  oai: oaiUP,
+  oai: oaiUPtiny,
+  "oai-vpp": oaiUPvpp,
 };
 
 const ranProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
