@@ -8,8 +8,13 @@ msg() {
 }
 
 msg Editing etc/init.conf
-sed -i "/node-id/ s|.*|upf node-id ip4 $N4_IP|" etc/init.conf
+sed -i "/node-id/ s|.*|upf node-id ip4 $IF_2_IP|" etc/init.conf
 cat etc/init.conf
+
+msg Flushing IP addresses
+for NETIF in n3-1 n4-2 n6-3 n9-4; do
+  ip addr flush dev $NETIF
+done
 
 msg Invoking run.sh
 /openair-upf/run.sh &

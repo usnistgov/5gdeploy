@@ -119,7 +119,6 @@ export async function buildUPvpp(ctx: NetDefComposeContext): Promise<void> {
       VPP_CORE_WORKER: "1",
       VPP_PLUGIN_PATH: "/usr/lib/x86_64-linux-gnu/vpp_plugins/",
       REGISTER_NRF: "no",
-      N4_IP: s.networks.n4!.ipv4_address,
     };
 
     for (const [i, net] of ["n3", "n4", "n6", "n9"].entries()) {
