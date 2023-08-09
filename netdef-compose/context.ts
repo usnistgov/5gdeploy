@@ -1,6 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import yaml from "js-yaml";
+import stringify from "json-stringify-deterministic";
+import type { Promisable } from "type-fest";
+
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import { IPMAP } from "../phoenix-config/mod.js";
@@ -48,9 +52,33 @@ export class NetDefComposeContext {
     return list;
   }
 
-  public async writeFile(filename: string, body: string | Uint8Array): Promise<void> {
+  /**
+   * Write file to output folder.
+   * @param filename relative filename within output folder.
+   * @param body file contents.
+   *
+   * If body has a .save() function, its return value is used as body.
+   * Uint8Array and string are written directly.
+   * All other types are encoded into JSON or YAML (when filename indicates YAML).
+   */
+  public async writeFile(filename: string, body: unknown): Promise<void> {
+    while (typeof (body as Saver).save === "function") {
+      body = await (body as Saver).save();
+    }
+    if (!(typeof body === "string" || body instanceof Uint8Array)) {
+      if (filename.endsWith(".yaml") || filename.endsWith(".yml")) {
+        body = yaml.dump(body, { forceQuotes: true, sortKeys: true });
+      } else {
+        body = stringify(body, { space: "  " });
+      }
+    }
+
     filename = path.resolve(this.out, filename);
     await fs.mkdir(path.dirname(filename), { recursive: true });
-    await fs.writeFile(filename, body);
+    await fs.writeFile(filename, body as string | Uint8Array);
   }
+}
+
+interface Saver {
+  save(): Promisable<unknown>;
 }
