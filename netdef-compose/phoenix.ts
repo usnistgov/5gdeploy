@@ -55,9 +55,6 @@ abstract class PhoenixScenarioBuilder {
   }
 
   protected createNetworkFunction<T>(tpl: `${string}/${string}.json` | `nf:${string}`, nets: readonly string[], list?: readonly T[]): Map<string, T> {
-    for (const net of nets) {
-      this.ctx.defineNetwork(net);
-    }
     nets = ["mgmt", ...nets];
 
     const [nf, tplCt, tplFile] = (() => {
@@ -155,7 +152,6 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
   }
 
   private buildSQL(): void {
-    this.ctx.defineNetwork("db");
     this.ctx.defineService("sql", phoenixDockerImage, ["db"]);
   }
 

@@ -3,8 +3,6 @@ import { IPMAP } from "../phoenix-config/mod.js";
 import { type NetDefComposeContext } from "./context.js";
 
 async function ueransim(ctx: NetDefComposeContext): Promise<void> {
-  ctx.defineNetwork("air");
-
   for (const [ct, gnb] of IPMAP.suggestNames("gnb", ctx.network.gnbs)) {
     const s = ctx.defineService(ct, "5gdeploy.localhost/ueransim", ["air", "n2", "n3"]);
     s.command = ["/entrypoint.sh", "gnb"];
@@ -45,8 +43,6 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
 }
 
 async function oai(ctx: NetDefComposeContext): Promise<void> {
-  ctx.defineNetwork("air");
-
   for (const [ct, gnb] of IPMAP.suggestNames("gnb", ctx.network.gnbs)) {
     await oai_netdef.makeGNB(ctx, ct, gnb);
   }

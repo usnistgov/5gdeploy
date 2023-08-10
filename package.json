@@ -33,7 +33,7 @@
     "p-lazy": "^4.0.0",
     "shlex": "^2.1.2",
     "sql-tagged-template-literal": "^1.2.0",
-    "streaming-iterables": "^7.1.0",
+    "streaming-iterables": "^8.0.0",
     "strip-ansi": "^7.1.0",
     "tslib": "^2.6.1",
     "tsm": "^2.3.0",

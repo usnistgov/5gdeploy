@@ -30,6 +30,7 @@ const ranProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>>
 };
 
 const args = await yargs(hideBin(process.argv))
+  .strict()
   .option("netdef", {
     demandOption: true,
     desc: "network definition file",

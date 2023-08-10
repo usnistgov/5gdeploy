@@ -23,14 +23,20 @@ export class NetDefComposeContext {
     return this.netdef.network;
   }
 
+  /** Define a Compose network. */
   public defineNetwork(net: string, wantNAT = false): void {
     const subnet = this.ipAlloc.allocNetwork(net);
     compose.defineNetwork(this.c, net, subnet, wantNAT);
   }
 
+  /**
+   * Define a Compose service and connect to networks.
+   * Non-existent networks are implicitly defined with default settings.
+   */
   public defineService(ct: string, image: string, nets: readonly string[]): ComposeService {
     const service = compose.defineService(this.c, ct, image);
     for (const net of nets) {
+      this.defineNetwork(net);
       compose.connectNetif(this.c, ct, net, this.ipAlloc.allocNetif(net, ct));
     }
     return service;
