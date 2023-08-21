@@ -1,6 +1,7 @@
 import yaml from "js-yaml";
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
+import * as shlex from "shlex";
 
 import type { ComposeFile, ComposeNetif, ComposeNetwork, ComposeService } from "../types/compose.js";
 
@@ -71,4 +72,26 @@ export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string
   const netif: ComposeNetif = { ipv4_address: ip };
   service.networks[net] = netif;
   return netif;
+}
+
+/** Generate commands to rename netifs. */
+export function renameNetifs(service: ComposeService): string[] {
+  const lines: string[] = [];
+  for (const [net, { ipv4_address }] of Object.entries(service.networks)) {
+    lines.push(
+      `IFNAME=$(ip -o addr show to ${ipv4_address} | awk '{ print $2 }')`,
+      "ip link set dev \"$IFNAME\" down",
+      `ip link set dev "$IFNAME" name ${shlex.quote(net)}`,
+      `ip link set dev ${shlex.quote(net)} up`,
+    );
+  }
+  return lines;
+}
+
+/**
+ * Set commands on a service.
+ * '$' is escaped.
+ */
+export function setCommands(service: ComposeService, commands: string[]): void {
+  service.command = ["bash", "-c", commands.join(";\n").replaceAll("$", "$$$$")];
 }

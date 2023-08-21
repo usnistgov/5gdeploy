@@ -32,20 +32,26 @@ export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
   return c;
 }
 
-export function updateService(s: ComposeService): void {
+export function updateService(s: ComposeService, opts: updateService.Options = {}): void {
   const nf = IPMAP.toNf(s.container_name);
-  updateNf[nf]?.(s);
+  updateNf[nf]?.(s, opts);
   if (s.image === phoenixDockerImage) {
-    updatePhoenix(s);
+    updatePhoenix(s, opts);
+  }
+}
+export namespace updateService {
+  export interface Options {
+    cfg?: string;
+    sql?: string;
   }
 }
 
-const updateNf: Record<string, (s: ComposeService) => void> = {
-  sql(s) {
+const updateNf: Record<string, (s: ComposeService, opts: updateService.Options) => void> = {
+  sql(s, { sql = "./sql" }) {
     s.image = "bitnami/mariadb:10.6";
     s.volumes.push({
       type: "bind",
-      source: "./sql",
+      source: sql,
       target: "/docker-entrypoint-startdb.d",
       read_only: true,
     });
@@ -67,7 +73,7 @@ const updateNf: Record<string, (s: ComposeService) => void> = {
   },
 };
 
-function updatePhoenix(s: ComposeService): void {
+function updatePhoenix(s: ComposeService, { cfg = "./cfg" }: updateService.Options): void {
   s.command = ["/entrypoint.sh", s.hostname];
   s.stdin_open = true;
   s.tty = true;
@@ -75,7 +81,7 @@ function updatePhoenix(s: ComposeService): void {
   s.sysctls["net.ipv4.ip_forward"] ??= 1;
   s.volumes.push({
     type: "bind",
-    source: "./cfg",
+    source: cfg,
     target: cfgdir,
     read_only: true,
   });

@@ -1,8 +1,6 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-
 import assert from "minimalistic-assert";
 
+import * as compose from "../compose/mod.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import { phoenixUP } from "../netdef-compose/phoenix.js";
 import type * as F5 from "../types/free5gc.js";
@@ -12,23 +10,35 @@ import * as f5_conf from "./conf.js";
  * Build UP functions using free5GC as UPF.
  */
 export async function buildUP(ctx: NetDefComposeContext): Promise<void> {
-  await phoenixUP(ctx);
+  const upfInit = new Map<string, string[]>();
+  await phoenixUP(ctx, {
+    editSF: async (sf) => {
+      for (const { name: ct } of ctx.network.upfs) {
+        sf.delete(`${ct}.json`);
+        upfInit.set(ct, Array.from(sf.other.listCommands(ct).filter((cmd) => /^ip (?:rule |route add default )/.test(cmd)),
+          (cmd) => cmd.replaceAll("iif n6_tun ", "")
+            .replaceAll(/\$[\dA-Z_]+_IP/g, (env) => sf.ipmap.resolveEnv(env.slice(1)) ?? env),
+        ));
+      }
+    },
+  });
 
   const dnnList: F5.upf.DN[] = ctx.network.dataNetworks.filter((dn) => dn.type === "IPv4").map((dn) => ({
     dnn: dn.dnn,
     cidr: dn.subnet!,
   }));
 
-  for (const upf of ctx.network.upfs) {
-    const s = ctx.c.services[upf.name];
+  for (const { name: ct } of ctx.network.upfs) {
+    const s = ctx.c.services[ct];
     assert(!!s);
-    await fs.unlink(path.resolve(ctx.out, `up-cfg/${upf.name}.json`));
-    const phoenixVolumeIndex = s.volumes.findIndex((volume) => volume.target.startsWith("/opt/phoenix"));
-    assert(phoenixVolumeIndex >= 0);
-    s.volumes.splice(phoenixVolumeIndex, 1);
     s.image = await f5_conf.getImage("upf");
-    s.command = ["./upf", "-c", "./config/upfcfg.yaml"];
-    const yamlFile = `up-free5gc/${upf.name}.yaml`;
+    compose.setCommands(s, [
+      "set -euo pipefail",
+      ...compose.renameNetifs(s),
+      ...upfInit.get(ct)!,
+      "exec ./upf -c ./config/upfcfg.yaml",
+    ]);
+    const yamlFile = `up-cfg/${ct}.yaml`;
     s.volumes.push({
       type: "bind",
       source: `./${yamlFile}`,

@@ -66,6 +66,42 @@ export class NetDef {
     }
   }
 
+  public gatherUPFPeers(upf: N.UPF): NetDef.UPFPeers {
+    const peers: NetDef.UPFPeers = {
+      N3: [],
+      N9: [],
+      N6Ethernet: [],
+      N6IPv4: [],
+      N6IPv6: [],
+    };
+    for (const [peer, cost] of this.listDataPathPeers(upf.name)) {
+      if (typeof peer === "string") {
+        const gnb = this.findGNB(peer);
+        if (gnb) {
+          peers.N3.push(gnb);
+          continue;
+        }
+
+        const upf = this.findUPF(peer);
+        if (upf) {
+          peers.N9.push(upf);
+          continue;
+        }
+
+        assert(false, `missing peer ${peer}`);
+      }
+
+      const dn = this.findDN(peer);
+      assert(!!dn, `missing peer ${JSON.stringify(peer)}`);
+      peers[`N6${dn.type}`].push({
+        ...dn,
+        index: this.network.dataNetworks.indexOf(dn),
+        cost,
+      });
+    }
+    return peers;
+  }
+
   /** Iterate over requested or subscribed data networks. */
   public *listSubscriberDNs(subscriber: N.Subscriber, requested?: boolean): Iterable<N.DataNetworkID> {
     const nssai = (requested ? subscriber.requestedNSSAI : undefined) ?? subscriber.subscribedNSSAI;
@@ -104,6 +140,19 @@ export namespace NetDef {
       sst: number;
       sd?: number;
     };
+  }
+
+  export interface UPFPeers {
+    N3: N.GNB[];
+    N9: N.UPF[];
+    N6Ethernet: UPFN6Peer[];
+    N6IPv4: UPFN6Peer[];
+    N6IPv6: UPFN6Peer[];
+  }
+
+  export interface UPFN6Peer extends N.DataNetwork {
+    index: number;
+    cost: number;
   }
 
   /** Split S-NSSAI to sst and sd. */

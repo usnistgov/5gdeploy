@@ -3,6 +3,7 @@ import path from "node:path";
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import sql from "sql-tagged-template-literal";
+import type { Constructor } from "type-fest";
 
 import { NetDef } from "../netdef/netdef.js";
 import { phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
@@ -12,22 +13,12 @@ import type * as PH from "../types/phoenix.js";
 import type { NetDefComposeContext } from "./context.js";
 import { env } from "./env.js";
 
-export async function phoenixCP(ctx: NetDefComposeContext): Promise<void> {
-  const b = new PhoenixCPBuilder(ctx);
-  b.build();
-  await b.save();
-}
-
-export async function phoenixUP(ctx: NetDefComposeContext): Promise<void> {
-  const b = new PhoenixUPBuilder(ctx);
-  b.build();
-  await b.save();
-}
-
-export async function phoenixRAN(ctx: NetDefComposeContext): Promise<void> {
-  const b = new PhoenixRANBuilder(ctx);
-  b.build();
-  await b.save();
+export function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext]>): (ctx: NetDefComposeContext, saveHooks?: SaveHooks) => Promise<void> {
+  return async (ctx: NetDefComposeContext, saveHooks: SaveHooks = {}): Promise<void> => {
+    const b = new cls(ctx);
+    b.build();
+    await b.save(saveHooks);
+  };
 }
 
 abstract class PhoenixScenarioBuilder {
@@ -49,6 +40,8 @@ abstract class PhoenixScenarioBuilder {
   public readonly sf = new ScenarioFolder();
   protected readonly netdef = this.ctx.netdef;
   protected readonly network = this.ctx.network;
+
+  public abstract build(): void;
 
   protected tplFile(relPath: string): string {
     return path.resolve(env.D5G_PHOENIX_CFG, relPath);
@@ -111,30 +104,27 @@ abstract class PhoenixScenarioBuilder {
     return db;
   }
 
-  public async save(): Promise<void> {
+  public async save({
+    editSF,
+    nfFilter = (nf: string) => this.nfFilter.includes(nf),
+  }: SaveHooks): Promise<void> {
     this.sf.ipmap = IPMAP.fromCompose(this.ctx.c);
+    await editSF?.(this.sf);
 
     for (const service of Object.values(this.ctx.c.services)) {
-      if (!this.nfFilter.includes(IPMAP.toNf(service.container_name))) {
+      if (!nfFilter(IPMAP.toNf(service.container_name))) {
         continue;
       }
-      updateService(service);
-      for (const volume of service.volumes) {
-        switch (volume.source) {
-          case "./cfg": {
-            volume.source = `./${this.nfKind}-cfg`;
-            break;
-          }
-          case "./sql": {
-            volume.source = `./${this.nfKind}-sql`;
-            break;
-          }
-        }
-      }
+      updateService(service, { cfg: `./${this.nfKind}-cfg`, sql: `./${this.nfKind}-sql` });
     }
 
     await this.sf.save(path.resolve(this.ctx.out, `${this.nfKind}-cfg`), path.resolve(this.ctx.out, `${this.nfKind}-sql`));
   }
+}
+
+interface SaveHooks {
+  editSF?: (sf: ScenarioFolder) => Promise<void>;
+  nfFilter?: (nf: string) => boolean;
 }
 
 class PhoenixCPBuilder extends PhoenixScenarioBuilder {
@@ -387,6 +377,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     };
   }
 }
+export const phoenixCP = makeBuilder(PhoenixCPBuilder);
 
 class PhoenixUPBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "up";
@@ -420,43 +411,17 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
 
   private buildUPFs(): void {
     for (const [ct, upf] of this.createNetworkFunction("5g/upf2.json", ["n3", "n4", "n6", "n9"], this.ctx.network.upfs)) {
-      let hasN3 = false;
-      let hasN9 = false;
-      const subnetsN6L3: Array<[index: number, subnet: string, cost: number]> = [];
-      let dnnN6L2: string | undefined;
-      for (const [peer, cost] of this.netdef.listDataPathPeers(upf.name)) {
-        if (typeof peer === "string") {
-          hasN3 ||= !!this.netdef.findGNB(peer);
-          hasN9 ||= !!this.netdef.findUPF(peer);
-        } else {
-          const dn = this.netdef.findDN(peer);
-          assert(!!dn);
-          switch (dn.type) {
-            case "Ethernet": {
-              assert(!dnnN6L2, "UPF only supports one Ethernet DN");
-              dnnN6L2 = dn.dnn;
-              break;
-            }
-            case "IPv4": {
-              const index = this.network.dataNetworks.indexOf(dn);
-              assert(index >= 0);
-              subnetsN6L3.push([index, dn.subnet!, cost]);
-              break;
-            }
-            default: {
-              throw new Error(`UPF does not support ${dn.type} DN`);
-            }
-          }
-        }
-      }
+      const peers = this.netdef.gatherUPFPeers(upf);
+      assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
+      assert(peers.N6IPv6.length === 0, "UPF does not supports IPv6 DN");
 
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("pfcp");
         assert(config.mode === "UP");
         assert(config.data_plane_mode === "integrated");
-        config.ethernet_session_identifier = dnnN6L2;
+        config.ethernet_session_identifier = peers.N6Ethernet[0]?.dnn;
         config.DataPlane.interfaces.splice(0, Infinity);
-        if (hasN3) {
+        if (peers.N3.length > 0) {
           config.DataPlane.interfaces.push({
             type: "n3_n9",
             name: "n3",
@@ -464,7 +429,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
             mode: "single_thread",
           });
         }
-        if (hasN9) {
+        if (peers.N9.length > 0) {
           config.DataPlane.interfaces.push({
             type: "n3_n9",
             name: "n9",
@@ -472,7 +437,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
             mode: "thread_pool",
           });
         }
-        if (subnetsN6L3.length > 0) {
+        if (peers.N6IPv4.length > 0) {
           config.DataPlane.interfaces.push({
             type: "n6_l3",
             name: "n6_tun",
@@ -480,7 +445,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
             mode: "thread_pool",
           });
         }
-        if (dnnN6L2) {
+        if (peers.N6Ethernet.length > 0) {
           config.DataPlane.interfaces.push({
             type: "n6_l2",
             name: "n6_tap",
@@ -492,14 +457,14 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
       });
 
       this.sf.initCommands.set(ct, [...(function*() {
-        if (subnetsN6L3.length > 0 || dnnN6L2) {
+        if (peers.N6IPv4.length + peers.N6Ethernet.length > 0) {
           yield "ip link set n6 mtu 1456";
         }
-        if (subnetsN6L3.length > 0) {
+        if (peers.N6IPv4.length > 0) {
           yield "ip tuntap add mode tun user root name n6_tun";
           yield "ip link set n6_tun up";
         }
-        if (dnnN6L2) {
+        if (peers.N6Ethernet.length > 0) {
           yield "ip link add name br-eth type bridge";
           yield "ip link set br-eth up";
           yield "ip tuntap add mode tap user root name n6_tap";
@@ -507,8 +472,8 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         }
       })()]);
 
-      for (const [index, subnet, cost] of subnetsN6L3) {
-        const dest = new Netmask(subnet);
+      for (const { index, subnet, cost } of peers.N6IPv4) {
+        const dest = new Netmask(subnet!);
         const table = PhoenixUPBuilder.ipRuleTableBase + index;
         this.sf.initCommands.get(ct).push(
           `ip rule add from ${dest} iif n6_tun priority ${PhoenixUPBuilder.ipRulePriority} table ${table}`,
@@ -519,6 +484,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
     }
   }
 }
+export const phoenixUP = makeBuilder(PhoenixUPBuilder);
 
 class PhoenixRANBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "ran";
@@ -610,6 +576,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     }
   }
 }
+export const phoenixRAN = makeBuilder(PhoenixRANBuilder);
 
 function expandSNSSAI(snssai: N.SNSSAI): PH.SNSSAI {
   const { int: { sst }, hex: { sd } } = NetDef.splitSNSSAI(snssai);

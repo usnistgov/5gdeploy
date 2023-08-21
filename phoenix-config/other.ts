@@ -53,6 +53,11 @@ export class OtherTable {
   public readonly commands = new DefaultMap<string, string[]>(() => []);
   public readonly routes = new MultiMap<string, OtherTable.Route>();
 
+  /** List commands in specific container. */
+  public listCommands(ct: string): string[] {
+    return [...(this.commands.peek(ct) ?? []), ...Array.from(this.routes.get(ct) ?? [], (route) => routeToCommand(route))];
+  }
+
   /** Save other file. */
   public save(): string {
     const lines: string[] = [];
@@ -62,14 +67,7 @@ export class OtherTable {
       }
     }
     for (const [ct, route] of this.routes) {
-      const routeSpec = routeKeys.map((k) => {
-        const v = route[k];
-        if (v === undefined) {
-          return "";
-        }
-        return ` ${k} ${v}`;
-      });
-      lines.push(`c ${ct} ip route add ${route.dest}${routeSpec.join("")}\n`);
+      lines.push(`c ${ct} ${routeToCommand(route)}\n`);
     }
     return lines.join("");
   }
@@ -85,3 +83,14 @@ export namespace OtherTable {
 }
 
 const routeKeys: ReadonlyArray<keyof OtherTable.Route> = ["table", "metric", "via", "dev"];
+
+function routeToCommand(route: OtherTable.Route): string {
+  const routeSpec = routeKeys.map((k) => {
+    const v = route[k];
+    if (v === undefined) {
+      return "";
+    }
+    return ` ${k} ${v}`;
+  });
+  return `ip route add ${route.dest}${routeSpec.join("")}`;
+}

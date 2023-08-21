@@ -1,7 +1,5 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 
-import yaml from "js-yaml";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -70,4 +68,4 @@ await ranProviders[args.ran]!(ctx);
 if (args.bridgeTo) {
   compose.defineBridge(ctx.c, args.bridgeTo, args.bridgeOn);
 }
-await fs.writeFile(path.resolve(args.out, "compose.yml"), yaml.dump(ctx.c, { forceQuotes: true, sortKeys: true }));
+await ctx.writeFile("compose.yml", ctx.c);

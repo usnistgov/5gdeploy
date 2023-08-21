@@ -1,3 +1,5 @@
+import type { Options as YargsOptions } from "yargs";
+
 import type { ComposeFile } from "../types/compose.js";
 import { defineService } from "./compose.js";
 
@@ -14,7 +16,7 @@ export const bridgeOptions = {
     defaultDescription: "all networks except 'mgmt'",
     type: "string",
   },
-} as const;
+} as const satisfies Record<string, YargsOptions>;
 
 /**
  * Define a bridge container.
@@ -23,7 +25,7 @@ export const bridgeOptions = {
  * @param bridgeOn list of Docker networks that should be bridged (comma separated).
  */
 export function defineBridge(c: ComposeFile, bridgeTo: string, bridgeOn: string | undefined): void {
-  const on = bridgeOn ? new Set(bridgeOn.split(",")) : new Set();
+  const on = new Set(bridgeOn?.split(","));
   const bridges = Object.keys(c.networks)
     .map((net) => net.replace(/^br-/, ""))
     .filter((net) => on.size === 0 ? net !== "mgmt" : on.has(net))

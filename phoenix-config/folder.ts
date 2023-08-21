@@ -52,7 +52,8 @@ export class ScenarioFolder {
   public env = new Map<string, string>();
   /** IP address assignments (ip-map). */
   public ipmap = IPMAP.parse("");
-  private other = new OtherTable();
+  /** Per-container initialization commands and routes. */
+  public other = new OtherTable();
 
   /** Per-container initialization commands. */
   public get initCommands(): DefaultMap<string, string[]> {
@@ -128,6 +129,7 @@ export class ScenarioFolder {
   public async save(cfg: string, sql: string): Promise<void> {
     await fs.rm(cfg, { recursive: true, force: true });
     await fs.rm(sql, { recursive: true, force: true });
+    await fs.mkdir(cfg, { recursive: true });
 
     for (const [dst, fa] of this.files) {
       const dstPath = dst.startsWith("sql/") ? path.resolve(sql, dst.slice(4)) : path.resolve(cfg, dst);
