@@ -9,6 +9,9 @@ export interface Network {
   /** Tracking Area Code (24 bits, 6 hexadecimal digits). */
   tac: string;
 
+  /** USIM default values. */
+  subscriberDefault?: Pick<Subscriber, "k" | "opc">;
+
   /** USIM cards. */
   subscribers: Subscriber[];
 
@@ -53,11 +56,23 @@ export interface Subscriber {
   /** Subscriber identifier (15 decimal digits). */
   supi: string;
 
-  /** USIM secret key (32 hexadecimal digits). */
-  k: string;
+  /**
+   * Repeat the subscriber with successive supi.
+   * Default is 1.
+   */
+  count?: number;
 
-  /** Operator secret key (32 hexadecimal digits). */
-  opc: string;
+  /**
+   * USIM secret key (32 hexadecimal digits).
+   * Default is .subscriberDefault.k or random value.
+   */
+  k?: string;
+
+  /**
+   * Operator secret key (32 hexadecimal digits).
+   * Default is .subscriberDefault.opc or random value.
+   */
+  opc?: string;
 
   /**
    * Subscribed S-NSSAIs and DNNs (stored in the UDM).

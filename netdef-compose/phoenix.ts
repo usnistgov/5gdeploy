@@ -150,12 +150,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
   }
 
   private buildUDM(): void {
-    const { netdef, network } = this;
-    const dfltSubscribedNSSAI = netdef.nssai.map((snssai): N.SubscriberSNSSAI => ({
-      snssai,
-      dnns: network.dataNetworks.filter((dn) => dn.snssai === snssai).map((dn) => dn.dnn),
-    }));
-
+    const { netdef } = this;
     const db = this.createDatabase("5g/sql/udm_db.sql");
     this.sf.appendSQL(db, function*() {
       yield "DELETE FROM gpsi_supi_association";
@@ -166,7 +161,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       yield "SELECT @dnn_json:=json FROM dnn_configurations WHERE supi='default_data' LIMIT 1";
       yield "DELETE FROM dnn_configurations";
 
-      for (const { supi, k, opc, subscribedNSSAI = dfltSubscribedNSSAI } of network.subscribers) {
+      for (const { supi, k, opc, subscribedNSSAI, subscribedDN } of netdef.listSubscribers()) {
         yield sql`
           INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type)
           VALUES (${supi},UNHEX(${k}),UNHEX(${USIM.amf}),UNHEX(${opc}),UNHEX(${USIM.sqn}),0,1,0)
@@ -182,18 +177,16 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         };
         yield sql`INSERT am_data (supi,access_and_mobility_sub_data) VALUES (${supi},JSON_MERGE_PATCH(@am_json,${amPatch}))`;
 
-        for (const { snssai, dnns } of subscribedNSSAI) {
-          for (const dnn of dnns) {
-            const dn = netdef.findDN(dnn, snssai);
-            assert(!!dn);
-            const { sst } = expandSNSSAI(snssai);
-            const dnnPatch = {
-              pduSessionTypes: {
-                defaultSessionType: dn.type.toUpperCase(),
-              },
-            };
-            yield sql`INSERT dnn_configurations (supi,sst,dnn,json) VALUES (${supi},${sst},${dnn},JSON_MERGE_PATCH(@dnn_json,${dnnPatch}))`;
-          }
+        for (const { snssai, dnn } of subscribedDN) {
+          const dn = netdef.findDN(dnn, snssai);
+          assert(!!dn);
+          const { sst } = expandSNSSAI(snssai);
+          const dnnPatch = {
+            pduSessionTypes: {
+              defaultSessionType: dn.type.toUpperCase(),
+            },
+          };
+          yield sql`INSERT dnn_configurations (supi,sst,dnn,json) VALUES (${supi},${sst},${dnn},JSON_MERGE_PATCH(@dnn_json,${dnnPatch}))`;
         }
       }
     });
@@ -529,34 +522,30 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
   }
 
   private buildUEs(): void {
-    const allGNBs = this.network.gnbs.map((gnb) => gnb.name);
     this.sf.createFrom("ue-tunnel-mgmt.sh", this.tplFile("5g/ue-tunnel-mgmt.sh"));
-    for (const [ct, subscriber] of this.createNetworkFunction("5g/ue1.json", ["air"], this.ctx.network.subscribers)) {
+    for (const [ct, sub] of this.createNetworkFunction("5g/ue1.json", ["air"], this.ctx.netdef.listSubscribers())) {
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("ue_5g_nas_only");
         config.usim = {
-          supi: subscriber.supi,
-          k: subscriber.k,
+          supi: sub.supi,
+          k: sub.k,
           amf: USIM.amf,
-          opc: subscriber.opc,
+          opc: sub.opc,
           start_sqn: USIM.sqn,
         };
         delete config["usim-test-vector19"];
 
-        const nssai = subscriber.requestedNSSAI ?? subscriber.subscribedNSSAI ?? [];
-        config.dn_list.splice(0, Infinity, ...nssai.flatMap(({ snssai, dnns }): PH.ue_5g_nas_only.DN[] => dnns.map(
-          (dnn): PH.ue_5g_nas_only.DN => {
-            const dn = this.netdef.findDN(dnn, snssai);
-            assert(dn && dn.type !== "IPv6");
-            return {
-              dnn: dn.dnn,
-              dn_type: dn.type,
-            };
-          },
-        )));
+        config.dn_list.splice(0, Infinity, ...sub.requestedDN.map(({ snssai, dnn }) => {
+          const dn = this.netdef.findDN(dnn, snssai);
+          assert(dn && dn.type !== "IPv6");
+          return {
+            dnn: dn.dnn,
+            dn_type: dn.type,
+          };
+        }));
         config.DefaultNetwork.dnn = config.dn_list[0]?.dnn ?? "default";
 
-        config.Cell.splice(0, Infinity, ...(subscriber.gnbs ?? allGNBs).map((name): PH.ue_5g_nas_only.Cell => {
+        config.Cell.splice(0, Infinity, ...sub.gnbs.map((name): PH.ue_5g_nas_only.Cell => {
           const ip = IPMAP.formatEnv(name, "air");
           const gnb = this.netdef.findGNB(name);
           assert(!!gnb);

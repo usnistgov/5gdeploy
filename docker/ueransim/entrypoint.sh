@@ -63,7 +63,7 @@ ue() {
   .' | dasel -r json -w yaml | tee /ueransim/config/ue.yaml
 
   msg Starting 5G UE
-  exec /ueransim/nr-ue -c /ueransim/config/ue.yaml
+  exec /ueransim/nr-ue -c /ueransim/config/ue.yaml -n $COUNT
 }
 
 $CT

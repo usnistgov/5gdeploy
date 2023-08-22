@@ -1,4 +1,6 @@
 import assert from "minimalistic-assert";
+import type { SetRequired } from "type-fest";
+import { arr2hex, randomBytes } from "uint8-util";
 
 import type * as N from "../types/netdef.js";
 
@@ -32,6 +34,62 @@ export class NetDef {
       cell: Number(n & ((1n << cellIdLength) - 1n)),
       nci: Number(n),
     };
+  }
+
+  /**
+   * Iterate over subscribers.
+   * @param expandCount if true, emit .count>1 entry as multiple entries.
+   */
+  public listSubscribers(expandCount = true): NetDef.Subscriber[] {
+    this.network.subscriberDefault ??= {};
+    this.network.subscriberDefault.k ??= arr2hex(randomBytes(16));
+    this.network.subscriberDefault.opc ??= arr2hex(randomBytes(16));
+    const dfltSubscribedNSSAI = this.nssai.map((snssai): N.SubscriberSNSSAI => ({
+      snssai,
+      dnns: this.network.dataNetworks.filter((dn) => dn.snssai === snssai).map((dn) => dn.dnn),
+    }));
+    const allGNBs = this.network.gnbs.map((gnb) => gnb.name);
+
+    const list: NetDef.Subscriber[] = [];
+    for (const subscriber of this.network.subscribers) {
+      const sub: NetDef.Subscriber = {
+        count: 1,
+        k: this.network.subscriberDefault.k,
+        opc: this.network.subscriberDefault.opc,
+        subscribedNSSAI: dfltSubscribedNSSAI,
+        gnbs: allGNBs,
+        ...subscriber,
+        subscribedDN: [],
+        requestedDN: [],
+      };
+
+      for (const { snssai, dnns } of sub.subscribedNSSAI) {
+        for (const dnn of dnns) {
+          sub.subscribedDN.push({ snssai, dnn });
+        }
+      }
+
+      if (sub.requestedNSSAI) {
+        for (const { snssai, dnns } of sub.requestedNSSAI) {
+          for (const dnn of dnns) {
+            sub.requestedDN.push({ snssai, dnn });
+          }
+        }
+      } else {
+        sub.requestedDN.push(...sub.subscribedDN);
+      }
+
+      if (expandCount && sub.count > 1) {
+        let supi = BigInt(sub.supi);
+        for (let i = 0; i < sub.count; ++i) {
+          list.push({ ...sub, supi: supi.toString().padStart(15, "0"), count: 1 });
+          ++supi;
+        }
+      } else {
+        list.push(sub);
+      }
+    }
+    return list;
   }
 
   /** Find gNB by short name. */
@@ -101,20 +159,6 @@ export class NetDef {
     }
     return peers;
   }
-
-  /** Iterate over requested or subscribed data networks. */
-  public *listSubscriberDNs(subscriber: N.Subscriber, requested?: boolean): Iterable<N.DataNetworkID> {
-    const nssai = (requested ? subscriber.requestedNSSAI : undefined) ?? subscriber.subscribedNSSAI;
-    if (nssai) {
-      for (const { snssai, dnns } of nssai) {
-        for (const dnn of dnns) {
-          yield { snssai, dnn };
-        }
-      }
-    } else {
-      yield* this.network.dataNetworks;
-    }
-  }
 }
 export namespace NetDef {
   /** Split PLMN to MCC and MNC. */
@@ -142,6 +186,13 @@ export namespace NetDef {
     };
   }
 
+  /** Information about a subscriber. */
+  export interface Subscriber extends SetRequired<N.Subscriber, "count" | "k" | "opc" | "subscribedNSSAI" | "gnbs"> {
+    subscribedDN: N.DataNetworkID[];
+    requestedDN: N.DataNetworkID[];
+  }
+
+  /** N3,N9,N6 peers of a UPF. */
   export interface UPFPeers {
     N3: N.GNB[];
     N9: N.UPF[];
@@ -150,6 +201,7 @@ export namespace NetDef {
     N6IPv6: UPFN6Peer[];
   }
 
+  /** N6 peer of a UPF. */
   export interface UPFN6Peer extends N.DataNetwork {
     index: number;
     cost: number;

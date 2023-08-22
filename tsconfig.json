@@ -12,6 +12,7 @@
     "noImplicitReturns": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
+    "skipLibCheck": true,
     "strict": true,
     "target": "ES2022"
   },

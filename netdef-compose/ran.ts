@@ -19,10 +19,10 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
     };
   }
 
-  for (const [ct, subscriber] of IPMAP.suggestNames("ue", ctx.network.subscribers)) {
+  for (const [ct, sub] of IPMAP.suggestNames("ue", ctx.netdef.listSubscribers(false))) {
     const slices = new Set<string>();
     const sessions = new Set<string>();
-    for (const { snssai, dnn } of ctx.netdef.listSubscriberDNs(subscriber, true)) {
+    for (const { snssai, dnn } of sub.requestedDN) {
       slices.add(snssai);
       sessions.add(`${dnn}:${snssai}`);
     }
@@ -30,10 +30,11 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
     s.command = ["/entrypoint.sh", "ue"];
     s.environment = {
       PLMN: ctx.network.plmn,
-      IMSI: subscriber.supi,
-      KEY: subscriber.k,
-      OPC: subscriber.opc,
-      GNB_IPS: ctx.gatherIPs(subscriber.gnbs ?? "gnb", "air").join(","),
+      IMSI: sub.supi,
+      COUNT: sub.count.toString(),
+      KEY: sub.k,
+      OPC: sub.opc,
+      GNB_IPS: ctx.gatherIPs(sub.gnbs, "air").join(","),
       SLICES: [...slices].join(","),
       SESSIONS: [...sessions].join(","),
     };
@@ -47,7 +48,7 @@ async function oai(ctx: NetDefComposeContext): Promise<void> {
     await oai_netdef.makeGNB(ctx, ct, gnb);
   }
 
-  for (const [ct, subscriber] of IPMAP.suggestNames("ue", ctx.network.subscribers)) {
+  for (const [ct, subscriber] of IPMAP.suggestNames("ue", ctx.netdef.listSubscribers())) {
     await oai_netdef.makeUE(ctx, ct, subscriber);
   }
 }

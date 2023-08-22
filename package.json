@@ -39,6 +39,7 @@
     "tsm": "^2.3.0",
     "type-fest": "^4.2.0",
     "typescript": "~5.1.6",
+    "uint8-util": "^2.2.2",
     "untildify": "^5.0.0",
     "yargs": "^17.7.2"
   },

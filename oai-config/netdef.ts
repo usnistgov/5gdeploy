@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
-import { collect, take } from "streaming-iterables";
 
 import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
@@ -202,23 +201,23 @@ export async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB)
 }
 
 /** Define UE container and generate configuration. */
-export async function makeUE(ctx: NetDefComposeContext, ct: string, subscriber: N.Subscriber): Promise<void> {
+export async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscriber): Promise<void> {
   const s = ctx.defineService(ct, `oaisoftwarealliance/oai-nr-ue:${TAG}`, ["air"]);
 
   const c = (await oai_conf.loadTemplate("nrue.uicc")) as OAI.ue.Config;
   const [, mnc] = NetDef.splitPLMN(ctx.netdef.network.plmn);
   c.uicc0 = {
-    imsi: subscriber.supi,
+    imsi: sub.supi,
     nmc_size: mnc.length,
-    key: subscriber.k,
-    opc: subscriber.opc,
+    key: sub.k,
+    opc: sub.opc,
     dnn: "",
     nssai_sst: 0,
   };
-  const [dn] = collect(take(1, ctx.netdef.listSubscriberDNs(subscriber, true)));
-  if (dn) {
-    c.uicc0.dnn = dn.dnn;
-    ({ sst: c.uicc0.nssai_sst, sd: c.uicc0.nssai_sd } = NetDef.splitSNSSAI(dn.snssai).int);
+  if (sub.requestedDN.length > 0) {
+    const { snssai, dnn } = sub.requestedDN[0]!;
+    c.uicc0.dnn = dnn;
+    ({ sst: c.uicc0.nssai_sst, sd: c.uicc0.nssai_sd } = NetDef.splitSNSSAI(snssai).int);
   }
 
   c.rfsimulator = {
