@@ -26,13 +26,21 @@ export function save(c: ComposeFile): string {
   return yaml.dump(c, { forceQuotes: true, sortKeys: true });
 }
 
-/** Define a Compose network. */
-export function defineNetwork(c: ComposeFile, name: string, subnet: string, wantNAT = false): ComposeNetwork {
-  const network: ComposeNetwork = {
+/**
+ * Define a Compose network.
+ * If a network with same name already exists, it is not replaced.
+ */
+export function defineNetwork(c: ComposeFile, name: string, subnet: string, {
+  wantNAT = false,
+  mtu = 1500,
+}: defineNetwork.Options = {}): ComposeNetwork {
+  let network = c.networks[name];
+  network ??= {
     name: `br-${name}`,
     driver_opts: {
       "com.docker.network.bridge.name": `br-${name}`,
       "com.docker.network.bridge.enable_ip_masquerade": Number(wantNAT),
+      "com.docker.network.driver.mtu": mtu,
     },
     ipam: {
       driver: "default",
@@ -42,10 +50,20 @@ export function defineNetwork(c: ComposeFile, name: string, subnet: string, want
   c.networks[name] = network;
   return network;
 }
+export namespace defineNetwork {
+  export interface Options {
+    wantNAT?: boolean;
+    mtu?: number;
+  }
+}
 
-/** Define a Compose service. */
+/**
+ * Define a Compose service.
+ * If a service with same name already exists, it is not replaced.
+ */
 export function defineService(c: ComposeFile, name: string, image: string): ComposeService {
-  const service: ComposeService = {
+  let service = c.services[name];
+  service ??= {
     container_name: name,
     hostname: name,
     image: image,

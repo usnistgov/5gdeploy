@@ -6,7 +6,7 @@ import sql from "sql-tagged-template-literal";
 import type { Constructor } from "type-fest";
 
 import { NetDef } from "../netdef/netdef.js";
-import { phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
+import { networkOptions, phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
 import { IPMAP, type NetworkFunction, ScenarioFolder } from "../phoenix-config/mod.js";
 import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
@@ -26,7 +26,9 @@ abstract class PhoenixScenarioBuilder {
   protected abstract nfFilter: readonly string[];
 
   constructor(protected readonly ctx: NetDefComposeContext) {
-    this.ctx.defineNetwork("mgmt", true);
+    for (const [net, opts] of Object.entries(networkOptions)) {
+      this.ctx.defineNetwork(net, opts);
+    }
 
     const [mcc, mnc] = NetDef.splitPLMN(this.network.plmn);
     assert(mnc.length === 2, "Open5GCore only supports 2-digit MNC");
@@ -385,9 +387,6 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
 
   private buildDNs(): void {
     for (const [ct, dn] of this.createNetworkFunction("nf:dn", ["n6"], this.ctx.network.dataNetworks)) {
-      this.sf.initCommands.get(ct).push(
-        "ip link set n6 mtu 1456",
-      );
       if (dn.type !== "IPv4") {
         continue;
       }
@@ -450,9 +449,6 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
       });
 
       this.sf.initCommands.set(ct, [...(function*() {
-        if (peers.N6IPv4.length + peers.N6Ethernet.length > 0) {
-          yield "ip link set n6 mtu 1456";
-        }
         if (peers.N6IPv4.length > 0) {
           yield "ip tuntap add mode tun user root name n6_tun";
           yield "ip link set n6_tun up";
@@ -559,9 +555,6 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
           };
         }));
       });
-      this.sf.initCommands.set(ct, [
-        "ip link set air mtu 1470",
-      ]);
     }
   }
 }

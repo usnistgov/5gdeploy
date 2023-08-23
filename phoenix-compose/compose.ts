@@ -6,6 +6,12 @@ export const phoenixdir = "/opt/phoenix";
 export const cfgdir = `${phoenixdir}/cfg/current`;
 export const phoenixDockerImage = "5gdeploy.localhost/phoenix";
 
+export const networkOptions: Record<string, compose.defineNetwork.Options> = {
+  mgmt: { wantNAT: true },
+  air: { mtu: 1470 },
+  n6: { mtu: 1456 },
+};
+
 /** Convert ip-map to Compose file. */
 export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
   const skipNf = ["prometheus"];
@@ -15,7 +21,7 @@ export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
 
   const c = compose.create();
   for (const [net, subnet] of ipmap.networks) {
-    compose.defineNetwork(c, net, subnet.toString(), net === "mgmt");
+    compose.defineNetwork(c, net, subnet.toString(), networkOptions[net]);
   }
 
   for (const [ct, nets] of ipmap.containers) {

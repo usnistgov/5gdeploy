@@ -24,9 +24,9 @@ export class NetDefComposeContext {
   }
 
   /** Define a Compose network. */
-  public defineNetwork(net: string, wantNAT = false): void {
+  public defineNetwork(net: string, opts: compose.defineNetwork.Options = {}): void {
     const subnet = this.ipAlloc.allocNetwork(net);
-    compose.defineNetwork(this.c, net, subnet, wantNAT);
+    compose.defineNetwork(this.c, net, subnet, opts);
   }
 
   /**
