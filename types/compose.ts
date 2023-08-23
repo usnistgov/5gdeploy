@@ -19,6 +19,7 @@ export interface ComposeService {
   container_name: string;
   hostname: string;
   image: string;
+  entrypoint?: string[];
   command?: string[];
   init?: boolean;
   stdin_open?: boolean;

@@ -15,7 +15,7 @@
     "@types/js-yaml": "^4.0.5",
     "@types/minimalistic-assert": "^1.0.1",
     "@types/netmask": "^2.0.2",
-    "@types/node": "^20.5.1",
+    "@types/node": "^20.5.3",
     "@types/sql-tagged-template-literal": "^1.2.0",
     "@types/yargs": "^17.0.24",
     "dockerode": "^3.3.5",
@@ -39,7 +39,7 @@
     "tsm": "^2.3.0",
     "type-fest": "^4.2.0",
     "typescript": "~5.1.6",
-    "uint8-util": "^2.2.2",
+    "uint8-util": "^2.2.3",
     "untildify": "^5.0.0",
     "yargs": "^17.7.2"
   },

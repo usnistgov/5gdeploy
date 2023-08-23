@@ -75,23 +75,33 @@ export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string
 }
 
 /** Generate commands to rename netifs. */
-export function renameNetifs(service: ComposeService): string[] {
-  const lines: string[] = [];
+export function* renameNetifs(service: ComposeService): Iterable<string> {
   for (const [net, { ipv4_address }] of Object.entries(service.networks)) {
-    lines.push(
-      `IFNAME=$(ip -o addr show to ${ipv4_address} | awk '{ print $2 }')`,
-      "ip link set dev \"$IFNAME\" down",
-      `ip link set dev "$IFNAME" name ${shlex.quote(net)}`,
-      `ip link set dev ${shlex.quote(net)} up`,
-    );
+    yield `IFNAME=$(ip -o addr show to ${ipv4_address} | awk '{ print $2 }')`;
+    yield `msg Renaming netif "$IFNAME" with IPv4 ${ipv4_address} to ${shlex.quote(net)}`;
+    yield "ip link set dev \"$IFNAME\" down";
+    yield `ip link set dev "$IFNAME" name ${shlex.quote(net)}`;
+    yield `ip link set dev ${shlex.quote(net)} up`;
   }
-  return lines;
+
+  yield "unset $IFNAME";
+  yield "msg Listing IP addresses";
+  yield "ip addr";
+  yield "msg Finished renaming netifs";
 }
 
 /**
  * Set commands on a service.
- * '$' is escaped.
+ * @param service Compose service to edit.
+ * @param commands list of commands, '$' is escaped as '$$'.
+ * @param shell should be set to 'sh' for alpine based images.
  */
-export function setCommands(service: ComposeService, commands: string[]): void {
-  service.command = ["bash", "-c", commands.join(";\n").replaceAll("$", "$$$$")];
+export function setCommands(service: ComposeService, commands: string[], shell = "bash"): void {
+  const joined = [
+    "set -euo pipefail",
+    "msg() { echo -ne \"\\e[35m[5gdeploy] \\e[94m\"; echo -n \"$*\"; echo -e \"\\e[0m\"; }",
+    ...commands,
+  ].join(" ;\n").replaceAll("$", "$$$$");
+  service.command = [`/bin/${shell}`, "-c", joined];
+  service.entrypoint = [];
 }

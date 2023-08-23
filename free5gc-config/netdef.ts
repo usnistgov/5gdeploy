@@ -33,7 +33,6 @@ export async function buildUP(ctx: NetDefComposeContext): Promise<void> {
     assert(!!s);
     s.image = await f5_conf.getImage("upf");
     compose.setCommands(s, [
-      "set -euo pipefail",
       ...compose.renameNetifs(s),
       ...upfInit.get(ct)!,
       "exec ./upf -c ./config/upfcfg.yaml",
