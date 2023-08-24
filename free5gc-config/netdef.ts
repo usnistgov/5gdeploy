@@ -44,17 +44,17 @@ export async function buildUP(ctx: NetDefComposeContext): Promise<void> {
       target: "/free5gc/config/upfcfg.yaml",
       read_only: true,
     });
-    s.cap_add.splice(0, Infinity, "NET_ADMIN");
+    s.cap_add = ["NET_ADMIN"];
 
     const c = (await f5_conf.loadTemplate("upfcfg")) as F5.upf.Root;
     c.pfcp.addr = s.networks.n4!.ipv4_address;
     c.pfcp.nodeID = s.networks.n4!.ipv4_address;
     // go-upf gtp5g driver listens on the first interface defined in ifList and does not distinguish N3 or N9
     // https://github.com/free5gc/go-upf/blob/efae7532f8f9ed081065cdaa0589b0c76d11b204/internal/forwarder/driver.go#L53-L58
-    c.gtpu.ifList.splice(0, Infinity, {
+    c.gtpu.ifList = [{
       addr: "0.0.0.0",
       type: "N3",
-    });
+    }];
     c.dnnList = dnnList;
 
     await ctx.writeFile(yamlFile, c);

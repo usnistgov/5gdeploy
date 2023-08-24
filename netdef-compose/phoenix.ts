@@ -246,13 +246,13 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
             amfSetId,
             amfPointer,
           };
-          config.trackingArea.splice(0, Infinity, {
+          config.trackingArea = [{
             mcc: "%MCC",
             mnc: "%MNC",
             taiList: [
               { tac: this.netdef.tac },
             ],
-          });
+          }];
           config.hacks.enable_reroute_nas = this.sf.has("nssf.json");
         },
       );
@@ -312,11 +312,11 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         },
         (c) => {
           const { config } = c.getModule("pfcp");
-          config.Associations.Peer.splice(0, Infinity, ...network.upfs.map((upf): PH.pfcp.Acceptor => ({
+          config.Associations.Peer = network.upfs.map((upf): PH.pfcp.Acceptor => ({
             type: "udp",
             port: 8805,
             bind: IPMAP.formatEnv(upf.name, "n4"),
-          })));
+          }));
         },
       );
     }
@@ -412,7 +412,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         assert(config.mode === "UP");
         assert(config.data_plane_mode === "integrated");
         config.ethernet_session_identifier = peers.N6Ethernet[0]?.dnn;
-        config.DataPlane.interfaces.splice(0, Infinity);
+        config.DataPlane.interfaces = [];
         if (peers.N3.length > 0) {
           config.DataPlane.interfaces.push({
             type: "n3_n9",
@@ -531,17 +531,17 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
         };
         delete config["usim-test-vector19"];
 
-        config.dn_list.splice(0, Infinity, ...sub.requestedDN.map(({ snssai, dnn }) => {
+        config.dn_list = sub.requestedDN.map(({ snssai, dnn }): PH.ue_5g_nas_only.DN => {
           const dn = this.netdef.findDN(dnn, snssai);
           assert(dn && dn.type !== "IPv6");
           return {
             dnn: dn.dnn,
             dn_type: dn.type,
           };
-        }));
+        });
         config.DefaultNetwork.dnn = config.dn_list[0]?.dnn ?? "default";
 
-        config.Cell.splice(0, Infinity, ...sub.gnbs.map((name): PH.ue_5g_nas_only.Cell => {
+        config.Cell = sub.gnbs.map((name): PH.ue_5g_nas_only.Cell => {
           const ip = IPMAP.formatEnv(name, "air");
           const gnb = this.netdef.findGNB(name);
           assert(!!gnb);
@@ -553,7 +553,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
             gnb_up_addr: ip,
             gnb_port: 10000,
           };
-        }));
+        });
       });
     }
   }
@@ -567,7 +567,7 @@ function expandSNSSAI(snssai: N.SNSSAI): PH.SNSSAI {
 
 function setNrfClientSlices(c: NetworkFunction, nssai: readonly N.SNSSAI[]): void {
   const { config } = c.getModule("nrf_client");
-  config.nf_profile.sNssais.splice(0, Infinity, ...nssai.map((snssai) => expandSNSSAI(snssai)));
+  config.nf_profile.sNssais = nssai.map((snssai) => expandSNSSAI(snssai));
 }
 
 const USIM = { sqn: "000000000001", amf: "8000" } as const;

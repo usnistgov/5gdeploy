@@ -6,6 +6,7 @@ import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
 
+import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import { phoenixUP } from "../netdef-compose/phoenix.js";
@@ -151,7 +152,7 @@ export async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB)
   const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${TAG}`, ["air", "n2", "n3"]);
 
   const c = (await oai_conf.loadTemplate("gnb.sa.band78.106prb.rfsim")) as OAI.gnb.Config;
-  c.Active_gNBs.splice(0, Infinity, gnb.name);
+  c.Active_gNBs = [gnb.name];
 
   assert(c.gNBs.length === 1);
   const g0 = c.gNBs[0]!;
@@ -175,9 +176,9 @@ export async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB)
     preference: "ipv4",
   }));
   g0.NETWORK_INTERFACES = {
-    GNB_INTERFACE_NAME_FOR_NG_AMF: "eth1",
+    GNB_INTERFACE_NAME_FOR_NG_AMF: "n2",
     GNB_IPV4_ADDRESS_FOR_NG_AMF: s.networks.n2!.ipv4_address,
-    GNB_INTERFACE_NAME_FOR_NGU: "eth2",
+    GNB_INTERFACE_NAME_FOR_NGU: "n3",
     GNB_IPV4_ADDRESS_FOR_NGU: s.networks.n3!.ipv4_address,
     GNB_PORT_FOR_S1U: 2152,
   };
@@ -189,14 +190,16 @@ export async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB)
     phy_log_level: "warn",
   };
 
-  await ctx.writeFile(`ran-oai/${ct}.conf`, await oai_conf.save(c));
+  await ctx.writeFile(`ran-cfg/${ct}.conf`, await oai_conf.save(c));
 
+  compose.setCommands(s, [
+    ...compose.renameNetifs(s),
+    "exec /opt/oai-gnb/bin/entrypoint.sh /opt/oai-gnb/bin/nr-softmodem -O /opt/oai-gnb/etc/gnb.conf" +
+    " --sa -E --rfsim",
+  ]);
   s.privileged = true;
-  s.environment = {
-    USE_ADDITIONAL_OPTIONS: "--sa -E --rfsim",
-  };
   s.volumes = [
-    { type: "bind", source: `./ran-oai/${ct}.conf`, target: "/opt/oai-gnb/etc/gnb.conf", read_only: true },
+    { type: "bind", source: `./ran-cfg/${ct}.conf`, target: "/opt/oai-gnb/etc/gnb.conf", read_only: true },
   ];
 }
 
@@ -221,7 +224,7 @@ export async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.
   }
 
   c.rfsimulator = {
-    serveraddr: ctx.gatherIPs("gnb", "air")[0]!,
+    serveraddr: ctx.gatherIPs(sub.gnbs, "air")[0]!,
   };
 
   c.log_config = {
@@ -231,13 +234,15 @@ export async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.
     phy_log_level: "warn",
   };
 
-  await ctx.writeFile(`ran-oai/${ct}.conf`, await oai_conf.save(c));
+  await ctx.writeFile(`ran-cfg/${ct}.conf`, await oai_conf.save(c));
 
+  compose.setCommands(s, [
+    ...compose.renameNetifs(s),
+    "exec /opt/oai-nr-ue/bin/entrypoint.sh /opt/oai-nr-ue/bin/nr-uesoftmodem -O /opt/oai-nr-ue/etc/nr-ue.conf" +
+    " -E --sa --rfsim -r 106 --numerology 1 -C 3619200000",
+  ]);
   s.privileged = true;
-  s.environment = {
-    USE_ADDITIONAL_OPTIONS: "-E --sa --rfsim -r 106 --numerology 1 -C 3619200000",
-  };
   s.volumes = [
-    { type: "bind", source: `./ran-oai/${ct}.conf`, target: "/opt/oai-nr-ue/etc/nr-ue.conf", read_only: true },
+    { type: "bind", source: `./ran-cfg/${ct}.conf`, target: "/opt/oai-nr-ue/etc/nr-ue.conf", read_only: true },
   ];
 }

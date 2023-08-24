@@ -8,7 +8,7 @@ import type { Promisable } from "type-fest";
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import { IPMAP } from "../phoenix-config/mod.js";
-import { type ComposeFile, type ComposeService } from "../types/compose.js";
+import type { ComposeFile, ComposeService } from "../types/compose.js";
 import { env } from "./env.js";
 import { IPAlloc } from "./ipalloc.js";
 
