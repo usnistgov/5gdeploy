@@ -1,0 +1,92 @@
+import assert from "minimalistic-assert";
+import { Netmask } from "netmask";
+import * as shlex from "shlex";
+
+import * as compose from "../compose/mod.js";
+import { type NetDef } from "../netdef/netdef.js";
+import type * as N from "../types/netdef.js";
+import type { NetDefComposeContext } from "./context.js";
+
+const dnDockerImage = "5gdeploy.localhost/dn";
+const upfRouteTableBase = 5000;
+const upfRouteRulePriority = 100;
+
+const ctxHasUniqueDNNs = new WeakMap<NetDefComposeContext, boolean>();
+
+function makeDNServiceName(ctx: NetDefComposeContext, dn: N.DataNetworkID): string {
+  let hasUniqueDNNs = ctxHasUniqueDNNs.get(ctx);
+  if (hasUniqueDNNs === undefined) {
+    hasUniqueDNNs = new Set(Array.from(ctx.network.dataNetworks, (dn) => dn.dnn)).size === ctx.network.dataNetworks.length;
+    ctxHasUniqueDNNs.set(ctx, hasUniqueDNNs);
+  }
+
+  if (hasUniqueDNNs) {
+    return `dn_${dn.dnn}`;
+  }
+  return `dn_${dn.snssai}_${dn.dnn}`;
+}
+
+/**
+ * Define Compose services for Data Networks.
+ * This shall be called before creating UPFs.
+ */
+export function defineDNServices(ctx: NetDefComposeContext): void {
+  for (const dn of ctx.network.dataNetworks) {
+    if (dn.type !== "IPv4") {
+      continue;
+    }
+    const s = ctx.defineService(makeDNServiceName(ctx, dn), dnDockerImage, ["mgmt", "n6"]);
+    s.cap_add.push("NET_ADMIN");
+  }
+}
+
+function* makeDNRoutes(ctx: NetDefComposeContext, dn: N.DataNetwork): Iterable<string> {
+  const dest = new Netmask(dn.subnet!);
+  yield `msg Adding routes for ${shlex.quote(`${dn.snssai}:${dn.dnn}`)} toward UPFs`;
+  for (const [upfName, cost] of ctx.netdef.listDataPathPeers(dn)) {
+    assert(typeof upfName === "string");
+    const upf = ctx.c.services[upfName];
+    assert(!!upf);
+    yield `ip route add ${dest} via ${upf.networks.n6!.ipv4_address} metric ${cost}`;
+  }
+  yield "msg Listing IP routes";
+  yield "ip route list table all type unicast";
+}
+
+/**
+ * Set commands on Compose services for Data Networks.
+ * This shall be called after creating UPFs.
+ */
+export function setDNCommands(ctx: NetDefComposeContext): void {
+  for (const dn of ctx.network.dataNetworks) {
+    if (dn.type !== "IPv4") {
+      continue;
+    }
+
+    const s = ctx.c.services[makeDNServiceName(ctx, dn)]!;
+    compose.setCommands(s, [
+      ...compose.renameNetifs(s),
+      ...makeDNRoutes(ctx, dn),
+      "exec tail -f",
+    ], "ash");
+  }
+}
+
+/**
+ * Generate commands to configure routes for Data Networks in UPF.
+ * This shall be called after defineDNServices and before setDNCommands.
+ */
+export function* makeUPFRoutes(ctx: NetDefComposeContext, peers: NetDef.UPFPeers): Iterable<string> {
+  for (const dn of peers.N6IPv4) {
+    const dnService = ctx.c.services[makeDNServiceName(ctx, dn)];
+    const dest = new Netmask(dn.subnet!);
+    const table = upfRouteTableBase + dn.index;
+    yield `msg Adding routes for ${shlex.quote(`${dn.snssai}:${dn.dnn}`)} toward DN in table ${table}`;
+    yield `ip rule add from ${dest} priority ${upfRouteRulePriority} table ${table}`;
+    yield `ip route add default via ${dnService!.networks.n6!.ipv4_address} table ${table} metric ${dn.cost}`;
+  }
+  yield "msg Listing IP rules";
+  yield "ip rule list";
+  yield "msg Listing IP routes";
+  yield "ip route list table all type unicast";
+}

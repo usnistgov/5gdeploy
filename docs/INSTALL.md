@@ -39,6 +39,10 @@ This repository should be cloned at `~/5gdeploy`, then:
 # install NPM dependencies
 cd ~/5gdeploy
 corepack pnpm install
+
+# build utility Docker images
+docker build -t 5gdeploy.localhost/bridge docker/bridge
+docker build -t 5gdeploy.localhost/dn docker/dn
 ```
 
 Additional steps are defined within each scenario.

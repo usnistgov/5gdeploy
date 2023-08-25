@@ -104,7 +104,7 @@ export function* renameNetifs(service: ComposeService): Iterable<string> {
 
   yield "unset $IFNAME";
   yield "msg Listing IP addresses";
-  yield "ip addr";
+  yield "ip addr list up";
   yield "msg Finished renaming netifs";
 }
 
@@ -112,9 +112,9 @@ export function* renameNetifs(service: ComposeService): Iterable<string> {
  * Set commands on a service.
  * @param service Compose service to edit.
  * @param commands list of commands, '$' is escaped as '$$'.
- * @param shell should be set to 'sh' for alpine based images.
+ * @param shell should be set to 'ash' for alpine based images.
  */
-export function setCommands(service: ComposeService, commands: string[], shell = "bash"): void {
+export function setCommands(service: ComposeService, commands: Iterable<string>, shell = "bash"): void {
   const joined = [
     "set -euo pipefail",
     "msg() { echo -ne \"\\e[35m[5gdeploy] \\e[94m\"; echo -n \"$*\"; echo -e \"\\e[0m\"; }",

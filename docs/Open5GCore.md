@@ -54,13 +54,6 @@ Some, but not all, examples can work in Docker Compose.
 
 ## Run Scenario over Multiple Machines
 
-Build bridge Docker image:
-
-```bash
-cd ~/5gdeploy
-docker build -t 5gdeploy.localhost/bridge docker/bridge
-```
-
 Run a subnet of network functions with bridges:
 
 ```bash

@@ -11,6 +11,7 @@ import { IPMAP, type NetworkFunction, ScenarioFolder } from "../phoenix-config/m
 import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
 import type { NetDefComposeContext } from "./context.js";
+import * as NetDefDN from "./dn.js";
 import { env } from "./env.js";
 
 export function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext]>): (ctx: NetDefComposeContext, saveHooks?: SaveHooks) => Promise<void> {
@@ -377,28 +378,11 @@ export const phoenixCP = makeBuilder(PhoenixCPBuilder);
 class PhoenixUPBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "up";
   protected override nfFilter = ["upf", "dn", "igw", "hostnat"];
-  private static ipRulePriority = 100;
-  private static ipRuleTableBase = 5000;
 
   public build(): void {
-    this.buildDNs();
+    NetDefDN.defineDNServices(this.ctx);
     this.buildUPFs();
-  }
-
-  private buildDNs(): void {
-    for (const [ct, dn] of this.createNetworkFunction("nf:dn", ["n6"], this.ctx.network.dataNetworks)) {
-      if (dn.type !== "IPv4") {
-        continue;
-      }
-      const dest = new Netmask(dn.subnet!);
-
-      for (const [upfName, cost] of this.netdef.listDataPathPeers(dn)) {
-        assert(typeof upfName === "string");
-        const upf = this.netdef.findUPF(upfName);
-        assert(!!upf);
-        this.sf.routes.set(ct, { dest, metric: cost, via: IPMAP.formatEnv(upf.name, "n6", "$") });
-      }
-    }
+    NetDefDN.setDNCommands(this.ctx);
   }
 
   private buildUPFs(): void {
@@ -448,27 +432,24 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         delete config.DataPlane.xdp;
       });
 
-      this.sf.initCommands.set(ct, [...(function*() {
-        if (peers.N6IPv4.length > 0) {
-          yield "ip tuntap add mode tun user root name n6_tun";
-          yield "ip link set n6_tun up";
-        }
-        if (peers.N6Ethernet.length > 0) {
-          yield "ip link add name br-eth type bridge";
-          yield "ip link set br-eth up";
-          yield "ip tuntap add mode tap user root name n6_tap";
-          yield "ip link set n6_tap up master br-eth";
-        }
-      })()]);
+      this.sf.initCommands.set(ct, [
+        ...(function*() {
+          if (peers.N6IPv4.length > 0) {
+            yield "ip tuntap add mode tun user root name n6_tun";
+            yield "ip link set n6_tun up";
+          }
+          if (peers.N6Ethernet.length > 0) {
+            yield "ip link add name br-eth type bridge";
+            yield "ip link set br-eth up";
+            yield "ip tuntap add mode tap user root name n6_tap";
+            yield "ip link set n6_tap up master br-eth";
+          }
+        })(),
+        ...Array.from(NetDefDN.makeUPFRoutes(this.ctx, peers), (line) => line.replace(/^msg /, ": ")),
+      ]);
 
-      for (const { index, subnet, cost } of peers.N6IPv4) {
-        const dest = new Netmask(subnet!);
-        const table = PhoenixUPBuilder.ipRuleTableBase + index;
-        this.sf.initCommands.get(ct).push(
-          `ip rule add from ${dest} iif n6_tun priority ${PhoenixUPBuilder.ipRulePriority} table ${table}`,
-        );
-        this.sf.routes.set(ct, { dest: "default", table, metric: cost, via: IPMAP.formatEnv(`dn${index}`, "n6", "$") });
-        this.sf.routes.set(ct, { dest, dev: "n6_tun" });
+      for (const { subnet } of peers.N6IPv4) {
+        this.sf.routes.set(ct, { dest: new Netmask(subnet!), dev: "n6_tun" });
       }
     }
   }
