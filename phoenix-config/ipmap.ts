@@ -97,30 +97,8 @@ export class IPMAP {
   }
 }
 export namespace IPMAP {
-  /** Derive network function name from container name. */
-  export function toNf(ct: string): string {
-    return ct.replace(/(_.*|\d*)$/, "");
-  }
-
   /** Format ct_net_IP environment variable name. */
   export function formatEnv(ct: string, net: string, prefix = "%"): string {
     return `${prefix}${ct.toUpperCase()}_${net.toUpperCase()}_IP`;
-  }
-
-  /**
-   * Suggest container names for network function.
-   * @param nf network function name.
-   * @param list relevant config objects.
-   * If a config object has a .name property, it must reflect the templated network function.
-   */
-  export function suggestNames<T>(nf: string, list: readonly T[]): Map<string, T> {
-    const m = new Map<string, T>();
-    for (const [i, item] of list.entries()) {
-      const { name } = (item as { name?: unknown });
-      const ct = typeof name === "string" ? name : `${nf}${i}`;
-      assert(toNf(ct) === nf);
-      m.set(ct, item);
-    }
-    return m;
   }
 }

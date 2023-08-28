@@ -7,7 +7,6 @@ import type { Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
-import { IPMAP } from "../phoenix-config/mod.js";
 import type { ComposeFile, ComposeService } from "../types/compose.js";
 import { env } from "./env.js";
 import { IPAlloc } from "./ipalloc.js";
@@ -46,7 +45,7 @@ export class NetDefComposeContext {
   public gatherIPs(nf: string | string[], net: string): string[] {
     const list: string[] = [];
     for (const [ct, s] of Object.entries(this.c.services)) {
-      if ((typeof nf === "string") ? (IPMAP.toNf(ct) !== nf) : (!nf.includes(ct))) {
+      if ((typeof nf === "string") ? (compose.nameToNf(ct) !== nf) : (!nf.includes(ct))) {
         continue;
       }
       const netif = s.networks[net];

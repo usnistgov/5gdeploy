@@ -3,7 +3,6 @@ import assert from "minimalistic-assert";
 import * as compose from "../compose/mod.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import * as NetDefDN from "../netdef-compose/dn.js";
-import { IPMAP } from "../phoenix-config/ipmap.js";
 import type * as F5 from "../types/free5gc.js";
 import * as f5_conf from "./conf.js";
 
@@ -19,7 +18,7 @@ export async function buildUP(ctx: NetDefComposeContext): Promise<void> {
     cidr: dn.subnet!,
   }));
 
-  for (const [ct, upf] of IPMAP.suggestNames("upf", ctx.network.upfs)) {
+  for (const [ct, upf] of compose.suggestNames("upf", ctx.network.upfs)) {
     const s = ctx.defineService(ct, upfDockerImage, ["n3", "n4", "n6", "n9"]);
     const peers = ctx.netdef.gatherUPFPeers(upf);
     assert(!!s);

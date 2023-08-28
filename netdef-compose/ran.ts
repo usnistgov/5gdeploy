@@ -1,9 +1,9 @@
+import * as compose from "../compose/mod.js";
 import * as oai_netdef from "../oai-config/netdef.js";
-import { IPMAP } from "../phoenix-config/mod.js";
-import { type NetDefComposeContext } from "./context.js";
+import type { NetDefComposeContext } from "./context.js";
 
 async function ueransim(ctx: NetDefComposeContext): Promise<void> {
-  for (const [ct, gnb] of IPMAP.suggestNames("gnb", ctx.network.gnbs)) {
+  for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {
     const s = ctx.defineService(ct, "5gdeploy.localhost/ueransim", ["air", "n2", "n3"]);
     s.command = ["/entrypoint.sh", "gnb"];
     s.environment = {
@@ -19,7 +19,7 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
     };
   }
 
-  for (const [ct, sub] of IPMAP.suggestNames("ue", ctx.netdef.listSubscribers(false))) {
+  for (const [ct, sub] of compose.suggestNames("ue", ctx.netdef.listSubscribers(false))) {
     const slices = new Set<string>();
     const sessions = new Set<string>();
     for (const { snssai, dnn } of sub.requestedDN) {
@@ -44,11 +44,11 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
 }
 
 async function oai(ctx: NetDefComposeContext): Promise<void> {
-  for (const [ct, gnb] of IPMAP.suggestNames("gnb", ctx.network.gnbs)) {
+  for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {
     await oai_netdef.makeGNB(ctx, ct, gnb);
   }
 
-  for (const [ct, subscriber] of IPMAP.suggestNames("ue", ctx.netdef.listSubscribers())) {
+  for (const [ct, subscriber] of compose.suggestNames("ue", ctx.netdef.listSubscribers())) {
     await oai_netdef.makeUE(ctx, ct, subscriber);
   }
 }

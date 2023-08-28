@@ -5,6 +5,7 @@ import { Netmask } from "netmask";
 import sql from "sql-tagged-template-literal";
 import type { Constructor } from "type-fest";
 
+import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import { networkOptions, phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
 import { IPMAP, type NetworkFunction, ScenarioFolder } from "../phoenix-config/mod.js";
@@ -50,26 +51,17 @@ abstract class PhoenixScenarioBuilder {
     return path.resolve(env.D5G_PHOENIX_CFG, relPath);
   }
 
-  protected createNetworkFunction<T>(tpl: `${string}/${string}.json` | `nf:${string}`, nets: readonly string[], list?: readonly T[]): Map<string, T> {
+  protected createNetworkFunction<T>(tpl: `${string}.json`, nets: readonly string[], list?: readonly T[]): Map<string, T> {
     nets = ["mgmt", ...nets];
 
-    const [nf, tplCt, tplFile] = (() => {
-      if (tpl.startsWith("nf:")) {
-        return [tpl.slice(3), "", undefined];
-      }
-      const tplCt = path.basename(tpl, ".json");
-      const nf = IPMAP.toNf(tplCt);
-      return [nf, tplCt, this.tplFile(tpl)];
-    })();
+    const tplCt = path.basename(tpl, ".json");
+    const nf = compose.nameToNf(tplCt);
+    const tplFile = this.tplFile(tpl);
     list ??= [{ name: nf } as any];
-    const m = IPMAP.suggestNames(nf, list);
+    const m = compose.suggestNames(nf, list);
 
     for (const ct of m.keys()) {
       this.ctx.defineService(ct, phoenixDockerImage, nets);
-      if (!tplFile) {
-        continue;
-      }
-
       const ctFile = `${ct}.json`;
       this.sf.createFrom(ctFile, tplFile);
       this.sf.edit(ctFile, (body) => body.replaceAll(`%${tplCt.toUpperCase()}_`, `%${ct.toUpperCase()}_`));
@@ -90,7 +82,7 @@ abstract class PhoenixScenarioBuilder {
     return m;
   }
 
-  protected createDatabase(tpl: string, db?: string): string {
+  protected createDatabase(tpl: `${string}.sql`, db?: string): string {
     const tplName = path.basename(tpl, ".sql");
     db ??= tplName;
     const dbFile = `sql/${db}.sql`;
@@ -108,14 +100,11 @@ abstract class PhoenixScenarioBuilder {
   }
 
   public async save({
-    editSF,
     nfFilter = (nf: string) => this.nfFilter.includes(nf),
   }: SaveHooks): Promise<void> {
     this.sf.ipmap = IPMAP.fromCompose(this.ctx.c);
-    await editSF?.(this.sf);
-
     for (const service of Object.values(this.ctx.c.services)) {
-      if (!nfFilter(IPMAP.toNf(service.container_name))) {
+      if (!nfFilter(compose.nameToNf(service.container_name))) {
         continue;
       }
       updateService(service, { cfg: `./${this.nfKind}-cfg`, sql: `./${this.nfKind}-sql` });
@@ -126,7 +115,6 @@ abstract class PhoenixScenarioBuilder {
 }
 
 interface SaveHooks {
-  editSF?: (sf: ScenarioFolder) => Promise<void>;
   nfFilter?: (nf: string) => boolean;
 }
 

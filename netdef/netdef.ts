@@ -124,6 +124,7 @@ export class NetDef {
     }
   }
 
+  /** Gather N3,N9,N6 peers of a UPF. */
   public gatherUPFPeers(upf: N.UPF): NetDef.UPFPeers {
     const peers: NetDef.UPFPeers = {
       N3: [],

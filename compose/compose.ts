@@ -5,6 +5,28 @@ import * as shlex from "shlex";
 
 import type { ComposeFile, ComposeNetif, ComposeNetwork, ComposeService } from "../types/compose.js";
 
+/** Derive network function name from container name. */
+export function nameToNf(ct: string): string {
+  return ct.replace(/(_.*|\d*)$/, "");
+}
+
+/**
+ * Suggest container names for network function.
+ * @param nf network function name.
+ * @param list relevant config objects.
+ * If a config object has a .name property, it must reflect the templated network function.
+ */
+export function suggestNames<T>(nf: string, list: readonly T[]): Map<string, T> {
+  const m = new Map<string, T>();
+  for (const [i, item] of list.entries()) {
+    const { name } = (item as { name?: unknown });
+    const ct = typeof name === "string" ? name : `${nf}${i}`;
+    assert(nameToNf(ct) === nf);
+    m.set(ct, item);
+  }
+  return m;
+}
+
 /** Create empty Compose file. */
 export function create(): ComposeFile {
   return {

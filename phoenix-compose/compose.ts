@@ -1,5 +1,5 @@
 import * as compose from "../compose/mod.js";
-import { IPMAP } from "../phoenix-config/mod.js";
+import { type IPMAP } from "../phoenix-config/mod.js";
 import type { ComposeFile, ComposeService } from "../types/compose.js";
 
 export const phoenixdir = "/opt/phoenix";
@@ -25,7 +25,7 @@ export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
   }
 
   for (const [ct, nets] of ipmap.containers) {
-    if (skipNf.includes(IPMAP.toNf(ct))) {
+    if (skipNf.includes(compose.nameToNf(ct))) {
       continue;
     }
     const service = compose.defineService(c, ct, phoenixDockerImage);
@@ -39,7 +39,7 @@ export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
 }
 
 export function updateService(s: ComposeService, opts: updateService.Options = {}): void {
-  const nf = IPMAP.toNf(s.container_name);
+  const nf = compose.nameToNf(s.container_name);
   updateNf[nf]?.(s, opts);
   if (s.image === phoenixDockerImage) {
     updatePhoenix(s, opts);
