@@ -2,7 +2,8 @@ import assert from "minimalistic-assert";
 
 import * as compose from "../compose/mod.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import { phoenixUP } from "../netdef-compose/phoenix.js";
+import * as NetDefDN from "../netdef-compose/dn.js";
+import { IPMAP } from "../phoenix-config/ipmap.js";
 import type * as F5 from "../types/free5gc.js";
 import * as f5_conf from "./conf.js";
 
@@ -10,31 +11,21 @@ import * as f5_conf from "./conf.js";
  * Build UP functions using free5GC as UPF.
  */
 export async function buildUP(ctx: NetDefComposeContext): Promise<void> {
-  const upfInit = new Map<string, string[]>();
-  await phoenixUP(ctx, {
-    editSF: async (sf) => {
-      for (const { name: ct } of ctx.network.upfs) {
-        sf.delete(`${ct}.json`);
-        upfInit.set(ct, Array.from(sf.other.listCommands(ct).filter((cmd) => /^ip (?:rule |route add default )/.test(cmd)),
-          (cmd) => cmd.replaceAll("iif n6_tun ", "")
-            .replaceAll(/\$[\dA-Z_]+_IP/g, (env) => sf.ipmap.resolveEnv(env.slice(1)) ?? env),
-        ));
-      }
-    },
-  });
+  NetDefDN.defineDNServices(ctx);
 
+  const upfDockerImage = await f5_conf.getImage("upf");
   const dnnList: F5.upf.DN[] = ctx.network.dataNetworks.filter((dn) => dn.type === "IPv4").map((dn) => ({
     dnn: dn.dnn,
     cidr: dn.subnet!,
   }));
 
-  for (const { name: ct } of ctx.network.upfs) {
-    const s = ctx.c.services[ct];
+  for (const [ct, upf] of IPMAP.suggestNames("upf", ctx.network.upfs)) {
+    const s = ctx.defineService(ct, upfDockerImage, ["n3", "n4", "n6", "n9"]);
+    const peers = ctx.netdef.gatherUPFPeers(upf);
     assert(!!s);
-    s.image = await f5_conf.getImage("upf");
     compose.setCommands(s, [
       ...compose.renameNetifs(s),
-      ...upfInit.get(ct)!,
+      ...NetDefDN.makeUPFRoutes(ctx, peers),
       "exec ./upf -c ./config/upfcfg.yaml",
     ]);
     const yamlFile = `up-cfg/${ct}.yaml`;
@@ -59,4 +50,6 @@ export async function buildUP(ctx: NetDefComposeContext): Promise<void> {
 
     await ctx.writeFile(yamlFile, c);
   }
+
+  NetDefDN.setDNCommands(ctx);
 }
