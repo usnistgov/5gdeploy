@@ -42,8 +42,8 @@ abstract class PhoenixScenarioBuilder {
   }
 
   public readonly sf = new ScenarioFolder();
-  protected readonly netdef = this.ctx.netdef;
-  protected readonly network = this.ctx.network;
+  protected get netdef() { return this.ctx.netdef; }
+  protected get network() { return this.ctx.network; }
 
   public abstract build(): void;
 
