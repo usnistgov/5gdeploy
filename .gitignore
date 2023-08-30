@@ -2,4 +2,5 @@
 /free5gc-config/free5gc-compose
 /oai-config/conf_files
 /pnpm-lock.yaml
+/types/*.schema.json
 node_modules

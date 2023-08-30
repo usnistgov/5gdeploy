@@ -61,6 +61,7 @@ const args = await yargs(hideBin(process.argv))
   .parseAsync();
 
 const netdef = new NetDef(JSON.parse(await fs.readFile(args.netdef, "utf8")));
+netdef.validate();
 const ctx = new NetDefComposeContext(netdef, args.out);
 await upProviders[args.up]!(ctx);
 await cpProviders[args.cp]!(ctx);

@@ -43,6 +43,9 @@ corepack pnpm install
 # build utility Docker images
 docker build -t 5gdeploy.localhost/bridge docker/bridge
 docker build -t 5gdeploy.localhost/dn docker/dn
+
+# build JSON schema
+bash types/build-schema.sh
 ```
 
 Additional steps are defined within each scenario.

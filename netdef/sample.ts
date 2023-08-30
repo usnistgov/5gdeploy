@@ -1,6 +1,7 @@
-import type { Network } from "../types/netdef.js";
+import type * as N from "../types/netdef.js";
+import { validateNetDef } from "./netdef.js";
 
-const network: Network = {
+const network: N.Network = {
   plmn: "001-01",
   gnbIdLength: 24,
   tac: "000005",
@@ -91,4 +92,5 @@ const network: Network = {
   },
 };
 
+validateNetDef(network);
 process.stdout.write(`${JSON.stringify(network)}\n`);

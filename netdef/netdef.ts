@@ -1,12 +1,33 @@
+import { AggregateAjvError } from "@segment/ajv-human-errors";
+import Ajv from "ajv";
 import assert from "minimalistic-assert";
 import type { SetRequired } from "type-fest";
 import { arr2hex, randomBytes } from "uint8-util";
 
 import type * as N from "../types/netdef.js";
+import netdefSchema from "../types/netdef.schema.json";
+
+const validate = new Ajv({
+  allErrors: true,
+  verbose: true,
+}).compile(netdefSchema);
+
+/** Validate against schema. */
+export function validateNetDef(network: N.Network): void {
+  const valid = validate(network);
+  if (!valid) {
+    throw new AggregateAjvError(validate.errors!);
+  }
+}
 
 /** 5G network definition model. */
 export class NetDef {
   constructor(public network: N.Network) {}
+
+  /** Validate against schema. */
+  public validate(): void {
+    validateNetDef(this.network);
+  }
 
   /** Return Tracking Area Code (TAC) as int. */
   public get tac(): number {
