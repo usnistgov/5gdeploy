@@ -1,4 +1,5 @@
 {
+  "name": "@usnistgov/5gdeploy",
   "private": true,
   "type": "module",
   "scripts": {

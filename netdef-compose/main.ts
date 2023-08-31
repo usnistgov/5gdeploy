@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 
+import getStdin from "get-stdin";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -31,7 +32,7 @@ const args = await yargs(hideBin(process.argv))
   .strict()
   .option("netdef", {
     demandOption: true,
-    desc: "network definition file",
+    desc: "network definition file, '-' for stdin",
     type: "string",
   })
   .option("out", {
@@ -60,7 +61,7 @@ const args = await yargs(hideBin(process.argv))
   .option(compose.bridgeOptions)
   .parseAsync();
 
-const netdef = new NetDef(JSON.parse(await fs.readFile(args.netdef, "utf8")));
+const netdef = new NetDef(JSON.parse(await (args.netdef === "-" ? getStdin() : fs.readFile(args.netdef, "utf8"))));
 netdef.validate();
 const ctx = new NetDefComposeContext(netdef, args.out);
 await upProviders[args.up]!(ctx);
