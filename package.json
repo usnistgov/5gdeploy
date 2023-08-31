@@ -1,0 +1,23 @@
+{
+  "name": "@usnistgov/5gdeploy-scenario",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "xo-yoursunny --fix",
+    "typecheck": "tsc"
+  },
+  "packageManager": "pnpm@8.7.0",
+  "dependencies": {
+    "@types/minimalistic-assert": "^1.0.1",
+    "@types/node": "^20.5.7",
+    "minimalistic-assert": "^1.0.1",
+    "tsx": "^3.12.7",
+    "typescript": "^5.2.2"
+  },
+  "devDependencies": {
+    "@yoursunny/xo-config": "0.56.0"
+  },
+  "engines": {
+    "node": "^20.5.0"
+  }
+}
