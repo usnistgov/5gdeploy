@@ -9,10 +9,10 @@
     "phoenix-rpc": "tsx ./phoenix-rpc/main.ts",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@8.7.0",
+  "packageManager": "pnpm@8.7.1",
   "dependencies": {
     "@nodelib/fs.walk": "^2.0.0",
-    "@segment/ajv-human-errors": "^2.11.2",
+    "@segment/ajv-human-errors": "^2.11.3",
     "@types/dockerode": "^3.3.19",
     "@types/js-yaml": "^4.0.5",
     "@types/minimalistic-assert": "^1.0.1",

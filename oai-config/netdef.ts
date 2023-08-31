@@ -14,7 +14,6 @@ import type * as N from "../types/netdef.js";
 import type * as OAI from "../types/oai.js";
 import * as oai_conf from "./conf.js";
 
-const TAG = await oai_conf.getTag();
 const vppScript = await fs.readFile(fileURLToPath(new URL("upf-vpp.sh", import.meta.url)));
 
 /**
@@ -149,7 +148,7 @@ export async function buildUPvpp(ctx: NetDefComposeContext): Promise<void> {
 
 /** Define gNB container and generate configuration */
 export async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB): Promise<void> {
-  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${TAG}`, ["air", "n2", "n3"]);
+  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${await oai_conf.getTag()}`, ["air", "n2", "n3"]);
 
   const c = (await oai_conf.loadTemplate("gnb.sa.band78.106prb.rfsim")) as OAI.gnb.Config;
   c.Active_gNBs = [gnb.name];
@@ -205,7 +204,7 @@ export async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB)
 
 /** Define UE container and generate configuration. */
 export async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscriber): Promise<void> {
-  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-nr-ue:${TAG}`, ["air"]);
+  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-nr-ue:${await oai_conf.getTag()}`, ["air"]);
 
   const c = (await oai_conf.loadTemplate("nrue.uicc")) as OAI.ue.Config;
   const [, mnc] = NetDef.splitPLMN(ctx.netdef.network.plmn);

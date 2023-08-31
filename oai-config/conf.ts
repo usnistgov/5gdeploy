@@ -4,12 +4,14 @@ import { fileURLToPath } from "node:url";
 
 import { execa } from "execa";
 
+let tag: string | undefined;
 const templatePath = fileURLToPath(new URL("conf_files", import.meta.url));
 const convertCommand = fileURLToPath(new URL("convert.py", import.meta.url));
 
 /** Retrieve OAI git repository tag name. */
 export async function getTag(): Promise<string> {
-  return (await fs.readFile(path.resolve(templatePath, "TAG"), "utf8")).trim();
+  tag ??= (await fs.readFile(path.resolve(templatePath, "TAG"), "utf8")).trim();
+  return tag;
 }
 
 /** Load OAI config from libconfig template. */
