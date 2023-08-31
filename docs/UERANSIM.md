@@ -6,7 +6,7 @@ Build UERANSIM Docker images:
 
 ```bash
 cd ~/5gdeploy
-docker build -t 5gdeploy.localhost/ueransim docker/ueransim
+bash docker/build.sh ueransim
 ```
 
 ## Open5GCore + UERANSIM

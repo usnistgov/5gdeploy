@@ -6,7 +6,7 @@ Build srsRAN 4G Docker image:
 
 ```bash
 cd ~/5gdeploy
-docker build --pull -t 5gdeploy.localhost/srsran4g docker/srsran4g
+bash docker/build.sh srsran4g
 ```
 
 ## LTE scenario: srsEPC + srsENB + srsUE
