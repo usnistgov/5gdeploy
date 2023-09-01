@@ -52,16 +52,17 @@ for (let i = 0; i < nGNBs; ++i) {
   );
 }
 
-for (const [firstSUPI, count, subscribedNSSAI] of [
+for (const [firstSUPI, total, subscribedNSSAI] of [
   ["001017005551000", nPhones, [{ snssai: "01", dnns: ["internet"] }]],
   ["001017005554000", nVehicles, [{ snssai: "8C", dnns: ["vcam"] }, { snssai: "8D", dnns: ["vctl"] }]],
 ] as Array<[string, number, N.SubscriberSNSSAI[]]>) {
-  assert(count % nGNBs === 0);
+  assert(total % nGNBs === 0);
+  const count = total / nGNBs;
   const supi = BigInt(firstSUPI);
   for (let i = 0; i < nGNBs; ++i) {
     network.subscribers.push({
-      supi: supi.toString().padStart(15, "0"),
-      count: count / nGNBs,
+      supi: (supi + BigInt(i * count)).toString().padStart(15, "0"),
+      count,
       subscribedNSSAI,
       gnbs: [`gnb${i}`],
     });
