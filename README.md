@@ -13,6 +13,14 @@ These installation steps are required for all scenarios:
 4. Clone this folder at `~/5gdeploy-scenario`.
 5. Run `bash ./install.sh` to install dependencies.
 
+If free5GC is needed:
+
+```bash
+cd ~/5gdeploy
+bash free5gc-config/download.sh
+bash free5gc-config/load-gtp5g.sh
+```
+
 Each scenario has a usage guide in its README.
 Some common commands are:
 

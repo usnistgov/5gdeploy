@@ -25,6 +25,8 @@ cd ~/5gdeploy-scenario
 bash generate.sh 20230817 --ran=ueransim
 # --ran=ueransim is required.
 # Open5GCore gNB simulator allows up to 2 slices so it is incompatible.
+#
+# Add --up=free5gc to select free5GC UPF instead of Open5GCore UPF.
 ```
 
 The Compose file is placed at `~/compose/20230817`.
