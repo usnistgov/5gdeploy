@@ -36,7 +36,7 @@ awk -vCT=$CT '
 ' ip-map
 
 msg Processing ip-export
-$phoenixdir/tools/ph_init/ip-export.sh < ip-map > /run/phoenix-ip-export.sh
+$phoenixdir/tools/ph_init/ip-export.sh <ip-map >/run/phoenix-ip-export.sh
 . /run/phoenix-ip-export.sh
 
 for NFDB in nssf:database smf:Database udm:Database udr:Database; do

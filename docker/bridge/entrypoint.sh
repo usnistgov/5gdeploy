@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/ash
 set -euo pipefail
 BRIDGES=$1
 PEERS=$2
@@ -19,7 +19,7 @@ is_own_ip() {
 
 I=0
 for BR in $(echo $BRIDGES | tr ',' '\n'); do
-  I=$((I+1))
+  I=$((I + 1))
   if ! netif_exists br-$BR; then
     msg Waiting for br-$BR network interface to appear
     while ! netif_exists br-$BR; do
@@ -28,7 +28,7 @@ for BR in $(echo $BRIDGES | tr ',' '\n'); do
   fi
   J=0
   for PEER in $(echo $PEERS | tr ',' '\n'); do
-    J=$((J+1))
+    J=$((J + 1))
     NETIF=vx-$BR-$J
     ip link del $NETIF 2>/dev/null || true
     if ! is_own_ip $PEER; then
@@ -44,10 +44,10 @@ cleanup() {
   msg Deleting bridge netifs
   I=0
   for BR in $(echo $BRIDGES | tr ',' '\n'); do
-    I=$((I+1))
+    I=$((I + 1))
     J=0
     for PEER in $(echo $PEERS | tr ',' '\n'); do
-      J=$((J+1))
+      J=$((J + 1))
       NETIF=vx-$BR-$J
       ip link del $NETIF 2>/dev/null || true
     done

@@ -14,11 +14,11 @@ build_phoenix() {
   fi
 
   pushd ../phoenix-repo/phoenix-src
-  sed 's/cmake -G Ninja/\0 -DWITH_4G=OFF -DWITH_5G=ON/' deploy/docker/Dockerfile \
-  | docker build --pull -t 5gdeploy.localhost/phoenix-base \
-    --build-arg UBUNTU_VERSION=22.04 \
-    --build-arg CACHE_PREFIX= \
-    -f - .
+  sed 's/cmake -G Ninja/\0 -DWITH_4G=OFF -DWITH_5G=ON/' deploy/docker/Dockerfile |
+    docker build --pull -t 5gdeploy.localhost/phoenix-base \
+      --build-arg UBUNTU_VERSION=22.04 \
+      --build-arg CACHE_PREFIX= \
+      -f - .
   popd
 
   docker build -t 5gdeploy.localhost/phoenix docker/phoenix

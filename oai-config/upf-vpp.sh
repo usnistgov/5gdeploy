@@ -21,9 +21,9 @@ msg Invoking run.sh
 
 while true; do
   sleep 30
-  msg Checking PFCP associations  
+  msg Checking PFCP associations
   ASSOC_COUNT=$(bin/vppctl show upf association | tee /tmp/vpp-upf-assoc.txt | wc -l)
-  msg Found $((ASSOC_COUNT/3)) PFCP assocations
+  msg Found $((ASSOC_COUNT / 3)) PFCP assocations
   cat /tmp/vpp-upf-assoc.txt
   if [[ $ASSOC_COUNT -eq 0 ]]; then
     msg Restarting VPP
