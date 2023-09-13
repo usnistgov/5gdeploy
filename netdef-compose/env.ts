@@ -27,6 +27,5 @@ const schema: JSONSchemaType<Env> = {
 export const env = envSchema({
   schema,
   dotenv: true,
-  expandEnv: true,
 });
 env.D5G_PHOENIX_CFG = untildify(env.D5G_PHOENIX_CFG);
