@@ -6,12 +6,12 @@
     "lint": "xo-yoursunny --fix",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@8.7.4",
+  "packageManager": "pnpm@8.7.6",
   "dependencies": {
     "@types/minimalistic-assert": "^1.0.1",
-    "@types/node": "^20.5.9",
+    "@types/node": "^20.6.2",
     "minimalistic-assert": "^1.0.1",
-    "tsx": "^3.12.8",
+    "tsx": "^3.12.10",
     "typescript": "^5.2.2"
   },
   "devDependencies": {
