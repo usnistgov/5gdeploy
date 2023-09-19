@@ -12,7 +12,9 @@ sudo DEBIAN_FRONTEND=noninteractive apt install -y httpie jq wireshark-common
 sudo adduser $(id -un) wireshark
 
 # install Node.js 20.x
-http --ignore-stdin GET https://deb.nodesource.com/setup_20.x | sudo -E bash -
+http --ignore-stdin GET https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+sudo apt update
 sudo DEBIAN_FRONTEND=noninteractive apt install -y nodejs
 
 # install and configure Docker
@@ -26,7 +28,7 @@ jq -n '{
     "max-size": "10m",
     "max-file": "3"
   },
-  dns: ["1.1.1.1"]
+  dns: ["1.1.1.1", "2606:4700:4700::1111"]
 }' | sudo tee /etc/docker/daemon.json
 sudo systemctl restart docker
 ```
