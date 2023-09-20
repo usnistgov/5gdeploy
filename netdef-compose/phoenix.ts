@@ -58,7 +58,7 @@ abstract class PhoenixScenarioBuilder {
     const nf = compose.nameToNf(tplCt);
     const tplFile = this.tplFile(tpl);
     list ??= [{ name: nf } as any];
-    const m = compose.suggestNames(nf, list);
+    const m = nf === "ue" ? compose.suggestUENames(list as ReadonlyArray<T & { supi: string }>) : compose.suggestNames(nf, list);
 
     for (const ct of m.keys()) {
       this.ctx.defineService(ct, phoenixDockerImage, nets);

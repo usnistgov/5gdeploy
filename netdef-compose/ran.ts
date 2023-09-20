@@ -19,7 +19,7 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
     };
   }
 
-  for (const [ct, sub] of compose.suggestNames("ue", ctx.netdef.listSubscribers(false))) {
+  for (const [ct, sub] of compose.suggestUENames(ctx.netdef.listSubscribers(false))) {
     const slices = new Set<string>();
     const sessions = new Set<string>();
     for (const { snssai, dnn } of sub.requestedDN) {
@@ -48,7 +48,7 @@ async function oai(ctx: NetDefComposeContext): Promise<void> {
     await oai_netdef.makeGNB(ctx, ct, gnb);
   }
 
-  for (const [ct, subscriber] of compose.suggestNames("ue", ctx.netdef.listSubscribers())) {
+  for (const [ct, subscriber] of compose.suggestUENames(ctx.netdef.listSubscribers())) {
     await oai_netdef.makeUE(ctx, ct, subscriber);
   }
 }

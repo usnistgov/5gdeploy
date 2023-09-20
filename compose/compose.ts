@@ -27,6 +27,23 @@ export function suggestNames<T>(nf: string, list: readonly T[]): Map<string, T> 
   return m;
 }
 
+/** Suggest container names for UE simulators. */
+export function suggestUENames<T extends { supi: string }>(list: readonly T[]): Map<string, T> {
+  let commonPrefix: string | undefined;
+  for (const { supi } of list) {
+    commonPrefix ??= supi.slice(0, -1);
+    while (!supi.startsWith(commonPrefix)) {
+      commonPrefix = commonPrefix.slice(0, -1);
+    }
+  }
+
+  const m = new Map<string, T>();
+  for (const item of list) {
+    m.set(`ue${item.supi.slice(commonPrefix!.length)}`, item);
+  }
+  return m;
+}
+
 /** Create empty Compose file. */
 export function create(): ComposeFile {
   return {
