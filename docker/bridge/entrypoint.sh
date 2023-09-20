@@ -1,7 +1,7 @@
 #!/bin/ash
 set -euo pipefail
 BRIDGES=$1
-PEERS=$2
+NETIFS=""
 
 msg() {
   echo -ne "\e[35m[5gdeploy] \e[94m"
@@ -18,8 +18,11 @@ is_own_ip() {
 }
 
 I=0
-for BR in $(echo $BRIDGES | tr ',' '\n'); do
+for BRIDGE in $BRIDGES; do
   I=$((I + 1))
+  set -- $(echo $BRIDGE | tr , '\n')
+  BR=$1
+  shift 2
   if ! netif_exists br-$BR; then
     msg Waiting for br-$BR network interface to appear
     while ! netif_exists br-$BR; do
@@ -28,25 +31,22 @@ for BR in $(echo $BRIDGES | tr ',' '\n'); do
   fi
 
   J=0
-  for PEER in $(echo $PEERS | tr ',' '\n'); do
+  for PEER in "$@"; do
     J=$((J + 1))
     if is_own_ip $PEER; then
       SELF=$J
     fi
   done
 
-  if [[ $J -ge 2 ]]; then
-    echo 1 >/sys/class/net/br-$BR/bridge/stp_state
-  fi
-
   J=0
-  for PEER in $(echo $PEERS | tr ',' '\n'); do
+  for PEER in "$@"; do
     J=$((J + 1))
-    NETIF=vx-$BR-$J
-    ip link del $NETIF 2>/dev/null || true
-    if [[ $J -eq $SELF ]]; then
+    if [[ $J -eq $SELF ]] || ([[ $J -ne 1 ]] && [[ $SELF -ne 1 ]]); then
       continue
     fi
+    NETIF=vx-$BR-$J
+    NETIFS=$NETIFS' '$NETIF
+    ip link del $NETIF 2>/dev/null || true
     if [[ $SELF -lt $J ]]; then
       VXI=$((1000000 * I + 1000 * SELF + J))
     else
@@ -60,15 +60,8 @@ done
 
 cleanup() {
   msg Deleting bridge netifs
-  I=0
-  for BR in $(echo $BRIDGES | tr ',' '\n'); do
-    I=$((I + 1))
-    J=0
-    for PEER in $(echo $PEERS | tr ',' '\n'); do
-      J=$((J + 1))
-      NETIF=vx-$BR-$J
-      ip link del $NETIF 2>/dev/null || true
-    done
+  for NETIF in $NETIFS; do
+    ip link del $NETIF 2>/dev/null || true
   done
 }
 trap cleanup SIGTERM

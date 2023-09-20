@@ -35,8 +35,8 @@ if (args.ran && args.ran !== "false") {
   Object.assign(composeFile.services, ranCompose.services);
 }
 
-if (args.bridgeTo) {
-  compose.defineBridge(composeFile, args.bridgeTo, args.bridgeOn);
+if (args.bridge) {
+  compose.defineBridge(composeFile, args.bridge);
 }
 
 await fs.writeFile(path.resolve(args.out, "compose.yml"), compose.save(composeFile));

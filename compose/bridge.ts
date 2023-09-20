@@ -1,3 +1,5 @@
+import assert from "minimalistic-assert";
+import { Netmask } from "netmask";
 import type { Options as YargsOptions } from "yargs";
 
 import type { ComposeFile } from "../types/compose.js";
@@ -7,14 +9,11 @@ export const bridgeDockerImage = "5gdeploy.localhost/bridge";
 
 /** yargs options definition for bridge container. */
 export const bridgeOptions = {
-  "bridge-to": {
-    desc: "bridge to list of IP addresses (comma separated)",
-    type: "string",
-  },
-  "bridge-on": {
-    desc: "bridge specified networks only (comma separated)",
-    defaultDescription: "all networks except 'mgmt'",
-    type: "string",
+  bridge: {
+    desc: "bridge a network to list of IP addresses",
+    nargs: 1,
+    string: true,
+    type: "array",
   },
 } as const satisfies Record<string, YargsOptions>;
 
@@ -24,17 +23,21 @@ export const bridgeOptions = {
  * @param bridgeTo list of host IP addresses that the bridge should reach (comma separated).
  * @param bridgeOn list of Docker networks that should be bridged (comma separated).
  */
-export function defineBridge(c: ComposeFile, bridgeTo: string, bridgeOn: string | undefined): void {
-  const on = new Set(bridgeOn?.split(","));
-  const bridges = Object.keys(c.networks)
-    .map((net) => net.replace(/^br-/, ""))
-    .filter((net) => on.size === 0 ? net !== "mgmt" : on.has(net))
-    .sort((a, b) => a.localeCompare(b));
+export function defineBridge(c: ComposeFile, bridgeArgs: readonly string[]): void {
+  for (const a of bridgeArgs) {
+    const tokens = a.split(",");
+    assert(tokens.length >= 4, "bridge must have at least 2 hosts");
+    const network = tokens.shift()!;
+    const mode = tokens.shift()!;
+    assert(c.networks[network], `unknown network ${network}`);
+    assert(mode === "vx", `unknown mode ${mode}`);
+    for (const ip of tokens) {
+      new Netmask(ip, "32"); // eslint-disable-line no-new
+    }
+  }
+
   const service = defineService(c, "bridge", bridgeDockerImage);
   service.network_mode = "host";
   service.cap_add.push("NET_ADMIN");
-  if (bridgeTo.split(",").length > 2) {
-    service.privileged = true; // stp_state
-  }
-  service.command = ["/entrypoint.sh", bridges.join(","), bridgeTo];
+  service.command = ["/entrypoint.sh", bridgeArgs.join(" ")];
 }
