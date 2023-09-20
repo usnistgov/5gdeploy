@@ -33,5 +33,8 @@ export function defineBridge(c: ComposeFile, bridgeTo: string, bridgeOn: string 
   const service = defineService(c, "bridge", bridgeDockerImage);
   service.network_mode = "host";
   service.cap_add.push("NET_ADMIN");
+  if (bridgeTo.split(",").length > 2) {
+    service.privileged = true; // stp_state
+  }
   service.command = ["/entrypoint.sh", bridges.join(","), bridgeTo];
 }
