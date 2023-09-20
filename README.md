@@ -58,3 +58,35 @@ docker logs amf1 >amf1.log
 cd ~/compose/20230601
 docker compose down --remove-orphans
 ```
+
+## Multi-Host Preparation
+
+Some scenarios can/should be deployed over multiple hosts.
+Typically, one host is designated as *primary* and all other hosts are designed as *secondary*.
+
+The *primary* host should have:
+
+* Docker Engine
+* Node.js
+* `install.sh` completion
+* kernel module for free5GC, if needed
+* [yq](https://github.com/mikefarah/yq): `sudo snap install yq`
+* [Rclone](https://rclone.org/): `sudo apt install rclone`
+
+The *secondary* host should have:
+
+* Docker Engine
+* kernel module for free5GC, if needed
+
+The *primary* host should have SSH config and keys to access each *secondary* host.
+The SSH user on each *secondary* host should be added to the `docker` group.
+The SSH host key of each *secondary* host should be added to the `known_hosts` file on the *primary* host.
+If the command below does not work, re-check these SSH requirements.
+
+Copy Docker images to *secondary* hosts:
+
+```bash
+for H in secondary1 secondary2; do
+  docker save $(docker images --format='{{.Repository}}' | grep 5gdeploy.localhost) | docker -H ssh://$H load
+done
+```

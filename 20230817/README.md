@@ -94,20 +94,10 @@ docker rm -f $(docker ps -a --format=json | jq -r '.Names | select(. | startswit
 
 ## Multi-Host Usage
 
-Requirements and assumptions:
-
-* Two hosts, with experiment network IP addresses `192.168.60.1` and `192.168.60.2`.
-* Primary host can reach secondary host over control network with `ssh secondary`.
-* Both hosts have Docker installed.
-* Primary host has [yq](https://github.com/mikefarah/yq) and [Rclone](https://rclone.org/) installed.
-* We want to run Control Plane on primary host, User Plane + RAN on secondary host.
-
-Sample commands:
+We want to run Control Plane on primary host (`192.168.60.1`), User Plane and RAN on secondary host (`192.168.60.2`).
+See the multi-host preparation steps in [top-level README](../README.md).
 
 ```bash
-# copy Docker images to the secondary host
-docker save $(docker images --format='{{.Repository}}' | grep 5gdeploy.localhost) | docker -H ssh://secondary load
-
 # generate Compose file with bridge support
 bash generate.sh 20230817 --bridge-on=n2,n3,n4 --bridge-to=192.168.60.1,192.168.60.2
 
