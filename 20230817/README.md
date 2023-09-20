@@ -99,7 +99,10 @@ See the multi-host preparation steps in [top-level README](../README.md).
 
 ```bash
 # generate Compose file with bridge support
-bash generate.sh 20230817 --bridge-on=n2,n3,n4 --bridge-to=192.168.60.1,192.168.60.2
+bash generate.sh 20230817 --ran=ueransim \
+  --bridge=n2,vx,192.168.60.1,192.168.60.2 \
+  --bridge=n3,vx,192.168.60.1,192.168.60.2 \
+  --bridge=n4,vx,192.168.60.1,192.168.60.2
 
 # copy Compose file and config folder to the secondary host
 eval `ssh-agent -s` && ssh-add

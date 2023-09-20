@@ -55,7 +55,10 @@ Generate Compose file and copy to *edge* hosts:
 
 ```bash
 cd ~/5gdeploy-scenario
-bash generate.sh 20230510 --ran=ueransim --bridge-on=n2,n4,n9 --bridge-to=${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2}
+bash generate.sh 20230510 --ran=ueransim \
+  --bridge=n2,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2} \
+  --bridge=n4,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2} \
+  --bridge=n9,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2}
 
 eval `ssh-agent -s` && ssh-add
 for H in ${CTRL_EDGE1} ${CTRL_EDGE2}; do
@@ -68,7 +71,7 @@ Start the scenario:
 
 ```bash
 cd ~/compose/20230510
-docker compose up -d bridge upf0 dn_cloud $(yq '.services | keys | filter(test("^(dn|upf|gnb|ue)[_0-9]") | not) | .[]' compose.yml)
+docker compose up -d bridge dn_cloud upf0 $(yq '.services | keys | filter(test("^(dn|upf|gnb|ue)[_0-9]") | not) | .[]' compose.yml)
 docker -H ssh://${CTRL_EDGE1} compose up -d bridge dn_edge1 upf1 gnb1 ue1001
 docker -H ssh://${CTRL_EDGE2} compose up -d bridge dn_edge2 upf2 gnb2 ue2001
 ```
@@ -77,9 +80,9 @@ Stop the scenario:
 
 ```bash
 cd ~/compose/20230510
-docker compose down
-docker -H ssh://${CTRL_EDGE1} compose down
-docker -H ssh://${CTRL_EDGE2} compose down
+docker compose down --remove-orphans
+docker -H ssh://${CTRL_EDGE1} compose down --remove-orphans
+docker -H ssh://${CTRL_EDGE2} compose down --remove-orphans
 ```
 
 ## Traffic Generation
