@@ -157,8 +157,9 @@ export function setCommands(service: ComposeService, commands: Iterable<string>,
   const joined = [
     "set -euo pipefail",
     "msg() { echo -ne \"\\e[35m[5gdeploy] \\e[94m\"; echo -n \"$*\"; echo -e \"\\e[0m\"; }",
+    "die() { msg \"$*\"; exit 1; }",
     ...commands,
-  ].join(" ;\n").replaceAll("$", "$$$$");
+  ].join("\n").replaceAll("$", "$$$$");
   service.command = [`/bin/${shell}`, "-c", joined];
   service.entrypoint = [];
 }
