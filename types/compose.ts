@@ -30,7 +30,8 @@ export interface ComposeService {
   sysctls: Record<string, string | number>;
   volumes: ComposeVolume[];
   environment: Record<string, string>;
-  network_mode?: string;
+  pid?: "host";
+  network_mode?: "host" | "none" | `service:${string}`;
   networks: Record<string, ComposeNetif>;
 }
 

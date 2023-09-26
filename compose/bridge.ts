@@ -24,6 +24,7 @@ const bridgeModes: Record<string, (c: ComposeFile, network: string, tokens: read
     yield `pipework --wait -i br-${network}`;
     yield "SELF=''";
     const ips = tokens.map((ip) => new Netmask(ip, "32").base);
+    assert(ips.length >= 2, "at least 2 hosts");
     for (const [i, ip] of ips.entries()) {
       yield `if [[ $(ip -j route get ${ip} | jq -r '.[].prefsrc') == ${ip} ]]; then SELF=${i}; fi`;
     }
@@ -44,6 +45,33 @@ const bridgeModes: Record<string, (c: ComposeFile, network: string, tokens: read
       yield "fi";
     }
   },
+  *phy(c, network, tokens) {
+    assert(tokens.length === 2, "network,phy,ct,macaddr");
+    let [ct, macaddr] = tokens as [string, string];
+
+    const s = c.services[ct];
+    assert(s);
+    const netif = s.networks[network];
+    assert(netif);
+    delete s.networks[network]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+    const cidr = new Netmask(c.networks[network]!.ipam.config[0]!.subnet).bitmask;
+
+    const sysctlPrefix = `net.ipv4.conf.eth${Object.entries(s.networks).length}`;
+    for (const key of Object.keys(s.sysctls)) {
+      if (key.startsWith(sysctlPrefix)) {
+        delete s.sysctls[key]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+      }
+    }
+
+    macaddr = macaddr.toLowerCase();
+    assert(/^(?:[\da-f]{2}:){5}[\da-f]{2}$/.test(macaddr));
+    yield `if grep -q ${macaddr} /sys/class/net/*/address; then`;
+    yield `  msg Wating for container ${ct} to start`;
+    yield `  while ! docker inspect ${ct} &>/dev/null; do sleep 1; done`;
+    yield `  msg Moving physical interface ${macaddr} to container ${ct}`;
+    yield `  pipework --direct-phys mac:${macaddr} -i ${network} ${ct} ${netif.ipv4_address}/${cidr}`;
+    yield "fi";
+  },
 };
 
 /**
@@ -52,6 +80,7 @@ const bridgeModes: Record<string, (c: ComposeFile, network: string, tokens: read
  * @param bridgeArgs command line `--bridge` arguments.
  */
 export function defineBridge(c: ComposeFile, bridgeArgs: readonly string[]): void {
+  const modes = new Set<string>();
   const commands = [
     "CLEANUPS='set -euo pipefail'",
     "cleanup() {",
@@ -62,12 +91,13 @@ export function defineBridge(c: ComposeFile, bridgeArgs: readonly string[]): voi
   ];
   for (const [i, bridgeArg] of bridgeArgs.entries()) {
     const tokens = bridgeArg.split(",");
-    assert(tokens.length >= 4, "bridge must have at least 2 hosts");
+    assert(tokens.length >= 2);
     const network = tokens.shift()!;
     const mode = tokens.shift()!;
     assert(c.networks[network], `unknown network ${network}`);
     const impl = bridgeModes[mode];
     assert(impl, `unknown mode ${mode}`);
+    modes.add(mode);
     commands.push(...impl(c, network, tokens, i));
   }
   commands.push(
@@ -76,8 +106,17 @@ export function defineBridge(c: ComposeFile, bridgeArgs: readonly string[]): voi
     "wait $!",
   );
 
-  const service = defineService(c, "bridge", bridgeDockerImage);
-  service.network_mode = "host";
-  service.cap_add.push("NET_ADMIN");
-  setCommands(service, commands, "ash");
+  const s = defineService(c, "bridge", bridgeDockerImage);
+  s.network_mode = "host";
+  s.cap_add.push("NET_ADMIN");
+  if (modes.has("phy")) {
+    s.privileged = true;
+    s.pid = "host";
+    s.volumes.push({
+      type: "bind",
+      source: "/var/run/docker.sock",
+      target: "/var/run/docker.sock",
+    });
+  }
+  setCommands(s, commands, "ash");
 }
