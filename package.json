@@ -4,14 +4,15 @@
   "type": "module",
   "scripts": {
     "lint": "xo-yoursunny --fix",
+    "shfmt": "git ls-files -- '*.sh' | xargs --no-run-if-empty docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@8.7.6",
+  "packageManager": "pnpm@8.8.0",
   "dependencies": {
     "@types/minimalistic-assert": "^1.0.1",
-    "@types/node": "^20.6.2",
+    "@types/node": "^20.7.0",
     "minimalistic-assert": "^1.0.1",
-    "tsx": "^3.12.10",
+    "tsx": "^3.13.0",
     "typescript": "^5.2.2"
   },
   "devDependencies": {

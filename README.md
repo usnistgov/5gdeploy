@@ -3,6 +3,11 @@
 This folder contains concrete scenario scripts for [5gdeploy](https://gitlab.nist.gov/gitlab/jns23/5gdeploy).
 Please report issues and request new scenarios via "6G Core Network Project" Teams "Testbed" channel.
 
+Scenario list and brief description:
+
+* [20230510](20230510): cloud and edges
+* [20230817](20230510): 3-slice with unshared UPFs
+
 ## Installation and Usage
 
 These installation steps are required for all scenarios:
