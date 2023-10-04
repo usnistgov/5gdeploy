@@ -51,18 +51,14 @@ start_iperf3_ue_dn() {
   local DNCT=dn_${DNN}
   local DNIP=$(docker exec $DNCT ip -j route get ${UESUBNET%/*} | jq -r '.[0].prefsrc')
   local CRUN=': '
-  for I in $(seq 0 9999); do
-    local UECT=ue$I
-    if ! docker inspect $UECT &>/dev/null; then
-      break
-    fi
+  for UECT in $(docker ps -a --format='{{.Names}}' | grep '^ue[0-9]'); do
     local UEIPS=$(docker exec $UECT ip -j addr show to ${UESUBNET} | jq -r '.[].addr_info[].local')
     if [[ -z $UEIPS ]]; then
       continue
     fi
     for UEIP in $UEIPS; do
-      docker run -d --name iperf3_${DNN}_${PORT}_s --network container:$DNCT networkstatic/iperf3 --forceflush -B $DNIP -p $PORT -s
-      CRUN=$CRUN"; docker run -d --name iperf3_${DNN}_${PORT}_c --network container:$UECT networkstatic/iperf3 --forceflush -B $UEIP -p $PORT --cport $PORT -c $DNIP $*"
+      docker run -d --name iperf_${DNN}_${PORT}_s --network container:$DNCT networkstatic/iperf3 --forceflush -B $DNIP -p $PORT -s
+      CRUN=$CRUN"; docker run -d --name iperf_${DNN}_${PORT}_c --network container:$UECT networkstatic/iperf3 --forceflush -B $UEIP -p $PORT --cport $PORT -c $DNIP $*"
       PORT=$((PORT+1))
     done
   done
@@ -80,7 +76,7 @@ Stop traffic generators:
 
 ```bash
 # stop and gather logs
-for CT in $(docker ps -a --format=json | jq -r '.Names | select(. | startswith("iperf3"))' | sort -V); do
+for CT in $(docker ps -a --format='{{.Names}}' | grep '^iperf_' | sort -V); do
   echo '----------------------------------------------------------------'
   echo $CT
   docker kill --signal=INT $CT
@@ -89,7 +85,7 @@ for CT in $(docker ps -a --format=json | jq -r '.Names | select(. | startswith("
 done &>~/compose/20230817/iperf3.log
 
 # stop without gathering logs
-docker rm -f $(docker ps -a --format=json | jq -r '.Names | select(. | startswith("iperf3"))')
+docker rm -f $(docker ps -a --format='{{.Names}}' | grep '^iperf_')
 ```
 
 ## Multi-Host Usage
@@ -114,4 +110,26 @@ docker compose up -d bridge $(yq '.services | keys | filter(test("^(dn|upf|gnb|u
 
 # start UP and RAN on the second host
 docker -H ssh://secondary compose up -d bridge $(yq '.services | keys | filter(test("^(dn|upf|gnb|ue)[_0-9]")) | .[]' compose.yml)
+```
+
+## Physical Ethernet Ports
+
+It is possible to use physical Ethernet ports in select network functions.
+This would allow, for example, QoS enforcement through hardware switches.
+
+```bash
+# define variables for MAC addresses
+MAC_N3_GNB0=02:00:00:03:00:01
+MAC_N3_GNB1=02:00:00:03:00:02
+MAC_N3_UPF1=02:00:00:03:00:03
+MAC_N3_UPF140=02:00:00:03:00:04
+MAC_N3_UPF141=02:00:00:03:00:05
+
+# generate Compose file with physical ports support
+bash generate.sh 20230817 --ran=ueransim \
+  --bridge=n3,phy,gnb0,$MAC_N3_GNB0 \
+  --bridge=n3,phy,gnb1,$MAC_N3_GNB1 \
+  --bridge=n3,phy,upf1,$MAC_N3_UPF1 \
+  --bridge=n3,phy,upf140,$MAC_N3_UPF140 \
+  --bridge=n3,phy,upf141,$MAC_N3_UPF141
 ```

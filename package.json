@@ -10,7 +10,7 @@
   "packageManager": "pnpm@8.8.0",
   "dependencies": {
     "@types/minimalistic-assert": "^1.0.1",
-    "@types/node": "^20.7.0",
+    "@types/node": "^20.8.2",
     "minimalistic-assert": "^1.0.1",
     "tsx": "^3.13.0",
     "typescript": "^5.2.2"
