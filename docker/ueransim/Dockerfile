@@ -6,4 +6,5 @@ ADD --chmod=755 https://github.com/TomWright/dasel/releases/download/v2.3.4/dase
 ADD --chmod=644 https://github.com/aligungr/UERANSIM/raw/ab5cd8607f914c6ca6bbb48114a008b6bf8e21d0/config/custom-gnb.yaml /ueransim/config/
 ADD --chmod=644 https://github.com/aligungr/UERANSIM/raw/ab5cd8607f914c6ca6bbb48114a008b6bf8e21d0/config/custom-ue.yaml /ueransim/config/
 ENTRYPOINT []
+ADD --chmod=755 https://github.com/jpetazzo/pipework/raw/master/pipework /usr/local/bin/
 ADD --chmod=755 entrypoint.sh /

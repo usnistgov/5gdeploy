@@ -1,7 +1,6 @@
 import yaml from "js-yaml";
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
-import * as shlex from "shlex";
 
 import type { ComposeFile, ComposeNetif, ComposeNetwork, ComposeService } from "../types/compose.js";
 
@@ -131,26 +130,50 @@ export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string
   return netif;
 }
 
-/** Generate commands to rename netifs. */
-export function* renameNetifs(service: ComposeService): Iterable<string> {
+/**
+ * Generate commands to rename netifs.
+ * The container shall have NET_ADMIN capability.
+ */
+export function* renameNetifs(service: ComposeService, {
+  pipeworkWait = false,
+}: renameNetifs.Options = {}): Iterable<string> {
   for (const [net, { ipv4_address }] of Object.entries(service.networks)) {
     yield `IFNAME=$(ip -o addr show to ${ipv4_address} | awk '{ print $2 }')`;
-    yield `msg Renaming netif "$IFNAME" with IPv4 ${ipv4_address} to ${shlex.quote(net)}`;
-    yield "ip link set dev \"$IFNAME\" down";
-    yield `ip link set dev "$IFNAME" name ${shlex.quote(net)}`;
-    yield `ip link set dev ${shlex.quote(net)} up`;
+    yield "if [[ -z $IFNAME ]]; then";
+    if (pipeworkWait) {
+      yield `  msg Waiting for netif ${net} to appear`;
+      yield `  pipework --wait -i ${net}`;
+    } else {
+      yield `  die Missing netif ${net}`;
+    }
+    yield `elif [[ $IFNAME != ${net} ]]; then`;
+    yield `  msg Renaming netif $IFNAME with IPv4 ${ipv4_address} to ${net}`;
+    yield "  ip link set dev $IFNAME down";
+    yield `  ip link set dev $IFNAME name ${net}`;
+    yield `  ip link set dev ${net} up`;
+    yield "fi";
   }
 
-  yield "unset $IFNAME";
+  yield "unset IFNAME";
   yield "msg Listing IP addresses";
   yield "ip addr list up";
   yield "msg Finished renaming netifs";
+}
+export namespace renameNetifs {
+  export interface Options {
+    /**
+     * Whether to wait for netifs to appear with pipework.
+     * Setting to true requires pipework to be installed in the container.
+     * Default is false.
+     */
+    pipeworkWait?: boolean;
+  }
 }
 
 /**
  * Set commands on a service.
  * @param service Compose service to edit.
- * @param commands list of commands, '$' is escaped as '$$'.
+ * @param commands list of commands.
  * @param shell should be set to 'ash' for alpine based images.
  */
 export function setCommands(service: ComposeService, commands: Iterable<string>, shell = "bash"): void {

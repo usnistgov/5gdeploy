@@ -62,6 +62,7 @@ const updateNf: Record<string, (s: ComposeService, opts: updateService.Options) 
       read_only: true,
     });
     s.environment.ALLOW_EMPTY_PASSWORD = "yes";
+    s.environment.MARIADB_EXTRA_FLAGS = "--max_connections=1000";
   },
   gnb(s) {
     s.sysctls["net.ipv4.ip_forward"] = 0;

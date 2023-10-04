@@ -67,7 +67,5 @@ const ctx = new NetDefComposeContext(netdef, args.out);
 await upProviders[args.up]!(ctx);
 await cpProviders[args.cp]!(ctx);
 await ranProviders[args.ran]!(ctx);
-if (args.bridge) {
-  compose.defineBridge(ctx.c, args.bridge);
-}
+compose.defineBridge(ctx.c, args);
 await ctx.writeFile("compose.yml", ctx.c);

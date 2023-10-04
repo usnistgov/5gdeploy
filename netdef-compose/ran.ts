@@ -5,7 +5,10 @@ import type { NetDefComposeContext } from "./context.js";
 async function ueransim(ctx: NetDefComposeContext): Promise<void> {
   for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {
     const s = ctx.defineService(ct, "5gdeploy.localhost/ueransim", ["air", "n2", "n3"]);
-    s.command = ["/entrypoint.sh", "gnb"];
+    compose.setCommands(s, [
+      ...compose.renameNetifs(s, { pipeworkWait: true }),
+      "/entrypoint.sh gnb",
+    ]);
     s.environment = {
       PLMN: ctx.network.plmn,
       NCI: gnb.nci,
@@ -17,6 +20,7 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
       AMF_IPS: ctx.gatherIPs("amf", "n2").join(","),
       SLICES: ctx.netdef.nssai.join(","),
     };
+    s.cap_add.push("NET_ADMIN");
   }
 
   for (const [ct, sub] of compose.suggestUENames(ctx.netdef.listSubscribers(false))) {

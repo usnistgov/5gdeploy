@@ -1,6 +1,6 @@
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
-import type { Options as YargsOptions } from "yargs";
+import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
 
 import type { ComposeFile } from "../types/compose.js";
 import { defineService, setCommands } from "./compose.js";
@@ -65,12 +65,22 @@ const bridgeModes: Record<string, (c: ComposeFile, network: string, tokens: read
 
     macaddr = macaddr.toLowerCase();
     assert(/^(?:[\da-f]{2}:){5}[\da-f]{2}$/.test(macaddr));
-    yield `if grep -q ${macaddr} /sys/class/net/*/address; then`;
-    yield `  msg Wating for container ${ct} to start`;
-    yield `  while ! docker inspect ${ct} &>/dev/null; do sleep 1; done`;
-    yield `  msg Moving physical interface ${macaddr} to container ${ct}`;
-    yield `  pipework --direct-phys mac:${macaddr} -i ${network} ${ct} ${netif.ipv4_address}/${cidr}`;
-    yield "fi";
+    yield "I=0; while true; do";
+    yield `  case $(docker inspect ${ct} --format='{{.State.Running}}' 2>/dev/null || echo none) in`;
+    yield "    false)";
+    yield "      I=$((I+1))";
+    yield "      if [[ $I -eq 1 ]]; then";
+    yield `        msg Waiting for container ${ct} to start`;
+    yield "      fi";
+    yield "      sleep 1 ;;";
+    yield "    true)";
+    yield `      msg Moving physical interface ${macaddr} to container ${ct}`;
+    yield `      pipework --direct-phys mac:${macaddr} -i ${network} ${ct} ${netif.ipv4_address}/${cidr}`;
+    yield "      break ;;";
+    yield "    *none)";
+    yield "      break ;;";
+    yield "  esac";
+    yield "done";
   },
 };
 
@@ -79,7 +89,11 @@ const bridgeModes: Record<string, (c: ComposeFile, network: string, tokens: read
  * @param c Compose file.
  * @param bridgeArgs command line `--bridge` arguments.
  */
-export function defineBridge(c: ComposeFile, bridgeArgs: readonly string[]): void {
+export function defineBridge(c: ComposeFile, opts: InferredOptionTypes<typeof bridgeOptions>): void {
+  if (!opts.bridge) {
+    return;
+  }
+
   const modes = new Set<string>();
   const commands = [
     "CLEANUPS='set -euo pipefail'",
@@ -89,7 +103,7 @@ export function defineBridge(c: ComposeFile, bridgeArgs: readonly string[]): voi
     "}",
     "trap cleanup SIGTERM",
   ];
-  for (const [i, bridgeArg] of bridgeArgs.entries()) {
+  for (const [i, bridgeArg] of opts.bridge.entries()) {
     const tokens = bridgeArg.split(",");
     assert(tokens.length >= 2);
     const network = tokens.shift()!;
