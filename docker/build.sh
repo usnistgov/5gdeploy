@@ -9,6 +9,7 @@ build_image() {
 
 build_phoenix() {
   if ! [[ -f ../phoenix-repo/phoenix-src/deploy/docker/Dockerfile ]]; then
+    cd ..
     echo Open5GCore phoenix-src checkout is missing at $(pwd)/phoenix-repo/phoenix-src
     exit 1
   fi
