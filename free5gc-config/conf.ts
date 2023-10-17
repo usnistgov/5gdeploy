@@ -5,8 +5,6 @@ import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import DefaultMap from "mnemonist/default-map.js";
 
-import type { ComposeFile } from "../types/compose.js";
-
 const composePath = fileURLToPath(new URL("free5gc-compose", import.meta.url));
 
 const readOnce = new DefaultMap<string, Promise<string>>((filename) => {
@@ -17,8 +15,8 @@ const readOnce = new DefaultMap<string, Promise<string>>((filename) => {
 /** Retrieve free5GC Docker image name. */
 export async function getImage(nf: string): Promise<string> {
   const prefix = `free5gc/${nf.toLowerCase()}:`;
-  const compose = yaml.load(await readOnce.get("docker-compose.yaml")) as ComposeFile;
-  for (const { image } of Object.values(compose.services)) {
+  const images = (await readOnce.get("../images.txt")).split("\n");
+  for (const image of images) {
     if (image.startsWith(prefix)) {
       return image;
     }

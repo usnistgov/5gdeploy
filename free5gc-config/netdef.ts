@@ -1,5 +1,3 @@
-import assert from "minimalistic-assert";
-
 import * as compose from "../compose/mod.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import * as NetDefDN from "../netdef-compose/dn.js";
@@ -12,18 +10,16 @@ import * as f5_conf from "./conf.js";
 export async function buildUP(ctx: NetDefComposeContext): Promise<void> {
   NetDefDN.defineDNServices(ctx);
 
-  const upfDockerImage = await f5_conf.getImage("upf");
   const dnnList: F5.upf.DN[] = ctx.network.dataNetworks.filter((dn) => dn.type === "IPv4").map((dn) => ({
     dnn: dn.dnn,
     cidr: dn.subnet!,
   }));
 
   for (const [ct, upf] of compose.suggestNames("upf", ctx.network.upfs)) {
-    const s = ctx.defineService(ct, upfDockerImage, ["n3", "n4", "n6", "n9"]);
+    const s = ctx.defineService(ct, "5gdeploy.localhost/free5gc-upf", ["n3", "n4", "n6", "n9"]);
     const peers = ctx.netdef.gatherUPFPeers(upf);
-    assert(!!s);
     compose.setCommands(s, [
-      ...compose.renameNetifs(s),
+      ...compose.renameNetifs(s, { pipeworkWait: true }),
       ...NetDefDN.makeUPFRoutes(ctx, peers),
       "exec ./upf -c ./config/upfcfg.yaml",
     ]);

@@ -9,3 +9,5 @@ if [[ -d free5gc-compose ]]; then
 else
   git clone --branch "${TAG}" https://github.com/free5gc/free5gc-compose.git
 fi
+
+docker run -i --rm mikefarah/yq '.services | to_entries | .[].value.image' - <free5gc-compose/docker-compose.yaml >images.txt
