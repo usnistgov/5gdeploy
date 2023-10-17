@@ -30,7 +30,12 @@ fi
 
 msg Generating scenario via netdef
 mkdir -p $OUT
-./node_modules/.bin/tsx $D/scenario.ts | jq -S >$OUT/netdef.json
+SARGS=()
+while [[ "$1" = +* ]]; do
+  SARGS+=("${1/#+/--}")
+  shift
+done
+./node_modules/.bin/tsx $D/scenario.ts "${SARGS[@]}" | jq -S >$OUT/netdef.json
 env -C ../5gdeploy corepack pnpm -s netdef-compose --netdef=$OUT/netdef.json --out=$OUT $*
 
 msg Scenario folder is ready, to start the scenario:

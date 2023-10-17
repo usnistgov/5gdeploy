@@ -11,8 +11,8 @@ There are three slices:
 Each slice is served by a dedicated UPF.
 All control plane network functions are shared.
 
-There are 50 cellphones and 10 vehicles, sharing 2 gNBs.
-These quantities can be adjusted by editing the constants in `scenario.ts`.
+There are 48 cellphones and 12 vehicles, sharing 2 gNBs.
+These quantities can be adjusted via command line.
 
 ## Usage
 
@@ -27,6 +27,9 @@ bash generate.sh 20230817 --ran=ueransim
 # Open5GCore gNB simulator allows up to 2 slices so it is incompatible.
 #
 # Add --up=free5gc to select free5GC UPF instead of Open5GCore UPF.
+
+# adjust gNB and UE quantities
+bash generate.sh 20230817 +gnbs=3 +phones=15 +vehicles=6 --ran=ueransim
 ```
 
 The Compose file is placed at `~/compose/20230817`.
