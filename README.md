@@ -18,12 +18,11 @@ These installation steps are required for all scenarios:
 4. Clone this folder at `~/5gdeploy-scenario`.
 5. Run `bash ./install.sh` to install dependencies.
 
-If free5GC is needed:
+If free5GC is needed, load the gtp5g module:
 
 ```bash
-cd ~/5gdeploy
-bash free5gc-config/download.sh
-bash free5gc-config/load-gtp5g.sh
+bash ~/5gdeploy/free5gc-config/load-gtp5g.sh
+# Repeat this step after every reboot.
 ```
 
 Each scenario has a usage guide in its README.
@@ -57,7 +56,7 @@ docker logs -f amf1
 
 # save container logs
 docker logs amf1 >amf1.log
-# If you ask for help, attach this log file, do not send screenshots.
+# If you ask for help regarding a container, attach this log file, do not send screenshots.
 
 # stop a scenario
 cd ~/compose/20230601

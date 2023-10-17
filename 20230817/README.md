@@ -12,7 +12,7 @@ Each slice is served by a dedicated UPF.
 All control plane network functions are shared.
 
 There are 48 cellphones and 12 vehicles, sharing 2 gNBs.
-These quantities can be adjusted via command line.
+These quantities can be adjusted via command line flags.
 
 ## Usage
 
