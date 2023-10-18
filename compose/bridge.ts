@@ -1,5 +1,5 @@
 import assert from "minimalistic-assert";
-import { Netmask } from "netmask";
+import { ip2long, Netmask } from "netmask";
 import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
 
 import type { ComposeFile } from "../types/compose.js";
@@ -17,36 +17,14 @@ export const bridgeOptions = {
   },
 } as const satisfies Record<string, YargsOptions>;
 
-const bridgeModes: Record<string, (c: ComposeFile, network: string, tokens: readonly string[], networkIndex: number) => Generator<string, void, void>> = {
-  *vx(c, network, tokens, networkIndex) {
-    void c;
-    yield `msg Setting up VXLAN bridge for br-${network}`;
-    yield `pipework --wait -i br-${network}`;
-    yield "SELF=''";
-    const ips = tokens.map((ip) => new Netmask(ip, "32").base);
-    assert(ips.length >= 2, "at least 2 hosts");
-    for (const [i, ip] of ips.entries()) {
-      yield `if [[ $(ip -j route get ${ip} | jq -r '.[].prefsrc') == ${ip} ]]; then SELF=${i}; fi`;
-    }
-    yield "if [[ -z $SELF ]]; then die This host is not part of the bridge; fi";
-    for (const [i, ip] of ips.entries()) {
-      const netif = `vx-${network}-${i}`;
-      yield `if [[ $SELF -ne ${i} ]] && ( [[ $SELF -eq 0 ]] || [[ ${i} -eq 0 ]] ); then`;
-      yield `  if [[ $SELF -lt ${i} ]]; then`;
-      yield `    VXI=$((${1000000 * networkIndex + i} + 1000 * SELF))`;
-      yield "  else";
-      yield `    VXI=$((${1000000 * networkIndex + 1000 * i} + SELF))`;
-      yield "  fi";
-      yield `  msg Connecting br-${network} to ${ip} on ${netif} with VXLAN id $VXI`;
-      yield `  ip link del ${netif} 2>/dev/null || true`;
-      yield `  CLEANUPS=$CLEANUPS"; ip link del ${netif} 2>/dev/null || true"`;
-      yield `  ip link add ${netif} type vxlan id $VXI remote ${ip} dstport 4789`;
-      yield `  ip link set ${netif} up master br-${network}`;
-      yield "fi";
-    }
-  },
-  *phy(c, network, tokens) {
-    assert(tokens.length === 2, "network,phy,ct,macaddr");
+type BridgeBuilder = (c: ComposeFile, network: string, tokens: readonly string[], networkIndex: number) => Generator<string, void, void>;
+
+function pipeworkBridge(
+    mode: string,
+    cmd: (hostif: string, ct: string, ifname: string, ip: string, cidr: number) => Iterable<string>,
+): BridgeBuilder {
+  return function*(c, network, tokens) {
+    assert(tokens.length === 2, `network,${mode},ct,macaddr`);
     let [ct, macaddr] = tokens as [string, string];
 
     const s = c.services[ct];
@@ -74,14 +52,52 @@ const bridgeModes: Record<string, (c: ComposeFile, network: string, tokens: read
     yield "      fi";
     yield "      sleep 1 ;;";
     yield "    true)";
-    yield `      msg Moving physical interface ${macaddr} to container ${ct}`;
-    yield `      pipework --direct-phys mac:${macaddr} -i ${network} ${ct} ${netif.ipv4_address}/${cidr}`;
+    yield* Array.from(cmd(macaddr, ct, network, netif.ipv4_address, cidr), (line) => `      ${line}`);
     yield "      break ;;";
     yield "    *none)";
     yield "      break ;;";
     yield "  esac";
     yield "done";
+  };
+}
+
+const bridgeModes: Record<string, BridgeBuilder> = {
+  *vx(c, network, tokens, networkIndex) {
+    void c;
+    yield `msg Setting up VXLAN bridge for br-${network}`;
+    yield `pipework --wait -i br-${network}`;
+    yield "SELF=''";
+    const ips = tokens.map((ip) => new Netmask(ip, "32").base);
+    assert(ips.length >= 2, "at least 2 hosts");
+    for (const [i, ip] of ips.entries()) {
+      yield `if [[ $(ip -j route get ${ip} | jq -r '.[].prefsrc') == ${ip} ]]; then SELF=${i}; fi`;
+    }
+    yield "if [[ -z $SELF ]]; then die This host is not part of the bridge; fi";
+    for (const [i, ip] of ips.entries()) {
+      const netif = `vx-${network}-${i}`;
+      yield `if [[ $SELF -ne ${i} ]] && ( [[ $SELF -eq 0 ]] || [[ ${i} -eq 0 ]] ); then`;
+      yield `  if [[ $SELF -lt ${i} ]]; then`;
+      yield `    VXI=$((${1000000 * networkIndex + i} + 1000 * SELF))`;
+      yield "  else";
+      yield `    VXI=$((${1000000 * networkIndex + 1000 * i} + SELF))`;
+      yield "  fi";
+      yield `  msg Connecting br-${network} to ${ip} on ${netif} with VXLAN id $VXI`;
+      yield `  ip link del ${netif} 2>/dev/null || true`;
+      yield `  CLEANUPS=$CLEANUPS"; ip link del ${netif} 2>/dev/null || true"`;
+      yield `  ip link add ${netif} type vxlan id $VXI remote ${ip} dstport 4789`;
+      yield `  ip link set ${netif} up master br-${network}`;
+      yield "fi";
+    }
   },
+  phy: pipeworkBridge("phy", function*(hostif, ct, ifname, ip, cidr) {
+    yield `msg Using physical interface ${hostif} as ${ct}:${ifname}`;
+    yield `pipework --direct-phys mac:${hostif} -i ${ifname} ${ct} ${ip}/${cidr}`;
+  }),
+  macvlan: pipeworkBridge("macvlan", function*(hostif, ct, ifname, ip, cidr) {
+    const macaddr = `52:00${ip2long(ip).toString(16).padStart(8, "0").replaceAll(/([\da-f]{2})/g, ":$1")}`;
+    yield `msg Using MACVLAN ${macaddr} on ${hostif} as ${ct}:${ifname}`;
+    yield `pipework mac:${hostif} -i ${ifname} ${ct} ${ip}/${cidr} ${macaddr}`;
+  }),
 };
 
 /**
@@ -123,7 +139,7 @@ export function defineBridge(c: ComposeFile, opts: InferredOptionTypes<typeof br
   const s = defineService(c, "bridge", bridgeDockerImage);
   s.network_mode = "host";
   s.cap_add.push("NET_ADMIN");
-  if (modes.has("phy")) {
+  if (modes.has("phy") || modes.has("macvlan")) {
     s.privileged = true;
     s.pid = "host";
     s.volumes.push({
