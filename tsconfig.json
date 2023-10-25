@@ -18,5 +18,8 @@
   },
   "include": [
     "**/*.ts"
+  ],
+  "exclude": [
+    "free5gc-config/webconsole-openapi/**"
   ]
 }

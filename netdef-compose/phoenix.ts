@@ -15,11 +15,11 @@ import type { NetDefComposeContext } from "./context.js";
 import * as NetDefDN from "./dn.js";
 import { env } from "./env.js";
 
-export function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext]>): (ctx: NetDefComposeContext, saveHooks?: SaveHooks) => Promise<void> {
-  return async (ctx: NetDefComposeContext, saveHooks: SaveHooks = {}): Promise<void> => {
+export function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext]>): (ctx: NetDefComposeContext) => Promise<void> {
+  return async (ctx: NetDefComposeContext): Promise<void> => {
     const b = new cls(ctx);
     b.build();
-    await b.save(saveHooks);
+    await b.save();
   };
 }
 
@@ -99,12 +99,10 @@ abstract class PhoenixScenarioBuilder {
     return db;
   }
 
-  public async save({
-    nfFilter = (nf: string) => this.nfFilter.includes(nf),
-  }: SaveHooks): Promise<void> {
+  public async save(): Promise<void> {
     this.sf.ipmap = IPMAP.fromCompose(this.ctx.c);
     for (const service of Object.values(this.ctx.c.services)) {
-      if (!nfFilter(compose.nameToNf(service.container_name))) {
+      if (!this.nfFilter.includes(compose.nameToNf(service.container_name))) {
         continue;
       }
       updateService(service, { cfg: `./${this.nfKind}-cfg`, sql: `./${this.nfKind}-sql` });
@@ -112,10 +110,6 @@ abstract class PhoenixScenarioBuilder {
 
     await this.sf.save(path.resolve(this.ctx.out, `${this.nfKind}-cfg`), path.resolve(this.ctx.out, `${this.nfKind}-sql`));
   }
-}
-
-interface SaveHooks {
-  nfFilter?: (nf: string) => boolean;
 }
 
 class PhoenixCPBuilder extends PhoenixScenarioBuilder {

@@ -2,6 +2,7 @@
 /free5gc-config/free5gc-compose
 /free5gc-config/gtp5g
 /free5gc-config/images.txt
+/free5gc-config/webconsole-openapi
 /oai-config/conf_files
 /pnpm-lock.yaml
 /types/*.schema.json
