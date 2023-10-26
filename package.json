@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dockerfilelint": "git ls-files -- '*/Dockerfile' | xargs --no-run-if-empty dockerfilelint",
     "lint": "xo-yoursunny --fix",
     "netdef-compose": "tsx ./netdef-compose/main.ts",
     "phoenix-compose": "tsx ./phoenix-compose/main.ts",
@@ -22,6 +23,7 @@
     "@types/sql-tagged-template-literal": "^1.2.1",
     "@types/yargs": "^17.0.29",
     "ajv": "^8.12.0",
+    "dockerfilelint": "^1.8.0",
     "dockerode": "^4.0.0",
     "env-schema": "^5.2.1",
     "envfile": "^6.18.0",
