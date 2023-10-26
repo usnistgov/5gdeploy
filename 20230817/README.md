@@ -130,9 +130,5 @@ MAC_N3_UPF141=02:00:00:03:00:05
 
 # generate Compose file with physical ports support
 bash generate.sh 20230817 --ran=ueransim \
-  --bridge=n3,phy,gnb0,$MAC_N3_GNB0 \
-  --bridge=n3,phy,gnb1,$MAC_N3_GNB1 \
-  --bridge=n3,phy,upf1,$MAC_N3_UPF1 \
-  --bridge=n3,phy,upf140,$MAC_N3_UPF140 \
-  --bridge=n3,phy,upf141,$MAC_N3_UPF141
+  --bridge=n3,eth,gnb0=$MAC_N3_GNB0,gnb1=$MAC_N3_GNB1,upf1=$MAC_N3_UPF1,upf140=$MAC_N3_UPF140,upf141=$MAC_N3_UPF141
 ```
