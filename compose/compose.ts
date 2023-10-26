@@ -130,6 +130,24 @@ export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string
   return netif;
 }
 
+/** Remove a netif from a service. */
+export function disconnectNetif(c: ComposeFile, ct: string, net: string): string {
+  const service = c.services[ct];
+  assert(service, `service ${ct} missing`);
+  const netif = service.networks[net];
+  assert(netif, `netif ${ct}:${net} missing`);
+  delete service.networks[net]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+
+  const sysctlPrefix = `net.ipv4.conf.eth${Object.entries(service.networks).length}`;
+  for (const key of Object.keys(service.sysctls)) {
+    if (key.startsWith(sysctlPrefix)) {
+      delete service.sysctls[key]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+    }
+  }
+
+  return netif.ipv4_address;
+}
+
 /**
  * Generate commands to rename netifs.
  * The container shall have NET_ADMIN capability.

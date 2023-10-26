@@ -53,7 +53,7 @@ Run a subnet of network functions with bridges:
 # prepare Compose file with bridge setup
 cd ~/5gdeploy
 corepack pnpm -s phoenix-compose --cfg ~/phoenix-repo/phoenix-src/cfg/5g_scp --out ~/compose/phoenix-scp \
-  --bridge conn,phy,scp1,02:00:00:00:00:01 --bridge conn,phy,scp2,02:00:00:00:00:02
+  --bridge conn,eth,scp1=02:00:00:00:00:01,scp2=02:00:00:00:00:02
 
 # copy ~/compose/phoenix-scp and Docker images to both machines
 
