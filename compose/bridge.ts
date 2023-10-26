@@ -62,15 +62,18 @@ function pipeworkBridge(
 }
 
 const bridgeModes: Record<string, BridgeBuilder> = {
-  *vx(c, network, tokens, networkIndex) {
+  *vx(c, network, ips, networkIndex) {
     void c;
+    assert(ips.length >= 2, "at least 2 hosts");
+    assert(ips.every((ip) => ip2long(ip) !== 0), "some IP is invalid");
     yield `msg Setting up VXLAN bridge for br-${network}`;
     yield `pipework --wait -i br-${network}`;
     yield "SELF=''";
-    const ips = tokens.map((ip) => new Netmask(ip, "32").base);
-    assert(ips.length >= 2, "at least 2 hosts");
     for (const [i, ip] of ips.entries()) {
-      yield `if [[ $(ip -j route get ${ip} | jq -r '.[].prefsrc') == ${ip} ]]; then SELF=${i}; fi`;
+      yield `if [[ -n "$(ip -o addr show to ${ip})" ]]; then`;
+      yield `  SELF=${i}`;
+      yield `  SELFIP=${ip}`;
+      yield "fi";
     }
     yield "if [[ -z $SELF ]]; then die This host is not part of the bridge; fi";
     for (const [i, ip] of ips.entries()) {
@@ -84,7 +87,7 @@ const bridgeModes: Record<string, BridgeBuilder> = {
       yield `  msg Connecting br-${network} to ${ip} on ${netif} with VXLAN id $VXI`;
       yield `  ip link del ${netif} 2>/dev/null || true`;
       yield `  CLEANUPS=$CLEANUPS"; ip link del ${netif} 2>/dev/null || true"`;
-      yield `  ip link add ${netif} type vxlan id $VXI remote ${ip} dstport 4789`;
+      yield `  ip link add ${netif} type vxlan id $VXI remote ${ip} local $SELFIP dstport 4789`;
       yield `  ip link set ${netif} up master br-${network}`;
       yield "fi";
     }
