@@ -51,20 +51,15 @@ EXP_EDGE2=192.168.60.12
 
 ## Start and Stop Scenario
 
-Generate Compose file and copy to *edge* hosts:
+Generate Compose file and upload to *edge* hosts:
 
 ```bash
 cd ~/5gdeploy-scenario
-bash generate.sh 20230510 --ran=ueransim \
+./generate.sh 20230510 --ran=ueransim \
   --bridge=n2,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2} \
   --bridge=n4,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2} \
   --bridge=n9,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2}
-
-eval `ssh-agent -s` && ssh-add
-for H in ${CTRL_EDGE1} ${CTRL_EDGE2}; do
-  rclone sync ~/compose/20230510 :sftp:compose/20230510 --sftp-host=$H
-done
-eval `ssh-agent -k`
+./upload.sh ~/compose/20230510 $CTRL_EDGE1 $CTRL_EDGE2
 ```
 
 Start the scenario:
@@ -121,7 +116,7 @@ DNIP=$(docker exec dn_cloud ip -j addr show n6 | jq -r '.[] | .addr_info[] | sel
 docker run -d --name iperf3s --network container:dn_cloud networkstatic/iperf3 --forceflush -B $DNIP -s
 
 # extract imsi-001017005551002 cloud PDU session IP address
-UEIP=$(docker -H ssh://${CTRL_EDGE1} exec ue1001 ./nr-cli imsi-001017005551002 -e ps-list | awk '$1=="apn:" && $2=="cloud" { found=1 } found && $1=="address:" { print $2; exit }')
+UEIP=$(docker -H ssh://${CTRL_EDGE1} exec ue1001 ./nr-cli imsi-001017005551002 -e ps-list | yq 'filter(.apn=="cloud") | .[].address')
 
 # run client application
 docker -H ssh://${CTRL_EDGE1} run --rm --name iperf3c --network container:ue1001 networkstatic/iperf3 --forceflush -B $UEIP -c $DNIP -u -b 100M -R

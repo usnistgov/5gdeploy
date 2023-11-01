@@ -16,7 +16,7 @@ These installation steps are required for all scenarios:
 2. Follow **5gdeploy** `INSTALL.md` instructions to install Node.js and Docker.
 3. Clone Open5GCore proprietary repository at `~/phoenix-repo`.
 4. Clone this folder at `~/5gdeploy-scenario`.
-5. Run `bash ./install.sh` to install dependencies.
+5. Run `./install.sh` to install dependencies.
 
 If free5GC is needed, load the gtp5g module:
 
@@ -31,7 +31,7 @@ Some common commands are:
 ```bash
 # generate Compose file
 cd ~/5gdeploy-scenario
-bash generate.sh 20230601
+./generate.sh 20230601
 # Command line flags are passed to netdef-compose script. Sometimes they are required.
 # Compose file will be generated at ~/compose/20230601. Existing files in this folder are deleted.
 
@@ -75,7 +75,6 @@ The *primary* host should have:
 * `install.sh` completion
 * kernel module for free5GC, if needed
 * [yq](https://github.com/mikefarah/yq): `sudo snap install yq`
-* [Rclone](https://rclone.org/): `sudo apt install rclone`
 
 The *secondary* host should have:
 
@@ -90,7 +89,5 @@ If the command below does not work, re-check these SSH requirements.
 Copy Docker images to *secondary* hosts:
 
 ```bash
-for H in secondary1 secondary2; do
-  docker save $(docker images --format='{{.Repository}}' | grep 5gdeploy.localhost) | docker -H ssh://$H load
-done
+./upload.sh docker 192.168.60.2 192.168.60.3
 ```

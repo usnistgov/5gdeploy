@@ -22,14 +22,14 @@ Generate Compose file:
 
 ```bash
 cd ~/5gdeploy-scenario
-bash generate.sh 20230817 --ran=ueransim
+./generate.sh 20230817 --ran=ueransim
 # --ran=ueransim is required.
 # Open5GCore gNB simulator allows up to 2 slices so it is incompatible.
 #
 # Add --up=free5gc to select free5GC UPF instead of Open5GCore UPF.
 
 # adjust gNB and UE quantities
-bash generate.sh 20230817 +gnbs=3 +phones=15 +vehicles=6 --ran=ueransim
+./generate.sh 20230817 +gnbs=3 +phones=15 +vehicles=6 --ran=ueransim
 ```
 
 The Compose file is placed at `~/compose/20230817`.
@@ -93,26 +93,31 @@ docker rm -f $(docker ps -a --format='{{.Names}}' | grep '^iperf_')
 
 ## Multi-Host Usage
 
-We want to run Control Plane on primary host (`192.168.60.1`), User Plane and RAN on secondary host (`192.168.60.2`).
+We want to run Control Plane on primary host, User Plane and RAN on secondary host.
 See the multi-host preparation steps in [top-level README](../README.md).
 
 ```bash
-# generate Compose file with bridge support
-bash generate.sh 20230817 --ran=ueransim \
-  --bridge=n2,vx,192.168.60.1,192.168.60.2 \
-  --bridge=n3,vx,192.168.60.1,192.168.60.2 \
-  --bridge=n4,vx,192.168.60.1,192.168.60.2
+# define variables for SSH hostnames or IPs
+CTRL_UP=192.160.60.2
 
-# copy Compose file and config folder to the secondary host
-eval `ssh-agent -s` && ssh-add
-rclone sync ~/compose/20230817 :sftp:compose/20230817 --sftp-host=secondary
-eval `ssh-agent -k`
+# define variables for experiment network IPs
+EXP_CP=192.168.60.1
+EXP_UP=192.168.60.2
+
+# generate Compose file with bridge support
+./generate.sh 20230817 --ran=ueransim \
+  --bridge=n2,vx,$EXP_CP,$EXP_UP \
+  --bridge=n3,vx,$EXP_CP,$EXP_UP \
+  --bridge=n4,vx,$EXP_CP,$EXP_UP
+
+# upload Compose file and config folder to the secondary host
+./upload.sh ~/compose/20230817 :sftp:compose/20230817 $CTRL_UP
 
 # start CP on the primary host
 docker compose up -d bridge $(yq '.services | keys | filter(test("^(dn|upf|gnb|ue)[_0-9]") | not) | .[]' compose.yml)
 
 # start UP and RAN on the second host
-docker -H ssh://secondary compose up -d bridge $(yq '.services | keys | filter(test("^(dn|upf|gnb|ue)[_0-9]")) | .[]' compose.yml)
+docker -H ssh://$CTRL_UP compose up -d bridge $(yq '.services | keys | filter(test("^(dn|upf|gnb|ue)[_0-9]")) | .[]' compose.yml)
 ```
 
 ## Physical Ethernet Ports
@@ -121,7 +126,7 @@ It is possible to use physical Ethernet ports in select network functions.
 This would allow, for example, QoS enforcement through hardware switches.
 
 ```bash
-# define variables for MAC addresses
+# define variables for host interface MAC addresses
 MAC_N3_GNB0=02:00:00:03:00:01
 MAC_N3_GNB1=02:00:00:03:00:02
 MAC_N3_UPF1=02:00:00:03:00:03
@@ -129,6 +134,17 @@ MAC_N3_UPF140=02:00:00:03:00:04
 MAC_N3_UPF141=02:00:00:03:00:05
 
 # generate Compose file with physical ports support
-bash generate.sh 20230817 --ran=ueransim \
+./generate.sh 20230817 --ran=ueransim \
   --bridge=n3,eth,gnb0=$MAC_N3_GNB0,gnb1=$MAC_N3_GNB1,upf1=$MAC_N3_UPF1,upf140=$MAC_N3_UPF140,upf141=$MAC_N3_UPF141
 ```
+
+The `--bridge=net,eth,` flag must list all containers on a network.
+The operator between a container name and a host interface MAC address could be either `=` or `@`.
+
+* The `=` operator moves the host interface into the container.
+  It becomes inaccessible from the host and cannot be shared among multiple containers.
+  The original MAC address is used by the container.
+* The `@` operator creates a MACVLAN subinterface on the host interface.
+  The host interface remains accessible on the host.
+  Multiple containers may share the same host interface, and each container gets its own MAC address.
+  Currently this uses MACVLAN "bridge" mode, so that traffic between two containers on the same host interface is switched internally in the Ethernet adapter and does not appear on the connected Ethernet switch.
