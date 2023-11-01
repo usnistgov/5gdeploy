@@ -55,15 +55,15 @@ const network: N.Network = {
     { name: "upf141" },
   ],
   dataNetworks: [
-    { snssai: "01", dnn: "internet", type: "IPv4", subnet: "10.1.0.0/16" },
-    { snssai: "8C", dnn: "vcam", type: "IPv4", subnet: "10.140.0.0/16" },
-    { snssai: "8D", dnn: "vctl", type: "IPv4", subnet: "10.141.0.0/16" },
+    { snssai: "01000000", dnn: "internet", type: "IPv4", subnet: "10.1.0.0/16" },
+    { snssai: "8C000000", dnn: "vcam", type: "IPv4", subnet: "10.140.0.0/16" },
+    { snssai: "8D000000", dnn: "vctl", type: "IPv4", subnet: "10.141.0.0/16" },
   ],
   dataPaths: {
     links: [
-      ["upf1", { snssai: "01", dnn: "internet" }],
-      ["upf140", { snssai: "8C", dnn: "vcam" }],
-      ["upf141", { snssai: "8D", dnn: "vctl" }],
+      ["upf1", { snssai: "01000000", dnn: "internet" }],
+      ["upf140", { snssai: "8C000000", dnn: "vcam" }],
+      ["upf141", { snssai: "8D000000", dnn: "vctl" }],
     ],
   },
 };
@@ -79,8 +79,8 @@ for (let i = 0; i < args.gnbs; ++i) {
 }
 
 for (const [firstSUPI, total, subscribedNSSAI] of [
-  ["001017005551000", args.phones, [{ snssai: "01", dnns: ["internet"] }]],
-  ["001017005554000", args.vehicles, [{ snssai: "8C", dnns: ["vcam"] }, { snssai: "8D", dnns: ["vctl"] }]],
+  ["001017005551000", args.phones, [{ snssai: "01000000", dnns: ["internet"] }]],
+  ["001017005554000", args.vehicles, [{ snssai: "8C000000", dnns: ["vcam"] }, { snssai: "8D000000", dnns: ["vctl"] }]],
 ] as Array<[string, number, N.SubscriberSNSSAI[]]>) {
   const count = total / args.gnbs;
   const supi = BigInt(firstSUPI);

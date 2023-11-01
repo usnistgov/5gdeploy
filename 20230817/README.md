@@ -111,7 +111,7 @@ EXP_UP=192.168.60.2
   --bridge=n4,vx,$EXP_CP,$EXP_UP
 
 # upload Compose file and config folder to the secondary host
-./upload.sh ~/compose/20230817 :sftp:compose/20230817 $CTRL_UP
+./upload.sh ~/compose/20230817 $CTRL_UP
 
 # start CP on the primary host
 docker compose up -d bridge $(yq '.services | keys | filter(test("^(dn|upf|gnb|ue)[_0-9]") | not) | .[]' compose.yml)
