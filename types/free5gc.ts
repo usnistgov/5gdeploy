@@ -121,6 +121,7 @@ export namespace smf {
     plmnList: PLMNID[];
     snssaiInfos: SNSSAIInfo[];
     userplaneInformation: UP;
+    nwInstFqdnEncoding?: boolean;
   }
 
   export interface PFCP {

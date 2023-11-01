@@ -247,6 +247,7 @@ class F5CPBuilder {
           })),
       }));
       c.userplaneInformation = this.buildSMFupi();
+      c.nwInstFqdnEncoding = true;
 
       s.command = [
         "./smf",
