@@ -41,6 +41,11 @@ const args = await yargs(hideBin(process.argv))
     desc: "Compose output directory",
     type: "string",
   })
+  .option("ip-space", {
+    desc: "Compose networks IP address space, /18 or larger",
+    default: "172.25.192.0/18",
+    type: "string",
+  })
   .option("cp", {
     desc: "Control Plane provider",
     default: "phoenix",
@@ -64,7 +69,7 @@ const args = await yargs(hideBin(process.argv))
 
 const netdef = new NetDef(JSON.parse(await (args.netdef === "-" ? getStdin() : fs.readFile(args.netdef, "utf8"))));
 netdef.validate();
-const ctx = new NetDefComposeContext(netdef, args.out);
+const ctx = new NetDefComposeContext(netdef, args.out, { ipSpace: args.ipSpace });
 await upProviders[args.up]!(ctx);
 await cpProviders[args.cp]!(ctx);
 await ranProviders[args.ran]!(ctx);

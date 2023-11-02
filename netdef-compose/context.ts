@@ -8,15 +8,15 @@ import type { Promisable } from "type-fest";
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import type { ComposeFile, ComposeService } from "../types/compose.js";
-import { env } from "./env.js";
 import { IPAlloc } from "./ipalloc.js";
 
 export class NetDefComposeContext {
   public readonly c: ComposeFile = compose.create();
+  private readonly ipAlloc: IPAlloc;
 
-  private readonly ipAlloc = new IPAlloc(env.D5G_IP_SPACE);
-
-  constructor(public readonly netdef: NetDef, public readonly out: string) {}
+  constructor(public readonly netdef: NetDef, public readonly out: string, opts: NetDefComposeContext.Options) {
+    this.ipAlloc = new IPAlloc(opts.ipSpace);
+  }
 
   public get network() {
     return this.netdef.network;
@@ -81,6 +81,11 @@ export class NetDefComposeContext {
     filename = path.resolve(this.out, filename);
     await fs.mkdir(path.dirname(filename), { recursive: true });
     await fs.writeFile(filename, body as string | Uint8Array);
+  }
+}
+export namespace NetDefComposeContext {
+  export interface Options {
+    ipSpace: string;
   }
 }
 

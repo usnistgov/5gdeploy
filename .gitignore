@@ -4,6 +4,7 @@
 /free5gc-config/images.txt
 /free5gc-config/webconsole-openapi
 /oai-config/conf_files
+/phoenix-config/cfg
 /pnpm-lock.yaml
 /types/*.schema.json
 node_modules
