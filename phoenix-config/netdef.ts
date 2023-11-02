@@ -7,15 +7,17 @@ import type { Constructor } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
+import type { NetDefComposeContext } from "../netdef-compose/context.js";
+import * as NetDefDN from "../netdef-compose/dn.js";
+import { env } from "../netdef-compose/env.js";
 import { networkOptions, phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
-import { IPMAP, type NetworkFunction, ScenarioFolder } from "../phoenix-config/mod.js";
 import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
-import type { NetDefComposeContext } from "./context.js";
-import * as NetDefDN from "./dn.js";
-import { env } from "./env.js";
+import { ScenarioFolder } from "./folder.js";
+import { IPMAP } from "./ipmap.js";
+import type { NetworkFunction } from "./nf.js";
 
-export function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext]>): (ctx: NetDefComposeContext) => Promise<void> {
+function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext]>): (ctx: NetDefComposeContext) => Promise<void> {
   return async (ctx: NetDefComposeContext): Promise<void> => {
     const b = new cls(ctx);
     b.build();
@@ -368,7 +370,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
   }
 
   private buildUPFs(): void {
-    for (const [ct, upf] of this.createNetworkFunction("5g/upf2.json", ["n3", "n4", "n6", "n9"], this.ctx.network.upfs)) {
+    for (const [ct, upf] of this.createNetworkFunction("5g/upf1.json", ["n3", "n4", "n6", "n9"], this.ctx.network.upfs)) {
       const peers = this.netdef.gatherUPFPeers(upf);
       assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
       assert(peers.N6IPv6.length === 0, "UPF does not supports IPv6 DN");
@@ -377,6 +379,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         const { config } = c.getModule("pfcp");
         assert(config.mode === "UP");
         assert(config.data_plane_mode === "integrated");
+
         config.ethernet_session_identifier = peers.N6Ethernet[0]?.dnn;
         config.DataPlane.interfaces = [];
         if (peers.N3.length > 0) {
@@ -412,6 +415,8 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         }
         assert(config.DataPlane.interfaces.length <= 8, "pfcp.so allows up to 8 interfaces");
         delete config.DataPlane.xdp;
+
+        config.hacks.qfi = 1;
       });
 
       this.sf.initCommands.set(ct, [
@@ -427,7 +432,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
             yield "ip link set n6_tap up master br-eth";
           }
         })(),
-        ...Array.from(NetDefDN.makeUPFRoutes(this.ctx, peers), (line) => line.replace(/^msg /, ": ")),
+        ...NetDefDN.makeUPFRoutes(this.ctx, peers, { msg: false }),
       ]);
 
       for (const { subnet } of peers.N6IPv4) {

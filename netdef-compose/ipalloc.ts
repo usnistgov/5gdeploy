@@ -9,7 +9,7 @@ export class IPAlloc {
    */
   constructor(space: string) {
     const subnet = new Netmask(space);
-    assert(subnet.bitmask >= 18, "/18 or larger address space required");
+    assert(subnet.bitmask <= 18, "/18 or larger address space required");
     this.space = subnet;
   }
 

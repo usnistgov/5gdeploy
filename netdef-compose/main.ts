@@ -7,9 +7,9 @@ import { hideBin } from "yargs/helpers";
 import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc-config/netdef.js";
 import { NetDef } from "../netdef/netdef.js";
-import { buildUPtiny as oaiUPtiny, buildUPvpp as oaiUPvpp } from "../oai-config/netdef.js";
+import { oaiUPtiny, oaiUPvpp } from "../oai-config/netdef.js";
+import { phoenixCP, phoenixRAN, phoenixUP } from "../phoenix-config/mod.js";
 import { NetDefComposeContext } from "./context.js";
-import { phoenixCP, phoenixRAN, phoenixUP } from "./phoenix.js";
 import { RANProviders } from "./ran.js";
 
 const cpProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {

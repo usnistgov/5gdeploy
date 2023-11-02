@@ -192,7 +192,7 @@ export namespace pfcp {
   }
 
   export interface Hacks {
-    qfi: number;
+    qfi?: number;
     [k: string]: unknown;
   }
 }

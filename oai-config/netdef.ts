@@ -9,7 +9,7 @@ import * as shlex from "shlex";
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import { phoenixUP } from "../netdef-compose/phoenix.js";
+import { phoenixUP } from "../phoenix-config/mod.js";
 import type * as N from "../types/netdef.js";
 import type * as OAI from "../types/oai.js";
 import * as oai_conf from "./conf.js";
@@ -20,7 +20,7 @@ const vppScript = await fs.readFile(fileURLToPath(new URL("upf-vpp.sh", import.m
  * Build UP functions using oai-spgwu-tiny as UPF.
  * Currently this is incompatible with Open5GCore SMF.
  */
-export async function buildUPtiny(ctx: NetDefComposeContext): Promise<void> {
+export async function oaiUPtiny(ctx: NetDefComposeContext): Promise<void> {
   await phoenixUP(ctx);
 
   for (const upf of ctx.network.upfs) {
@@ -88,7 +88,7 @@ export async function buildUPtiny(ctx: NetDefComposeContext): Promise<void> {
  * Build UP functions using oai-upf-vpp as UPF.
  * Currently this can create association Open5GCore SMF, but cannot pass traffic.
  */
-export async function buildUPvpp(ctx: NetDefComposeContext): Promise<void> {
+export async function oaiUPvpp(ctx: NetDefComposeContext): Promise<void> {
   await phoenixUP(ctx);
   const [mcc, mnc] = NetDef.splitPLMN(ctx.network.plmn);
   await ctx.writeFile("oai-upf-vpp.sh", vppScript);
