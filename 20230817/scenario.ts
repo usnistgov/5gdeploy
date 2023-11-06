@@ -2,34 +2,13 @@ import type * as N from "@usnistgov/5gdeploy/types/netdef.ts";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
+import * as ran from "../common/ran.js";
+
 const args = await yargs(hideBin(process.argv))
   .strict()
-  .option("gnbs", {
-    desc: "gNodeB quantity (1..9)",
-    default: 2,
-    type: "number",
-  })
-  .option("phones", {
-    desc: "phone quantity (1..1000, divisible by gnbs)",
-    default: 48,
-    type: "number",
-  })
-  .option("vehicles", {
-    desc: "vehicle quantity (1..1000, divisible by gnbs)",
-    default: 12,
-    type: "number",
-  })
-  .check((args) => {
-    if (args.gnbs < 1 || args.gnbs >= 10) {
-      throw new Error("gnbs must be between 1 and 9");
-    }
-    for (const key of ["phones", "vehicles"] as const) {
-      if (args[key] < 1 || args[key] > 1000 || args[key] % args.gnbs !== 0) {
-        throw new Error(`${key} must be between 1 and 1000, and divisible by gnbs`);
-      }
-    }
-    return true;
-  })
+  .option("gnbs", ran.option("gNB", 2, 9))
+  .option("phones", ran.option("phone", 48, 1000))
+  .option("vehicles", ran.option("vehicle", 12, 1000))
   .parseAsync();
 
 const network: N.Network = {
@@ -78,20 +57,11 @@ for (let i = 0; i < args.gnbs; ++i) {
   );
 }
 
-for (const [firstSUPI, total, subscribedNSSAI] of [
-  ["001017005551000", args.phones, [{ snssai: "01000000", dnns: ["internet"] }]],
-  ["001017005554000", args.vehicles, [{ snssai: "8C000000", dnns: ["vcam"] }, { snssai: "8D000000", dnns: ["vctl"] }]],
-] as Array<[string, number, N.SubscriberSNSSAI[]]>) {
-  const count = total / args.gnbs;
-  const supi = BigInt(firstSUPI);
-  for (let i = 0; i < args.gnbs; ++i) {
-    network.subscribers.push({
-      supi: (supi + BigInt(i * count)).toString().padStart(15, "0"),
-      count,
-      subscribedNSSAI,
-      gnbs: [`gnb${i}`],
-    });
-  }
-}
-
+ran.addUEsPerGNB(network, "001017005551000", args.phones, [
+  { snssai: "01000000", dnns: ["internet"] },
+]);
+ran.addUEsPerGNB(network, "001017005554000", args.vehicles, [
+  { snssai: "8C000000", dnns: ["vcam"] },
+  { snssai: "8D000000", dnns: ["vctl"] },
+]);
 process.stdout.write(`${JSON.stringify(network)}\n`);
