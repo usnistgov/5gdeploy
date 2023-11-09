@@ -31,7 +31,7 @@ fi
 msg Generating scenario via netdef
 mkdir -p $OUT
 SARGS=()
-while [[ $1 == +* ]]; do
+while [[ ${1:-} == +* ]]; do
   SARGS+=("${1/#+/--}")
   shift
 done

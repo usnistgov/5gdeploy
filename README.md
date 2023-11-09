@@ -81,7 +81,7 @@ The *secondary* host should have:
 * Docker Engine
 * kernel module for free5GC, if needed
 
-The *primary* host should have SSH config and keys to access each *secondary* host.
+The *primary* host should have SSH config and `id_ed25519` key to access each *secondary* host.
 The SSH user on each *secondary* host should be added to the `docker` group.
 The SSH host key of each *secondary* host should be added to the `known_hosts` file on the *primary* host.
 If the command below does not work, re-check these SSH requirements.
