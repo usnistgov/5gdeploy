@@ -2,11 +2,11 @@
 
 ## Description
 
-There are three slices:
+There are three slices and three Data Networks:
 
-* sst=1, dnn=internet: generic cellphone, `10.1.0.0/16`.
-* sst=140, dnn=vcam: remote driving camera stream, `10.140.0.0/16`.
-* sst=141, dnn=vctl: remote driving control stream, `10.141.0.0/16`.
+* sst=1, sd=0x000000, dnn=internet: generic cellphone, `10.1.0.0/16`.
+* sst=140, sd=0x000000, dnn=vcam: remote driving camera stream, `10.140.0.0/16`.
+* sst=141, sd=0x000000, dnn=vctl: remote driving control stream, `10.141.0.0/16`.
 
 Each slice is served by a dedicated UPF.
 All control plane network functions are shared.
