@@ -14,7 +14,7 @@ All control plane network functions are shared.
 There are 6 cellphones and 2 vehicles, sharing 1 gNB.
 These quantities can be adjusted via command line flags.
 
-## Usage
+## Basic Usage
 
 First complete the installation steps in [top-level README](../README.md).
 
@@ -42,7 +42,10 @@ for UECT in $(docker ps --format='{{.Names}}' | grep '^ue1'); do
   corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn=internet
 done
 for UECT in $(docker ps --format='{{.Names}}' | grep '^ue4'); do
-  corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn=vcam
-  corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn=vctl
+  corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn=vcam --dnn=vctl
 done
 ```
+
+## Traffic Generation
+
+See traffic generation procedure in [20230817 scenario](../20230817/README.md).

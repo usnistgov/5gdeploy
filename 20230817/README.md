@@ -14,7 +14,7 @@ All control plane network functions are shared.
 There are 48 cellphones and 12 vehicles, sharing 2 gNBs.
 These quantities can be adjusted via command line flags.
 
-## Usage
+## Basic Usage
 
 First complete the installation steps in [top-level README](../README.md).
 
@@ -42,6 +42,8 @@ docker exec dn_internet nmap -sn 10.1.0.0/24
 docker exec dn_vcam nmap -sn 10.140.0.0/24
 docker exec dn_vctl nmap -sn 10.141.0.0/24
 ```
+
+## Traffic Generation
 
 Start traffic generators:
 
@@ -85,7 +87,7 @@ for CT in $(docker ps -a --format='{{.Names}}' | grep '^iperf_' | sort -V); do
   docker kill --signal=INT $CT
   docker logs $CT
   docker rm -f $CT
-done &>~/compose/20230817/iperf3.log
+done &>iperf3.log
 
 # stop without gathering logs
 docker rm -f $(docker ps -a --format='{{.Names}}' | grep '^iperf_')
