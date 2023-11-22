@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 
 import Dockerode from "dockerode";
 import assert from "minimalistic-assert";
@@ -25,6 +26,37 @@ function print<T>(value: T): T {
     process.stdout.write(`${JSON.stringify(value)}\n`);
   }
   return value;
+}
+
+async function waitUntil<T>(
+    retrieve: () => Promise<T>,
+    predicate: (status: T) => boolean,
+    change: () => Promise<void>,
+    interval = 500,
+    timeout = 30000,
+): Promise<void> {
+  let status = print(await retrieve());
+  if (predicate(status)) {
+    return;
+  }
+  await change();
+  let limit = Math.ceil(timeout / interval);
+  while (true) {
+    await delay(interval);
+    status = await retrieve();
+    if (predicate(status)) {
+      print(status);
+      return;
+    }
+    if (--limit < 0) {
+      print(status);
+      throw new Error("condition not fulfilled within timeout");
+    }
+  }
+}
+
+function ue5gStatus(): Promise<any> {
+  return clientJ.request("ue5g.status", []);
 }
 
 await yargs(hideBin(process.argv))
@@ -102,32 +134,40 @@ await yargs(hideBin(process.argv))
   )
   .command("ue-status", "retrieve UE status", {},
     async () => {
-      print(await clientJ.request("ue5g.status", []));
+      print(await ue5gStatus());
     },
   )
   .command("ue-register", "register UE",
     (yargs) => yargs
       .option("dnn", {
-        desc: "data network name",
+        array: true,
+        desc: "data network names",
+        nargs: 1,
         type: "string",
       }),
-    async ({ dnn }) => {
-      const status = print(await clientJ.request("ue5g.status", []));
-      if (status.access_3gpp.mm_state_str !== "MM_REGISTERED") {
-        print(await clientJ.request("ue5g.register", { access_type: 1, no_pdu: !!dnn }));
-      }
+    async ({ dnn = [] }) => {
+      await waitUntil(
+        ue5gStatus,
+        (status) => status.access_3gpp.mm_state_str === "MM_REGISTERED",
+        () => clientJ.request("ue5g.register", { access_type: 1, no_pdu: dnn.length > 0 }),
+      );
 
-      if (dnn && status.pdu[dnn]?.sm_state_str !== "PDU_SESSION_ACTIVE") {
-        print(await clientJ.request("ue5g.establish", { access_type: 1, DNN: dnn, route: 1 }));
+      for (const dn of dnn) {
+        await waitUntil(
+          ue5gStatus,
+          (status) => status.pdu[dn]?.sm_state_str === "PDU_SESSION_ACTIVE",
+          () => clientJ.request("ue5g.establish", { access_type: 1, DNN: dn, route: 1 }), // eslint-disable-line @typescript-eslint/no-loop-func
+        );
       }
     },
   )
   .command("ue-deregister", "unregister UE", {},
     async () => {
-      const status = print(await clientJ.request("ue5g.status", []));
-      if (status.access_3gpp.mm_state_str !== "MM_DEREGISTERED") {
-        print(await clientJ.request("ue5g.deregister", { access_type: 1 }));
-      }
+      await waitUntil(
+        ue5gStatus,
+        (status) => status.access_3gpp.mm_state_str === "MM_DEREGISTERED",
+        () => clientJ.request("ue5g.deregister", { access_type: 1 }),
+      );
     },
   )
   .demandCommand()
