@@ -90,12 +90,13 @@ export namespace gnb {
     amf_port?: never;
     amf_list: AMF[];
     gnb_id: number; // gNB ID
-    cell_id: number; // NCGI
+    cell_id: number; // NCI
     mcc: "%MCC";
     mnc: "%MNC";
     tac: number;
     slice?: SNSSAI;
     slice2?: SNSSAI;
+    forwarding_worker: number;
     [k: string]: unknown;
   }
 
@@ -244,10 +245,11 @@ export namespace smf {
 export namespace ue_5g_nas_only {
   export interface Config {
     usim: USIM;
-    "usim-test-vector19"?: unknown;
+    "usim-test-vector19"?: never;
     dn_list: DN[];
     DefaultNetwork: DefaultNetwork;
     Cell: Cell[];
+    ip_tool: string;
     [k: string]: unknown;
   }
 
@@ -271,7 +273,7 @@ export namespace ue_5g_nas_only {
   }
 
   export interface Cell {
-    cell_id: number; // NCGI
+    cell_id: number; // NCI
     mcc: "%MCC";
     mnc: "%MNC";
     gnb_cp_addr: string; // gNB air IP

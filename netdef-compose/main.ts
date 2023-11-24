@@ -8,23 +8,25 @@ import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc-config/netdef.js";
 import { NetDef } from "../netdef/netdef.js";
 import { oaiUPtiny, oaiUPvpp } from "../oai-config/netdef.js";
-import { phoenixCP, phoenixRAN, phoenixUP } from "../phoenix-config/mod.js";
+import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix-config/mod.js";
 import { NetDefComposeContext } from "./context.js";
 import { RANProviders } from "./ran.js";
 
-const cpProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
+type Providers = Record<string, (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>>;
+
+const cpProviders: Providers = {
   phoenix: phoenixCP,
   free5gc: f5CP,
 };
 
-const upProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
+const upProviders: Providers = {
   phoenix: phoenixUP,
   oai: oaiUPtiny,
   "oai-vpp": oaiUPvpp,
   free5gc: f5UP,
 };
 
-const ranProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
+const ranProviders: Providers = {
   ...RANProviders,
   phoenix: phoenixRAN,
 };
@@ -65,13 +67,14 @@ const args = await yargs(hideBin(process.argv))
     type: "string",
   })
   .option(compose.bridgeOptions)
+  .option(phoenixOptions)
   .parseAsync();
 
 const netdef = new NetDef(JSON.parse(await (args.netdef === "-" ? getStdin() : fs.readFile(args.netdef, "utf8"))));
 netdef.validate();
 const ctx = new NetDefComposeContext(netdef, args.out, { ipSpace: args.ipSpace });
-await upProviders[args.up]!(ctx);
-await cpProviders[args.cp]!(ctx);
-await ranProviders[args.ran]!(ctx);
+await upProviders[args.up]!(ctx, args);
+await cpProviders[args.cp]!(ctx, args);
+await ranProviders[args.ran]!(ctx, args);
 compose.defineBridge(ctx.c, args);
 await ctx.writeFile("compose.yml", ctx.c);

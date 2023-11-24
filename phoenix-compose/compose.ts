@@ -86,6 +86,7 @@ function updatePhoenix(s: ComposeService, { cfg = "./cfg" }: updateService.Optio
   s.tty = true;
   s.cap_add.push("NET_ADMIN");
   s.sysctls["net.ipv4.ip_forward"] ??= 1;
+  s.sysctls["net.ipv6.conf.all.disable_ipv6"] ??= 1;
   s.volumes.push({
     type: "bind",
     source: cfg,

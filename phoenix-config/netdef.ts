@@ -5,6 +5,7 @@ import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import sql from "sql-tagged-template-literal";
 import type { Constructor } from "type-fest";
+import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
@@ -17,11 +18,22 @@ import { ScenarioFolder } from "./folder.js";
 import { IPMAP } from "./ipmap.js";
 import type { NetworkFunction } from "./nf.js";
 
+export const phoenixOptions = {
+  "phoenix-gnb-workers": {
+    default: 2,
+    desc: "number of worker threads in gNB",
+    group: "phoenix",
+    type: "number",
+  },
+} as const satisfies Record<string, YargsOptions>;
+
+type PhoenixOpts = InferredOptionTypes<typeof phoenixOptions>;
+
 const templatePath = fileURLToPath(new URL("../../phoenix-repo/phoenix-src/cfg", import.meta.url));
 
-function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext]>): (ctx: NetDefComposeContext) => Promise<void> {
-  return async (ctx: NetDefComposeContext): Promise<void> => {
-    const b = new cls(ctx);
+function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext, PhoenixOpts]>): (ctx: NetDefComposeContext, opts: PhoenixOpts) => Promise<void> {
+  return async (ctx, opts): Promise<void> => {
+    const b = new cls(ctx, opts);
     b.build();
     await b.save();
   };
@@ -31,7 +43,10 @@ abstract class PhoenixScenarioBuilder {
   protected abstract nfKind: string;
   protected abstract nfFilter: readonly string[];
 
-  constructor(protected readonly ctx: NetDefComposeContext) {
+  constructor(
+      protected readonly ctx: NetDefComposeContext,
+      protected readonly opts: PhoenixOpts,
+  ) {
     for (const [net, opts] of Object.entries(networkOptions)) {
       this.ctx.defineNetwork(net, opts);
     }
@@ -480,6 +495,8 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
             delete config[k]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
           }
         }
+
+        config.forwarding_worker = this.opts["phoenix-gnb-workers"];
       });
       this.sf.initCommands.set(ct, [
         "iptables -I OUTPUT -p icmp --icmp-type destination-unreachable -j DROP",
@@ -488,7 +505,6 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
   }
 
   private buildUEs(): void {
-    this.sf.createFrom("ue-tunnel-mgmt.sh", this.tplFile("5g/ue-tunnel-mgmt.sh"));
     for (const [ct, sub] of this.createNetworkFunction("5g/ue1.json", ["air"], this.ctx.netdef.listSubscribers())) {
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("ue_5g_nas_only");
@@ -524,6 +540,8 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
             gnb_port: 10000,
           };
         });
+
+        config.ip_tool = "/opt/phoenix/cfg/5g/ue-tunnel-mgmt.sh";
       });
     }
   }
