@@ -99,7 +99,7 @@ We want to run Control Plane on primary host, User Plane and RAN on secondary ho
 See the multi-host preparation steps in [top-level README](../README.md).
 
 ```bash
-# define variables for SSH hostnames or IPs
+# define variables for SSH control IPs
 CTRL_UP=192.160.60.2
 
 # define variables for experiment network IPs
@@ -115,11 +115,14 @@ EXP_UP=192.168.60.2
 # upload Compose file and config folder to the secondary host
 ./upload.sh ~/compose/20230817 $CTRL_UP
 
-# start CP on the primary host
+# start the scenario
+cd ~/compose/20230817
 docker compose up -d bridge $(yq '.services | keys | filter(test("^(dn|upf|gnb|ue)[_0-9]") | not) | .[]' compose.yml)
-
-# start UP and RAN on the second host
 docker -H ssh://$CTRL_UP compose up -d bridge $(yq '.services | keys | filter(test("^(dn|upf|gnb|ue)[_0-9]")) | .[]' compose.yml)
+
+# stop the scenario
+docker compose down --remove-orphans
+docker -H ssh://$CTRL_UP compose down --remove-orphans
 ```
 
 ## Physical Ethernet Ports
