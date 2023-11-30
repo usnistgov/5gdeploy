@@ -1,4 +1,5 @@
 /.vscode
+/docker/ns3http/ns3http
 /free5gc-config/free5gc-compose
 /free5gc-config/gtp5g
 /free5gc-config/images.txt
