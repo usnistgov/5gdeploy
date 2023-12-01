@@ -48,7 +48,31 @@ done
 
 ## Traffic Generation
 
+See [trafficgen](../20230817/trafficgen.md) for suggestions on how to generate traffic in this scenario.
+
+## Traffic Generation
+
 See traffic generation procedure in [20230817 scenario](../20230817/README.md).
+
+When using Open5GCore UE, this scenario is compatible with [ns-3 3GPP HTTP applications](https://www.nsnam.org/docs/release/3.35/models/html/applications.html).
+
+```bash
+# start 3GPP HTTP server in Data Network 'internet'
+docker run -d --name ns3http_internet --cap-add=NET_ADMIN --device /dev/net/tun \
+  --network container:dn_internet -e NS_LOG=ThreeGppHttpServer \
+  5gdeploy.localhost/ns3http 0 n6 --listen
+
+# start 3GPP HTTP clients in ue1000
+SERVER=$(docker exec dn_internet ip -j route get 10.1.0.0 | jq -r '.[0].prefsrc')
+docker run -d --name ns3http_ue1000 --cap-add=NET_ADMIN --device /dev/net/tun \
+  --network container:ue1000 -e NS_LOG=ThreeGppHttpClient \
+  5gdeploy.localhost/ns3http 0 10.1.0.0/16 --connect=$SERVER --clients=100
+
+# gather logs and stop applications
+docker logs ns3http_internet &>ns3http_internet.log
+docker logs ns3http_ue1000 &>ns3http_ue1000.log
+docker rm -f ns3http_internet ns3http_ue1000
+```
 
 ## Multi-Host Usage
 
