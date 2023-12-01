@@ -19,6 +19,8 @@ These installation steps are required for all scenarios:
 4. Clone this folder at `~/5gdeploy-scenario`.
 5. Run `./install.sh` to install dependencies.
 
+Reminder: both 5gdeploy and 5gdeploy-scenario are updated frequently, so you should often pull both repositories and rerun the `./install.sh` script.
+
 If free5GC is needed, load the gtp5g module:
 
 ```bash
@@ -33,7 +35,9 @@ Some common commands are:
 # generate Compose file
 cd ~/5gdeploy-scenario
 ./generate.sh 20230601
-# Command line flags are passed to netdef-compose script. Sometimes they are required.
+# Command line flags starting with + are passed to the scenario generator script.
+# Command line flags starting with -- are passed to netdef-compose script.
+# Some flags may be required due to limitations of 5G implementations.
 # Compose file will be generated at ~/compose/20230601. Existing files in this folder are deleted.
 
 # start a scenario

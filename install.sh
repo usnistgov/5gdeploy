@@ -33,7 +33,7 @@ bash ../5gdeploy/types/build-schema.sh
 bash ../5gdeploy/free5gc-config/download.sh
 
 msg Building Docker images
-for IMG in bridge dn free5gc-upf phoenix ueransim; do
+for IMG in bridge dn free5gc-upf ns3http phoenix ueransim; do
   bash ../5gdeploy/docker/build.sh $IMG
 done
 
