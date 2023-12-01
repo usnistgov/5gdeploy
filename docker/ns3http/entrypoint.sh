@@ -7,6 +7,16 @@ msg() {
   echo -e "\e[0m"
 }
 
+if [[ -z ${2:-} ]]; then
+  msg Usage: ns3http INDEX NETIF-or-IPADDR --ns3-flags
+  msg ns-3 help is shown below
+  if [[ ${1:-} == --Print* ]]; then
+    exec ns3http "$*"
+  else
+    exec ns3http --help
+  fi
+fi
+
 INDEX=$1  # index number
 FINDIF=$2 # ifname or IPv4 address or IPv4 subnet in CIDR format
 shift 2
@@ -16,7 +26,7 @@ if [[ $FINDIF == *.*.*.* ]]; then
   HOSTIF=''
   while [[ -z $HOSTIF ]]; do
     sleep 1
-    HOSTIF=$(ip -j addr show to $FINDIF | jq -r '.[].ifname')
+    HOSTIF=$(ip -j addr show to $FINDIF | jq -r '.[0].ifname // ""')
   done
   msg Found network interface $HOSTIF
 else
