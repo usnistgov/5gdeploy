@@ -27,7 +27,7 @@ cd ~/5gdeploy-scenario
 # Add --ran=ueransim to select UERANSIM gNB+UE instead of Open5GCore gNB+UE.
 
 # adjust gNB and UE quantities
-./generate.sh 20231017 +gnbs=2 +phones=12 +vehicles=6 --ran=ueransim
+./generate.sh 20231017 +gnbs=2 +phones=12 +vehicles=6
 # UERANSIM is recommended if large UE quantity is desired.
 ```
 
@@ -79,7 +79,7 @@ N4_UPF4=02:00:00:04:00:03
 # generate Compose file with bridge support
 ./generate.sh 20231017 \
   --bridge=n3,eth,gnb0=$N3_GNB0,upf1=$N3_UPF1,upf4=$N3_UPF4 \
-  --bridge=n3,eth,smf=$N4_SMF,upf1=$N4_UPF1,upf4=$N4_UPF4
+  --bridge=n4,eth,smf=$N4_SMF,upf1=$N4_UPF1,upf4=$N4_UPF4
 
 # upload Compose file and config folder to secondary hosts
 ./upload.sh ~/compose/20231017 $CTRL_UPF1 $CTRL_UPF4
