@@ -50,30 +50,6 @@ done
 
 See [trafficgen](../20230817/trafficgen.md) for suggestions on how to generate traffic in this scenario.
 
-## Traffic Generation
-
-See traffic generation procedure in [20230817 scenario](../20230817/README.md).
-
-When using Open5GCore UE, this scenario is compatible with [ns-3 3GPP HTTP applications](https://www.nsnam.org/docs/release/3.35/models/html/applications.html).
-
-```bash
-# start 3GPP HTTP server in Data Network 'internet'
-docker run -d --name ns3http_internet --cap-add=NET_ADMIN --device /dev/net/tun \
-  --network container:dn_internet -e NS_LOG=ThreeGppHttpServer \
-  5gdeploy.localhost/ns3http 0 n6 --listen
-
-# start 3GPP HTTP clients in ue1000
-SERVER=$(docker exec dn_internet ip -j route get 10.1.0.0 | jq -r '.[0].prefsrc')
-docker run -d --name ns3http_ue1000 --cap-add=NET_ADMIN --device /dev/net/tun \
-  --network container:ue1000 -e NS_LOG=ThreeGppHttpClient \
-  5gdeploy.localhost/ns3http 0 10.1.0.0/16 --connect=$SERVER --clients=100
-
-# gather logs and stop applications
-docker logs ns3http_internet &>ns3http_internet.log
-docker logs ns3http_ue1000 &>ns3http_ue1000.log
-docker rm -f ns3http_internet ns3http_ue1000
-```
-
 ## Multi-Host Usage
 
 In this sample, we use three physical/virtual machines, each running these services:
@@ -85,26 +61,25 @@ In this sample, we use three physical/virtual machines, each running these servi
 Each machine shall have two network interfaces apart from the control interface.
 
 * `CTRL_*` variables define the control interface IP addresses, for SSH usage.
-* `EXP_*` variables define the primary experiment network IP addresses, for VXLAN bridging.
-  * N4 network of the 5G core is bridged via VXLAN.
-* `N3_*` variables define the N3 network MAC addresses, specifically for N3 network of the 5G core.
+* `N3_*` variables define MAC addresses for N3 network of relevant network functions.
   * QoS rules may be applied on the hardware switch connected to these interfaces.
+* `N4_*` variables define MAC addresses for N4 network of relevant network functions.
 
 ```bash
 # define variables for network interfaces
 CTRL_UPF1=192.168.60.2
 CTRL_UPF4=192.168.60.3
-EXP_MAIN=192.168.61.1
-EXP_UPF1=192.168.61.2
-EXP_UPF4=192.168.61.3
 N3_GNB0=02:00:00:03:00:01
 N3_UPF1=02:00:00:03:00:02
 N3_UPF4=02:00:00:03:00:03
+N4_SMF=02:00:00:04:00:01
+N4_UPF1=02:00:00:04:00:02
+N4_UPF4=02:00:00:04:00:03
 
 # generate Compose file with bridge support
 ./generate.sh 20231017 \
   --bridge=n3,eth,gnb0=$N3_GNB0,upf1=$N3_UPF1,upf4=$N3_UPF4 \
-  --bridge=n4,vx,$EXP_MAIN,$EXP_UPF1,$EXP_UPF4
+  --bridge=n3,eth,smf=$N4_SMF,upf1=$N4_UPF1,upf4=$N4_UPF4
 
 # upload Compose file and config folder to secondary hosts
 ./upload.sh ~/compose/20231017 $CTRL_UPF1 $CTRL_UPF4
@@ -122,4 +97,5 @@ docker -H ssh://$CTRL_UPF4 compose down --remove-orphans
 ```
 
 This scenario has 1 gNB by default.
-If you change gNB quantity in `+gnbs=` flag, you must edit `--bridge=n3,eth,` flag correspondingly so that every gNB has its own N3 network interface; `--bridge=n3,vx,` flag does not need changes.
+If you change gNB quantity in `+gnbs=` flag, you must also edit `--bridge=n3,eth,` flag, so that each gNB has its own N3 network interface.
+gNB does not use N4 network, so that `--bridge=n4,eth,` flag can remain unchanged.
