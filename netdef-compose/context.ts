@@ -66,7 +66,9 @@ export class NetDefComposeContext {
    * Uint8Array and string are written directly.
    * All other types are encoded into JSON or YAML (when filename indicates YAML).
    */
-  public async writeFile(filename: string, body: unknown): Promise<void> {
+  public async writeFile(filename: string, body: unknown, {
+    executable = false,
+  }: NetDefComposeContext.WriteFileOptions = {}): Promise<void> {
     while (typeof (body as Saver).save === "function") {
       body = await (body as Saver).save();
     }
@@ -81,11 +83,18 @@ export class NetDefComposeContext {
     filename = path.resolve(this.out, filename);
     await fs.mkdir(path.dirname(filename), { recursive: true });
     await fs.writeFile(filename, body as string | Uint8Array);
+    if (executable) {
+      await fs.chmod(filename, 0o755);
+    }
   }
 }
 export namespace NetDefComposeContext {
   export interface Options {
     ipSpace: string;
+  }
+
+  export interface WriteFileOptions {
+    executable?: boolean;
   }
 }
 

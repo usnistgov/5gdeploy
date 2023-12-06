@@ -67,6 +67,7 @@ const args = await yargs(hideBin(process.argv))
     type: "string",
   })
   .option(compose.bridgeOptions)
+  .option(compose.splitOptions)
   .option(phoenixOptions)
   .parseAsync();
 
@@ -77,4 +78,7 @@ await upProviders[args.up]!(ctx, args);
 await cpProviders[args.cp]!(ctx, args);
 await ranProviders[args.ran]!(ctx, args);
 compose.defineBridge(ctx.c, args);
-await ctx.writeFile("compose.yml", ctx.c);
+await Promise.all(Array.from(
+  compose.splitOutput(ctx.c, args),
+  ([filename, body]) => ctx.writeFile(filename, body, { executable: filename.endsWith(".sh") }),
+));

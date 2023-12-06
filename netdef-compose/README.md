@@ -26,7 +26,7 @@ corepack pnpm netdef-compose --netdef ~/netdef.json --out ~/compose/example \
   --cp=free5gc --up=free5gc --ran=ueransim
 ```
 
-Due to differences in 5G protocol details, not every combinations are compatible with each other.
+Due to incompatibilities in 5G implementations, not every combinations will work.
 These combinations are verified to be compatible:
 
 * `--cp=phoenix --up=phoenix --ran=phoenix`
@@ -37,19 +37,24 @@ These combinations are verified to be compatible:
 
 ## Multi-Host Usage
 
-The `--bridge` flag allows splitting a scenario over multiple physical/virtual machines, with a subset of network functions placed on each machine.
+A scenario can be deployed over multiple physical/virtual machines, with a subset of network functions placed on each machine.
+You may span a network bridge across host machines with `--bridge` flag and define network function placement with `--place` flag.
 
-Bridge configuration scripts are defined as the command line of a special `bridge` container.
+The `--bridge` flag(s) generates bridge configuration scripts.
+They are defined as the command line of a special `bridge` container.
 You may view these commands with:
 
 ```bash
 yq .services.bridge.command.2 compose.yml | sed 's/\$\$/$/g'
 ```
 
-When using this feature, you should:
+When using bridge configuration scripts, you should:
 
 * Start the `bridge` container on every host machine.
 * Start each of other containers on exactly one host machine.
+
+The `--place` flag(s) defines which host machine should run each network function.
+They are generated into a `compose.sh` bash script.
 
 ### VXLAN Bridge
 
@@ -96,3 +101,31 @@ The operator between a container name and a host interface MAC address could be 
 
 Bridge configuration scripts will locate the host interface and invoke [pipework](https://github.com/jpetazzo/pipework) to make the move.
 The specified host interface MAC address must exist on the host machine where you start the relevant network function, otherwise this procedure will fail.
+
+### Placement
+
+By default, if you simply run `docker compose up -d`, all network functions are started on the primary host.
+`--place=PATTERN@HOST` moves network functions matching pattern *PATTERN* to the Docker host *HOST*.
+Example:
+
+```text
+--place="+(gnb*|ue*)@192.168.60.3" --place="upf*@192.168.60.4"
+```
+
+The patterns should be written in [minimatch](https://www.npmjs.com/package/minimatch)-compatible syntax.
+They are matched in the order they are specified.
+If a container name does not match any pattern, it stays on the primary host.
+The `bridge` container will always run on every host.
+
+It is your responsibility to ensure Docker networks that span multiple hosts have a bridge connecting them.
+Otherwise, the 5G network probably will not work.
+
+When using this feature, you should start and stop the scenario with alternate commands:
+
+```bash
+./compose.sh up -d
+./compose.sh down --remove-orphans
+```
+
+With `--place` flags, all containers are defined in a single Compose file but the `compose.sh` script will list each container name for the proper host machine.
+You can add `--split` flag to generate a separate Compose file for each host machine, if you prefer that way.

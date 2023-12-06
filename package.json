@@ -33,6 +33,7 @@
     "js-yaml": "^4.1.0",
     "json-stringify-deterministic": "^1.0.12",
     "minimalistic-assert": "^1.0.1",
+    "minimatch": "^9.0.3",
     "mnemonist": "^0.39.6",
     "netmask": "^2.0.2",
     "p-event": "^6.0.0",
