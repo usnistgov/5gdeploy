@@ -89,13 +89,4 @@ MAC_N3_UPF141=02:00:00:03:00:05
   --bridge=n3,eth,gnb0=$MAC_N3_GNB0,gnb1=$MAC_N3_GNB1,upf1=$MAC_N3_UPF1,upf140=$MAC_N3_UPF140,upf141=$MAC_N3_UPF141
 ```
 
-The `--bridge=net,eth,` flag must list all containers on a network.
-The operator between a container name and a host interface MAC address could be either `=` or `@`.
-
-* The `=` operator moves the host interface into the container.
-  It becomes inaccessible from the host and cannot be shared among multiple containers.
-  The original MAC address is used by the container.
-* The `@` operator creates a MACVLAN subinterface on the host interface.
-  The host interface remains accessible on the host.
-  Multiple containers may share the same host interface, and each container gets its own MAC address.
-  Currently this uses MACVLAN "bridge" mode, so that traffic between two containers on the same host interface is switched internally in the Ethernet adapter and does not appear on the connected Ethernet switch.
+See `5gdeploy/netdef-compose/READMD.md` for more details.

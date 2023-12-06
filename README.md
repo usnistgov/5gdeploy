@@ -98,9 +98,3 @@ cd ~/5gdeploy-scenario
 ./upload.sh docker 192.168.60.2 192.168.60.3
 # change these IP addresses to the hosts in your setup
 ```
-
-If you are using VMware virtual machines and plan to run a scenario over VXLAN tunnels, it is advised to change offload settings on the network interfaces used by tunnel endpoints:
-
-```bash
-sudo ethtool --offload ens160 tx-checksum-ip-generic off
-```

@@ -39,4 +39,8 @@ done
 env -C ../5gdeploy corepack pnpm -s netdef-compose --netdef=$OUT/netdef.json --out=$OUT $*
 
 msg Scenario folder is ready, to start the scenario:
-msg ' ' docker compose --project-directory=$(readlink -f $OUT) up -d
+if [[ -x $OUT/compose.sh ]]; then
+  msg ' ' $(readlink -f $OUT)/compose.sh up -d
+else
+  msg ' ' docker compose --project-directory=$(readlink -f $OUT) up -d
+fi

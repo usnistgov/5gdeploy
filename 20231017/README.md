@@ -79,21 +79,18 @@ N4_UPF4=02:00:00:04:00:03
 # generate Compose file with bridge support
 ./generate.sh 20231017 \
   --bridge=n3,eth,gnb0=$N3_GNB0,upf1=$N3_UPF1,upf4=$N3_UPF4 \
-  --bridge=n4,eth,smf=$N4_SMF,upf1=$N4_UPF1,upf4=$N4_UPF4
+  --bridge=n4,eth,smf=$N4_SMF,upf1=$N4_UPF1,upf4=$N4_UPF4 \
+  --place="+(upf1|dn_internet)@$CTRL_UPF1" \
+  --place="+(upf4|dn_v*)@$CTRL_UPF4"
 
 # upload Compose file and config folder to secondary hosts
 ./upload.sh ~/compose/20231017 $CTRL_UPF1 $CTRL_UPF4
 
 # start the scenario
-cd ~/compose/20231017
-docker compose up -d bridge $(yq '.services | keys | filter(test("^(dn|upf)[_0-9]") | not) | .[]' compose.yml)
-docker -H ssh://$CTRL_UPF1 compose up -d bridge upf1 dn_internet
-docker -H ssh://$CTRL_UPF4 compose up -d bridge upf4 dn_vcam dn_vctl
+~/compose/20231017/compose.sh up -d
 
 # stop the scenario
-docker compose down --remove-orphans
-docker -H ssh://$CTRL_UPF1 compose down --remove-orphans
-docker -H ssh://$CTRL_UPF4 compose down --remove-orphans
+~/compose/20231017/compose.sh down --remove-orphans
 ```
 
 This scenario has 1 gNB by default.
