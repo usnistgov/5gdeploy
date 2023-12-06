@@ -25,6 +25,7 @@ main(int argc, char* argv[]) {
   cmd.AddValue("connect", "run as client and connect to server IPv4 address", connectTo);
   cmd.AddValue("clients", "number of clients (1-1000)", nClients);
   cmd.Parse(argc, argv);
+  NS_ASSERT_MSG(!tapIfname.empty(), "tap-if != ''");
   NS_ASSERT_MSG(isServer != (!connectTo.IsAny()), "server-mode || client-mode");
   NS_ASSERT_MSG(nClients >= 1, "clients >= 1");
 
@@ -38,10 +39,10 @@ main(int argc, char* argv[]) {
   tapHelper.SetDeviceName(tapIfname);
   tapHelper.SetTapIpv4Address(tapIP);
   tapHelper.SetTapIpv4Mask(tapMask);
-  auto emuDevice = tapHelper.Install(node).Get(0);
+  auto tapDevice = tapHelper.Install(node).Get(0);
 
   auto ipv4 = node->GetObject<ns3::Ipv4>();
-  auto intf = ipv4->AddInterface(emuDevice);
+  auto intf = ipv4->AddInterface(tapDevice);
   ipv4->AddAddress(intf, ns3::Ipv4InterfaceAddress(appIP, tapMask));
   ipv4->SetMetric(intf, 1);
   ipv4->SetUp(intf);
