@@ -117,6 +117,23 @@ export function defineService(c: ComposeFile, name: string, image: string): Comp
   return service;
 }
 
+/** Get service annotation. */
+export function annotate(s: ComposeService, key: string): string | undefined;
+/** Set service annotation. */
+export function annotate(s: ComposeService, key: string, value: string | number): ComposeService;
+/** Assign service annotations. */
+
+export function annotate(s: ComposeService, key: string, value?: string | number) {
+  key = `5gdeploy.${key}`;
+  if (value === undefined) {
+    return s.annotations?.[key];
+  }
+
+  s.annotations ??= {};
+  s.annotations[key] = `${value}`;
+  return s;
+}
+
 /** Add a netif to a service. */
 export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string): ComposeNetif {
   const service = c.services[ct];

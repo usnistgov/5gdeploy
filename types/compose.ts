@@ -16,6 +16,7 @@ export interface ComposeNetwork {
 
 /** Compose service. */
 export interface ComposeService {
+  annotations?: Record<string, string>;
   container_name: string;
   hostname: string;
   image: string;
@@ -33,6 +34,7 @@ export interface ComposeService {
   pid?: "host";
   network_mode?: "host" | "none" | `service:${string}`;
   networks: Record<string, ComposeNetif>;
+  cpuset?: string;
 }
 
 /** Compose service bind volume. */

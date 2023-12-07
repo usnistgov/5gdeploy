@@ -129,3 +129,18 @@ When using this feature, you should start and stop the scenario with alternate c
 
 With `--place` flags, all containers are defined in a single Compose file but the `compose.sh` script will list each container name for the proper host machine.
 You can add `--split` flag to generate a separate Compose file for each host machine, if you prefer that way.
+
+### CPU Isolation
+
+It is possible to configure CPU isolation as part of the `--place` flag.
+`--place=PATTERN@HOST(CPUSET)` allocates CPU cores in *CPUSET* on *HOST* to network functions matching pattern *PATTERN*.
+To allocate CPU cores on the primary host, omit the `HOST` part and write `--place=PATTERN@(CPUSET)` only.
+Example:
+
+```text
+--place="+(gnb*|ue*)@192.168.60.3(4,8-13)" --place="upf*@192.168.60.4(4-7)" --place="*@(16-31)"
+```
+
+In each cpuset, two CPU cores are designated as *shared* and others are dedicated.
+Some network functions will request a specified number of dedicated cores.
+When dedicated cores are fully allocated, as well as for network functions that do not request dedicated cores, the shared cores will be used.

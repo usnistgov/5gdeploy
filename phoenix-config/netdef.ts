@@ -19,6 +19,12 @@ import { IPMAP } from "./ipmap.js";
 import type { NetworkFunction } from "./nf.js";
 
 export const phoenixOptions = {
+  "phoenix-upf-workers": {
+    default: 2,
+    desc: "number of worker threads in UPF",
+    group: "phoenix",
+    type: "number",
+  },
   "phoenix-gnb-workers": {
     default: 2,
     desc: "number of worker threads in gNB",
@@ -387,7 +393,10 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
   }
 
   private buildUPFs(): void {
+    const nWorkers = this.opts["phoenix-upf-workers"];
+
     for (const [ct, upf] of this.createNetworkFunction("5g/upf1.json", ["n3", "n4", "n6", "n9"], this.ctx.network.upfs)) {
+      compose.annotate(this.ctx.c.services[ct]!, "cpus", nWorkers);
       const peers = this.netdef.gatherUPFPeers(upf);
       assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
       assert(peers.N6IPv6.length === 0, "UPF does not supports IPv6 DN");
@@ -398,6 +407,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         assert(config.data_plane_mode === "integrated");
 
         config.ethernet_session_identifier = peers.N6Ethernet[0]?.dnn;
+        config.DataPlane.threads = nWorkers;
         config.DataPlane.interfaces = [];
         if (peers.N3.length > 0) {
           config.DataPlane.interfaces.push({
@@ -473,8 +483,10 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     const sliceKeys = ["slice", "slice2"] as const;
     const slices = this.netdef.nssai.map((snssai) => expandSNSSAI(snssai));
     assert(slices.length <= sliceKeys.length, `gNB allows up to ${sliceKeys.length} slices`);
+    const nWorkers = this.opts["phoenix-gnb-workers"];
 
     for (const [ct, gnb] of this.createNetworkFunction("5g/gnb1.json", ["air", "n2", "n3"], this.ctx.network.gnbs)) {
+      compose.annotate(this.ctx.c.services[ct]!, "cpus", nWorkers);
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("gnb");
         delete config.amf_addr;
@@ -496,7 +508,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
           }
         }
 
-        config.forwarding_worker = this.opts["phoenix-gnb-workers"];
+        config.forwarding_worker = nWorkers;
       });
       this.sf.initCommands.set(ct, [
         "iptables -I OUTPUT -p icmp --icmp-type destination-unreachable -j DROP",
@@ -506,6 +518,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 
   private buildUEs(): void {
     for (const [ct, sub] of this.createNetworkFunction("5g/ue1.json", ["air"], this.ctx.netdef.listSubscribers())) {
+      compose.annotate(this.ctx.c.services[ct]!, "cpus", 1);
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("ue_5g_nas_only");
         config.usim = {
