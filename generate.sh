@@ -24,7 +24,11 @@ msg Output folder is $OUT
 
 if [[ -f $OUT/compose.yml ]]; then
   msg Deleting existing scenario
-  docker compose --project-directory=$OUT down --remove-orphans
+  if [[ -x $OUT/compose.sh ]]; then
+    $OUT/compose.sh down --remove-orphans
+  else
+    docker compose --project-directory=$OUT down --remove-orphans
+  fi || true
   rm -rf $OUT/*
 fi
 
