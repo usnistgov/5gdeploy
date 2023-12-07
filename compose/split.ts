@@ -37,7 +37,7 @@ export function splitOutput(c: ComposeFile, { place = [], split }: InferredOptio
     const assignCpuset = new AssignCpuset(cpuset);
 
     for (const [ct, s] of services) {
-      if (ct === "bridge") {
+      if (ctEveryHost.has(ct)) {
         //
       } else if (minimatch(ct, pattern)) {
         services.delete(ct);
@@ -45,11 +45,13 @@ export function splitOutput(c: ComposeFile, { place = [], split }: InferredOptio
       } else {
         continue;
       }
-      hostServices.get(host)[ct] = assignCpuset.update(s);
+      hostServices.get(host)[ct] = assignCpuset.update(ct, s);
     }
   }
   for (const [ct, s] of services) {
-    annotate(s, "host", "");
+    if (!ctEveryHost.has(ct)) {
+      annotate(s, "host", "");
+    }
     hostServices.get("")[ct] = s;
   }
 
@@ -80,6 +82,8 @@ export function splitOutput(c: ComposeFile, { place = [], split }: InferredOptio
   return outputFiles;
 }
 
+const ctEveryHost = new Set(["bridge"]);
+
 class AssignCpuset {
   constructor(cpuset?: string) {
     if (!cpuset) {
@@ -107,8 +111,8 @@ class AssignCpuset {
   private readonly unused: number[] = [];
   private readonly shared: string = "";
 
-  public update(s: ComposeService): ComposeService {
-    if (!this.enabled) {
+  public update(ct: string, s: ComposeService): ComposeService {
+    if (!this.enabled || ctEveryHost.has(ct)) {
       return s;
     }
 
