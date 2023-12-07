@@ -61,6 +61,8 @@ In this sample, we use three physical/virtual machines, each running these servi
 Each machine shall have two network interfaces apart from the control interface.
 
 * `CTRL_*` variables define the control interface IP addresses, for SSH usage.
+* `CPUSET_*` variables define a list of CPU cores on each host for CPU isolation.
+  * To disable CPU isolation, set them to empty strings.
 * `N3_*` variables define MAC addresses for N3 network of relevant network functions.
   * QoS rules may be applied on the hardware switch connected to these interfaces.
 * `N4_*` variables define MAC addresses for N4 network of relevant network functions.
@@ -69,6 +71,9 @@ Each machine shall have two network interfaces apart from the control interface.
 # define variables for network interfaces
 CTRL_UPF1=192.168.60.2
 CTRL_UPF4=192.168.60.3
+CPUSET_PRIMARY="(2-11)"
+CPUSET_UPF1="(2-11)"
+CPUSET_UPF4="(2-11)"
 N3_GNB0=02:00:00:03:00:01
 N3_UPF1=02:00:00:03:00:02
 N3_UPF4=02:00:00:03:00:03
@@ -76,12 +81,13 @@ N4_SMF=02:00:00:04:00:01
 N4_UPF1=02:00:00:04:00:02
 N4_UPF4=02:00:00:04:00:03
 
-# generate Compose file with bridge support
+# generate Compose file
 ./generate.sh 20231017 \
   --bridge=n3,eth,gnb0=$N3_GNB0,upf1=$N3_UPF1,upf4=$N3_UPF4 \
   --bridge=n4,eth,smf=$N4_SMF,upf1=$N4_UPF1,upf4=$N4_UPF4 \
-  --place="+(upf1|dn_internet)@$CTRL_UPF1" \
-  --place="+(upf4|dn_v*)@$CTRL_UPF4"
+  --place="+(upf1|dn_internet)@$CTRL_UPF1$CPUSET_UPF1" \
+  --place="+(upf4|dn_v*)@$CTRL_UPF4$CPUSET_UPF4" \
+  --place="*@$CPUSET_PRIMARY"
 
 # upload Compose file and config folder to secondary hosts
 ./upload.sh ~/compose/20231017 $CTRL_UPF1 $CTRL_UPF4
