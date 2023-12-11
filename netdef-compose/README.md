@@ -120,11 +120,22 @@ The `bridge` container will always run on every host.
 It is your responsibility to ensure Docker networks that span multiple hosts have a bridge connecting them.
 Otherwise, the 5G network probably will not work.
 
-When using this feature, you should start and stop the scenario with alternate commands:
+A `compose.sh` script is generated, which allows you to interact with the multi-host scenario:
 
 ```bash
-./compose.sh up -d
-./compose.sh down --remove-orphans
+# start the scenario on all hosts
+./compose.sh up
+
+# stop the scenario on all hosts
+./compose.sh down
+
+# execute a Docker command on the host machine of the specified network function
+$(./compose.sh at CT) CMD
+# example:
+$(./compose.sh at ue1000) logs -f ue1000
+# $(./compose.sh at CT) expands to either:
+# - 'docker', if the named container is placed on the primary host
+# - 'docker -H ssh://HOST', if the named container is placed on a secondary host
 ```
 
 With `--place` flags, all containers are defined in a single Compose file but the `compose.sh` script will list each container name for the proper host machine.

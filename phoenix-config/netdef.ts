@@ -6,6 +6,7 @@ import { Netmask } from "netmask";
 import sql from "sql-tagged-template-literal";
 import type { Constructor } from "type-fest";
 import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
+import yargs from "yargs";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
@@ -35,10 +36,12 @@ export const phoenixOptions = {
 
 type PhoenixOpts = InferredOptionTypes<typeof phoenixOptions>;
 
+const defaultOptions: PhoenixOpts = yargs([]).option(phoenixOptions).parseSync();
+
 const templatePath = fileURLToPath(new URL("../../phoenix-repo/phoenix-src/cfg", import.meta.url));
 
-function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext, PhoenixOpts]>): (ctx: NetDefComposeContext, opts: PhoenixOpts) => Promise<void> {
-  return async (ctx, opts): Promise<void> => {
+function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext, PhoenixOpts]>): (ctx: NetDefComposeContext, opts?: PhoenixOpts) => Promise<void> {
+  return async (ctx, opts = defaultOptions): Promise<void> => {
     const b = new cls(ctx, opts);
     b.build();
     await b.save();
