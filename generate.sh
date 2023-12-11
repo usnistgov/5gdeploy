@@ -25,7 +25,7 @@ msg Output folder is $OUT
 if [[ -f $OUT/compose.yml ]]; then
   msg Deleting existing scenario
   if [[ -x $OUT/compose.sh ]]; then
-    $OUT/compose.sh down --remove-orphans
+    $OUT/compose.sh down
   else
     docker compose --project-directory=$OUT down --remove-orphans
   fi || true
@@ -44,7 +44,7 @@ env -C ../5gdeploy corepack pnpm -s netdef-compose --netdef=$OUT/netdef.json --o
 
 msg Scenario folder is ready, to start the scenario:
 if [[ -x $OUT/compose.sh ]]; then
-  msg ' ' $(readlink -f $OUT)/compose.sh up -d
+  msg ' ' $(readlink -f $OUT)/compose.sh up
 else
   msg ' ' docker compose --project-directory=$(readlink -f $OUT) up -d
 fi

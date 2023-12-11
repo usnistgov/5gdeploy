@@ -93,10 +93,10 @@ N4_UPF4=02:00:00:04:00:03
 ./upload.sh ~/compose/20231017 $CTRL_UPF1 $CTRL_UPF4
 
 # start the scenario
-~/compose/20231017/compose.sh up -d
+~/compose/20231017/compose.sh up
 
 # stop the scenario
-~/compose/20231017/compose.sh down --remove-orphans
+~/compose/20231017/compose.sh down
 ```
 
 This scenario has 1 gNB by default.

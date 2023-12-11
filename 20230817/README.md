@@ -52,23 +52,21 @@ CTRL_UP=192.160.60.2
 EXP_CP=192.168.60.1
 EXP_UP=192.168.60.2
 
-# generate Compose file with bridge support
+# generate Compose file
 ./generate.sh 20230817 --ran=ueransim \
   --bridge=n2,vx,$EXP_CP,$EXP_UP \
   --bridge=n3,vx,$EXP_CP,$EXP_UP \
-  --bridge=n4,vx,$EXP_CP,$EXP_UP
+  --bridge=n4,vx,$EXP_CP,$EXP_UP \
+  --place="+(dn|upf|gnb|ue)*@$CTRL_UP"
 
 # upload Compose file and config folder to the secondary host
 ./upload.sh ~/compose/20230817 $CTRL_UP
 
 # start the scenario
-cd ~/compose/20230817
-docker compose up -d bridge $(yq '.services | keys | filter(test("^(dn|upf|gnb|ue)[_0-9]") | not) | .[]' compose.yml)
-docker -H ssh://$CTRL_UP compose up -d bridge $(yq '.services | keys | filter(test("^(dn|upf|gnb|ue)[_0-9]")) | .[]' compose.yml)
+~/compose/20230817/compose.sh up
 
 # stop the scenario
-docker compose down --remove-orphans
-docker -H ssh://$CTRL_UP compose down --remove-orphans
+~/compose/20230817/compose.sh down
 ```
 
 ## Physical Ethernet Ports
