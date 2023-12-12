@@ -44,6 +44,7 @@ done
 for UECT in $(docker ps --format='{{.Names}}' | grep '^ue4'); do
   corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn=vcam --dnn=vctl
 done
+# note: in multi-host deployment, this only works for UEs running on the primary host
 ```
 
 ## Traffic Generation

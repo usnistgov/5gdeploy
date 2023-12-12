@@ -54,20 +54,32 @@ Statistics are written to `iperf3/*.json` for later analysis.
 See `5gdeploy/docker/ns3http/README.md` for more explanation on how this container works and its optional command line flags.
 
 ```bash
-# start 3GPP HTTP server in Data Network 'internet'
-$(./compose.sh at dn_internet) run -d --name ns3http_internet --cap-add=NET_ADMIN --device /dev/net/tun \
-  --network container:dn_internet -e NS_LOG=ThreeGppHttpServer \
-  5gdeploy.localhost/ns3http 0 n6 --listen
+# define variables
+INDEX=0
+DNN=internet
+DNCT=dn_${DNN}
+DNIP=$(yq .services.$DNCT.networks.n6.ipv4_address compose.yml)
+DNCPUSET=$(yq .services.$DNCT.cpuset compose.yml)
+UECT=ue1000
+UESUBNET=10.1.0.0/16
+UECPUSET=$(yq .services.$UECT.cpuset compose.yml)
+UECOUNT=10
 
-# start 3GPP HTTP clients in ue1000
-SERVER=$(yq .services.dn_internet.networks.n6.ipv4_address compose.yml)
-$(./compose.sh at ue1000) run -d --name ns3http_ue1000 --cap-add=NET_ADMIN --device /dev/net/tun \
-  --network container:ue1000 -e NS_LOG=ThreeGppHttpClient \
-  5gdeploy.localhost/ns3http 0 10.1.0.0/16 --connect=$SERVER --clients=10
+# start 3GPP HTTP server in Data Network
+$(./compose.sh at $DNCT) run -d --name ns3http_${DNN} --cap-add=NET_ADMIN --device /dev/net/tun \
+  $([[ -n $DNCPUSET ]] && echo --cpuset-cpus=$DNCPUSET) \
+  --network container:$DNCT -e NS_LOG=ThreeGppHttpServer \
+  5gdeploy.localhost/ns3http $INDEX n6 --listen
+
+# start 3GPP HTTP clients
+$(./compose.sh at $UECT) run -d --name ns3http_${UECT} --cap-add=NET_ADMIN --device /dev/net/tun \
+  $([[ -n $UECPUSET ]] && echo --cpuset-cpus=$UECPUSET) \
+  --network container:$UECT -e NS_LOG=ThreeGppHttpClient \
+  5gdeploy.localhost/ns3http $INDEX $UESUBNET --connect=$DNIP --clients=$UECOUNT
 
 # gather logs and stop applications
-$(./compose.sh at dn_internet) logs ns3http_internet &>ns3http_internet.log
-$(./compose.sh at ue1000) logs ns3http_ue1000 &>ns3http_ue1000.log
-$(./compose.sh at dn_internet) rm -f ns3http_internet
-$(./compose.sh at ue1000) rm -f ns3http_ue1000
+$(./compose.sh at $DNCT) logs ns3http_${DNN} &>ns3http_${DNN}.log
+$(./compose.sh at $UECT) logs ns3http_${UECT} &>ns3http_${UECT}.log
+$(./compose.sh at $DNCT) rm -f ns3http_${DNN}
+$(./compose.sh at $UECT) rm -f ns3http_${UECT}
 ```

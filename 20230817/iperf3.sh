@@ -138,19 +138,18 @@ iperf3_wait() {
 
 iperf3_collect() {
   assert_state_exists
-  msg Gathering iperf3 statistics
+  msg Gathering iperf3 statistics to iperf3/\*.json
   mkdir -p iperf3/
   rm -rf iperf3/*.json
   jq -r 'to_entries[] | (
     .value.UEHOST + " logs " + .key + "_c | jq -s .[-1] >iperf3/" + .key + "_c.json",
     .value.DNHOST + " logs " + .key + "_s | jq -s .[-1] >iperf3/" + .key + "_s.json"
   )' iperf3.state.json | bash
-  msg 'Gathered iperf3 statistics to iperf3/*.json'
 }
 
 iperf3_stop() {
   assert_state_exists
-  msg Stopping iperf3 traffic generators
+  msg Deleting iperf3 servers and clients
   jq -r 'to_entries[] | (
     .value.UEHOST + " rm -f " + .key + "_c",
     .value.DNHOST + " rm -f " + .key + "_s"

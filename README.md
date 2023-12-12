@@ -42,15 +42,15 @@ cd ~/5gdeploy-scenario
 
 # start a scenario
 cd ~/compose/20230601
-docker compose up -d
-# You can only run one scenario at a time. Shutdown other scenarios before starting one.
+./compose.sh up # or 'docker compose up -d' in single-host deployment
+# You may only run one scenario at a time. Shutdown other scenarios before starting one.
 # Generally a scenario takes 30~60 seconds to start and stabilize, please be patient.
 
 # start a scenario with traffic capture
 cd ~/compose/20230601
-docker compose create
+./compose.sh create # or 'docker compose create' in single-host deployment
 dumpcap -i br-cp -i br-n2 -i br-n3 -w ~/1.pcapng  # run this in another console
-docker compose up -d
+./compose.sh up # or 'docker compose up -d' in single-host deployment
 
 # list running containers
 docker ps -a
@@ -65,7 +65,7 @@ docker logs amf1 >amf1.log
 
 # stop a scenario
 cd ~/compose/20230601
-docker compose down --remove-orphans
+./compose.sh down # or 'docker compose down --remove-orphans' in single-host deployment
 ```
 
 ## Multi-Host Preparation
