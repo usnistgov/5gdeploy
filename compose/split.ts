@@ -124,11 +124,11 @@ function makeFilename(host: string): string {
   return `compose.${host.replaceAll(/\W/g, "_")}.yml`;
 }
 
-function makeFlagH(host: string): string {
+function makeDockerH(host: string): string {
   if (!host) {
-    return "";
+    return "docker";
   }
-  return ` -H ssh://${host}`;
+  return `docker -H ssh://${host}`;
 }
 
 const scriptHead = [
@@ -142,13 +142,20 @@ const scriptHead = [
 
 const scriptUsage = `Usage:
   ./compose.sh up
+    Start the scenario.
   ./compose.sh down
-  $(./compose.sh at CT) CMD`;
+    Stop the scenario.
+  $(./compose.sh at CT) CMD
+    Run Docker command CMD on the host machine of container CT.
+  ./compose.sh create
+    Create scenario containers to prepare for traffic capture.
+`;
 
 const minimalScript = [
   ...scriptHead,
   "case $ACT in",
   "  at) echo docker;;",
+  "  create) docker compose create;;",
   "  up) docker compose up -d;;",
   "  down) docker compose down --remove-orphans;;",
   `  *) echo ${shlex.quote(scriptUsage)}; exit 1;;`,
@@ -161,22 +168,25 @@ function* makeScript(hostServices: Iterable<[host: string, services: ComposeFile
   yield "if [[ $ACT == at ]]; then";
   yield "  case ${2:-} in"; // eslint-disable-line no-template-curly-in-string
   for (const [host, services] of hostServices) {
-    yield `    ${Object.keys(services).join("|")}) echo docker${makeFlagH(host)};;`;
+    yield `    ${Object.keys(services).join("|")}) echo ${makeDockerH(host)};;`;
   }
   yield "    *) die Container not found;;";
   yield "  esac";
 
-  for (const [act, cmd] of [["up", "up -d"], ["down", "down --remove-orphans"]]) {
+  for (const [act, cmd, listServiceNames, msg1, msg2] of [
+    ["create", "create", true, "Creating scenario containers", "Scenario containers have been created, ready for traffic capture"],
+    ["up", "up -d", true, "Starting the scenario", "Scenario has started"],
+    ["down", "down --remove-orphans", false, "Stopping the scenario", "Scenario has stopped"],
+  ] as const) {
     yield `elif [[ $ACT == ${act} ]]; then`;
     for (const [host, services] of hostServices) {
-      yield `  msg Bringing ${act} the scenario on ${host || "PRIMARY"}`;
-      if (split) {
-        yield `  docker${makeFlagH(host)} compose -f ${makeFilename(host)} ${cmd}`;
-      } else {
-        yield `  docker${makeFlagH(host)} compose ${cmd} ${Object.keys(services).join(" ")}`;
-      }
+      yield `  msg ${shlex.quote(msg1)} on ${host || "PRIMARY"}`;
+      yield `  ${makeDockerH(host)} compose${split ? ` -f ${makeFilename(host)}` : ""} ${cmd}${
+        listServiceNames ? ` ${Object.keys(services).join(" ")}` : ""}`;
     }
-    yield `  msg Scenario has been brought ${act}`;
+    if (msg2) {
+      yield `  msg ${shlex.quote(msg2)}`;
+    }
   }
 
   yield "else";
