@@ -10,6 +10,7 @@ import { NetDef } from "../netdef/netdef.js";
 import { oaiUPtiny, oaiUPvpp } from "../oai-config/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix-config/mod.js";
 import { NetDefComposeContext } from "./context.js";
+import { dnOptions, saveDNOptions } from "./dn.js";
 import { RANProviders } from "./ran.js";
 
 type Providers = Record<string, (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>>;
@@ -68,11 +69,13 @@ const args = await yargs(hideBin(process.argv))
   })
   .option(compose.bridgeOptions)
   .option(compose.splitOptions)
+  .option(dnOptions)
   .option(phoenixOptions)
   .parseAsync();
 
 const netdef = new NetDef(JSON.parse(await (args.netdef === "-" ? getStdin() : fs.readFile(args.netdef, "utf8"))));
 netdef.validate();
+saveDNOptions(args);
 const ctx = new NetDefComposeContext(netdef, args.out, { ipSpace: args.ipSpace });
 await upProviders[args.up]!(ctx, args);
 await cpProviders[args.cp]!(ctx, args);

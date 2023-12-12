@@ -5,8 +5,7 @@ import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import sql from "sql-tagged-template-literal";
 import type { Constructor } from "type-fest";
-import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
-import yargs from "yargs";
+import yargs, { type InferredOptionTypes, type Options as YargsOptions } from "yargs";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
@@ -32,10 +31,15 @@ export const phoenixOptions = {
     group: "phoenix",
     type: "number",
   },
+  "phoenix-ue-isolated": {
+    default: [""],
+    desc: "UEs with a reserved CPU core (list of SUPI suffixes)",
+    group: "phoenix",
+    string: true,
+    type: "array",
+  },
 } as const satisfies Record<string, YargsOptions>;
-
 type PhoenixOpts = InferredOptionTypes<typeof phoenixOptions>;
-
 const defaultOptions: PhoenixOpts = yargs([]).option(phoenixOptions).parseSync();
 
 const templatePath = fileURLToPath(new URL("../../phoenix-repo/phoenix-src/cfg", import.meta.url));
@@ -520,8 +524,11 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
   }
 
   private buildUEs(): void {
+    const { "phoenix-ue-isolated": isolated } = this.opts;
     for (const [ct, sub] of this.createNetworkFunction("5g/ue1.json", ["air"], this.ctx.netdef.listSubscribers())) {
-      compose.annotate(this.ctx.c.services[ct]!, "cpus", 1);
+      compose.annotate(this.ctx.c.services[ct]!, "cpus",
+        isolated.some((suffix) => sub.supi.endsWith(suffix)) ? 1 : 0,
+      );
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("ue_5g_nas_only");
         config.usim = {

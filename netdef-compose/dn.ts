@@ -1,26 +1,37 @@
 import assert from "minimalistic-assert";
+import DefaultWeakMap from "mnemonist/default-weak-map.js";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
+import yargs, { type InferredOptionTypes, type Options as YargsOptions } from "yargs";
 
 import * as compose from "../compose/mod.js";
 import { type NetDef } from "../netdef/netdef.js";
 import type * as N from "../types/netdef.js";
 import type { NetDefComposeContext } from "./context.js";
 
+export const dnOptions = {
+  "dn-workers": {
+    default: 1,
+    desc: "number of reserved CPU cores for each Data Network container",
+    type: "number",
+  },
+} as const satisfies Record<string, YargsOptions>;
+type DNOpts = InferredOptionTypes<typeof dnOptions>;
+let savedOpts: DNOpts = yargs([]).option(dnOptions).parseSync();
+export function saveDNOptions(opts: DNOpts): void {
+  savedOpts = opts;
+}
+
 const dnDockerImage = "5gdeploy.localhost/dn";
 const upfRouteTableBase = 5000;
 const upfRouteRulePriority = 100;
 
-const ctxHasUniqueDNNs = new WeakMap<NetDefComposeContext, boolean>();
+const ctxHasUniqueDNNs = new DefaultWeakMap<NetDefComposeContext, boolean>(
+  (ctx) => new Set(Array.from(ctx.network.dataNetworks, (dn) => dn.dnn)).size === ctx.network.dataNetworks.length,
+);
 
 function makeDNServiceName(ctx: NetDefComposeContext, dn: N.DataNetworkID): string {
-  let hasUniqueDNNs = ctxHasUniqueDNNs.get(ctx);
-  if (hasUniqueDNNs === undefined) {
-    hasUniqueDNNs = new Set(Array.from(ctx.network.dataNetworks, (dn) => dn.dnn)).size === ctx.network.dataNetworks.length;
-    ctxHasUniqueDNNs.set(ctx, hasUniqueDNNs);
-  }
-
-  if (hasUniqueDNNs) {
+  if (ctxHasUniqueDNNs.get(ctx)) {
     return `dn_${dn.dnn}`;
   }
   return `dn_${dn.snssai}_${dn.dnn}`;
@@ -31,12 +42,14 @@ function makeDNServiceName(ctx: NetDefComposeContext, dn: N.DataNetworkID): stri
  * This shall be called before creating UPFs.
  */
 export function defineDNServices(ctx: NetDefComposeContext): void {
+  const { "dn-workers": nWorkers } = savedOpts;
   for (const dn of ctx.network.dataNetworks) {
     if (dn.type !== "IPv4") {
       continue;
     }
     const s = ctx.defineService(makeDNServiceName(ctx, dn), dnDockerImage, ["mgmt", "n6"]);
     s.cap_add.push("NET_ADMIN");
+    compose.annotate(s, "cpus", nWorkers);
   }
 }
 

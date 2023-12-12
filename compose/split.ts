@@ -1,6 +1,7 @@
 import assert from "minimalistic-assert";
 import { minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
+import * as shlex from "shlex";
 import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
 
 import type { ComposeFile, ComposeService } from "../types/compose.js";
@@ -130,56 +131,56 @@ function makeFlagH(host: string): string {
   return ` -H ssh://${host}`;
 }
 
-const usageScript = [
-  "  echo 'Usage:'",
-  "  echo '  ./compose.sh up'",
-  "  echo '  ./compose.sh down'",
-  "  echo '  $(./compose.sh at CT) CMD'",
-  "  exit 1",
-];
-
-const minimalScript = [
+const scriptHead = [
   "#!/bin/bash",
   "set -euo pipefail",
   "cd \"$(dirname \"${BASH_SOURCE[0]}\")\"", // eslint-disable-line no-template-curly-in-string
+  "msg() { echo -ne \"\\e[35m[5gdeploy] \\e[94m\"; echo -n \"$*\"; echo -e \"\\e[0m\"; }",
+  "die() { msg \"$*\"; exit 1; }",
   "ACT=${1:-}", // eslint-disable-line no-template-curly-in-string
+];
 
+const scriptUsage = `Usage:
+  ./compose.sh up
+  ./compose.sh down
+  $(./compose.sh at CT) CMD`;
+
+const minimalScript = [
+  ...scriptHead,
   "case $ACT in",
-  "at) echo docker;;",
-  "up) docker compose up -d;;",
-  "down) docker compose down --remove-orphans;;",
-  "*)",
-  ...usageScript,
-  "  ;;",
+  "  at) echo docker;;",
+  "  up) docker compose up -d;;",
+  "  down) docker compose down --remove-orphans;;",
+  `  *) echo ${shlex.quote(scriptUsage)}; exit 1;;`,
   "esac",
 ].join("\n");
 
 function* makeScript(hostServices: Iterable<[host: string, services: ComposeFile["services"]]>, split: boolean): Iterable<string> {
-  yield "#!/bin/bash";
-  yield "set -euo pipefail";
-  yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
-  yield "ACT=${1:-}"; // eslint-disable-line no-template-curly-in-string
+  yield* scriptHead;
 
   yield "if [[ $ACT == at ]]; then";
   yield "  case ${2:-} in"; // eslint-disable-line no-template-curly-in-string
   for (const [host, services] of hostServices) {
-    yield `  ${Object.keys(services).join("|")}) echo docker${makeFlagH(host)};;`;
+    yield `    ${Object.keys(services).join("|")}) echo docker${makeFlagH(host)};;`;
   }
-  yield "  *) echo Container not found; exit 1;;";
+  yield "    *) die Container not found;;";
   yield "  esac";
 
   for (const [act, cmd] of [["up", "up -d"], ["down", "down --remove-orphans"]]) {
     yield `elif [[ $ACT == ${act} ]]; then`;
     for (const [host, services] of hostServices) {
+      yield `  msg Bringing ${act} the scenario on ${host || "PRIMARY"}`;
       if (split) {
         yield `  docker${makeFlagH(host)} compose -f ${makeFilename(host)} ${cmd}`;
       } else {
         yield `  docker${makeFlagH(host)} compose ${cmd} ${Object.keys(services).join(" ")}`;
       }
     }
+    yield `  msg Scenario has been brought ${act}`;
   }
 
   yield "else";
-  yield* usageScript;
+  yield `  echo ${shlex.quote(scriptUsage)}`;
+  yield "  exit 1";
   yield "fi";
 }
