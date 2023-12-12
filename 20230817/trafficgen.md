@@ -16,60 +16,37 @@ $(./compose.sh at dn_vctl) exec dn_vctl nmap -sn 10.141.0.0/24
 
 ## iperf3
 
-Start traffic generators:
+Define traffic generators:
 
 ```bash
-start_iperf3_ue_dn() {
-  local DNN=$1
-  local UEPREFIX=$2
-  local UESUBNET=$3
-  local PORT=$4
-  shift 4
-  local DNCT=dn_${DNN}
-  local DNIP=$(yq ".services.$DNCT.networks.n6.ipv4_address" compose.yml)
-  local CRUN=': '
-  for UECT in $(yq ".services | keys | .[] | select(test(\"^$UEPREFIX\"))" compose.yml); do
-    local UEIPS=$($(./compose.sh at $UECT) exec $UECT ip -j addr show to ${UESUBNET} | jq -r '.[].addr_info[].local')
-    if [[ -z $UEIPS ]]; then
-      continue
-    fi
-    for UEIP in $UEIPS; do
-      $(./compose.sh at $DNCT) run -d --name iperf_${DNN}_${PORT}_s --network container:$DNCT networkstatic/iperf3 --forceflush -B $DNIP -p $PORT -s
-      CRUN=$CRUN"; $(./compose.sh at $UECT) run -d --name iperf_${DNN}_${PORT}_c --network container:$UECT networkstatic/iperf3 --forceflush -B $UEIP -p $PORT --cport $PORT -c $DNIP $*"
-      PORT=$((PORT+1))
-    done
-  done
-  sleep 10
-  bash -c "$CRUN"
-}
-
-start_iperf3_ue_dn vcam ue4 10.140.0.0/16 20000 -t 300 -u -b 36M
-start_iperf3_ue_dn vctl ue4 10.141.0.0/16 20000 -t 300 -u -b 425K -R
-start_iperf3_ue_dn internet ue1 10.1.0.0/16 20000 -t 300 -u -b 15M
-start_iperf3_ue_dn internet ue1 10.1.0.0/16 21000 -t 300 -u -b 50M -R
+alias 5giperf3='~/5gdeploy-scenario/20230817/iperf3.sh'
+5giperf3 init
+5giperf3 add vcam "^ue4" 10.140.0.0/16 20000 -t 300 -u -b 36M
+5giperf3 add vctl "^ue4" 10.141.0.0/16 20000 -t 300 -u -b 425K -R
+5giperf3 add internet "^ue1" 10.1.0.0/16 20000 -t 300 -u -b 15M
+5giperf3 add internet "^ue1" 10.1.0.0/16 21000 -t 300 -u -b 50M -R
 ```
 
-Stop traffic generators:
+Run traffic generators:
 
 ```bash
-# stop and gather logs
-for CT in $(docker ps -a --format='{{.Names}}' | grep '^iperf_' | sort -V); do
-  echo '----------------------------------------------------------------'
-  echo $CT
-  docker kill --signal=INT $CT
-  docker logs $CT
-  docker rm -f $CT
-done &>iperf3.log
+# start iperf3 servers
+5giperf3 servers; sleep 5
 
-# stop without gathering logs
-docker rm -f $(docker ps -a --format='{{.Names}}' | grep '^iperf_')
+# start iperf3 clients
+5giperf3 clients
+
+# wait for iperf3 clients to finish
+5giperf3 wait
+
+# gather statistics
+5giperf3 collect
+
+# delete iperf3 servers and clients
+5giperf3 stop
 ```
 
-For multi-host deployment:
-
-* The start snippet can be used directly.
-* The stop snippet needs to be pasted into SSH consoles of every host machine that has DN and UE containers.
-* CPU isolation is not respected.
+Statistics are written to `iperf3/*.json` for later analysis.
 
 ## ns-3 3GPP HTTP application
 
