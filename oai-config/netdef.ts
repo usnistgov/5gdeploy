@@ -150,7 +150,7 @@ export async function oaiUPvpp(ctx: NetDefComposeContext): Promise<void> {
 export async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB): Promise<void> {
   const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${await oai_conf.getTag()}`, ["air", "n2", "n3"]);
 
-  const c = (await oai_conf.loadTemplate("gnb.sa.band78.106prb.rfsim")) as OAI.gnb.Config;
+  const c = await oai_conf.loadTemplate<OAI.gnb.Config>("gnb.sa.band78.106prb.rfsim");
   c.Active_gNBs = [gnb.name];
 
   assert(c.gNBs.length === 1);
@@ -189,10 +189,11 @@ export async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB)
     phy_log_level: "warn",
   };
 
-  await ctx.writeFile(`ran-cfg/${ct}.conf`, await oai_conf.save(c));
+  await ctx.writeFile(`ran-cfg/${ct}.conf`, c);
 
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
+    "sleep 10",
     "exec /opt/oai-gnb/bin/entrypoint.sh /opt/oai-gnb/bin/nr-softmodem -O /opt/oai-gnb/etc/gnb.conf" +
     " --sa -E --rfsim",
   ]);
@@ -206,7 +207,7 @@ export async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB)
 export async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscriber): Promise<void> {
   const s = ctx.defineService(ct, `oaisoftwarealliance/oai-nr-ue:${await oai_conf.getTag()}`, ["air"]);
 
-  const c = (await oai_conf.loadTemplate("nrue.uicc")) as OAI.ue.Config;
+  const c = await oai_conf.loadTemplate<OAI.ue.Config>("nrue.uicc");
   const [, mnc] = NetDef.splitPLMN(ctx.netdef.network.plmn);
   c.uicc0 = {
     imsi: sub.supi,
@@ -233,10 +234,11 @@ export async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.
     phy_log_level: "warn",
   };
 
-  await ctx.writeFile(`ran-cfg/${ct}.conf`, await oai_conf.save(c));
+  await ctx.writeFile(`ran-cfg/${ct}.conf`, c);
 
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
+    "sleep 20",
     "exec /opt/oai-nr-ue/bin/entrypoint.sh /opt/oai-nr-ue/bin/nr-uesoftmodem -O /opt/oai-nr-ue/etc/nr-ue.conf" +
     " -E --sa --rfsim -r 106 --numerology 1 -C 3619200000",
   ]);

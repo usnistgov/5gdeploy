@@ -15,20 +15,26 @@ export async function getTag(): Promise<string> {
 }
 
 /** Load OAI config from libconfig template. */
-export async function loadTemplate(tpl: string): Promise<unknown> {
+export async function loadTemplate<T extends {}>(tpl: string): Promise<T & { save(): Promise<string> }> {
   const process = await execa("python3", [convertCommand, "conf2json", `${tpl}.conf`], {
     cwd: templatePath,
     stdin: "ignore",
     stdout: "pipe",
     stderr: "inherit",
   });
-  return JSON.parse(process.stdout);
+  const c = JSON.parse(process.stdout);
+  Object.defineProperty(c, "save", {
+    configurable: true,
+    enumerable: false,
+    value: save,
+  });
+  return c;
 }
 
-/** Save OAI config to libconfig string. */
-export async function save(c: unknown): Promise<string> {
+/** Save OAI config 'this' to libconfig string. */
+async function save(this: unknown): Promise<string> {
   const process = await execa("python3", [convertCommand, "json2conf"], {
-    input: JSON.stringify(c),
+    input: JSON.stringify(this),
     stdout: "pipe",
     stderr: "inherit",
   });
