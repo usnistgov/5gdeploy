@@ -83,6 +83,7 @@ export class NetDef {
         subscribedDN: [],
         requestedDN: [],
       };
+      assert(sub.count >= 1);
 
       for (const { snssai, dnns } of sub.subscribedNSSAI) {
         for (const dnn of dnns) {

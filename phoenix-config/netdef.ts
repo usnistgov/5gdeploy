@@ -401,6 +401,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
 
   private buildUPFs(): void {
     const nWorkers = this.opts["phoenix-upf-workers"];
+    assert(nWorkers <= 8, "pfcp.so allows up to 8 threads");
 
     for (const [ct, upf] of this.createNetworkFunction("5g/upf1.json", ["n3", "n4", "n6", "n9"], this.ctx.network.upfs)) {
       compose.annotate(this.ctx.c.services[ct]!, "cpus", nWorkers);
@@ -421,7 +422,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
             type: "n3_n9",
             name: "n3",
             bind_ip: IPMAP.formatEnv(ct, "n3"),
-            mode: "single_thread",
+            mode: "thread_pool",
           });
         }
         if (peers.N9.length > 0) {
@@ -454,18 +455,16 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
       });
 
       this.sf.initCommands.set(ct, [
-        ...(function*() {
-          if (peers.N6IPv4.length > 0) {
-            yield "ip tuntap add mode tun user root name n6_tun";
-            yield "ip link set n6_tun up";
-          }
-          if (peers.N6Ethernet.length > 0) {
-            yield "ip link add name br-eth type bridge";
-            yield "ip link set br-eth up";
-            yield "ip tuntap add mode tap user root name n6_tap";
-            yield "ip link set n6_tap up master br-eth";
-          }
-        })(),
+        ...(peers.N6IPv4.length > 0 ? [
+          "ip tuntap add mode tun user root name n6_tun",
+          "ip link set n6_tun up",
+        ] : []),
+        ...(peers.N6Ethernet.length > 0 ? [
+          "ip link add name br-eth type bridge",
+          "ip link set br-eth up",
+          "ip tuntap add mode tap user root name n6_tap",
+          "ip link set n6_tap up master br-eth",
+        ] : []),
         ...NetDefDN.makeUPFRoutes(this.ctx, peers, { msg: false }),
       ]);
 
