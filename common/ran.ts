@@ -30,6 +30,9 @@ export function addUEsPerGNB(network: N.Network, firstSUPI: string, total: numbe
       gnbs: [network.gnbs[i]!.name],
     });
     total -= each;
+    if (total === 0) {
+      break;
+    }
     supi += BigInt(each);
   }
 }
