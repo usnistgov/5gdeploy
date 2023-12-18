@@ -39,7 +39,7 @@ export async function oaiUPtiny(ctx: NetDefComposeContext): Promise<void> {
     ].join("\n");
     s.command = ["sh", "-c", `echo ${shlex.quote(Buffer.from(cmd).toString("base64"))} | base64 -d | sh`];
 
-    s.environment = {
+    Object.assign(s.environment, {
       TZ: "Etc/UTC",
       SGW_INTERFACE_NAME_FOR_S1U_S12_S4_UP: "eth1", // n3
       SGW_INTERFACE_NAME_FOR_SX: "eth2", // n4
@@ -49,7 +49,7 @@ export async function oaiUPtiny(ctx: NetDefComposeContext): Promise<void> {
       REGISTER_NRF: "no",
       NRF_IPV4_ADDRESS: "255.255.255.255",
       UPF_FQDN_5G: "",
-    };
+    });
 
     let i = 0;
     const subnets: Netmask[] = [];
@@ -109,7 +109,7 @@ export async function oaiUPvpp(ctx: NetDefComposeContext): Promise<void> {
     s.privileged = true;
     s.image = "oaisoftwarealliance/oai-upf-vpp:v1.5.1";
     s.command = ["/bin/bash", "/upf-vpp.sh"];
-    s.environment = {
+    Object.assign(s.environment, {
       NAME: s.hostname,
       MCC: mcc,
       MNC: mnc,
@@ -118,7 +118,7 @@ export async function oaiUPvpp(ctx: NetDefComposeContext): Promise<void> {
       VPP_CORE_WORKER: "1",
       VPP_PLUGIN_PATH: "/usr/lib/x86_64-linux-gnu/vpp_plugins/",
       REGISTER_NRF: "no",
-    };
+    });
 
     for (const [i, net] of ["n3", "n4", "n6", "n9"].entries()) {
       s.environment[`IF_${1 + i}_IP`] = s.networks[net]!.ipv4_address;

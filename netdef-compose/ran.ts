@@ -9,7 +9,7 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
       ...compose.renameNetifs(s, { pipeworkWait: true }),
       "/entrypoint.sh gnb",
     ]);
-    s.environment = {
+    Object.assign(s.environment, {
       PLMN: ctx.network.plmn,
       NCI: gnb.nci,
       GNBIDLEN: ctx.network.gnbIdLength.toString(),
@@ -19,7 +19,7 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
       GTP_IP: s.networks.n3!.ipv4_address,
       AMF_IPS: ctx.gatherIPs("amf", "n2").join(","),
       SLICES: ctx.netdef.nssai.join(","),
-    };
+    });
     s.cap_add.push("NET_ADMIN");
   }
 
@@ -32,7 +32,7 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
     }
     const s = ctx.defineService(ct, "5gdeploy.localhost/ueransim", ["air"]);
     s.command = ["/entrypoint.sh", "ue"];
-    s.environment = {
+    Object.assign(s.environment, {
       PLMN: ctx.network.plmn,
       IMSI: sub.supi,
       COUNT: sub.count.toString(),
@@ -41,7 +41,7 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
       GNB_IPS: ctx.gatherIPs(sub.gnbs, "air").join(","),
       SLICES: [...slices].join(","),
       SESSIONS: [...sessions].join(","),
-    };
+    });
     s.cap_add.push("NET_ADMIN");
     s.devices.push("/dev/net/tun:/dev/net/tun");
   }

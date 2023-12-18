@@ -28,12 +28,12 @@ export interface ComposeService {
   privileged?: boolean;
   cap_add: string[];
   devices: string[];
-  sysctls: Record<string, string | number>;
+  readonly sysctls: Record<string, string | number>;
   volumes: ComposeVolume[];
-  environment: Record<string, string>;
+  readonly environment: Record<string, string>;
   pid?: "host";
   network_mode?: "host" | "none" | `service:${string}`;
-  networks: Record<string, ComposeNetif>;
+  readonly networks: Record<string, ComposeNetif>;
   cpuset?: string;
 }
 

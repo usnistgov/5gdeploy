@@ -101,19 +101,33 @@ export namespace defineNetwork {
  */
 export function defineService(c: ComposeFile, name: string, image: string): ComposeService {
   let service = c.services[name];
-  service ??= {
-    container_name: name,
-    hostname: name,
-    image: image,
-    init: true,
-    cap_add: [],
-    devices: [],
-    sysctls: {},
-    volumes: [],
-    environment: {},
-    networks: {},
-  };
-  c.services[name] = service;
+  if (service === undefined) {
+    service = {
+      container_name: name,
+      hostname: name,
+      image: image,
+      init: true,
+      cap_add: [],
+      devices: [],
+      sysctls: {},
+      volumes: [],
+      environment: {
+        HTTP_PROXY: "",
+        http_proxy: "",
+        HTTPS_PROXY: "",
+        https_proxy: "",
+      },
+      networks: {},
+    };
+    for (const key of ["sysctls", "environment", "networks"] as const satisfies ReadonlyArray<keyof ComposeService>) {
+      Object.defineProperty(service, key, {
+        enumerable: true,
+        writable: false,
+        value: service[key],
+      });
+    }
+    c.services[name] = service;
+  }
   return service;
 }
 
