@@ -7,10 +7,10 @@
     "shfmt": "git ls-files -- '*.sh' | xargs --no-run-if-empty docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@8.12.0",
+  "packageManager": "pnpm@8.12.1",
   "dependencies": {
     "@types/minimalistic-assert": "^1.0.3",
-    "@types/node": "^20.10.4",
+    "@types/node": "^20.10.5",
     "@types/yargs": "^17.0.32",
     "minimalistic-assert": "^1.0.1",
     "tsx": "^4.6.2",

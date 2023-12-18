@@ -8,6 +8,7 @@ Scenario list and brief description:
 * [20230510](20230510): cloud and edges
 * [20230817](20230817): 3-slice with unshared UPFs
 * [20231017](20231017): 2-slice with unshared UPFs
+* [20231214](20231214): 2-slice with single UPF
 
 ## Installation and Usage
 

@@ -10,11 +10,11 @@ const args = await yargs(hideBin(process.argv))
 
 const network = phones_vehicles.buildNetwork(args, {
   internetSNSSAI: "01000000",
-  internetUPF: "upf1",
+  internetUPF: "upf0",
   vcamSNSSAI: "04000000",
-  vcamUPF: "upf4",
+  vcamUPF: "upf0",
   vctlSNSSAI: "04000000",
-  vctlUPF: "upf4",
+  vctlUPF: "upf0",
 });
 
 process.stdout.write(`${JSON.stringify(network)}\n`);

@@ -92,7 +92,7 @@ iperf3_add() {
           DNN: $DNN,
           DNCT: $DNCT,
           DNHOST: $DNHOST,
-          DNCPUSET: $DNCPUSET,
+          DNCPUSET: (if $DNCPUSET == "#" then "" else $DNCPUSET end),
           DNIP: $DNIP,
           UECT: .[0],
           UEHOST: .[1],
@@ -111,9 +111,9 @@ iperf3_servers() {
   assert_state_exists
   msg Starting iperf3 servers
   jq -r 'to_entries[] | (
-    .value.DNHOST + " run -d --name=" + .key + "_s " +
-    "--network=container:" + .value.DNCT + " networkstatic/iperf3 " +
-    "--forceflush --json -B " + .value.DNIP + " -p " + .value.PORT + " -s"
+    .value.DNHOST + " run -d --name=" + .key + "_s " + .value.DNCPUSET +
+    " --network=container:" + .value.DNCT + " networkstatic/iperf3" +
+    " --forceflush --json -B " + .value.DNIP + " -p " + .value.PORT + " -s"
   )' iperf3.state.json | bash
 }
 
@@ -121,9 +121,9 @@ iperf3_clients() {
   assert_state_exists
   msg Starting iperf3 clients
   jq -r 'to_entries[] | (
-    .value.UEHOST + " run -d --name=" + .key + "_c " +
-    "--network=container:" + .value.UECT + " networkstatic/iperf3 " +
-    "--forceflush --json -B " + .value.UEIP + " -p " + .value.PORT + " --cport " + .value.PORT +
+    .value.UEHOST + " run -d --name=" + .key + "_c " + .value.UECPUSET +
+    " --network=container:" + .value.UECT + " networkstatic/iperf3" +
+    " --forceflush --json -B " + .value.UEIP + " -p " + .value.PORT + " --cport " + .value.PORT +
     " -c " + .value.DNIP + " " + .value.FLAGS
   )' iperf3.state.json | bash
 }

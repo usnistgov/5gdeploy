@@ -11,7 +11,7 @@ There are three slices and three Data Networks:
 Each slice is served by a dedicated UPF.
 All control plane network functions are shared.
 
-There are 48 cellphones and 12 vehicles, sharing 2 gNBs.
+There are 6 cellphones and 2 vehicles, sharing 1 gNB.
 These quantities can be adjusted via command line flags.
 
 ## Basic Usage
@@ -29,7 +29,7 @@ cd ~/5gdeploy-scenario
 # Add --up=free5gc to select free5GC UPF instead of Open5GCore UPF.
 
 # adjust gNB and UE quantities
-./generate.sh 20230817 +gnbs=3 +phones=15 +vehicles=6 --ran=ueransim
+./generate.sh 20230817 +gnbs=2 +phones=48 +vehicles=12 --ran=ueransim
 ```
 
 The Compose file is placed at `~/compose/20230817`.
@@ -83,7 +83,7 @@ MAC_N3_UPF140=02:00:00:03:00:04
 MAC_N3_UPF141=02:00:00:03:00:05
 
 # generate Compose file with physical ports support
-./generate.sh 20230817 --ran=ueransim \
+./generate.sh 20230817 +gnbs=2 +phones=48 +vehicles=12 --ran=ueransim \
   --bridge=n3,eth,gnb0=$MAC_N3_GNB0,gnb1=$MAC_N3_GNB1,upf1=$MAC_N3_UPF1,upf140=$MAC_N3_UPF140,upf141=$MAC_N3_UPF141
 ```
 
