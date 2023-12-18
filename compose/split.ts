@@ -37,7 +37,7 @@ export function splitOutput(c: ComposeFile, { place = [], split }: InferredOptio
       throw new Error(`--place=${line} invalid`);
     }
     const [, pattern, host, cpuset] = m as string[] as [string, string, string, string | undefined];
-    const assignCpuset = new AssignCpuset(cpuset);
+    const assignCpuset = cpuset ? new AssignCpuset(cpuset) : undefined;
 
     for (const [ct, s] of services) {
       if (ctEveryHost.has(ct)) {
@@ -48,8 +48,11 @@ export function splitOutput(c: ComposeFile, { place = [], split }: InferredOptio
       } else {
         continue;
       }
-      hostServices.get(host)[ct] = assignCpuset.update(ct, s);
+      assignCpuset?.prepare(s);
+      hostServices.get(host)[ct] = s;
     }
+
+    assignCpuset?.update();
   }
   for (const [ct, s] of services) {
     if (!ctEveryHost.has(ct)) {
@@ -73,47 +76,64 @@ export function splitOutput(c: ComposeFile, { place = [], split }: InferredOptio
 const ctEveryHost = new Set(["bridge"]);
 
 class AssignCpuset {
-  constructor(cpuset?: string) {
-    if (!cpuset) {
-      return;
-    }
-    this.enabled = true;
+  constructor(cpuset: string) {
     for (const token of cpuset.split(",")) {
       const [firstS, lastS] = token.split("-");
       const first = Number.parseInt(firstS!, 10);
       if (lastS === undefined) {
-        this.unused.push(first);
+        this.avail.push(first);
         continue;
       }
       const last = Number.parseInt(lastS, 10);
       assert(first <= last, "bad cpuset");
       for (let i = first; i <= last; ++i) {
-        this.unused.push(i);
+        this.avail.push(i);
       }
     }
-
-    this.shared = this.unused.splice(0, 2).join(",");
   }
 
-  private readonly enabled: boolean = false;
-  private readonly unused: number[] = [];
-  private readonly shared: string = "";
+  private readonly avail: number[] = [];
+  private shared?: string;
 
-  public update(ct: string, s: ComposeService): ComposeService {
-    if (!this.enabled || ctEveryHost.has(ct)) {
-      return s;
+  private readonly services = new Map<string, ComposeService>();
+  private wantShared = false;
+  private wantDedicated = 0;
+
+  public prepare(s: ComposeService): void {
+    if (ctEveryHost.has(s.container_name)) {
+      return;
     }
 
+    this.services.set(s.container_name, s);
     const wanted = Number.parseInt(annotate(s, "cpus") ?? "0", 10);
     if (wanted === 0) {
-      s.cpuset = this.shared;
-    } else if (this.unused.length < wanted) {
-      s.cpuset = this.shared;
-      annotate(s, "cpuset_warning", "insufficient-using-shared");
+      this.wantShared = true;
     } else {
-      s.cpuset = this.unused.splice(0, wanted).join(",");
+      this.wantDedicated += wanted;
     }
-    return s;
+  }
+
+  private alloc(n: number): string {
+    assert(n <= this.avail.length);
+    return this.avail.splice(0, n).join(",");
+  }
+
+  public update(): void {
+    if (this.wantShared || this.wantDedicated > this.avail.length) {
+      this.shared ??= this.alloc(Math.min(2, this.avail.length));
+    }
+
+    for (const s of this.services.values()) {
+      const wanted = Number.parseInt(annotate(s, "cpus") ?? "0", 10);
+      if (wanted === 0) {
+        s.cpuset = this.shared!;
+      } else if (wanted > this.avail.length) {
+        s.cpuset = this.shared;
+        annotate(s, "cpuset_warning", "insufficient-using-shared");
+      } else {
+        s.cpuset = this.alloc(wanted);
+      }
+    }
   }
 }
 
