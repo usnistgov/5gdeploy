@@ -49,6 +49,10 @@ iperf3_usage() {
   echo "    Gather statistics."
   echo "  5giperf3 stop"
   echo "    Delete iperf3 servers and clients."
+  echo "  5giperf3 each iperf3/*_c.json"
+  echo "    Tabulate per-flow throughput."
+  echo "  5giperf3 total iperf3/*_c.json"
+  echo "    Calculate total throughput."
 }
 
 iperf3_init() {
@@ -154,6 +158,23 @@ iperf3_stop() {
     .value.UEHOST + " rm -f iperf3_" + .key + "_c",
     .value.DNHOST + " rm -f iperf3_" + .key + "_s"
   )' iperf3.state.json | bash
+}
+
+iperf3_each() {
+  (
+    echo flow send-CPU recv-CPU send-Mbps recv-Mbps
+    jq -r '[
+      (input_filename[7:-7]),
+      (if .end.sum.sender then .end.cpu_utilization_percent.host_total else .end.cpu_utilization_percent.remote_total end * 1e3 | round / 1e3),
+      (if .end.sum.sender then .end.cpu_utilization_percent.remote_total else .end.cpu_utilization_percent.host_total end * 1e3 | round / 1e3),
+      (.end.sum.bits_per_second / 1e3 | round / 1e3),
+      ((.end.sum.bits_per_second) * (1-.end.sum.lost_percent/100) / 1e3 | round / 1e3)
+    ] | @tsv' "$@"
+  ) | column -t
+}
+
+iperf3_total() {
+  jq -rs 'map((.end.sum.bits_per_second) * (1-.end.sum.lost_percent/100)) | add / 1e3 | round / 1e3' "$@"
 }
 
 ACT=${1:-usage}
