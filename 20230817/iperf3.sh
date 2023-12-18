@@ -87,7 +87,7 @@ iperf3_add() {
     split("\n") | map(
       split(" ") | select(length == 5) |
       ({
-        key: ("iperf3_" + $DNN + "_" + .[4]),
+        key: ($DNN + "_" + .[4]),
         value: {
           DNN: $DNN,
           DNCT: $DNCT,
@@ -111,7 +111,7 @@ iperf3_servers() {
   assert_state_exists
   msg Starting iperf3 servers
   jq -r 'to_entries[] | (
-    .value.DNHOST + " run -d --name=" + .key + "_s " + .value.DNCPUSET +
+    .value.DNHOST + " run -d --name=iperf3_" + .key + "_s " + .value.DNCPUSET +
     " --network=container:" + .value.DNCT + " networkstatic/iperf3" +
     " --forceflush --json -B " + .value.DNIP + " -p " + .value.PORT + " -s"
   )' iperf3.state.json | bash
@@ -121,7 +121,7 @@ iperf3_clients() {
   assert_state_exists
   msg Starting iperf3 clients
   jq -r 'to_entries[] | (
-    .value.UEHOST + " run -d --name=" + .key + "_c " + .value.UECPUSET +
+    .value.UEHOST + " run -d --name=iperf3_" + .key + "_c " + .value.UECPUSET +
     " --network=container:" + .value.UECT + " networkstatic/iperf3" +
     " --forceflush --json -B " + .value.UEIP + " -p " + .value.PORT + " --cport " + .value.PORT +
     " -c " + .value.DNIP + " " + .value.FLAGS
@@ -132,7 +132,7 @@ iperf3_wait() {
   assert_state_exists
   msg Waiting for iperf3 clients to finish
   jq -r 'to_entries[] | (
-    .value.UEHOST + " wait " + .key + "_c"
+    .value.UEHOST + " wait iperf3_" + .key + "_c"
   )' iperf3.state.json | bash
 }
 
@@ -142,8 +142,8 @@ iperf3_collect() {
   mkdir -p iperf3/
   rm -rf iperf3/*.json
   jq -r 'to_entries[] | (
-    .value.UEHOST + " logs " + .key + "_c | jq -s .[-1] >iperf3/" + .key + "_c.json",
-    .value.DNHOST + " logs " + .key + "_s | jq -s .[-1] >iperf3/" + .key + "_s.json"
+    .value.UEHOST + " logs iperf3_" + .key + "_c | jq -s .[-1] >iperf3/" + .key + "_c.json",
+    .value.DNHOST + " logs iperf3_" + .key + "_s | jq -s .[-1] >iperf3/" + .key + "_s.json"
   )' iperf3.state.json | bash
 }
 
@@ -151,8 +151,8 @@ iperf3_stop() {
   assert_state_exists
   msg Deleting iperf3 servers and clients
   jq -r 'to_entries[] | (
-    .value.UEHOST + " rm -f " + .key + "_c",
-    .value.DNHOST + " rm -f " + .key + "_s"
+    .value.UEHOST + " rm -f iperf3_" + .key + "_c",
+    .value.DNHOST + " rm -f iperf3_" + .key + "_s"
   )' iperf3.state.json | bash
 }
 

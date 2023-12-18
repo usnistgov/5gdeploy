@@ -39,14 +39,33 @@ Run traffic generators:
 # wait for iperf3 clients to finish
 5giperf3 wait
 
-# gather statistics
+# gather statistics into iperf3/*.json
 5giperf3 collect
 
 # delete iperf3 servers and clients
 5giperf3 stop
 ```
 
-Statistics are written to `iperf3/*.json` for later analysis.
+Analyze the results:
+
+```bash
+# show total throughput (Mbps) per traffic kind
+# vcam uplink, vctl downlink, internet uplink, internet downlink
+for P in vcam_20 vctl_20 internet_20 internet_21; do
+  echo $P $(jq -rs 'map((.end.sum.bits_per_second) * (1-.end.sum.lost_percent/100)) | add / 1e3 | round / 1e3' iperf3/$P*_c.json)
+done
+
+# show per-flow statistics
+# flow identifier, client CPU usage, server CPU usage, throughput (Mbps)
+jq -r '[
+  (input_filename[7:-7]),
+  (.end.cpu_utilization_percent.remote_total * 1e3 | round / 1e3),
+  (.end.cpu_utilization_percent.host_total * 1e3 | round / 1e3),
+  ((.end.sum.bits_per_second) * (1-.end.sum.lost_percent/100) / 1e3 | round / 1e3)
+] | @tsv' iperf3/*_c.json | column -t
+```
+
+Statistics are written to `iperf3/*.json` for analysis.
 
 ## ns-3 3GPP HTTP application
 
