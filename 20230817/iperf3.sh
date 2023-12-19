@@ -18,11 +18,22 @@ assert_state_exists() {
   fi
 }
 
+DNCPUSET_AVAIL=()
+parse_dncpuset() {
+  if [[ -z ${D5G_DNCPUSET:-} ]]; then
+    return
+  fi
+  DNCPUSET_AVAIL=($(echo "$D5G_DNCPUSET" | awk -vRS=',' -vFS='-' '
+    NF==1 { printf("%d ", $1) }
+    NF==2 { for (i=$1; i<=$2; ++i) { print i } }
+  '))
+}
+
 get_cpuset() {
   local CT=$1
   local CPUSET=$(yq ".services.$CT.cpuset // \"\"" compose.yml)
   if [[ -n $CPUSET ]]; then
-    echo '--cpuset-cpus='$CPUSET
+    echo $CPUSET
   else
     echo '#'
   fi
@@ -61,6 +72,7 @@ iperf3_init() {
 
 iperf3_add() {
   assert_state_exists
+  parse_dncpuset
   local DNN=$1
   local UEREGEX=$2
   local UESUBNET=$3
@@ -82,25 +94,31 @@ iperf3_add() {
     fi
     N=0
     for UEIP in $UEIPS; do
-      echo "$UECT" "$UEHOST" "$UECPUSET" "$UEIP" "$PORT"
+      local DNCTCPUSET=$DNCPUSET
+      if [[ ${#DNCPUSET_AVAIL[@]} -gt 0 ]]; then
+        DNCTCPUSET="${DNCPUSET_AVAIL[0]}"
+        DNCPUSET_AVAIL=("${DNCPUSET_AVAIL[@]:1}")
+      fi
+      local DNCPUSET=$(get_cpuset $DNCT)
+      echo "$UECT" "$UEHOST" "$UECPUSET" "$UEIP" "$PORT" "$DNCTCPUSET"
       PORT=$((PORT + 1))
       N=$((N + 1))
     done
     msg Processed $N PDU sessions in $UECT
-  done | jq -Rs --arg DNN "$DNN" --arg DNCT "$DNCT" --arg DNHOST "$DNHOST" --arg DNCPUSET "$DNCPUSET" --arg DNIP "$DNIP" --arg FLAGS "$*" '
+  done | jq -Rs --arg DNN "$DNN" --arg DNCT "$DNCT" --arg DNHOST "$DNHOST" --arg DNIP "$DNIP" --arg FLAGS "$*" '
     split("\n") | map(
-      split(" ") | select(length == 5) |
+      split(" ") | select(length == 6) |
       ({
         key: ($DNN + "_" + .[4]),
         value: {
           DNN: $DNN,
           DNCT: $DNCT,
           DNHOST: $DNHOST,
-          DNCPUSET: (if $DNCPUSET == "#" then "" else $DNCPUSET end),
+          DNCPUSET: (if .[5]=="#" then "" else .[5] end),
           DNIP: $DNIP,
           UECT: .[0],
           UEHOST: .[1],
-          UECPUSET: (if .[2] == "#" then "" else .[2] end),
+          UECPUSET: (if .[2]=="#" then "" else .[2] end),
           UEIP: .[3],
           PORT: .[4],
           FLAGS: $FLAGS,
@@ -115,7 +133,7 @@ iperf3_servers() {
   assert_state_exists
   msg Starting iperf3 servers
   jq -r 'to_entries[] | (
-    .value.DNHOST + " run -d --name=iperf3_" + .key + "_s " + .value.DNCPUSET +
+    .value.DNHOST + " run -d --name=iperf3_" + .key + "_s" + (if .value.DNCPUSET then " --cpuset-cpus="+.value.DNCPUSET else "" end) +
     " --network=container:" + .value.DNCT + " networkstatic/iperf3" +
     " --forceflush --json -B " + .value.DNIP + " -p " + .value.PORT + " -s"
   )' iperf3.state.json | bash
@@ -125,7 +143,7 @@ iperf3_clients() {
   assert_state_exists
   msg Starting iperf3 clients
   jq -r 'to_entries[] | (
-    .value.UEHOST + " run -d --name=iperf3_" + .key + "_c " + .value.UECPUSET +
+    .value.UEHOST + " run -d --name=iperf3_" + .key + "_c" + (if .value.UECPUSET then " --cpuset-cpus="+.value.UECPUSET else "" end) +
     " --network=container:" + .value.UECT + " networkstatic/iperf3" +
     " --forceflush --json -B " + .value.UEIP + " -p " + .value.PORT + " --cport " + .value.PORT +
     " -c " + .value.DNIP + " " + .value.FLAGS
@@ -163,8 +181,8 @@ iperf3_stop() {
 iperf3_each() {
   (
     echo flow send-CPU recv-CPU send-Mbps recv-Mbps
-    jq -r '[
-      (input_filename[7:-7]),
+    jq -r 'select(input_filename | endswith("_c.json")) | [
+      (input_filename | split("/")[-1][:-7]),
       (if .end.sum.sender then .end.cpu_utilization_percent.host_total else .end.cpu_utilization_percent.remote_total end * 1e3 | round / 1e3),
       (if .end.sum.sender then .end.cpu_utilization_percent.remote_total else .end.cpu_utilization_percent.host_total end * 1e3 | round / 1e3),
       (.end.sum.bits_per_second / 1e3 | round / 1e3),
@@ -174,7 +192,11 @@ iperf3_each() {
 }
 
 iperf3_total() {
-  jq -rs 'map((.end.sum.bits_per_second) * (1-.end.sum.lost_percent/100)) | add / 1e3 | round / 1e3' "$@"
+  for F in "$@"; do
+    if [[ $F == *_c.json ]]; then
+      cat $F
+    fi
+  done | jq -rs 'map((.end.sum.bits_per_second) * (1-.end.sum.lost_percent/100)) | add / 1e3 | round / 1e3'
 }
 
 ACT=${1:-usage}

@@ -21,10 +21,14 @@ Define traffic generators:
 ```bash
 alias 5giperf3='~/5gdeploy-scenario/20230817/iperf3.sh'
 5giperf3 init
-5giperf3 add vcam "^ue4" 10.140.0.0/16 20000 -t 300 -u -b 36M
-5giperf3 add vctl "^ue4" 10.141.0.0/16 20000 -t 300 -u -b 425K -R
-5giperf3 add internet "^ue1" 10.1.0.0/16 20000 -t 300 -u -b 15M
-5giperf3 add internet "^ue1" 10.1.0.0/16 21000 -t 300 -u -b 50M -R
+5giperf3 add internet "^ue1" 10.1.0.0/16 21000 -t 300 -u -b 15M
+5giperf3 add internet "^ue1" 10.1.0.0/16 22000 -t 300 -u -b 50M -R
+5giperf3 add vcam "^ue4" 10.140.0.0/16 24000 -t 300 -u -b 36M
+5giperf3 add vctl "^ue4" 10.141.0.0/16 25000 -t 300 -u -b 425K -R
+
+# If the Compose file has .cpuset property on DN and UE containers, iperf3 containers will inherit them.
+# Set D5G_DNCPUSET environ to instead give a separate core to each iperf3 server, example:
+D5G_DNCPUSET=30-35 5giperf3 add internet "^ue1" 10.1.0.0/16 21000 -t 300 -u -b 50M -R
 ```
 
 Run traffic generators:
@@ -50,16 +54,17 @@ Analyze the results:
 
 ```bash
 # show per-flow statistics
-5giperf3 iperf3/*_c.json
+5giperf3 each iperf3/*.json
 
 # show total throughput (Mbps) per traffic kind
-# vcam uplink, vctl downlink, internet uplink, internet downlink
-for P in vcam_20 vctl_20 internet_20 internet_21; do
-  echo $P $(5giperf3 total iperf3/$P*_c.json)
-done
-```
+5giperf3 total iperf3/internet_21*.json
+5giperf3 total iperf3/internet_22*.json
+5giperf3 total iperf3/vcam_24*.json
+5giperf3 total iperf3/vctl_25*.json
 
-Statistics are written to `iperf3/*.json` for analysis.
+# These commands only consider iperf3 client logs *_c.json.
+# iperf3 server logs *_s.json are ignored.
+```
 
 ## ns-3 3GPP HTTP application
 
