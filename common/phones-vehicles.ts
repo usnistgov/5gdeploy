@@ -5,8 +5,8 @@ import * as ran from "./ran.js";
 
 export const cliOptions = {
   gnbs: ran.option("gNB", 1, 9),
-  phones: ran.option("phone", 6, 1000),
-  vehicles: ran.option("vehicle", 2, 1000),
+  phones: ran.option("phone", 6, 1000, 0),
+  vehicles: ran.option("vehicle", 2, 1000, 0),
 } as const satisfies Record<string, YargsOptions>;
 
 export type CLIOptions = InferredOptionTypes<typeof cliOptions>;
