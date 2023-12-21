@@ -4,12 +4,12 @@
   "type": "module",
   "scripts": {
     "clang-format": "git ls-files '*.cpp' | xargs clang-format-15 -i -style=file",
-    "dockerfilelint": "git ls-files -- '*/Dockerfile' | xargs --no-run-if-empty dockerfilelint",
+    "dockerfilelint": "git ls-files -- '*/Dockerfile' | xargs dockerfilelint",
     "lint": "xo-yoursunny --fix",
     "netdef-compose": "tsx ./netdef-compose/main.ts",
     "phoenix-compose": "tsx ./phoenix-compose/main.ts",
     "phoenix-rpc": "tsx ./phoenix-rpc/main.ts",
-    "shfmt": "git ls-files -- '*.sh' | xargs --no-run-if-empty docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
+    "shfmt": "git ls-files -- '*.sh' | xargs docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
     "typecheck": "tsc"
   },
   "packageManager": "pnpm@8.12.1",
