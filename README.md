@@ -25,7 +25,7 @@ Reminder: both 5gdeploy and 5gdeploy-scenario are updated frequently, so you sho
 If free5GC is needed, load the gtp5g module:
 
 ```bash
-bash ~/5gdeploy/free5gc-config/load-gtp5g.sh
+bash ~/5gdeploy/free5gc/load-gtp5g.sh
 # Repeat this step after every reboot.
 ```
 

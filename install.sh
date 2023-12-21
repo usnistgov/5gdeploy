@@ -30,7 +30,7 @@ fi
 msg Installing 5gdeploy
 env -C ../5gdeploy corepack pnpm install
 bash ../5gdeploy/types/build-schema.sh
-bash ../5gdeploy/free5gc-config/download.sh
+bash ../5gdeploy/free5gc/download.sh
 
 msg Building Docker images
 for IMG in bridge dn free5gc-upf ns3http phoenix ueransim; do
