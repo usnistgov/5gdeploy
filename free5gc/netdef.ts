@@ -3,12 +3,11 @@ import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
+import { type N, NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import * as NetDefDN from "../netdef-compose/dn.js";
 import type { ComposeService } from "../types/compose.js";
 import type * as F5 from "../types/free5gc.js";
-import type * as N from "../types/netdef.js";
 import * as f5_conf from "./conf.js";
 import type * as W from "./webconsole-openapi/models/index.js";
 

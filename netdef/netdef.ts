@@ -7,6 +7,8 @@ import { arr2hex, randomBytes } from "uint8-util";
 import type * as N from "../types/netdef.js";
 import netdefSchema from "../types/netdef.schema.json";
 
+export type { N };
+
 const validate = new Ajv({
   allErrors: true,
   verbose: true,

@@ -5,10 +5,10 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 import * as compose from "../compose/mod.js";
-import { f5CP, f5UP } from "../free5gc-config/netdef.js";
+import { f5CP, f5UP } from "../free5gc/netdef.js";
 import { NetDef } from "../netdef/netdef.js";
-import { oaiUPtiny, oaiUPvpp } from "../oai-config/netdef.js";
-import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix-config/mod.js";
+import { oaiUPtiny, oaiUPvpp } from "../oai/netdef.js";
+import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { NetDefComposeContext } from "./context.js";
 import { dnOptions, saveDNOptions } from "./dn.js";
 import { RANProviders } from "./ran.js";

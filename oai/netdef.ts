@@ -7,10 +7,9 @@ import { Netmask } from "netmask";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
+import { type N, NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import { phoenixUP } from "../phoenix-config/mod.js";
-import type * as N from "../types/netdef.js";
+import { phoenixUP } from "../phoenix/mod.js";
 import type * as OAI from "../types/oai.js";
 import * as oai_conf from "./conf.js";
 

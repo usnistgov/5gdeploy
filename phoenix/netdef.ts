@@ -8,11 +8,10 @@ import type { Constructor } from "type-fest";
 import yargs, { type InferredOptionTypes, type Options as YargsOptions } from "yargs";
 
 import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
+import { type N, NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import * as NetDefDN from "../netdef-compose/dn.js";
 import { networkOptions, phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
-import type * as N from "../types/netdef.js";
 import type * as PH from "../types/phoenix.js";
 import { ScenarioFolder } from "./folder.js";
 import { IPMAP } from "./ipmap.js";

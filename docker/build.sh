@@ -36,11 +36,11 @@ build_oai() {
 }
 
 build_free5gc_upf() {
-  if ! [[ -f free5gc-config/images.txt ]]; then
-    bash free5gc-config/download.sh
+  if ! [[ -f free5gc/images.txt ]]; then
+    bash free5gc/download.sh
   fi
   docker build --pull -t 5gdeploy.localhost/free5gc-upf \
-    --build-arg BASE=$(grep '^free5gc/upf:' free5gc-config/images.txt) \
+    --build-arg BASE=$(grep '^free5gc/upf:' free5gc/images.txt) \
     docker/free5gc-upf
 }
 

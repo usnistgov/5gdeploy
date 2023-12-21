@@ -7,7 +7,7 @@ import assert from "minimalistic-assert";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-import { IPMAP, NetworkFunction } from "../phoenix-config/mod.js";
+import { IPMAP, NetworkFunction } from "../phoenix/mod.js";
 import { type PhoenixClient, PhoenixClientJSONRPC, PhoenixClientUDP } from "./client.js";
 
 let clientJ: PhoenixClientJSONRPC;

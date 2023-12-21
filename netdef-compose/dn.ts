@@ -5,8 +5,7 @@ import * as shlex from "shlex";
 import yargs, { type InferredOptionTypes, type Options as YargsOptions } from "yargs";
 
 import * as compose from "../compose/mod.js";
-import { type NetDef } from "../netdef/netdef.js";
-import type * as N from "../types/netdef.js";
+import type { N, NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "./context.js";
 
 export const dnOptions = {

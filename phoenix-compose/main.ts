@@ -5,7 +5,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 import * as compose from "../compose/mod.js";
-import { ScenarioFolder } from "../phoenix-config/mod.js";
+import { ScenarioFolder } from "../phoenix/mod.js";
 import * as ph_compose from "./compose.js";
 
 const args = await yargs(hideBin(process.argv))

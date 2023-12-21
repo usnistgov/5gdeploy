@@ -1,5 +1,5 @@
 import * as compose from "../compose/mod.js";
-import { type IPMAP } from "../phoenix-config/mod.js";
+import type { IPMAP } from "../phoenix/mod.js";
 import type { ComposeFile, ComposeService } from "../types/compose.js";
 
 export const phoenixdir = "/opt/phoenix";

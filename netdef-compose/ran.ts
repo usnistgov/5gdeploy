@@ -1,5 +1,5 @@
 import * as compose from "../compose/mod.js";
-import * as oai_netdef from "../oai-config/netdef.js";
+import * as oai_netdef from "../oai/netdef.js";
 import { buildRAN as packetrusher } from "../packetrusher/netdef.js";
 import type { NetDefComposeContext } from "./context.js";
 

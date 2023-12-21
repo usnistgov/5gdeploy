@@ -3,9 +3,8 @@ import * as shlex from "shlex";
 import type { PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
+import { type N, NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import type * as N from "../types/netdef.js";
 import type * as prush from "../types/packetrusher.js";
 
 /** Define PacketRusher container. */
