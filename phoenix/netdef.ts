@@ -24,6 +24,12 @@ export const phoenixOptions = {
     group: "phoenix",
     type: "number",
   },
+  "phoenix-upf-xdp": {
+    default: false,
+    desc: "enable XDP in UPF",
+    group: "phoenix",
+    type: "boolean",
+  },
   "phoenix-gnb-workers": {
     default: 2,
     desc: "number of worker threads in gNB",
@@ -403,7 +409,9 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
     assert(nWorkers <= 8, "pfcp.so allows up to 8 threads");
 
     for (const [ct, upf] of this.createNetworkFunction("5g/upf1.json", ["n3", "n4", "n6", "n9"], this.ctx.network.upfs)) {
-      compose.annotate(this.ctx.c.services[ct]!, "cpus", nWorkers);
+      const s = this.ctx.c.services[ct]!;
+      compose.annotate(s, "cpus", nWorkers);
+
       const peers = this.netdef.gatherUPFPeers(upf);
       assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
       assert(peers.N6IPv6.length === 0, "UPF does not supports IPv6 DN");
@@ -412,16 +420,22 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         const { config } = c.getModule("pfcp");
         assert(config.mode === "UP");
         assert(config.data_plane_mode === "integrated");
+        assert(config.DataPlane.xdp);
 
         config.ethernet_session_identifier = peers.N6Ethernet[0]?.dnn;
         config.DataPlane.threads = nWorkers;
         config.DataPlane.interfaces = [];
+        config.DataPlane.xdp.interfaces = [];
         if (peers.N3.length > 0) {
           config.DataPlane.interfaces.push({
             type: "n3_n9",
             name: "n3",
             bind_ip: IPMAP.formatEnv(ct, "n3"),
             mode: "thread_pool",
+          });
+          config.DataPlane.xdp.interfaces.push({
+            type: "n3_n9",
+            name: "n3",
           });
         }
         if (peers.N9.length > 0) {
@@ -431,6 +445,10 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
             bind_ip: IPMAP.formatEnv(ct, "n9"),
             mode: "thread_pool",
           });
+          config.DataPlane.xdp.interfaces.push({
+            type: "n3_n9",
+            name: "n9",
+          });
         }
         if (peers.N6IPv4.length > 0) {
           config.DataPlane.interfaces.push({
@@ -438,6 +456,10 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
             name: "n6_tun",
             bind_ip: IPMAP.formatEnv(ct, "n6"),
             mode: "thread_pool",
+          });
+          config.DataPlane.xdp.interfaces.push({
+            type: "n6_l3",
+            name: "n6_tun",
           });
         }
         if (peers.N6Ethernet.length > 0) {
@@ -448,7 +470,11 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
           });
         }
         assert(config.DataPlane.interfaces.length <= 8, "pfcp.so allows up to 8 interfaces");
-        delete config.DataPlane.xdp;
+        if (this.opts["phoenix-upf-xdp"]) {
+          s.cap_add.push("BPF", "SYS_ADMIN");
+        } else {
+          delete config.DataPlane.xdp;
+        }
 
         config.hacks.qfi = 1;
       });

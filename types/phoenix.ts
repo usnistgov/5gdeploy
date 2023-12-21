@@ -161,7 +161,7 @@ export namespace pfcp {
   export interface DataPlane {
     threads: number;
     interfaces: Interface[]; // up to 8 items
-    xdp?: never;
+    xdp?: XDP;
   }
 
   export type Interface = InterfaceL3 | InterfaceL2;
@@ -178,6 +178,17 @@ export namespace pfcp {
 
   export interface InterfaceL2 extends InterfaceCommon {
     type: "n6_l2";
+  }
+
+  export interface XDP {
+    xdp_table_size: number;
+    prog_path: string;
+    interfaces: XDPInterface[];
+  }
+
+  export interface XDPInterface {
+    type: InterfaceL3["type"];
+    name: string;
   }
 
   export interface Associations {

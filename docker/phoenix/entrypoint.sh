@@ -107,4 +107,5 @@ for NFDB in nssf:database smf:Database udm:Database udr:Database; do
 done
 
 msg Starting phoenix process with $CT.json
+export XDP_GTP=$phoenixdir/dist/lib/objects-Debug/xdp_program_files/xdp_gtp.c.o
 exec $phoenixdir/dist/phoenix.sh -j $cfgdir/$CT.json -p $phoenixdir/dist/lib
