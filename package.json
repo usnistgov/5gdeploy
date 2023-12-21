@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "lint": "xo-yoursunny --fix",
-    "shfmt": "git ls-files -- '*.sh' | xargs --no-run-if-empty docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
+    "shfmt": "git ls-files -- '*.sh' | xargs docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
     "typecheck": "tsc"
   },
   "packageManager": "pnpm@8.12.1",
