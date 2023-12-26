@@ -1,21 +1,52 @@
 import assert from "minimalistic-assert";
-import { long2ip, Netmask } from "netmask";
+import BiMap from "mnemonist/bi-map.js";
+import { ip2long, long2ip, Netmask } from "netmask";
+import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
+
+export const ipAllocOptions = {
+  "ip-space": {
+    coerce(arg): Netmask {
+      const subnet = new Netmask(arg);
+      assert(subnet.bitmask <= 18, "/18 or larger address space required");
+      return subnet;
+    },
+    desc: "Compose networks IP address space, /18 or larger",
+    default: "172.25.192.0/18",
+    type: "string",
+  },
+  "ip-fixed": {
+    desc: "fixed IP address assignment",
+    string: true,
+    type: "array",
+  },
+} as const satisfies Record<string, YargsOptions>;
+type IPAllocOpts = InferredOptionTypes<typeof ipAllocOptions>;
 
 /** IP address allocator. */
 export class IPAlloc {
-  /**
-   * Constructor.
-   * @param space overall address space, at least /18 subnet.
-   */
-  constructor(space: string) {
-    const subnet = new Netmask(space);
-    assert(subnet.bitmask <= 18, "/18 or larger address space required");
-    this.space = subnet;
+  constructor({
+    "ip-space": space,
+    "ip-fixed": fixed = [],
+  }: IPAllocOpts) {
+    this.nextNetwork.n = space.netLong;
+    this.nextNetwork.max = ip2long(space.last);
+
+    for (const line of fixed) {
+      const m = /^(\w+),(\w+),([\d.]+)$/.exec(line);
+      if (!m) {
+        throw new Error(`bad --ip-fixed=${line}`);
+      }
+      const [, host, net, ipStr] = m as string[] as [string, string, string, string];
+      const ip = ip2long(ipStr);
+      saveFixed("network", this.networks, net, ip & ~0xFF);
+      saveFixed("host", this.hosts, host, ip & 0xFF);
+    }
   }
 
-  private readonly space: Netmask;
-  private readonly networks: string[] = [];
-  private readonly hosts: string[] = [".0", ".1"];
+  private readonly networks = new BiMap<string, number>();
+  private nextNetwork = { n: -1, step: 256, max: -1 };
+  private readonly hosts = BiMap.from<string, number>({ ".0": 0, ".1": 1 });
+  private nextHost = { n: 2, step: 1, max: 254 };
 
   /**
    * Allocate a subnet.
@@ -23,12 +54,8 @@ export class IPAlloc {
    * @returns /24 subnet.
    */
   public allocNetwork(net: string): string {
-    let c = this.networks.indexOf(net);
-    if (c < 0) {
-      assert(this.networks.length < 2 ** (32 - this.space.bitmask), "too many networks");
-      c = this.networks.push(net) - 1;
-    }
-    return `${long2ip(this.space.netLong + 256 * c)}/24`;
+    const c = allocNumber("networks", this.networks, this.nextNetwork, net);
+    return `${long2ip(c)}/24`;
   }
 
   /**
@@ -38,13 +65,32 @@ export class IPAlloc {
    * @returns address in subnet.
    */
   public allocNetif(net: string, host: string): string {
-    const c = this.networks.indexOf(net);
-    assert(c >= 0, "network does not exist");
-    let d = this.hosts.indexOf(host);
-    if (d < 0) {
-      assert(this.hosts.length < 254, "too many hosts");
-      d = this.hosts.push(host) - 1;
-    }
-    return long2ip(this.space.netLong + 256 * c + d);
+    const c = this.networks.get(net);
+    assert(c, "network does not exist");
+    const d = allocNumber("hosts", this.hosts, this.nextHost, host);
+    return long2ip(c | d);
   }
+}
+
+function saveFixed(kind: string, m: BiMap<string, number>, key: string, value: number): void {
+  if (m.has(key) && m.get(key) !== value) {
+    throw new Error(`${kind} "${key}" has conflicting assignment`);
+  }
+  if (m.inverse.has(value) && m.inverse.get(value) !== key) {
+    throw new Error(`${kind} ${long2ip(value)} has conflicting assignment`);
+  }
+  m.set(key, value);
+}
+
+function allocNumber(kind: string, m: BiMap<string, number>, next: { n: number; step: number; max: number }, key: string): number {
+  let v = m.get(key);
+  if (v === undefined) {
+    do {
+      v = next.n;
+      next.n += next.step;
+      assert(v <= next.max, `too many ${kind}`);
+    } while (m.inverse.get(v) !== undefined);
+    m.set(key, v);
+  }
+  return v;
 }

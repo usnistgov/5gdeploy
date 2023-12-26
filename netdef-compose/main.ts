@@ -11,6 +11,7 @@ import { oaiUPtiny, oaiUPvpp } from "../oai/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { NetDefComposeContext } from "./context.js";
 import { dnOptions, saveDNOptions } from "./dn.js";
+import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
 import { RANProviders } from "./ran.js";
 
 type Providers = Record<string, (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>>;
@@ -44,11 +45,6 @@ const args = await yargs(hideBin(process.argv))
     desc: "Compose output directory",
     type: "string",
   })
-  .option("ip-space", {
-    desc: "Compose networks IP address space, /18 or larger",
-    default: "172.25.192.0/18",
-    type: "string",
-  })
   .option("cp", {
     desc: "Control Plane provider",
     default: "phoenix",
@@ -69,6 +65,7 @@ const args = await yargs(hideBin(process.argv))
   })
   .option(compose.bridgeOptions)
   .option(compose.splitOptions)
+  .option(ipAllocOptions)
   .option(dnOptions)
   .option(phoenixOptions)
   .parseAsync();
@@ -76,7 +73,7 @@ const args = await yargs(hideBin(process.argv))
 const netdef = new NetDef(JSON.parse(await (args.netdef === "-" ? getStdin() : fs.readFile(args.netdef, "utf8"))));
 netdef.validate();
 saveDNOptions(args);
-const ctx = new NetDefComposeContext(netdef, args.out, { ipSpace: args.ipSpace });
+const ctx = new NetDefComposeContext(netdef, args.out, new IPAlloc(args));
 await upProviders[args.up]!(ctx, args);
 await cpProviders[args.cp]!(ctx, args);
 await ranProviders[args.ran]!(ctx, args);
