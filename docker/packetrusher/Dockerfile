@@ -1,6 +1,6 @@
 FROM golang:1.21-alpine3.18 AS build
 RUN cd / \
- && wget -O PacketRusher.zip https://github.com/HewlettPackard/PacketRusher/archive/c10560874c0bbd8241f75c5aaa44536b528e1d74.zip \
+ && wget -O PacketRusher.zip https://github.com/HewlettPackard/PacketRusher/archive/f104a3131ca09b36c7cf24c748f5a94425c0218a.zip \
  && unzip -n PacketRusher.zip \
  && mv PacketRusher-* PacketRusher \
  && cd /PacketRusher \

@@ -14,7 +14,7 @@ export interface GNB {
     mcc: string;
     mnc: string;
     tac: string;
-    gnbid: string; // no effect: CreateGnbs overwrites this with gnbIdGenerator
+    gnbid: string;
   };
   slicesupportlist: {
     sst: string;

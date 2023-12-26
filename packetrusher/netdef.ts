@@ -9,29 +9,38 @@ import type * as prush from "../types/packetrusher.js";
 
 /** Define PacketRusher container. */
 export async function buildRAN(ctx: NetDefComposeContext): Promise<void> {
-  assert(ctx.network.gnbs.length === 1, "can only use 1 gNB");
-  const gnb = ctx.network.gnbs[0]!;
-  const subscribers = ctx.netdef.listSubscribers(false);
-  assert(subscribers.length === 1, "can only use 1 UE");
-  const sub = subscribers[0]!;
+  assert(ctx.network.gnbIdLength === 24, "only support 24-bit gNB ID");
+  const gnbs = new Map<string, N.GNB>(ctx.network.gnbs.map((gnb) => [gnb.name, gnb]));
+  for (const sub of ctx.netdef.listSubscribers(true)) {
+    assert(sub.gnbs.length === 1, "each UE can only connect to 1 gNB");
+    const gnb = gnbs.get(sub.gnbs[0]!);
+    gnbs.delete(sub.gnbs[0]!);
+    assert(gnb !== undefined, "each gNB can only serve 1 UE");
 
+    defineGnbUe(ctx, gnb, sub);
+  }
+}
+
+function defineGnbUe(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Subscriber): void {
   const s = ctx.defineService(gnb.name, "5gdeploy.localhost/packetrusher", ["n2", "n3"]);
   s.privileged = true;
   s.devices.push("/dev/net/tun:/dev/net/tun");
 
   const c = makeConfigUpdate(ctx, gnb, sub);
+  const filename = `/config.${gnb.name}.${sub.supi}.yml`;
   compose.setCommands(s, [
     "msg Preparing PacketRusher config",
     `echo ${shlex.quote(JSON.stringify(c))} >/config.update.yml`,
-    "yq -P '. *= load(\"/config.update.yml\")' /config.default.yml | tee /config.yml",
+    `yq -P '. *= load("/config.update.yml")' /config.default.yml | tee ${filename}`,
     "sleep 10",
     "msg Starting PacketRusher",
-    "exec /packetrusher --config /config.yml ue",
+    `exec /packetrusher --config ${filename} ue`,
   ], "ash");
 }
 
 function makeConfigUpdate(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Subscriber): PartialDeep<prush.Root> {
   const [mcc, mnc] = NetDef.splitPLMN(ctx.network.plmn);
+  const nci = ctx.netdef.splitNCI(gnb.nci);
   const s = ctx.c.services[gnb.name]!;
 
   const c: PartialDeep<prush.Root> = {};
@@ -45,6 +54,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Sub
       mcc,
       mnc,
       tac: ctx.netdef.tac.toString(16).padStart(6, "0"),
+      gnbid: nci.gnb.toString(16).padStart(6, "0"),
     },
   };
 
