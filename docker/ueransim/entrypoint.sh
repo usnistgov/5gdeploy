@@ -27,9 +27,8 @@ msg() {
 }
 
 gnb() {
-  sleep 5
   msg Generating gnb.yaml
-  dasel -f /ueransim/config/custom-gnb.yaml -w json | jq "$JQ_FUNCS"'
+  yq -p yaml -o json /ueransim/config/custom-gnb.yaml | jq "$JQ_FUNCS"'
     .mcc |= (env.PLMN | split("-")[0]) |
     .mnc |= (env.PLMN | split("-")[1]) |
     .nci |= (env.NCI | hex2number) |
@@ -40,16 +39,16 @@ gnb() {
     .gtpIp |= env.GTP_IP |
     .amfConfigs |= (env.AMF_IPS | split(",") | map({ address:., port:38412 })) |
     .slices |= (env.SLICES | split(",") | map(to_slice)) |
-  .' | dasel -r json -w yaml | tee /ueransim/config/gnb.yaml
+  .' | yq -p json -o yaml | tee /ueransim/config/gnb.yaml
 
+  sleep 10
   msg Starting 5G gNodeB
   exec /ueransim/nr-gnb -c /ueransim/config/gnb.yaml
 }
 
 ue() {
-  sleep 10
   msg Generating ue.yaml
-  dasel -f /ueransim/config/custom-ue.yaml -w json | jq "$JQ_FUNCS"'
+  yq -p yaml -o json /ueransim/config/custom-ue.yaml | jq "$JQ_FUNCS"'
     .mcc |= (env.PLMN | split("-")[0]) |
     .mnc |= (env.PLMN | split("-")[1]) |
     .supi |= ("imsi-" + env.IMSI) |
@@ -60,8 +59,9 @@ ue() {
     .["configured-nssai"] |= (env.SLICES | split(",") | map(to_slice)) |
     .["default-nssai"] |= (env.SLICES | split(",") | map(to_slice)) |
     .sessions |= (env.SESSIONS | split(",") | map(to_session)) |
-  .' | dasel -r json -w yaml | tee /ueransim/config/ue.yaml
+  .' | yq -p json -o yaml | tee /ueransim/config/ue.yaml
 
+  sleep 20
   msg Starting 5G UE
   exec /ueransim/nr-ue -c /ueransim/config/ue.yaml -n $COUNT
 }
