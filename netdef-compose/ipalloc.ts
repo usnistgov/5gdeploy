@@ -33,9 +33,7 @@ export class IPAlloc {
 
     for (const line of fixed) {
       const m = /^(\w+),(\w+),([\d.]+)$/.exec(line);
-      if (!m) {
-        throw new Error(`bad --ip-fixed=${line}`);
-      }
+      assert(!!m, `bad --ip-fixed=${line}`);
       const [, host, net, ipStr] = m as string[] as [string, string, string, string];
       const ip = ip2long(ipStr);
       saveFixed("network", this.networks, net, ip & ~0xFF);
@@ -54,7 +52,7 @@ export class IPAlloc {
    * @returns /24 subnet.
    */
   public allocNetwork(net: string): string {
-    const c = allocNumber("networks", this.networks, this.nextNetwork, net);
+    const c = allocOne("network", this.networks, this.nextNetwork, net);
     return `${long2ip(c)}/24`;
   }
 
@@ -67,29 +65,35 @@ export class IPAlloc {
   public allocNetif(net: string, host: string): string {
     const c = this.networks.get(net);
     assert(c, "network does not exist");
-    const d = allocNumber("hosts", this.hosts, this.nextHost, host);
+
+    const d = allocOne("host", this.hosts, this.nextHost, host);
     return long2ip(c | d);
   }
 }
 
 function saveFixed(kind: string, m: BiMap<string, number>, key: string, value: number): void {
-  if (m.has(key) && m.get(key) !== value) {
-    throw new Error(`${kind} "${key}" has conflicting assignment`);
+  let conflictValue: number;
+  if (m.has(key) && (conflictValue = m.get(key)!) !== value) {
+    throw new Error(`${kind} "${key}" has conflicting assignment ${long2ip(conflictValue)}`);
   }
-  if (m.inverse.has(value) && m.inverse.get(value) !== key) {
-    throw new Error(`${kind} ${long2ip(value)} has conflicting assignment`);
+
+  let conflictKey: string;
+  if (m.inverse.has(value) && (conflictKey = m.inverse.get(value)!) !== key) {
+    throw new Error(`${kind} ${long2ip(value)} has conflicting assignment "${conflictKey}"`);
   }
+
   m.set(key, value);
 }
 
-function allocNumber(kind: string, m: BiMap<string, number>, next: { n: number; step: number; max: number }, key: string): number {
+function allocOne(kind: string, m: BiMap<string, number>, next: { n: number; step: number; max: number }, key: string): number {
   let v = m.get(key);
   if (v === undefined) {
     do {
       v = next.n;
       next.n += next.step;
-      assert(v <= next.max, `too many ${kind}`);
+      assert(v <= next.max, `too many ${kind}s`);
     } while (m.inverse.get(v) !== undefined);
+
     m.set(key, v);
   }
   return v;

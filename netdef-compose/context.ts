@@ -43,7 +43,7 @@ export class NetDefComposeContext {
   }
 
   /** Gather IP addresses of a network function or containers on a network. */
-  public gatherIPs(nf: string | string[], net: string): string[] {
+  public gatherIPs(nf: string | readonly string[], net: string): string[] {
     const list: string[] = [];
     for (const [ct, s] of Object.entries(this.c.services)) {
       if ((typeof nf === "string") ? (compose.nameToNf(ct) !== nf) : (!nf.includes(ct))) {

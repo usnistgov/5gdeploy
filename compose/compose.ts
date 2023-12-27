@@ -135,7 +135,6 @@ export function defineService(c: ComposeFile, name: string, image: string): Comp
 export function annotate(s: ComposeService, key: string): string | undefined;
 /** Set service annotation. */
 export function annotate(s: ComposeService, key: string, value: string | number): ComposeService;
-/** Assign service annotations. */
 
 export function annotate(s: ComposeService, key: string, value?: string | number) {
   key = `5gdeploy.${key}`;
@@ -169,7 +168,7 @@ export function disconnectNetif(c: ComposeFile, ct: string, net: string): string
   assert(netif, `netif ${ct}:${net} missing`);
   delete service.networks[net]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
 
-  const sysctlPrefix = `net.ipv4.conf.eth${Object.entries(service.networks).length}`;
+  const sysctlPrefix = `net.ipv4.conf.eth${Object.entries(service.networks).length}.`;
   for (const key of Object.keys(service.sysctls)) {
     if (key.startsWith(sysctlPrefix)) {
       delete service.sysctls[key]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
