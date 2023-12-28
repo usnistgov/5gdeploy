@@ -6,9 +6,9 @@ Please report issues and request new scenarios via "6G Core Network Project" Tea
 Scenario list and brief description:
 
 * [20230510](20230510): cloud and edges
-* [20230817](20230817): 3-slice with unshared UPFs
-* [20231017](20231017): 2-slice with unshared UPFs
-* [20231214](20231214): 2-slice with single UPF
+* [20230817](20230817): phones and vehicles, 3-slice with 3 UPFs
+* [20231017](20231017): phones and vehicles, 2-slice with 2 UPFs
+* [20231214](20231214): phones and vehicles, 2-slice with 1 UPF
 
 ## Installation and Usage
 

@@ -1,4 +1,4 @@
-# 2-Slice with Single UPF
+# Phones and Vehicles, 2-Slice with 1 UPF
 
 ## Description
 
