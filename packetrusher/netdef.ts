@@ -25,6 +25,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Subscrib
   const s = ctx.defineService(gnb.name, "5gdeploy.localhost/packetrusher", ["n2", "n3"]);
   s.privileged = true;
   s.devices.push("/dev/net/tun:/dev/net/tun");
+  compose.annotate(s, "cpus", 1);
 
   const c = makeConfigUpdate(ctx, gnb, sub);
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
