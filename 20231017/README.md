@@ -103,3 +103,21 @@ N4_UPF4=02:00:00:04:00:03
 This scenario has 1 gNB by default.
 If you change gNB quantity in `+gnbs=` flag, you must also edit `--bridge=n3,eth,` flag, so that each gNB has its own N3 network interface.
 gNB does not use N4 network, so that `--bridge=n4,eth,` flag can remain unchanged.
+
+## SONiC Switch QoS Setting
+
+`sonic-qos.ts` generates QoS configuration for [SONiC](https://github.com/sonic-net/SONiC) Ethernet switches.
+
+* `--dl-gnb` flag is the maximum downlink rate for each gNB in Mbps
+
+```bash
+# define variables for switch ports
+SWPORT_GNB0=Ethernet8
+SWPORT_UPF1=Ethernet0
+SWPORT_UPF4=Ethernet1
+
+# generate JSON patch to be applied to SONiC config_db.json
+./node_modules/.bin/tsx 20231017/sonic-qos.ts \
+  --port-gnb=$SWPORT_GNB0 --port-upf1=$SWPORT_UPF1 --port-upf4=$SWPORT_UPF4 \
+  --dl-gnb=2000
+```
