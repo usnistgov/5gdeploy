@@ -4,6 +4,21 @@ import { hideBin } from "yargs/helpers";
 
 const args = await yargs(hideBin(process.argv))
   .strict()
+  .option("reverse", {
+    default: false,
+    desc: "remove instead of add",
+    type: "boolean",
+  })
+  .option("drop-tables", {
+    default: false,
+    desc: "drop tables (only relevant with --reverse)",
+    type: "boolean",
+  })
+  .option("prefix", {
+    default: "5gdeploy-20231017-",
+    desc: "table key prefix",
+    type: "string",
+  })
   .option("port-gnb", {
     demandOption: true,
     desc: "gNB switchport",
@@ -28,54 +43,42 @@ const args = await yargs(hideBin(process.argv))
   })
   .parseAsync();
 
-const patch: Operation[] = [
-  {
-    op: "add",
-    path: "/DOT1P_TO_TC_MAP/upf1",
-    value: {
-      0: "7",
-    },
-  },
-  {
-    op: "add",
-    path: `/PORT_QOS_MAP/${args.portUpf1}`,
-    value: {
-      dot1p_to_tc_map: "upf1",
-    },
-  },
-  {
-    op: "add",
-    path: "/DOT1P_TO_TC_MAP/upf4",
-    value: {
-      0: "0",
-    },
-  },
-  {
-    op: "add",
-    path: `/PORT_QOS_MAP/${args.portUpf4}`,
-    value: {
-      dot1p_to_tc_map: "upf4",
-    },
-  },
-];
+const tables = new Set<string>();
+const patch: Operation[] = [];
+function setConfig(path: string, value: unknown): void {
+  tables.add(path.split("/")[1]!);
+  if (!args.reverse) {
+    patch.push({ op: "add", path, value });
+  } else if (!args.dropTables) {
+    patch.push({ op: "remove", path });
+  }
+}
+
+setConfig(`/DOT1P_TO_TC_MAP/${args.prefix}upf1`, { 0: "1" });
+setConfig(`/PORT_QOS_MAP/${args.portUpf1}`, { dot1p_to_tc_map: `${args.prefix}upf1` });
+setConfig(`/DOT1P_TO_TC_MAP/${args.prefix}upf4`, { 0: "0" });
+setConfig(`/PORT_QOS_MAP/${args.portUpf4}`, { dot1p_to_tc_map: `${args.prefix}upf4` });
+
 for (const [i, gnbPort] of args.portGnb.entries()) {
-  const dl = args.dlGnb[i % args.dlGnb.length]!;
-  patch.push({
-    op: "add",
-    path: `/SCHEDULER/gnb${i}`,
-    value: {
-      meter_type: "bytes",
-      pbs: "8192",
-      pir: `${dl * 1e6 / 8}`,
-      type: "STRICT",
-    },
-  }, {
-    op: "add",
-    path: `/PORT_QOS_MAP/${gnbPort}`,
-    value: {
-      scheduler: `gnb${i}`,
-    },
+  const mbitsPerSec = args.dlGnb[i % args.dlGnb.length]!;
+  const bytesPerSec = Math.ceil(mbitsPerSec * 1e6 / 8);
+  setConfig(`/SCHEDULER/${args.prefix}gnb${i}`, {
+    type: "STRICT",
+    meter_type: "bytes",
+    pir: `${bytesPerSec}`,
+    pbs: "8192",
   });
+  setConfig(`/PORT_QOS_MAP/${gnbPort}`, {
+    scheduler: `${args.prefix}gnb${i}`,
+  });
+}
+
+for (const table of tables) {
+  if (!args.reverse) {
+    patch.unshift({ op: "add", path: `/${table}`, value: {} });
+  } else if (args.dropTables) {
+    patch.push({ op: "remove", path: `/${table}` });
+  }
 }
 
 process.stdout.write(`${JSON.stringify(patch)}\n`);

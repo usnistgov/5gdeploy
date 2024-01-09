@@ -116,7 +116,7 @@ SWPORT_GNB0=Ethernet8
 SWPORT_UPF1=Ethernet0
 SWPORT_UPF4=Ethernet1
 
-# generate JSON patch to be applied to SONiC config_db.json
+# generate JSON patch to be applied via SONiC config apply command
 ./node_modules/.bin/tsx 20231017/sonic-qos.ts \
   --port-gnb=$SWPORT_GNB0 --port-upf1=$SWPORT_UPF1 --port-upf4=$SWPORT_UPF4 \
   --dl-gnb=2000
