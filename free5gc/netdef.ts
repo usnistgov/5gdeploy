@@ -412,7 +412,7 @@ export async function f5UP(ctx: NetDefComposeContext): Promise<void> {
       target: "/free5gc/config/upfcfg.yaml",
       read_only: true,
     });
-    s.cap_add = ["NET_ADMIN"];
+    s.cap_add.push("NET_ADMIN");
 
     const c = f5_conf.loadTemplate("upfcfg") as F5.upf.Root;
     c.pfcp.addr = s.networks.n4!.ipv4_address;

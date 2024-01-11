@@ -23,7 +23,7 @@ export async function buildRAN(ctx: NetDefComposeContext): Promise<void> {
 
 function defineGnbUe(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Subscriber): void {
   const s = ctx.defineService(gnb.name, "5gdeploy.localhost/packetrusher", ["n2", "n3"]);
-  s.privileged = true;
+  s.cap_add.push("NET_ADMIN");
   s.devices.push("/dev/net/tun:/dev/net/tun");
   compose.annotate(s, "cpus", 1);
 
@@ -35,7 +35,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Subscrib
     `yq -P '. *= load("/config.update.yml")' /config.default.yml | tee ${filename}`,
     "sleep 10",
     "msg Starting PacketRusher",
-    `exec /packetrusher --config ${filename} ue`,
+    `exec /packetrusher --config ${filename} multi-ue -n 1 -d -t --tunnel-vrf=false`,
   ], "ash");
 }
 
