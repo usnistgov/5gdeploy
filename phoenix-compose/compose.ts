@@ -1,3 +1,4 @@
+import { mysql } from "../compose/database.js";
 import * as compose from "../compose/mod.js";
 import type { IPMAP } from "../phoenix/mod.js";
 import type { ComposeFile, ComposeService } from "../types/compose.js";
@@ -54,15 +55,8 @@ export namespace updateService {
 
 const updateNf: Record<string, (s: ComposeService, opts: updateService.Options) => void> = {
   sql(s, { sql = "./sql" }) {
-    s.image = "bitnami/mariadb:10.6";
-    s.volumes.push({
-      type: "bind",
-      source: sql,
-      target: "/docker-entrypoint-startdb.d",
-      read_only: true,
-    });
-    s.environment.ALLOW_EMPTY_PASSWORD = "yes";
-    s.environment.MARIADB_EXTRA_FLAGS = "--max_connections=1000";
+    s.image = mysql.image;
+    mysql.init(s, sql);
   },
   gnb(s) {
     s.sysctls["net.ipv4.ip_forward"] = 0;
