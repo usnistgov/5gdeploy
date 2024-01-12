@@ -31,7 +31,7 @@ These combinations are verified to be compatible:
 
 * `--cp=phoenix --up=phoenix --ran=phoenix`
 * `--cp=phoenix --up=phoenix --ran=ueransim`
-* `--cp=phoenix --up=phoenix --ran=packetrush`
+* `--cp=phoenix --up=phoenix --ran=packetrusher`
 * `--cp=phoenix --up=free5gc --ran=phoenix`
 * `--cp=phoenix --up=free5gc --ran=oai`
 * `--cp=phoenix --up=free5gc --ran=ueransim`
