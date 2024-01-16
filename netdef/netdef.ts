@@ -209,6 +209,10 @@ export namespace NetDef {
       sst: number;
       sd?: number;
     };
+    ih: {
+      sst: number;
+      sd?: string;
+    };
   }
 
   /** Information about a subscriber. */
@@ -236,16 +240,20 @@ export namespace NetDef {
   export function splitSNSSAI(snssai: N.SNSSAI): SNSSAI {
     assert(/^[\da-f]{2}(?:[\da-f]{6})?$/i.test(snssai));
     if (snssai.length === 2) {
+      const sstInt = Number.parseInt(snssai, 16);
       return {
         hex: { sst: snssai },
-        int: { sst: Number.parseInt(snssai, 16) },
+        int: { sst: sstInt },
+        ih: { sst: sstInt },
       };
     }
     const sst = snssai.slice(0, 2);
+    const sstInt = Number.parseInt(sst, 16);
     const sd = snssai.slice(2);
     return {
       hex: { sst, sd },
-      int: { sst: Number.parseInt(sst, 16), sd: Number.parseInt(sd, 16) },
+      int: { sst: sstInt, sd: Number.parseInt(sd, 16) },
+      ih: { sst: sstInt, sd },
     };
   }
 

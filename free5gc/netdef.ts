@@ -12,7 +12,7 @@ import * as f5_conf from "./conf.js";
 import type * as W from "./webconsole-openapi/models/index.js";
 
 function convertSNSSAI(input: string): F5.SNSSAI {
-  const { int: { sst }, hex: { sd = "FFFFFF" } } = NetDef.splitSNSSAI(input);
+  const { sst, sd = "FFFFFF" } = NetDef.splitSNSSAI(input).ih;
   return { sst, sd };
 }
 

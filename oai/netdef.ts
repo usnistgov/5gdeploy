@@ -63,7 +63,7 @@ export async function oaiUPtiny(ctx: NetDefComposeContext): Promise<void> {
       }
 
       assert(i < 4, `UPF ${upf.name} can handle up to 4 DNs`);
-      const { int: { sst }, hex: { sd = "FFFFFF" } } = NetDef.splitSNSSAI(dn.snssai);
+      const { sst, sd = "FFFFFF" } = NetDef.splitSNSSAI(dn.snssai).ih;
       s.environment[`NSSAI_SST_${i}`] = `${sst}`;
       s.environment[`NSSAI_SD_${i}`] = `0x${sd}`;
       s.environment[`DNN_${i}`] = dn.dnn;
@@ -136,7 +136,7 @@ export async function oaiUPvpp(ctx: NetDefComposeContext): Promise<void> {
       }
 
       assert(!s.environment.DNN, `UPF ${upf.name} must handle exactly 1 DN`);
-      const { int: { sst, sd = 0xFFFFFF } } = NetDef.splitSNSSAI(dn.snssai);
+      const { sst, sd = 0xFFFFFF } = NetDef.splitSNSSAI(dn.snssai).int;
       s.environment.SNSSAI_SST = sst.toString();
       s.environment.SNSSAI_SD = sd.toString();
       s.environment.DNN = dn.dnn;

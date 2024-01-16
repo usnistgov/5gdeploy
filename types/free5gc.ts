@@ -27,7 +27,7 @@ export interface PLMNID {
 
 export interface SNSSAI {
   sst: number;
-  sd?: string;
+  sd: string;
 }
 
 export interface SBI {

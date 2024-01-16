@@ -11,11 +11,6 @@ import type { NetDefComposeContext } from "../netdef-compose/context";
 import type * as CN5G from "../types/oai-cn5g.js";
 import * as oai_conf from "./conf.js";
 
-function convertSNSSAI(input: string): CN5G.SNSSAI {
-  const { int: { sst }, hex: { sd = "FFFFFF" } } = NetDef.splitSNSSAI(input);
-  return { sst, sd };
-}
-
 function hexPad(value: number, length: number): string {
   return value.toString(16).padStart(length, "0");
 }
@@ -85,7 +80,7 @@ class CN5GBuilder {
     yield "DELETE FROM SessionManagementSubscriptionData";
     for (const sub of this.ctx.netdef.listSubscribers()) {
       const nssai = {
-        defaultSingleNssais: sub.subscribedNSSAI.map(({ snssai }) => convertSNSSAI(snssai)),
+        defaultSingleNssais: sub.subscribedNSSAI.map(({ snssai }) => NetDef.splitSNSSAI(snssai).ih),
       };
       yield sql`
         INSERT AccessAndMobilitySubscriptionData (ueid,servingPlmnid,nssai)
@@ -99,7 +94,7 @@ class CN5GBuilder {
   }
 
   private updateConfig(): void {
-    this.c.snssais.splice(0, Infinity, ...this.ctx.netdef.nssai.map(convertSNSSAI));
+    this.c.snssais.splice(0, Infinity, ...this.ctx.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih));
     this.updateConfigAMF();
   }
 

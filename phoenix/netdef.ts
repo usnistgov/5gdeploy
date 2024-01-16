@@ -194,7 +194,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
 
         const amPatch = {
           nssai: {
-            defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => expandSNSSAI(snssai)),
+            defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => NetDef.splitSNSSAI(snssai).ih),
           },
         };
         yield sql`INSERT am_data (supi,access_and_mobility_sub_data) VALUES (${supi},JSON_MERGE_PATCH(@am_json,${amPatch}))`;
@@ -202,7 +202,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         for (const { snssai, dnn } of subscribedDN) {
           const dn = netdef.findDN(dnn, snssai);
           assert(!!dn);
-          const { sst } = expandSNSSAI(snssai);
+          const { sst } = NetDef.splitSNSSAI(snssai).ih;
           const dnnPatch = {
             pduSessionTypes: {
               defaultSessionType: dn.type.toUpperCase(),
@@ -241,7 +241,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         const [, set] = NetDef.validateAMFI(amf.amfi);
         yield sql`INSERT nsi (nsi_id,nrf_id,target_amf_set) VALUES (${`nsi_id_${i}`},${`nrf_id_${i}`},${`${set}`}) RETURNING @nsi_id:=row_id`;
         for (const snssai of amf.nssai ?? defaultNSSAI) {
-          const { sst, sd = "" } = expandSNSSAI(snssai);
+          const { sst, sd = "" } = NetDef.splitSNSSAI(snssai).ih;
           yield sql`INSERT snssai (sst,sd) VALUES (${sst},${sd}) RETURNING @snssai_id:=row_id`;
           yield "INSERT snssai_nsi_mapping (row_id_snssai,row_id_nsi) VALUES (@snssai_id,@nsi_id)";
         }
@@ -512,7 +512,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 
   private buildGNBs(): void {
     const sliceKeys = ["slice", "slice2"] as const;
-    const slices = this.netdef.nssai.map((snssai) => expandSNSSAI(snssai));
+    const slices = this.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
     assert(slices.length <= sliceKeys.length, `gNB allows up to ${sliceKeys.length} slices`);
     const nWorkers = this.opts["phoenix-gnb-workers"];
 
@@ -595,14 +595,9 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 }
 export const phoenixRAN = makeBuilder(PhoenixRANBuilder);
 
-function expandSNSSAI(snssai: N.SNSSAI): PH.SNSSAI {
-  const { int: { sst }, hex: { sd } } = NetDef.splitSNSSAI(snssai);
-  return { sst, sd };
-}
-
 function setNrfClientSlices(c: NetworkFunction, nssai: readonly N.SNSSAI[]): void {
   const { config } = c.getModule("nrf_client");
-  config.nf_profile.sNssais = nssai.map((snssai) => expandSNSSAI(snssai));
+  config.nf_profile.sNssais = nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
 }
 
 const USIM = { sqn: "000000000001", amf: "8000" } as const;
