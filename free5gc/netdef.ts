@@ -2,7 +2,6 @@ import assert from "minimalistic-assert";
 import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 
-import { mongo } from "../compose/database.js";
 import * as compose from "../compose/mod.js";
 import { type N, NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
@@ -41,8 +40,8 @@ class F5CPBuilder {
   }
 
   private buildMongo(): void {
-    const s = this.ctx.defineService("mongo", mongo.image, ["db"]);
-    mongo.init(s);
+    const s = this.ctx.defineService("mongo", compose.mongo.image, ["db"]);
+    compose.mongo.init(s);
     this.mongoUrl.hostname = s.networks.db!.ipv4_address;
   }
 

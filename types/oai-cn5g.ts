@@ -50,6 +50,7 @@ export interface DNN {
 
 export namespace amf {
   export interface Config {
+    amf_name: string;
     served_guami_list: GUAMI[];
     plmn_support_list: PLMN[];
     [k: string]: unknown;

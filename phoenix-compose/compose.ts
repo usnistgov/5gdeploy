@@ -1,4 +1,3 @@
-import { mysql } from "../compose/database.js";
 import * as compose from "../compose/mod.js";
 import type { IPMAP } from "../phoenix/mod.js";
 import type { ComposeFile, ComposeService } from "../types/compose.js";
@@ -55,8 +54,8 @@ export namespace updateService {
 
 const updateNf: Record<string, (s: ComposeService, opts: updateService.Options) => void> = {
   sql(s, { sql = "./sql" }) {
-    s.image = mysql.image;
-    mysql.init(s, sql);
+    s.image = compose.mysql.image;
+    compose.mysql.init(s, sql);
   },
   gnb(s) {
     s.sysctls["net.ipv4.ip_forward"] = 0;

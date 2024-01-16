@@ -9,6 +9,7 @@ import type DefaultMap from "mnemonist/default-map.js";
 import type MultiMap from "mnemonist/multi-map.js";
 import { type AnyIterable } from "streaming-iterables";
 
+import * as compose from "../compose/mod.js";
 import { IPMAP } from "./ipmap.js";
 import { NetworkFunction } from "./nf.js";
 import { OtherTable } from "./other.js";
@@ -107,18 +108,7 @@ export class ScenarioFolder {
 
   /** Append SQL statements to a database. */
   public appendSQL(db: string, g: () => AnyIterable<string>): void {
-    this.edit(`sql/${db}.sql`, async (body) => {
-      body += "\n";
-      for await (let stmt of g()) {
-        stmt = stmt.trim().replaceAll(/\n\s+/g, " ");
-        if (stmt.endsWith(";")) {
-          body += `${stmt}\n`;
-        } else {
-          body += `${stmt};\n`;
-        }
-      }
-      return body;
-    });
+    this.edit(`sql/${db}.sql`, (body) => compose.mysql.join(body, g()));
   }
 
   /**
