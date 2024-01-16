@@ -1,7 +1,11 @@
+type GeneralRecord<K extends PropertyKey, T> = {
+  general: T;
+} & Partial<Record<K, T>>;
+
 export interface Config {
-  log_level: Record<"general" | NFName, LogLevel>;
-  register_nf: Record<"general" | NFName, boolean>;
-  nfs: Record<NFName, NF>;
+  log_level: GeneralRecord<NFName, LogLevel>;
+  register_nf: GeneralRecord<NFName, boolean>;
+  nfs: Partial<Record<NFName, NF>>;
   database: Database;
   snssais: SNSSAI[];
   dnns: DNN[];
@@ -51,8 +55,17 @@ export interface DNN {
 export namespace amf {
   export interface Config {
     amf_name: string;
+    support_features_options: Features;
     served_guami_list: GUAMI[];
     plmn_support_list: PLMN[];
+    supported_integrity_algorithms: IntegrityAlgo[];
+    supported_encryption_algorithms: EncryptionAlgo[];
+    [k: string]: unknown;
+  }
+
+  export interface Features {
+    enable_nssf: boolean;
+    enable_smf_selection: boolean;
     [k: string]: unknown;
   }
 
@@ -70,12 +83,15 @@ export namespace amf {
     tac: string;
     nssai: SNSSAI[];
   }
+
+  export type IntegrityAlgo = "NIA0" | "NIA1" | "NIA2";
+  export type EncryptionAlgo = "NEA0" | "NEA1" | "NEA2";
 }
 
 export namespace smf {
   export interface Config {
     upfs: UPF[];
-    smf_info: SMFInfo[];
+    smf_info: SMFInfo;
     local_subscription_infos: LocalSubscription[];
     [k: string]: unknown;
   }

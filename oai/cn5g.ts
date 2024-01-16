@@ -21,6 +21,9 @@ class CN5GBuilder {
   public async buildCP(): Promise<void> {
     await this.buildSQL();
     for (const [nf, c] of Object.entries(this.c.nfs)) {
+      if (nf === "upf") {
+        continue;
+      }
       const nets = Object.keys(c).filter((net): net is `n${number}` => net.startsWith("n"));
       nets.sort((a, b) => a.localeCompare(b));
       for (const [i, net] of nets.entries()) {
@@ -94,29 +97,73 @@ class CN5GBuilder {
   }
 
   private updateConfig(): void {
-    this.c.snssais.splice(0, Infinity, ...this.ctx.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih));
+    this.c.register_nf.general = false;
+    this.c.snssais = this.ctx.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
+    this.c.dnns = this.ctx.network.dataNetworks.map((dn): CN5G.DNN => ({
+      dnn: dn.dnn,
+      pdu_session_type: "IPV4",
+      ipv4_subnet: dn.subnet,
+    }));
     this.updateConfigAMF();
+    this.updateConfigSMF();
   }
 
   private updateConfigAMF(): void {
-    const c = this.c.amf!;
     assert(this.ctx.network.amfs.length === 1, "support exactly 1 AMF");
     const amf = this.ctx.network.amfs[0]!;
+
+    const c = this.c.amf!;
     c.amf_name = amf.name;
+    if (!(this.c.register_nf.smf ?? this.c.register_nf.general)) {
+      // SMF selection depends on SMF registration in NRF
+      c.support_features_options.enable_smf_selection = false;
+    }
+    c.supported_integrity_algorithms = c.supported_integrity_algorithms.filter((algo) => algo !== "NIA0");
+
     const [mcc, mnc] = NetDef.splitPLMN(this.ctx.network.plmn);
-    c.served_guami_list.splice(0, Infinity, {
+    c.served_guami_list = [{
       mcc,
       mnc,
       amf_region_id: hexPad(amf.amfi[0], 2),
       amf_set_id: hexPad(amf.amfi[1], 3),
       amf_pointer: hexPad(amf.amfi[2], 2),
-    });
-    c.plmn_support_list.splice(0, Infinity, {
+    }];
+    c.plmn_support_list = [{
       mcc,
       mnc,
       tac: `0x${hexPad(this.ctx.netdef.tac, 4)}`,
       nssai: this.c.snssais,
+    }];
+  }
+
+  private updateConfigSMF(): void {
+    assert(this.ctx.network.smfs.length === 1, "support exactly 1 SMF");
+
+    const c = this.c.smf!;
+
+    const upfTpl = c.upfs[0]!;
+    c.upfs = this.ctx.network.upfs.map((upf): CN5G.smf.UPF => {
+      const ct = this.ctx.c.services[upf.name]!;
+      return {
+        ...upfTpl,
+        host: ct.networks.n4!.ipv4_address,
+      };
     });
+
+    c.smf_info.sNssaiSmfInfoList = this.ctx.netdef.nssai.map((snssai): CN5G.smf.SNSSAIInfo => {
+      const dns = this.ctx.network.dataNetworks.filter((dn) => dn.snssai === snssai);
+      return {
+        sNssai: NetDef.splitSNSSAI(snssai).ih,
+        dnnSmfInfoList: dns.map(({ dnn }) => ({ dnn })),
+      };
+    });
+
+    const localSubscriptionTpl = c.local_subscription_infos[0]!;
+    c.local_subscription_infos = this.ctx.network.dataNetworks.map((dn): CN5G.smf.LocalSubscription => ({
+      ...localSubscriptionTpl,
+      single_nssai: NetDef.splitSNSSAI(dn.snssai).ih,
+      dnn: dn.dnn,
+    }));
   }
 }
 
