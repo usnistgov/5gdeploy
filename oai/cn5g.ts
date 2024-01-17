@@ -4,10 +4,11 @@ import path from "node:path";
 import assert from "minimalistic-assert";
 import sql from "sql-tagged-template-literal";
 
-import { mysql } from "../compose/database";
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
-import type { NetDefComposeContext } from "../netdef-compose/context";
+import type { NetDefComposeContext } from "../netdef-compose/context.js";
+import * as NetDefDN from "../netdef-compose/dn.js";
+import type { ComposeService } from "../types/compose.js";
 import type * as CN5G from "../types/oai-cn5g.js";
 import * as oai_conf from "./conf.js";
 
@@ -15,54 +16,98 @@ function hexPad(value: number, length: number): string {
   return value.toString(16).padStart(length, "0");
 }
 
-class CN5GBuilder {
-  constructor(protected readonly ctx: NetDefComposeContext, protected readonly c: CN5G.Config) {}
+abstract class CN5GBuilder {
+  constructor(protected readonly ctx: NetDefComposeContext) {}
+  protected c!: CN5G.Config;
 
-  public async buildCP(): Promise<void> {
-    await this.buildSQL();
-    for (const [nf, c] of Object.entries(this.c.nfs)) {
-      if (nf === "upf") {
-        continue;
+  protected defineService(ct: string, nf: string, c: CN5G.NF, db: boolean, configPath: string): ComposeService {
+    const nets: string[] = [];
+    if (db) {
+      nets.push("db");
+    }
+    for (const key of Object.keys(c)) {
+      if (key === "sbi") {
+        nets.push("cp");
+      } else if (/^n\d+$/.test(key)) {
+        nets.push(key);
       }
-      const nets = Object.keys(c).filter((net): net is `n${number}` => net.startsWith("n"));
-      nets.sort((a, b) => a.localeCompare(b));
-      for (const [i, net] of nets.entries()) {
-        c[net]!.interface_name = `eth${2 + i}`;
+    }
+    nets.sort((a, b) => a.localeCompare(b));
+    for (const [i, net] of nets.entries()) {
+      switch (net) {
+        case "cp": {
+          c.sbi.interface_name = `eth${i}`;
+          break;
+        }
+        case "db": {
+          break;
+        }
+        default: {
+          assert(/^n\d+$/.test(net));
+          c[net as `n${number}`]!.interface_name = `eth${i}`;
+          break;
+        }
       }
-      c.sbi.interface_name = "eth0";
-
-      const s = this.ctx.defineService(nf, `oaisoftwarealliance/oai-${nf}`, ["cp", "db", ...nets]);
-      s.cap_add.push("NET_ADMIN");
-      s.volumes.push({
-        type: "bind",
-        source: "./cp-cfg/config.yaml",
-        target: `/openair-${nf}/etc/config.yaml`,
-      });
-
-      c.host = s.networks.cp!.ipv4_address;
-
-      compose.setCommands(s, [
-        "msg ifconfig listing:",
-        "/usr/sbin/ifconfig", // iproute2 unavailable in OAI images
-        `msg Starting ${nf}`,
-        `./bin/oai_${nf} -c ./etc/config.yaml -o`,
-      ]);
+      // XXX incompatible with Ethernet bridge
     }
 
-    this.updateConfig();
-    await this.ctx.writeFile("cp-cfg/config.yaml", this.c);
+    const s = this.ctx.defineService(ct, `oaisoftwarealliance/oai-${nf}`, nets);
+    s.cap_add.push("NET_ADMIN");
+    s.volumes.push({
+      type: "bind",
+      source: `./${configPath}`,
+      target: `/openair-${nf}/etc/config.yaml`,
+    });
+
+    c.host = s.networks.cp!.ipv4_address;
+
+    compose.setCommands(s, this.makeExecCommands(nf));
+    return s;
+  }
+
+  protected *makeExecCommands(nf: string): Iterable<string> {
+    yield "msg Listing IP addresses";
+    yield "ip addr list up || /usr/sbin/ifconfig || true";
+    yield `msg Starting oai_${nf}`;
+    yield `exec ./bin/oai_${nf} -c ./etc/config.yaml -o`;
+  }
+
+  protected updateConfigDNNs(): void {
+    this.c.snssais = this.ctx.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
+    this.c.dnns = this.ctx.network.dataNetworks.map((dn): CN5G.DNN => ({
+      dnn: dn.dnn,
+      pdu_session_type: "IPV4",
+      ipv4_subnet: dn.subnet,
+    }));
+  }
+}
+
+class CPBuilder extends CN5GBuilder {
+  public async build(): Promise<void> {
+    this.c = await oai_conf.loadCN5G();
+    await this.buildSQL();
+    const configPath = "cp-cfg/config.yaml";
+    for (const [nf, c] of Object.entries(this.c.nfs).filter(([nf]) => nf !== "upf")) {
+      this.defineService(nf, nf, c, true, configPath);
+    }
+
+    this.updateConfigDNNs();
+    this.updateConfigAMF();
+    this.updateConfigSMF();
+    delete this.c.upf;
+    await this.ctx.writeFile(configPath, this.c);
   }
 
   private async buildSQL(): Promise<void> {
-    const s = this.ctx.defineService("sql", mysql.image, ["db"]);
-    mysql.init(s, "cp-sql");
+    const s = this.ctx.defineService("sql", compose.mysql.image, ["db"]);
+    compose.mysql.init(s, "cp-sql");
     const dbc = this.c.database;
     dbc.host = s.networks.db!.ipv4_address;
     dbc.user = "oai";
     dbc.password = "oai";
     dbc.database_name = "oai_db";
 
-    await this.ctx.writeFile("cp-sql/oai_db.sql", await mysql.join(
+    await this.ctx.writeFile("cp-sql/oai_db.sql", await compose.mysql.join(
       [ // sql`` template literal is only meant for escaping values and cannot be used on database names
         `CREATE DATABASE ${dbc.database_name}`,
         `USE ${dbc.database_name}`,
@@ -94,18 +139,6 @@ class CN5GBuilder {
         VALUES (${sub.supi},'5G_AKA',${sub.k},${sub.k},@sqn_json,'8000','milenage',${sub.opc},NULL,NULL,NULL,NULL,${sub.supi})
       `;
     }
-  }
-
-  private updateConfig(): void {
-    this.c.register_nf.general = false;
-    this.c.snssais = this.ctx.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
-    this.c.dnns = this.ctx.network.dataNetworks.map((dn): CN5G.DNN => ({
-      dnn: dn.dnn,
-      pdu_session_type: "IPV4",
-      ipv4_subnet: dn.subnet,
-    }));
-    this.updateConfigAMF();
-    this.updateConfigSMF();
   }
 
   private updateConfigAMF(): void {
@@ -167,7 +200,62 @@ class CN5GBuilder {
   }
 }
 
+class UPBuilder extends CN5GBuilder {
+  public async build(): Promise<void> {
+    NetDefDN.defineDNServices(this.ctx);
+
+    this.c = await oai_conf.loadCN5G();
+    // rely on hosts entry because UP is created before CP so that NRF and SMF IP are unknown
+    // XXX this assumes there is only one NRF and one SMF
+    this.c.nfs.nrf!.host = "nrf.br-cp";
+    this.c.upf!.smfs = [{ host: "smf.br-n4" }];
+
+    this.updateConfigDNNs();
+    this.c.upf!.support_features.enable_snat = false;
+    delete this.c.amf;
+    delete this.c.smf;
+
+    for (const [ct, upf] of compose.suggestNames("upf", this.ctx.network.upfs)) {
+      const configPath = `up-cfg/${ct}.yaml`;
+      const s = this.defineService(ct, "upf", this.c.nfs.upf!, false, configPath);
+      s.devices.push("/dev/net/tun:/dev/net/tun");
+
+      const peers = this.ctx.netdef.gatherUPFPeers(upf);
+      assert.equal(peers.N9.length, 0, "N9 not supported");
+      compose.setCommands(s, [
+        ...NetDefDN.makeUPFRoutes(this.ctx, peers),
+        ...this.makeExecCommands("upf"),
+      ]);
+
+      this.updateConfigUPF(peers);
+      await this.ctx.writeFile(configPath, this.c);
+    }
+
+    NetDefDN.setDNCommands(this.ctx);
+  }
+
+  private updateConfigUPF(peers: NetDef.UPFPeers): void {
+    const { sNssaiUpfInfoList } = this.c.upf!.upf_info;
+    sNssaiUpfInfoList.splice(0, Infinity);
+    for (const snssai of this.ctx.netdef.nssai) {
+      const sPeers = peers.N6IPv4.filter((peer) => peer.snssai === snssai);
+      if (sPeers.length === 0) {
+        continue;
+      }
+      sNssaiUpfInfoList.push({
+        sNssai: NetDef.splitSNSSAI(snssai).ih,
+        dnnUpfInfoList: sPeers.map(({ dnn }) => ({ dnn })),
+      });
+    }
+  }
+}
+
 export async function oaiCP(ctx: NetDefComposeContext): Promise<void> {
-  const b = new CN5GBuilder(ctx, await oai_conf.loadCN5G());
-  await b.buildCP();
+  const b = new CPBuilder(ctx);
+  await b.build();
+}
+
+export async function oaiUP(ctx: NetDefComposeContext): Promise<void> {
+  const b = new UPBuilder(ctx);
+  await b.build();
 }

@@ -11,6 +11,7 @@ export interface Config {
   dnns: DNN[];
   amf?: amf.Config;
   smf?: smf.Config;
+  upf?: upf.Config;
   [k: string]: unknown;
 }
 
@@ -118,5 +119,34 @@ export namespace smf {
       session_ambr_ul: string;
       session_ambr_dl: string;
     };
+  }
+}
+
+export namespace upf {
+  export interface Config {
+    support_features: Features;
+    remote_n6_gw: string;
+    smfs: SMF[];
+    upf_info: UPFInfo;
+    [k: string]: unknown;
+  }
+
+  export interface Features {
+    enable_bpf_datapath: boolean;
+    enable_snat: boolean;
+    [k: string]: unknown;
+  }
+
+  export interface SMF {
+    host: string;
+  }
+
+  export interface UPFInfo {
+    sNssaiUpfInfoList: SNSSAIInfo[];
+  }
+
+  export interface SNSSAIInfo {
+    sNssai: SNSSAI;
+    dnnUpfInfoList: Array<{ dnn: string }>;
   }
 }
