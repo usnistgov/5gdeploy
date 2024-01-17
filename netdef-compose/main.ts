@@ -7,13 +7,13 @@ import { hideBin } from "yargs/helpers";
 import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc/netdef.js";
 import { NetDef } from "../netdef/netdef.js";
-import { oaiCP, oaiUP } from "../oai/cn5g.js";
-import { oaiUPtiny, oaiUPvpp } from "../oai/netdef.js";
+import { oaiCP, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
+import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
+import { ueransimRAN } from "../ueransim/netdef.js";
 import { NetDefComposeContext } from "./context.js";
 import { dnOptions, saveDNOptions } from "./dn.js";
 import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
-import { RANProviders } from "./ran.js";
 
 type Providers = Record<string, (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>>;
 
@@ -26,13 +26,14 @@ const cpProviders: Providers = {
 const upProviders: Providers = {
   phoenix: phoenixUP,
   oai: oaiUP,
-  "oai-tiny": oaiUPtiny,
   "oai-vpp": oaiUPvpp,
   free5gc: f5UP,
 };
 
 const ranProviders: Providers = {
-  ...RANProviders,
+  ueransim: ueransimRAN,
+  oai: oaiRAN,
+  packetrusher: packetrusherRAN,
   phoenix: phoenixRAN,
 };
 

@@ -37,6 +37,8 @@ These combinations are verified to be compatible:
 * `--cp=phoenix --up=free5gc --ran=ueransim`
 * `--cp=free5gc --up=free5gc --ran=ueransim`
 * `--cp=oai --up=oai --ran=ueransim`
+* `--cp=oai --up=oai --ran=packetrusher`
+* `--cp=oai --up=oai --ran=oai`
 
 ## IP Address Assignment
 

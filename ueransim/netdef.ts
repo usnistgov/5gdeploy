@@ -1,9 +1,7 @@
 import * as compose from "../compose/mod.js";
-import * as oai_netdef from "../oai/netdef.js";
-import { buildRAN as packetrusher } from "../packetrusher/netdef.js";
-import type { NetDefComposeContext } from "./context.js";
+import type { NetDefComposeContext } from "../netdef-compose/context.js";
 
-async function ueransim(ctx: NetDefComposeContext): Promise<void> {
+export async function ueransimRAN(ctx: NetDefComposeContext): Promise<void> {
   for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {
     const s = ctx.defineService(ct, "5gdeploy.localhost/ueransim", ["air", "n2", "n3"]);
     compose.setCommands(s, [
@@ -47,20 +45,3 @@ async function ueransim(ctx: NetDefComposeContext): Promise<void> {
     s.devices.push("/dev/net/tun:/dev/net/tun");
   }
 }
-
-async function oai(ctx: NetDefComposeContext): Promise<void> {
-  for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {
-    await oai_netdef.makeGNB(ctx, ct, gnb);
-  }
-
-  for (const [ct, subscriber] of compose.suggestUENames(ctx.netdef.listSubscribers())) {
-    await oai_netdef.makeUE(ctx, ct, subscriber);
-  }
-}
-
-/** Topology generators for RAN services. */
-export const RANProviders: Record<string, (ctx: NetDefComposeContext) => Promise<void>> = {
-  ueransim,
-  oai,
-  packetrusher,
-};

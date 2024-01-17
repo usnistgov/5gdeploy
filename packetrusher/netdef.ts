@@ -7,8 +7,8 @@ import { type N, NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import type * as prush from "../types/packetrusher.js";
 
-/** Define PacketRusher container. */
-export async function buildRAN(ctx: NetDefComposeContext): Promise<void> {
+/** Define PacketRusher containers. */
+export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> {
   assert(ctx.network.gnbIdLength === 24, "only support 24-bit gNB ID");
   const gnbs = new Map<string, N.GNB>(ctx.network.gnbs.map((gnb) => [gnb.name, gnb]));
   for (const sub of ctx.netdef.listSubscribers(true)) {

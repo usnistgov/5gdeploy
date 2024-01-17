@@ -20,13 +20,13 @@ export async function getTag(): Promise<string> {
 
 /** Load OAI config from libconfig template. */
 export async function loadTemplate<T extends {}>(tpl: string): Promise<T & { save(): Promise<string> }> {
-  const process = await execa("python3", [convertCommand, "conf2json", `${tpl}.conf`], {
+  const subprocess = await execa("python3", [convertCommand, "conf2json", `${tpl}.conf`], {
     cwd: templatePath,
     stdin: "ignore",
     stdout: "pipe",
     stderr: "inherit",
   });
-  const c = JSON.parse(process.stdout);
+  const c = JSON.parse(subprocess.stdout);
   Object.defineProperty(c, "save", {
     configurable: true,
     enumerable: false,
@@ -37,12 +37,12 @@ export async function loadTemplate<T extends {}>(tpl: string): Promise<T & { sav
 
 /** Save OAI config 'this' to libconfig string. */
 async function save(this: unknown): Promise<string> {
-  const process = await execa("python3", [convertCommand, "json2conf"], {
+  const subprocess = await execa("python3", [convertCommand, "json2conf"], {
     input: JSON.stringify(this),
     stdout: "pipe",
     stderr: "inherit",
   });
-  return process.stdout;
+  return subprocess.stdout;
 }
 
 /** Load OAI CN5G config.yaml file. */
