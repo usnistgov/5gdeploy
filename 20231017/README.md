@@ -108,7 +108,22 @@ gNB does not use N4 network, so that `--bridge=n4,eth,` flag can remain unchange
 
 `sonic-qos.ts` generates QoS configuration for [SONiC](https://github.com/sonic-net/SONiC) Ethernet switches.
 
-* `--dl-gnb` flag is the maximum downlink rate for each gNB in Mbps
+* `--port-gnb`: SONiC switchport connected to gNB
+  * this flag is repeatable if there are multiple gNBs
+* `--port-upf1`: SONiC switchport connected to UPF1
+* `--port-upf4`: SONiC switchport connected to UPF4
+* `--dl-gnb`: maximum downlink rate toward each gNB in Mbps
+* `--dl-sched`: downlink scheduler type
+  * `--dl-sched=STRICT`: strict priority - UPF4 has higher priority than UPF1
+  * `--dl-sched=WRR`: Weighted Round Robin algorithm
+  * `--dl-sched=DWRR`: Deficit Weighted Round Robin algorithm
+* `--dl-w1`: weight for UPF1-to-gNB traffic, integer between 1 and 100
+* `--dl-w4`: weight for UPF4-to-gNB traffic, integer between 1 and 100
+  * effective with WRR or DWRR scheduler type
+* `--format`: output format
+  * `--format=patch`: print JSON patch (default)
+  * `--format=pretty`: pretty-print JSON patch
+  * `--format=shell`: print SONiC shell command that applies the patch
 
 ```bash
 # define variables for switch ports
@@ -116,8 +131,12 @@ SWPORT_GNB0=Ethernet8
 SWPORT_UPF1=Ethernet0
 SWPORT_UPF4=Ethernet1
 
-# generate JSON patch to be applied via SONiC config apply command
-./node_modules/.bin/tsx 20231017/sonic-qos.ts \
+# generate SONiC config
+./node_modules/.bin/tsx 20231017/sonic-qos.ts --format=shell \
   --port-gnb=$SWPORT_GNB0 --port-upf1=$SWPORT_UPF1 --port-upf4=$SWPORT_UPF4 \
-  --dl-gnb=2000
+  --dl-gnb=2000 --dl-sched=STRICT
+
+./node_modules/.bin/tsx 20231017/sonic-qos.ts --format=shell \
+  --port-gnb=$SWPORT_GNB0 --port-upf1=$SWPORT_UPF1 --port-upf4=$SWPORT_UPF4 \
+  --dl-gnb=2000 --dl-sched=DWRR --dl-w1=20 --dl-w4=80
 ```
