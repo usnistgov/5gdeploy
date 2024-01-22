@@ -58,7 +58,7 @@ function* makeDNRoutes(ctx: NetDefComposeContext, dn: N.DataNetwork): Iterable<s
   for (const [upfName, cost] of ctx.netdef.listDataPathPeers(dn)) {
     assert(typeof upfName === "string");
     const upf = ctx.c.services[upfName];
-    assert(!!upf);
+    assert(!!upf, `${upfName} container not found`);
     yield `ip route add ${dest} via ${upf.networks.n6!.ipv4_address} metric ${cost}`;
   }
   yield "msg Listing IP routes";

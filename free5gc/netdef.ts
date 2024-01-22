@@ -271,7 +271,8 @@ class F5CPBuilder {
         assert(typeof upfName === "string");
         peers.push(upfName);
       }
-      const peersJoined = peers.sort((a, b) => a.localeCompare(b)).join(",");
+      peers.sort((a, b) => a.localeCompare(b));
+      const peersJoined = peers.join(",");
       gnbPeers ??= [gnb.name, peersJoined, peers];
       if (gnbPeers[1] !== peersJoined) {
         throw new Error(`${gnb.name} peer list (${peersJoined}) differs from ${gnbPeers[0]} peer list ( ${gnbPeers[1]}), not supported by free5GC SMF`);
