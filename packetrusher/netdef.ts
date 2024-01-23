@@ -1,5 +1,4 @@
 import assert from "minimalistic-assert";
-import * as shlex from "shlex";
 import type { PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
@@ -31,8 +30,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Subscrib
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
   compose.setCommands(s, [
     "msg Preparing PacketRusher config",
-    `echo ${shlex.quote(JSON.stringify(c))} >/config.update.yml`,
-    `yq -P '. *= load("/config.update.yml")' /config.default.yml | tee ${filename}`,
+    ...compose.mergeConfigFile(c, { base: "/config.default.yml", merged: filename }),
     "sleep 10",
     "msg Starting PacketRusher",
     `exec /packetrusher --config ${filename} multi-ue -n 1 -d -t --tunnel-vrf=false`,

@@ -29,16 +29,17 @@ corepack pnpm netdef-compose --netdef ~/netdef.json --out ~/compose/example \
 Due to incompatibilities in 5G implementations, not every combinations will work.
 These combinations are verified to be compatible:
 
+* `--cp=free5gc --up=free5gc --ran=ueransim`
+* `--cp=oai --up=oai --ran=oai`
+* `--cp=oai --up=oai --ran=packetrusher`
+* `--cp=oai --up=oai --ran=ueransim`
+* `--cp=oai --up=oai-vpp --ran=ueransim`
+* `--cp=phoenix --up=free5gc --ran=oai`
+* `--cp=phoenix --up=free5gc --ran=phoenix`
+* `--cp=phoenix --up=free5gc --ran=ueransim`
+* `--cp=phoenix --up=phoenix --ran=packetrusher`
 * `--cp=phoenix --up=phoenix --ran=phoenix`
 * `--cp=phoenix --up=phoenix --ran=ueransim`
-* `--cp=phoenix --up=phoenix --ran=packetrusher`
-* `--cp=phoenix --up=free5gc --ran=phoenix`
-* `--cp=phoenix --up=free5gc --ran=oai`
-* `--cp=phoenix --up=free5gc --ran=ueransim`
-* `--cp=free5gc --up=free5gc --ran=ueransim`
-* `--cp=oai --up=oai --ran=ueransim`
-* `--cp=oai --up=oai --ran=packetrusher`
-* `--cp=oai --up=oai --ran=oai`
 
 ## IP Address Assignment
 

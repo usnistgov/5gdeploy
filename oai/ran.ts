@@ -19,6 +19,7 @@ export async function oaiRAN(ctx: NetDefComposeContext): Promise<void> {
 /** Define gNB container and generate configuration */
 async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB): Promise<void> {
   const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${await oai_conf.getTag()}`, ["air", "n2", "n3"]);
+  s.privileged = true;
 
   const c = await oai_conf.loadTemplate<OAI.gnb.Config>("gnb.sa.band78.106prb.rfsim");
   c.Active_gNBs = [gnb.name];
@@ -59,23 +60,19 @@ async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB): Promi
     phy_log_level: "warn",
   };
 
-  await ctx.writeFile(`ran-cfg/${ct}.conf`, c);
-
+  await ctx.writeFile(`ran-cfg/${ct}.conf`, c, { s, target: "/opt/oai-gnb/etc/gnb.conf" });
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
     "sleep 10",
     "exec /opt/oai-gnb/bin/entrypoint.sh /opt/oai-gnb/bin/nr-softmodem -O /opt/oai-gnb/etc/gnb.conf" +
     " --sa -E --rfsim",
   ]);
-  s.privileged = true;
-  s.volumes = [
-    { type: "bind", source: `./ran-cfg/${ct}.conf`, target: "/opt/oai-gnb/etc/gnb.conf", read_only: true },
-  ];
 }
 
 /** Define UE container and generate configuration. */
 async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscriber): Promise<void> {
   const s = ctx.defineService(ct, `oaisoftwarealliance/oai-nr-ue:${await oai_conf.getTag()}`, ["air"]);
+  s.privileged = true;
 
   const c = await oai_conf.loadTemplate<OAI.ue.Config>("nrue.uicc");
   const [, mnc] = NetDef.splitPLMN(ctx.netdef.network.plmn);
@@ -104,16 +101,11 @@ async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscri
     phy_log_level: "warn",
   };
 
-  await ctx.writeFile(`ran-cfg/${ct}.conf`, c);
-
+  await ctx.writeFile(`ran-cfg/${ct}.conf`, c, { s, target: "/opt/oai-nr-ue/etc/nr-ue.conf" });
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
     "sleep 20",
     "exec /opt/oai-nr-ue/bin/entrypoint.sh /opt/oai-nr-ue/bin/nr-uesoftmodem -O /opt/oai-nr-ue/etc/nr-ue.conf" +
     " -E --sa --rfsim -r 106 --numerology 1 -C 3619200000",
   ]);
-  s.privileged = true;
-  s.volumes = [
-    { type: "bind", source: `./ran-cfg/${ct}.conf`, target: "/opt/oai-nr-ue/etc/nr-ue.conf", read_only: true },
-  ];
 }

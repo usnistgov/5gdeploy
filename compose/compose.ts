@@ -1,6 +1,9 @@
+import path from "node:path";
+
 import yaml from "js-yaml";
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
+import * as shlex from "shlex";
 
 import type { ComposeFile, ComposeNetif, ComposeNetwork, ComposeService } from "../types/compose.js";
 
@@ -215,6 +218,40 @@ export namespace renameNetifs {
      * Default is false.
      */
     pipeworkWait?: boolean;
+  }
+}
+
+/**
+ * Generate commands to merge JSON/YAML configuration.
+ * This requires yq to be installed in the container.
+ *
+ * @param cfg config update object or mounted filename.
+ */
+export function* mergeConfigFile(cfg: unknown, { base, update, merged }: mergeConfigFile.Options): Iterable<string> {
+  const ext = path.extname(base);
+  const fmt = {
+    ".json": "-oj",
+    ".yaml": "",
+    ".yml": "",
+  }[ext];
+  assert(fmt !== undefined, "unknown config file format");
+  update ??= `/tmp/config-update${ext}`;
+
+  if (typeof cfg === "string") {
+    update = cfg;
+  } else {
+    yield `echo ${shlex.quote(JSON.stringify(cfg))} >${update}`;
+  }
+  yield `yq ${fmt} -P '. *= load("${update}")' ${base} | tee ${merged}`;
+}
+export namespace mergeConfigFile {
+  export interface Options {
+    /** Base config filename from container image. */
+    base: string;
+    /** Update filename to be written. */
+    update?: string;
+    /** Merged filename. */
+    merged: string;
   }
 }
 

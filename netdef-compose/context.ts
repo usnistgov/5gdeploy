@@ -62,14 +62,24 @@ export class NetDefComposeContext {
    * Write file to output folder.
    * @param filename relative filename within output folder.
    * @param body file contents.
+   * @returns the filename with "./" prepended.
    *
    * If body has a .save() function, its return value is used as body.
    * Uint8Array and string are written directly.
    * All other types are encoded into JSON or YAML (when filename indicates YAML).
    */
   public async writeFile(filename: string, body: unknown, {
-    executable = false,
+    executable = false, s, target,
   }: NetDefComposeContext.WriteFileOptions = {}): Promise<void> {
+    if (s && target) {
+      s.volumes.push({
+        type: "bind",
+        source: path.join(".", filename),
+        target,
+        read_only: true,
+      });
+    }
+
     while (typeof (body as Saver).save === "function") {
       body = await (body as Saver).save();
     }
@@ -91,7 +101,12 @@ export class NetDefComposeContext {
 }
 export namespace NetDefComposeContext {
   export interface WriteFileOptions {
+    /** If true, make the file executable. */
     executable?: boolean;
+    /** If specified, add a bind mount to the container. */
+    s?: ComposeService;
+    /** Target of the bind mount within the container filesystem. */
+    target?: string;
   }
 }
 

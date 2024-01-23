@@ -373,13 +373,7 @@ class F5CPBuilder {
   }
 
   private async saveConfig(s: ComposeService, filename: string, mount: string, body: unknown): Promise<string> {
-    await this.ctx.writeFile(filename, body);
-    s.volumes.push({
-      type: "bind",
-      source: `./${filename}`,
-      target: `/free5gc/config/${mount}`,
-      read_only: true,
-    });
+    await this.ctx.writeFile(filename, body, { s, target: `/free5gc/config/${mount}` });
     return `./config/${mount}`;
   }
 }
@@ -407,13 +401,6 @@ export async function f5UP(ctx: NetDefComposeContext): Promise<void> {
       ...NetDefDN.makeUPFRoutes(ctx, peers),
       "exec ./upf -c ./config/upfcfg.yaml",
     ]);
-    const yamlFile = `up-cfg/${ct}.yaml`;
-    s.volumes.push({
-      type: "bind",
-      source: `./${yamlFile}`,
-      target: "/free5gc/config/upfcfg.yaml",
-      read_only: true,
-    });
     s.cap_add.push("NET_ADMIN");
 
     const c = f5_conf.loadTemplate("upfcfg") as F5.upf.Root;
@@ -427,7 +414,7 @@ export async function f5UP(ctx: NetDefComposeContext): Promise<void> {
     }];
     c.dnnList = dnnList;
 
-    await ctx.writeFile(yamlFile, c);
+    await ctx.writeFile(`up-cfg/${ct}.yaml`, c, { s, target: "/free5gc/config/upfcfg.yaml" });
   }
 
   NetDefDN.setDNCommands(ctx);

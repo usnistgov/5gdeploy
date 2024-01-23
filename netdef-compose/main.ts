@@ -8,6 +8,7 @@ import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc/netdef.js";
 import { NetDef } from "../netdef/netdef.js";
 import { oaiCP, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
+import { gnbsimRAN } from "../omec/gnbsim.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { ueransimRAN } from "../ueransim/netdef.js";
@@ -18,23 +19,24 @@ import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
 type Providers = Record<string, (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>>;
 
 const cpProviders: Providers = {
-  phoenix: phoenixCP,
   free5gc: f5CP,
   oai: oaiCP,
+  phoenix: phoenixCP,
 };
 
 const upProviders: Providers = {
-  phoenix: phoenixUP,
+  free5gc: f5UP,
   oai: oaiUP,
   "oai-vpp": oaiUPvpp,
-  free5gc: f5UP,
+  phoenix: phoenixUP,
 };
 
 const ranProviders: Providers = {
-  ueransim: ueransimRAN,
+  gnbsim: gnbsimRAN,
   oai: oaiRAN,
   packetrusher: packetrusherRAN,
   phoenix: phoenixRAN,
+  ueransim: ueransimRAN,
 };
 
 const args = await yargs(hideBin(process.argv))
@@ -71,12 +73,12 @@ const args = await yargs(hideBin(process.argv))
   .option(compose.splitOptions)
   .option(ipAllocOptions)
   .option(dnOptions)
+  .middleware(saveDNOptions)
   .option(phoenixOptions)
   .parseAsync();
 
 const netdef = new NetDef(JSON.parse(await (args.netdef === "-" ? getStdin() : fs.readFile(args.netdef, "utf8"))));
 netdef.validate();
-saveDNOptions(args);
 const ctx = new NetDefComposeContext(netdef, args.out, new IPAlloc(args));
 await upProviders[args.up]!(ctx, args);
 await cpProviders[args.cp]!(ctx, args);
