@@ -10,17 +10,19 @@ import type * as OMEC from "../types/omec.js";
 export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
   for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {
     const s = ctx.defineService(ct, "5gdeploy.localhost/gnbsim", ["mgmt", "n2", "n3"]);
+    s.cap_add.push("NET_ADMIN");
     const c = makeConfigUpdate(ctx, s, gnb);
-    await ctx.writeFile(`ran-cfg/${ct}.yaml`, c, { s, target: "/gnbsim/config/update.yaml" });
+    await ctx.writeFile(`ran-cfg/${ct}.yaml`, c, { s, target: "/config.update.yaml" });
     compose.setCommands(s, [
+      ...compose.renameNetifs(s),
       "msg Preparing gNBSim config",
-      ...compose.mergeConfigFile("config/update.yaml", {
-        base: "config/base.yaml",
-        merged: "config/gnb.yaml",
+      ...compose.mergeConfigFile("/config.update.yaml", {
+        base: "/config.base.yaml",
+        merged: "/gnbsim.yaml",
       }),
       "sleep 10",
       "msg Starting gNBSim",
-      "exec bin/gnbsim --cfg config/gnb.yaml",
+      "exec /gnbsim --cfg /gnbsim.yaml",
     ], "ash");
   }
 }
@@ -83,10 +85,8 @@ type ProfileBase = Pick<OMEC.gnbsim.Profile, "profileType" | OptionalKeysOf<OMEC
 
 const PROFILES: readonly ProfileBase[] = [
   {
-    profileType: "register",
-  },
-  {
-    profileType: "pdusessest",
+    // "deregister" = Registration + UE initiated PDU Session Establishment + User Data packets + Deregister
+    profileType: "deregister",
     dataPktCount: 5,
   },
 ];

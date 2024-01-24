@@ -1,5 +1,13 @@
-FROM omecproject/5gc-gnbsim:main-1caccfc
-RUN apk add --no-cache yq
-ADD https://github.com/omec-project/gnbsim/raw/1caccfcaac9b718d987aff378212614e4fe634fb/config/gnbsim.yaml /gnbsim/config/base.yaml
-WORKDIR /gnbsim
-RUN yq -i 'del(.configuration.gnbs) | del(.configuration.customProfiles) | del(.configuration.profiles)' config/base.yaml
+FROM golang:1.21-alpine3.19 AS build
+ADD https://github.com/omec-project/gnbsim/archive/ad6ee56afed1538a25792b401160a801decc28d3.zip /gnbsim.zip
+RUN cd / \
+ && unzip -n gnbsim.zip \
+ && mv gnbsim-* gnbsim \
+ && cd /gnbsim \
+ && env CGO_ENABLED=0 go build . \
+ && cp config/gnbsim.yaml config/config.base.yaml
+
+FROM alpine:3.19
+RUN apk add --no-cache iproute2 yq
+COPY --from=build /gnbsim/gnbsim /gnbsim/config/config.base.yaml /
+RUN yq -i 'del(.configuration.gnbs) | del(.configuration.customProfiles) | del(.configuration.profiles)' config.base.yaml
