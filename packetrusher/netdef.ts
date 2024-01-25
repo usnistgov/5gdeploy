@@ -44,7 +44,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Sub
 
   const c: PartialDeep<prush.Root> = {};
   c.amfif = {
-    ip: ctx.gatherIPs("amf", "n2").slice(0, 1)[0]!,
+    ip: ctx.gatherIPs("amf", "n2")[0]!,
   };
   c.gnodeb = {
     controlif: { ip: s.networks.n2!.ipv4_address },
