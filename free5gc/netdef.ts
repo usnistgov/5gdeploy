@@ -68,7 +68,7 @@ class F5CPBuilder {
       yield "msg Waiting for WebUI to become ready";
       yield `while ! nc -z ${serverIP} ${serverPort}; do sleep 0.2; done`;
       yield "sleep 1";
-      for (const sub of netdef.listSubscribers(false)) {
+      for (const sub of netdef.listSubscribers({ expandCount: false })) {
         const smData = new DefaultMap<N.SNSSAI, Record<string, W.DnnConfiguration>>(() => ({}));
         const smPolicy: Record<string, W.SmPolicySnssai> = {};
         for (const { snssai, dnn } of sub.subscribedDN) {
@@ -121,9 +121,14 @@ class F5CPBuilder {
           flowRules: undefined,
           qosFlows: undefined,
         };
-        const payload = shlex.quote(JSON.stringify(webconsole.SubscriptionToJSON(j)));
-        yield `msg Inserting UE ${sub.supi}`;
-        yield `echo ${payload} | http -j POST ${server}/api/subscriber/imsi-${sub.supi}/${plmnID}/${sub.count} Token:admin`;
+        const payload = JSON.stringify(webconsole.SubscriptionToJSON(j));
+        if (sub.count > 1) {
+          yield `msg Inserting UEs ${sub.supi}..${sub.supiLast}`;
+        } else {
+          yield `msg Inserting UE ${sub.supi}`;
+        }
+        const url = `${server}/api/subscriber/imsi-${sub.supi}/${plmnID}/${sub.count}`;
+        yield `echo ${shlex.quote(payload)} | http -j POST ${shlex.quote(url)} Token:admin`;
         yield "echo";
       }
       yield "msg Idling";
@@ -351,6 +356,7 @@ class F5CPBuilder {
   private defineService<C extends {}>(ct: string, nets: readonly string[]): [s: ComposeService, cfg: F5.Root<C>] {
     const nf = compose.nameToNf(ct);
     const s = this.ctx.defineService(ct, f5_conf.getImage(nf), nets);
+    s.stop_signal = "SIGQUIT";
     s.environment.GIN_MODE = "release";
     const cfg = f5_conf.loadTemplate(`${nf}cfg`) as F5.Root<C>;
     if ((cfg.configuration as unknown as F5.SBI).sbi !== undefined) {

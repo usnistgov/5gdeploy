@@ -22,7 +22,7 @@ export async function ueransimRAN(ctx: NetDefComposeContext): Promise<void> {
     s.cap_add.push("NET_ADMIN");
   }
 
-  for (const [ct, sub] of compose.suggestUENames(ctx.netdef.listSubscribers(false))) {
+  for (const [ct, sub] of compose.suggestUENames(ctx.netdef.listSubscribers({ expandCount: false }))) {
     const slices = new Set<string>();
     const sessions = new Set<string>();
     for (const { snssai, dnn } of sub.requestedDN) {

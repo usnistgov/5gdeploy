@@ -10,7 +10,7 @@ import type * as prush from "../types/packetrusher.js";
 export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> {
   assert(ctx.network.gnbIdLength === 24, "only support 24-bit gNB ID");
   const gnbs = new Map<string, N.GNB>(ctx.network.gnbs.map((gnb) => [gnb.name, gnb]));
-  for (const sub of ctx.netdef.listSubscribers(true)) {
+  for (const sub of ctx.netdef.listSubscribers()) {
     assert(sub.gnbs.length === 1, "each UE can only connect to 1 gNB");
     const gnb = gnbs.get(sub.gnbs[0]!);
     gnbs.delete(sub.gnbs[0]!);

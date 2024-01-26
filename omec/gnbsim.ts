@@ -63,7 +63,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: N.G
     },
   };
 
-  const subs = ctx.netdef.listSubscribers(false).filter((sub) => sub.gnbs.includes(gnb.name));
+  const subs = ctx.netdef.listSubscribers({ expandCount: false }).filter((sub) => sub.gnbs.includes(gnb.name));
   const profiles: OMEC.gnbsim.Profile[] = [];
   for (const profile of PROFILES) {
     for (const sub of subs) {
@@ -76,6 +76,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: N.G
       gnbs: { [gnb.name]: g },
       httpServer: { enable: true, ipAddr: s.networks.mgmt!.ipv4_address },
       profiles,
+      execInParallel: true,
       runConfigProfilesAtStart: true,
     },
   };
@@ -113,7 +114,7 @@ function makeProfile(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Subscrib
     sequenceNumber: "000000000020",
     dnn: dn.dnn,
     sNssai: NetDef.splitSNSSAI(dn.snssai).ih,
-    execInParallel: false,
+    execInParallel: true,
     plmnId,
     ...base,
   };

@@ -22,6 +22,10 @@ export function validateNetDef(network: N.Network): void {
   }
 }
 
+function formatSUPI(value: bigint): string {
+  return value.toString(10).padStart(15, "0");
+}
+
 /** 5G network definition model. */
 export class NetDef {
   constructor(public network: N.Network) {}
@@ -63,7 +67,7 @@ export class NetDef {
    * Iterate over subscribers.
    * @param expandCount if true, emit .count>1 entry as multiple entries.
    */
-  public listSubscribers(expandCount = true): NetDef.Subscriber[] {
+  public listSubscribers({ expandCount = true }: NetDef.ListSubscribersOptions = {}): NetDef.Subscriber[] {
     this.network.subscriberDefault ??= {};
     this.network.subscriberDefault.k ??= arr2hex(randomBytes(16));
     this.network.subscriberDefault.opc ??= arr2hex(randomBytes(16));
@@ -82,6 +86,7 @@ export class NetDef {
         subscribedNSSAI: dfltSubscribedNSSAI,
         gnbs: allGNBs,
         ...subscriber,
+        supiLast: subscriber.supi,
         subscribedDN: [],
         requestedDN: [],
       };
@@ -103,13 +108,14 @@ export class NetDef {
         sub.requestedDN.push(...sub.subscribedDN);
       }
 
+      let supiN = BigInt(sub.supi);
       if (expandCount && sub.count > 1) {
-        let supi = BigInt(sub.supi);
         for (let i = 0; i < sub.count; ++i) {
-          list.push({ ...sub, supi: supi.toString().padStart(15, "0"), count: 1 });
-          ++supi;
+          const supi = formatSUPI(supiN++);
+          list.push({ ...sub, supi, supiLast: supi, count: 1 });
         }
       } else {
+        sub.supiLast = formatSUPI(supiN + BigInt(sub.count - 1));
         list.push(sub);
       }
     }
@@ -215,9 +221,24 @@ export namespace NetDef {
     };
   }
 
+  /** Options to netdef.listSubscribers(). */
+  export interface ListSubscribersOptions {
+    /** If true, emit .count>1 entry as multiple entries. */
+    expandCount?: boolean;
+  }
+
   /** Information about a subscriber. */
   export interface Subscriber extends SetRequired<N.Subscriber, "count" | "k" | "opc" | "subscribedNSSAI" | "gnbs"> {
+    /**
+     * Last SUPI.
+     * This would be same as .supi if .count==1.
+     */
+    supiLast: string;
+
+    /** Subscribed Data Networks, derived from .subscribedNSSAI . */
     subscribedDN: N.DataNetworkID[];
+
+    /** Requested Data Networks, derived from .requestedNSSAI . */
     requestedDN: N.DataNetworkID[];
   }
 

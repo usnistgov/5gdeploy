@@ -25,6 +25,7 @@ export interface ComposeService {
   init?: boolean;
   stdin_open?: boolean;
   tty?: boolean;
+  stop_signal?: `SIG${string}`;
   privileged?: boolean;
   cap_add: string[];
   devices: string[];
