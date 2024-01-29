@@ -9,6 +9,7 @@ Scenario list and brief description:
 * [20230817](20230817): phones and vehicles, 3-slice with 3 UPFs
 * [20231017](20231017): phones and vehicles, 2-slice with 2 UPFs
 * [20231214](20231214): phones and vehicles, 2-slice with 1 UPF
+* [20240129](20240129): many slices
 
 ## Installation and Usage
 

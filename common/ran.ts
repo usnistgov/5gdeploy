@@ -4,7 +4,7 @@ import type { Options } from "yargs";
 
 export function option(desc: string, dflt: number, max: number, min = 1) {
   return {
-    desc: `${desc} quantity (1..${max})`,
+    desc: `${desc} quantity (${min}..${max})`,
     default: dflt,
     type: "number",
     coerce(arg) {
