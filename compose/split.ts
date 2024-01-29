@@ -5,7 +5,7 @@ import * as shlex from "shlex";
 import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
 
 import type { ComposeFile, ComposeService } from "../types/compose.js";
-import { annotate } from "./compose.js";
+import { annotate, scriptHead as baseScriptHead } from "./compose.js";
 
 export const splitOptions = {
   place: {
@@ -153,10 +153,8 @@ function makeDockerH(host: string): string {
 
 const scriptHead = [
   "#!/bin/bash",
-  "set -euo pipefail",
+  ...baseScriptHead,
   "cd \"$(dirname \"${BASH_SOURCE[0]}\")\"", // eslint-disable-line no-template-curly-in-string
-  "msg() { echo -ne \"\\e[35m[5gdeploy] \\e[94m\"; echo -n \"$*\"; echo -e \"\\e[0m\"; }",
-  "die() { msg \"$*\"; exit 1; }",
   "ACT=${1:-}", // eslint-disable-line no-template-curly-in-string
 ];
 

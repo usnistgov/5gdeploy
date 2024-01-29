@@ -62,7 +62,6 @@ export class NetDefComposeContext {
    * Write file to output folder.
    * @param filename relative filename within output folder.
    * @param body file contents.
-   * @returns the filename with "./" prepended.
    *
    * If body has a .save() function, its return value is used as body.
    * Uint8Array and string are written directly.

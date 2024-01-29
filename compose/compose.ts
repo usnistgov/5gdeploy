@@ -255,6 +255,12 @@ export namespace mergeConfigFile {
   }
 }
 
+export const scriptHead = [
+  "set -euo pipefail",
+  "msg() { echo -ne \"\\e[35m[5gdeploy] \\e[94m\"; echo -n \"$*\"; echo -e \"\\e[0m\"; }",
+  "die() { msg \"$*\"; exit 1; }",
+];
+
 /**
  * Set commands on a service.
  * @param service Compose service to edit.
@@ -262,12 +268,7 @@ export namespace mergeConfigFile {
  * @param shell should be set to 'ash' for alpine based images.
  */
 export function setCommands(service: ComposeService, commands: Iterable<string>, shell = "bash"): void {
-  const joined = [
-    "set -euo pipefail",
-    "msg() { echo -ne \"\\e[35m[5gdeploy] \\e[94m\"; echo -n \"$*\"; echo -e \"\\e[0m\"; }",
-    "die() { msg \"$*\"; exit 1; }",
-    ...commands,
-  ].join("\n").replaceAll("$", "$$$$");
+  const joined = [...scriptHead, ...commands].join("\n").replaceAll("$", "$$$$");
   service.command = [`/bin/${shell}`, "-c", joined];
   service.entrypoint = [];
 }

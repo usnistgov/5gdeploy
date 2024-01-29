@@ -62,9 +62,10 @@ class F5CPBuilder {
     const server = `http://${serverIP}:${serverPort}`;
     const { netdef, network } = this.ctx;
     const plmnID = network.plmn.replace("-", "");
-    const s = this.ctx.defineService("webclient", "alpine/httpie", ["mgmt"]);
+
     const webconsole = await import("./webconsole-openapi/models/index.js");
-    compose.setCommands(s, (function*() {
+    function* generateCommands() {
+      yield* compose.scriptHead;
       yield "msg Waiting for WebUI to become ready";
       yield `while ! nc -z ${serverIP} ${serverPort}; do sleep 0.2; done`;
       yield "sleep 1";
@@ -133,7 +134,16 @@ class F5CPBuilder {
       }
       yield "msg Idling";
       yield "exec tail -f";
-    })(), "ash");
+    }
+
+    const s = this.ctx.defineService("webclient", "alpine/httpie", ["mgmt"]);
+    await this.ctx.writeFile(
+      "cp-cfg/webclient.sh",
+      Array.from(generateCommands()).join("\n"),
+      { s, target: "/action.sh" },
+    );
+    s.entrypoint = [];
+    s.command = ["/bin/ash", "/action.sh"];
   }
 
   private async buildNRF(): Promise<void> {
