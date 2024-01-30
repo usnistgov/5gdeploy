@@ -37,17 +37,6 @@ export function buildNetwork(c: CLIOptions, s: ScenarioOptions): N.Network {
     tac: "000005",
     subscribers: [],
     gnbs: [],
-    amfs: [
-      {
-        name: "amf",
-        amfi: [1, 1, 0],
-      },
-    ],
-    smfs: [
-      {
-        name: "smf",
-      },
-    ],
     upfs: upfs.map((name) => ({ name })),
     dataNetworks: dnDef.map(({ dnn, subnet }) => ({
       snssai: s[`${dnn}SNSSAI`],

@@ -34,17 +34,6 @@ const network: N.Network = {
       nci: "000002001",
     },
   ],
-  amfs: [
-    {
-      name: "amf",
-      amfi: [1, 1, 0],
-    },
-  ],
-  smfs: [
-    {
-      name: "smf",
-    },
-  ],
   upfs: [
     { name: "upf0" },
     { name: "upf1" },

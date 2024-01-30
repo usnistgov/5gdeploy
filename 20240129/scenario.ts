@@ -27,17 +27,6 @@ const network: N.Network = {
   tac: "000005",
   subscribers: [],
   gnbs: [],
-  amfs: [
-    {
-      name: "amf",
-      amfi: [1, 1, 0],
-    },
-  ],
-  smfs: [
-    {
-      name: "smf",
-    },
-  ],
   upfs: [],
   dataNetworks: [],
   dataPaths: {
@@ -58,7 +47,7 @@ for (let upfIndex = 0; upfIndex < upfCount; ++upfIndex) {
 }
 
 for (let dnIndex = 0; dnIndex < dnCount; ++dnIndex) {
-  const dnn = pad(dnIndex, 2);
+  const dnn = `n${pad(dnIndex, 2)}`;
   const snssai: N.SNSSAI = sameSnssai ? "01000000" : `${pad(0x80 + dnIndex, 2, 16)}000000`;
 
   network.dataNetworks.push({
@@ -96,13 +85,13 @@ for (let gnbIndex = 0; gnbIndex < gnbCount; ++gnbIndex) {
         dnns: [],
       });
       for (let dnIndex = dnFirst; dnIndex < dnLast; ++dnIndex) {
-        subscribedNSSAI[0]!.dnns.push(pad(dnIndex, 2));
+        subscribedNSSAI[0]!.dnns.push(`n${pad(dnIndex, 2)}`);
       }
     } else {
       for (let dnIndex = dnFirst; dnIndex < dnLast; ++dnIndex) {
         subscribedNSSAI.push({
           snssai: `${pad(0x80 + dnIndex, 2, 16)}000000`,
-          dnns: [pad(dnIndex, 2)],
+          dnns: [`n${pad(dnIndex, 2)}`],
         });
       }
     }
