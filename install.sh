@@ -28,7 +28,7 @@ corepack pnpm install
 bash ./types/build-schema.sh
 bash ./free5gc/download.sh
 
-for IMG in bridge dn free5gc-upf ns3http phoenix ueransim; do
+for IMG in bridge dn free5gc-upf gnbsim ns3http packetrusher phoenix ueransim; do
   msg Building Docker image $IMG
   bash ./docker/build.sh $IMG
 done

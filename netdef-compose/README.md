@@ -29,6 +29,7 @@ corepack pnpm netdef-compose --netdef ~/netdef.json --out ~/compose/example \
 Due to incompatibilities in 5G implementations, not every combinations will work.
 These combinations are verified to be compatible:
 
+* `--cp=free5gc --up=free5gc --ran=gnbsim`
 * `--cp=free5gc --up=free5gc --ran=ueransim`
 * `--cp=oai --up=oai --ran=oai`
 * `--cp=oai --up=oai --ran=packetrusher`

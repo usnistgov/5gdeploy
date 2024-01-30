@@ -9,22 +9,40 @@ Acceptable formats include:
 * Docker container name and network name, such as `--host=amf:cp`.
 * Docker container name, such as `--host=amf`, which would use the `mgmt` network.
 
-## Remote Command Execution
+## Remote Commands
+
+List available commands via introspect endpoint:
 
 ```bash
-# introspect NF commands over UDP
-corepack pnpm -s phoenix-rpc --host=amf introspect
-
-# introspect NF commands over JSON-RPC
+# introspect over JSON-RPC
 corepack pnpm -s phoenix-rpc --host=amf:cp introspect --json | jq
+
+# introspect over UDP
+corepack pnpm -s phoenix-rpc --host=amf introspect
 ```
 
-## UE Control
+Invoke a command:
 
 ```bash
-# retrieve UE status
-corepack pnpm -s phoenix-rpc --host=ue1000 ue-status | jq
+corepack pnpm -s phoenix-rpc --host=amf amf.ng.print_nodes
 
+export NO_COLOR=1 # disable ANSI colors https://no-color.org/
+corepack pnpm -s phoenix-rpc --host=amf amf.ng.print_nodes
+```
+
+Warning: `phoenix` process will crash if the output does not fit in a memory chunk.
+
+## Basic UE Control
+
+Retrieve UE status:
+
+```bash
+corepack pnpm -s phoenix-rpc --host=ue1000 ue-status | jq
+```
+
+Register and deregister:
+
+```bash
 # register without PDU sessions
 corepack pnpm -s phoenix-rpc --host=ue1000 ue-register
 
@@ -34,11 +52,11 @@ corepack pnpm -s phoenix-rpc --host=ue1000 ue-register --dnn=default --dnn=inter
 # register and establish PDU sessions matching pattern(s)
 #  This is only supported when --host refers to a Docker container.
 #  The patterns should be written in minimatch-compatible syntax.
-corepack pnpm -s phoenix-rpc --host=ue1000 ue-register "--dnn=*"
+corepack pnpm -s phoenix-rpc --host=ue1000 ue-register '--dnn=*'
 
-# deregister UE
+# deregister
 corepack pnpm -s phoenix-rpc --host=ue1000 ue-deregister
 ```
 
-Both `un-register` and `ue-deregister` subcommands check the current UE status.
-If the UE is already in the desired status, it would not execute the action.
+These subcommands automatically check the UE status.
+If the UE is already in the desired state, no action would be executed.

@@ -1,5 +1,5 @@
 FROM golang:1.21-alpine3.19 AS build
-ADD https://github.com/omec-project/gnbsim/archive/ad6ee56afed1538a25792b401160a801decc28d3.zip /gnbsim.zip
+ADD https://github.com/omec-project/gnbsim/archive/4e53c0515c706e78a9a6cd7cdabba173fffdf19d.zip /gnbsim.zip
 RUN cd / \
  && unzip -n gnbsim.zip \
  && mv gnbsim-* gnbsim \

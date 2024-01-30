@@ -1,6 +1,6 @@
 # omec
 
-Package **omec** generates Open Modile Evolved Core / Aether / SD-Core configurations.
+Package **omec** generates Open Mobile Evolved Core / Aether / SD-Core configurations.
 This package offers these choices in the **netdef-compose** command:
 
 * `--ran=gnbsim`: [gNBSim](https://github.com/omec-project/gnbsim) RAN simulator
