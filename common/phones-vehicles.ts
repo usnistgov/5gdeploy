@@ -1,4 +1,4 @@
-import type * as N from "@usnistgov/5gdeploy/types/netdef.ts";
+import type { N } from "@usnistgov/5gdeploy/types/mod.ts";
 import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
 
 import * as ran from "./ran.js";

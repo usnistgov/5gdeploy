@@ -38,13 +38,12 @@ Establish PDU sessions from Open5GCore UEs:
 
 ```bash
 cd ~/5gdeploy
-for UECT in $(docker ps --format='{{.Names}}' | grep '^ue1'); do
-  corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn=internet
+for UECT in $(docker ps --format='{{.Names}}' | grep '^ue'); do
+  corepack pnpm -s phoenix-rpc --host=$UECT ue-register '--dnn=*'
 done
-for UECT in $(docker ps --format='{{.Names}}' | grep '^ue4'); do
-  corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn=vcam --dnn=vctl
-done
-# note: in multi-host deployment, this only works for UEs running on the primary host
+# note: In multi-host deployment, this only works for UEs running on the primary host. If some UEs
+# are placed on secondary hosts, you'll need to install 5gdeploy on each secondary host and run
+# this command from there.
 ```
 
 ## Traffic Generation

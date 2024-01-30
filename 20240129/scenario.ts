@@ -1,4 +1,4 @@
-import type * as N from "@usnistgov/5gdeploy/types/netdef.ts";
+import type { N } from "@usnistgov/5gdeploy/types/mod.ts";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
