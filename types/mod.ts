@@ -1,8 +1,9 @@
-export type * from "./compose.js";
-export type * as F5 from "./free5gc.js";
-export type * as N from "./netdef.js";
-export type * as CN5G from "./oai-cn5g.js";
-export type * as OAI from "./oai.js";
-export type * as PH from "./phoenix.js";
-export type * as OMEC from "./omec.js";
-export type * as prush from "./packetrusher.js";
+export * from "./compose.js";
+export * as F5 from "./free5gc.js";
+export * as N from "./netdef.js";
+export * as CN5G from "./oai-cn5g.js";
+export * as OAI from "./oai.js";
+export * as PH from "./phoenix.js";
+export * as PhoenixUE from "./phoenix-ue.js";
+export * as OMEC from "./omec.js";
+export * as prush from "./packetrusher.js";

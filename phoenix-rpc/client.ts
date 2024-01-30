@@ -1,8 +1,13 @@
 import udp from "node:dgram";
+import { stripVTControlCharacters } from "node:util";
 
+import Dockerode from "dockerode";
 import jayson from "jayson/promise/index.js";
+import assert from "minimalistic-assert";
+import { ip2long } from "netmask";
 import { pEvent } from "p-event";
-import stripAnsi from "strip-ansi";
+
+const noColor = (process.env.NO_COLOR ?? "") !== "";
 
 /** Execute command in Open5GCore network function. */
 export interface PhoenixClient {
@@ -19,21 +24,19 @@ export namespace PhoenixClient {
 
 class CommandResult implements PhoenixClient.ExecuteCommandResult {
   constructor(private readonly raw: string) {
-    this.text = stripAnsi(raw);
+    this.text = stripVTControlCharacters(raw);
   }
 
   public readonly text: string;
 
   public get color(): string {
-    return process.env.NO_COLOR ? this.text : this.raw;
+    return noColor ? this.text : this.raw;
   }
 }
 
 /** Interact with Open5GCore network function via JSON-RPC. */
 export class PhoenixClientJSONRPC implements PhoenixClient {
-  private readonly jc: jayson.Client;
-
-  constructor(host: string, port = 10010) {
+  constructor(host: string, port: number) {
     this.jc = jayson.Client.http({
       host,
       port,
@@ -43,6 +46,8 @@ export class PhoenixClientJSONRPC implements PhoenixClient {
       },
     });
   }
+
+  private readonly jc: jayson.Client;
 
   /** Send JSON-RPC request. */
   public async request(method: string, params: jayson.RequestParamsLike): Promise<any> {
@@ -71,7 +76,7 @@ export class PhoenixClientJSONRPC implements PhoenixClient {
 
 /** Interact with Open5GCore network function via UDP. */
 export class PhoenixClientUDP implements PhoenixClient {
-  constructor(private readonly host: string, private readonly port = 10010) {}
+  constructor(private readonly host: string, private readonly port: number) {}
 
   /** Execute remote command. */
   public async executeCommand(cmd: string, args: readonly string[]): Promise<PhoenixClient.ExecuteCommandResult> {
@@ -86,4 +91,30 @@ export class PhoenixClientUDP implements PhoenixClient {
       sock.close();
     }
   }
+}
+
+export let dockerContainer: Dockerode.Container;
+export let clientJ: PhoenixClientJSONRPC;
+export let clientU: PhoenixClientUDP;
+
+export async function createClients(
+    { host, jsonrpcPort, udpPort }: { host: string; jsonrpcPort: number; udpPort: number },
+): Promise<void> {
+  let ip = "";
+  try {
+    ip2long(host);
+    ip = host;
+  } catch {}
+
+  if (!ip) {
+    const [ct, net = "mgmt"] = host.split(":");
+    dockerContainer = new Dockerode().getContainer(ct!);
+    const info = await dockerContainer.inspect();
+    const network = info.NetworkSettings.Networks[`br-${net}`];
+    assert(network, `no br-${net} IP address`);
+    ip = network.IPAddress;
+  }
+
+  clientJ = new PhoenixClientJSONRPC(ip, jsonrpcPort);
+  clientU = new PhoenixClientUDP(ip, udpPort);
 }
