@@ -2,7 +2,7 @@ import assert from "minimalistic-assert";
 import { ip2long, Netmask } from "netmask";
 import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
 
-import type { ComposeFile } from "../types/compose.js";
+import type { ComposeFile } from "../types/mod.js";
 import { defineService, disconnectNetif, setCommands } from "./compose.js";
 
 export const bridgeDockerImage = "5gdeploy.localhost/bridge";

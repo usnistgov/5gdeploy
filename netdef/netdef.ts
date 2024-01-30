@@ -4,10 +4,8 @@ import assert from "minimalistic-assert";
 import type { SetRequired } from "type-fest";
 import { arr2hex, randomBytes } from "uint8-util";
 
-import type * as N from "../types/netdef.js";
+import type { N } from "../types/mod.js";
 import netdefSchema from "../types/netdef.schema.json";
-
-export type { N };
 
 const validate = new Ajv({
   allErrors: true,

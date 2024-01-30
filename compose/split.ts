@@ -4,7 +4,7 @@ import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
 
-import type { ComposeFile, ComposeService } from "../types/compose.js";
+import type { ComposeFile, ComposeService } from "../types/mod.js";
 import { annotate, scriptHead as baseScriptHead } from "./compose.js";
 
 export const splitOptions = {

@@ -2,10 +2,9 @@ import assert from "minimalistic-assert";
 import type { OptionalKeysOf, PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { type N, NetDef } from "../netdef/netdef.js";
+import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import type { ComposeService } from "../types/compose.js";
-import type * as OMEC from "../types/omec.js";
+import type { ComposeService, N, OMEC } from "../types/mod.js";
 
 export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
   for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {

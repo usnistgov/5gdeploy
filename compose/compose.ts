@@ -5,7 +5,7 @@ import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
 
-import type { ComposeFile, ComposeNetif, ComposeNetwork, ComposeService } from "../types/compose.js";
+import type { ComposeFile, ComposeNetif, ComposeNetwork, ComposeService } from "../types/mod.js";
 
 /** Derive network function name from container name. */
 export function nameToNf(ct: string): string {

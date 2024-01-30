@@ -8,8 +8,7 @@ import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import * as NetDefDN from "../netdef-compose/dn.js";
-import type { ComposeService } from "../types/compose.js";
-import type * as CN5G from "../types/oai-cn5g.js";
+import type { CN5G, ComposeService } from "../types/mod.js";
 import * as oai_conf from "./conf.js";
 
 function hexPad(value: number, length: number): string {

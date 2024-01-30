@@ -1,9 +1,9 @@
 import assert from "minimalistic-assert";
 
 import * as compose from "../compose/mod.js";
-import { type N, NetDef } from "../netdef/netdef.js";
+import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import type * as OAI from "../types/oai.js";
+import type { N, OAI } from "../types/mod.js";
 import * as oai_conf from "./conf.js";
 
 export async function oaiRAN(ctx: NetDefComposeContext): Promise<void> {

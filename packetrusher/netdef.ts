@@ -2,9 +2,9 @@ import assert from "minimalistic-assert";
 import type { PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { type N, NetDef } from "../netdef/netdef.js";
+import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import type * as prush from "../types/packetrusher.js";
+import type { N, prush } from "../types/mod.js";
 
 /** Define PacketRusher containers. */
 export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> {

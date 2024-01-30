@@ -2,7 +2,7 @@ import assert from "minimalistic-assert";
 import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
 
-import type { ComposeFile } from "../types/compose.js";
+import type { ComposeFile } from "../types/mod.js";
 
 /** Content of ph_init ip-map file. */
 export class IPMAP {

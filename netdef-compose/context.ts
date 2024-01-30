@@ -7,7 +7,7 @@ import type { Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
-import type { ComposeFile, ComposeService } from "../types/compose.js";
+import type { ComposeFile, ComposeService } from "../types/mod.js";
 import { type IPAlloc } from "./ipalloc.js";
 
 export class NetDefComposeContext {

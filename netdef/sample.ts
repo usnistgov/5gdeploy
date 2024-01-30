@@ -1,4 +1,5 @@
-import { type N, validateNetDef } from "./netdef.js";
+import type { N } from "../types/mod.js";
+import { validateNetDef } from "./netdef.js";
 
 const network: N.Network = {
   plmn: "001-01",

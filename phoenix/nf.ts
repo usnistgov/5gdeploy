@@ -1,7 +1,7 @@
 import stringify from "json-stringify-deterministic";
 import assert from "minimalistic-assert";
 
-import type * as PH from "../types/phoenix.js";
+import type { PH } from "../types/mod.js";
 
 /** Open5GCore network function configuration. */
 export class NetworkFunction {

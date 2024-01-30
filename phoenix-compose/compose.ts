@@ -1,6 +1,6 @@
 import * as compose from "../compose/mod.js";
 import type { IPMAP } from "../phoenix/mod.js";
-import type { ComposeFile, ComposeService } from "../types/compose.js";
+import type { ComposeFile, ComposeService } from "../types/mod.js";
 
 export const phoenixdir = "/opt/phoenix";
 export const cfgdir = `${phoenixdir}/cfg/current`;

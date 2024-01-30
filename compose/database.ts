@@ -1,6 +1,6 @@
 import type { AnyIterable } from "streaming-iterables";
 
-import type { ComposeService } from "../types/compose.js";
+import type { ComposeService } from "../types/mod.js";
 
 export const mysql = {
   image: "bitnami/mariadb:10.6",

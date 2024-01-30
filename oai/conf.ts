@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { execa } from "execa";
 import yaml from "js-yaml";
 
-import type * as CN5G from "../types/oai-cn5g.js";
+import type { CN5G } from "../types/mod.js";
 
 let tag: string | undefined;
 export const templatePath = fileURLToPath(new URL("conf_files", import.meta.url));
