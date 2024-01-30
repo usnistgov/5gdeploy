@@ -141,8 +141,9 @@ class CPBuilder extends CN5GBuilder {
   }
 
   private updateConfigAMF(): void {
-    assert(this.ctx.network.amfs.length === 1, "support exactly 1 AMF");
-    const amf = this.ctx.network.amfs[0]!;
+    const { amfs } = this.ctx.netdef;
+    assert(amfs.length === 1, "support exactly 1 AMF");
+    const amf = amfs[0]!;
 
     const c = this.c.amf!;
     c.amf_name = amf.name;
@@ -169,7 +170,8 @@ class CPBuilder extends CN5GBuilder {
   }
 
   private updateConfigSMF(): void {
-    assert(this.ctx.network.smfs.length === 1, "support exactly 1 SMF");
+    const { smfs } = this.ctx.netdef;
+    assert(smfs.length === 1, "support exactly 1 SMF");
 
     const c = this.c.smf!;
 

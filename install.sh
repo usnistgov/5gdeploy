@@ -27,6 +27,7 @@ msg Installing 5gdeploy
 corepack pnpm install
 bash ./types/build-schema.sh
 bash ./free5gc/download.sh
+bash ./oai/download.sh
 
 for IMG in bridge dn free5gc-upf gnbsim ns3http packetrusher phoenix ueransim; do
   msg Building Docker image $IMG

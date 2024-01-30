@@ -221,12 +221,11 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
   }
 
   private buildNSSF(): void {
-    const { network, netdef: { nssai: defaultNSSAI } } = this;
+    const { amfs } = this.netdef;
     const amfNSSAIs = new Set<string>();
-    for (const amf of network.amfs) {
-      const { nssai = defaultNSSAI } = amf;
-      nssai.sort((a, b) => a.localeCompare(b));
-      amfNSSAIs.add(nssai.join(","));
+    for (const amf of amfs) {
+      amf.nssai.sort((a, b) => a.localeCompare(b));
+      amfNSSAIs.add(amf.nssai.join(","));
     }
     if (amfNSSAIs.size <= 1) {
       return;
@@ -237,10 +236,9 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       yield "DELETE FROM snssai_nsi_mapping";
       yield "DELETE FROM nsi";
       yield "DELETE FROM snssai";
-      for (const [i, amf] of network.amfs.entries()) {
-        const [, set] = NetDef.validateAMFI(amf.amfi);
-        yield sql`INSERT nsi (nsi_id,nrf_id,target_amf_set) VALUES (${`nsi_id_${i}`},${`nrf_id_${i}`},${`${set}`}) RETURNING @nsi_id:=row_id`;
-        for (const snssai of amf.nssai ?? defaultNSSAI) {
+      for (const [i, amf] of amfs.entries()) {
+        yield sql`INSERT nsi (nsi_id,nrf_id,target_amf_set) VALUES (${`nsi_id_${i}`},${`nrf_id_${i}`},${`${amf.amfi[1]}`}) RETURNING @nsi_id:=row_id`;
+        for (const snssai of amf.nssai) {
           const { sst, sd = "" } = NetDef.splitSNSSAI(snssai).ih;
           yield sql`INSERT snssai (sst,sd) VALUES (${sst},${sd}) RETURNING @snssai_id:=row_id`;
           yield "INSERT snssai_nsi_mapping (row_id_snssai,row_id_nsi) VALUES (@snssai_id,@nsi_id)";
@@ -252,13 +250,13 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
   }
 
   private buildAMFs(): void {
-    for (const [ct, amf] of this.createNetworkFunction("5g/amf.json", ["cp", "n2"], this.ctx.network.amfs)) {
+    for (const [ct, amf] of this.createNetworkFunction("5g/amf.json", ["cp", "n2"], this.ctx.netdef.amfs)) {
       this.sf.editNetworkFunction(ct,
-        (c) => setNrfClientSlices(c, amf.nssai ?? this.netdef.nssai),
+        (c) => setNrfClientSlices(c, amf.nssai),
         (c) => {
           const { config } = c.getModule("amf");
           config.id = ct;
-          const [regionId, amfSetId, amfPointer] = NetDef.validateAMFI(amf.amfi);
+          const [regionId, amfSetId, amfPointer] = amf.amfi;
           config.guami = {
             mcc: "%MCC",
             mnc: "%MNC",
@@ -280,10 +278,10 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
   }
 
   private buildSMFs(): void {
-    const { network, netdef } = this;
+    const { network, netdef: { smfs, dataPathLinks } } = this;
     let nextTeid = 0x10000000;
-    const eachTeid = Math.floor(0xE0000000 / network.smfs.length);
-    for (const [ct, smf] of this.createNetworkFunction("5g/smf.json", ["db", "cp", "n4"], network.smfs)) {
+    const eachTeid = Math.floor(0xE0000000 / smfs.length);
+    for (const [ct, smf] of this.createNetworkFunction("5g/smf.json", ["db", "cp", "n4"], smfs)) {
       const db = this.createDatabase("5g/sql/smf_db.sql", ct);
       this.sf.appendSQL(db, function*() {
         yield "DELETE FROM dn_dns";
@@ -304,7 +302,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       const startTeid = nextTeid;
       nextTeid += eachTeid;
       this.sf.editNetworkFunction(ct,
-        (c) => setNrfClientSlices(c, smf.nssai ?? netdef.nssai),
+        (c) => setNrfClientSlices(c, smf.nssai),
         (c) => {
           const { config } = c.getModule("smf");
           config.Database.database = db;
@@ -314,7 +312,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         },
         (c) => {
           const { config } = c.getModule("sdn_routing_topology");
-          config.Topology.Link = netdef.dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
+          config.Topology.Link = dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
             const typeA = this.determineDataPathNodeType(nodeA);
             const typeB = this.determineDataPathNodeType(nodeB);
             if (smf.nssai) {
@@ -522,7 +520,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
         const { config } = c.getModule("gnb");
         delete config.amf_addr;
         delete config.amf_port;
-        config.amf_list = this.network.amfs.map((amf): PH.gnb.AMF => ({
+        config.amf_list = this.netdef.amfs.map((amf): PH.gnb.AMF => ({
           ngc_addr: IPMAP.formatEnv(amf.name, "n2"),
           ngc_sctp_port: 38412,
         }));

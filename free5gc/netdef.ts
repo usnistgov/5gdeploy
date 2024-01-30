@@ -208,7 +208,7 @@ class F5CPBuilder {
 
   private async buildAMFs(): Promise<void> {
     const { network, netdef } = this.ctx;
-    for (const [ct, amf] of compose.suggestNames("amf", network.amfs)) {
+    for (const [ct, amf] of compose.suggestNames("amf", netdef.amfs)) {
       const [s, amfcfg] = this.defineService<F5.amf.Configuration>(ct, ["cp", "n2"]);
       const c = amfcfg.configuration;
       c.amfName = amf.name;
@@ -239,7 +239,7 @@ class F5CPBuilder {
 
   private async buildSMFs(): Promise<void> {
     const { network, netdef } = this.ctx;
-    for (const [ct, smf] of compose.suggestNames("smf", network.smfs)) {
+    for (const [ct, smf] of compose.suggestNames("smf", netdef.smfs)) {
       const [s, smfcfg] = this.defineService<F5.smf.Configuration>(ct, ["cp", "n2", "n4"]);
       const uerouting = f5_conf.loadTemplate("uerouting");
 

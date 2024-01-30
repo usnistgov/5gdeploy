@@ -19,10 +19,10 @@ export interface Network {
   gnbs: GNB[];
 
   /** AMFs. */
-  amfs: AMF[];
+  amfs?: AMF[];
 
   /** SMFs. */
-  smfs: SMF[];
+  smfs?: SMF[];
 
   /** UPFs. */
   upfs: UPF[];
@@ -116,11 +116,17 @@ export interface UPF {
 
 /** Access and Mobility Management Function (AMF) definition. */
 export interface AMF {
-  /** Short name. */
-  name: string;
+  /**
+   * Short name.
+   * @defaultValue Sequentially assigned "amfI".
+   */
+  name?: string;
 
-  /** AMF Identifier. */
-  amfi: AMFI;
+  /**
+   * AMF Identifier.
+   * @defaultValue Sequentially assigned [1, i, 0].
+   */
+  amfi?: AMFI;
 
   /**
    * Served S-NSSAIs.
@@ -131,8 +137,11 @@ export interface AMF {
 
 /** Session Management Function (SMF) definition. */
 export interface SMF {
-  /** Short name. */
-  name: string;
+  /**
+   * Short name.
+   * @defaultValue Sequentially assigned "smfI".
+   */
+  name?: string;
 
   /**
    * Served S-NSSAIs.

@@ -44,6 +44,42 @@ export class NetDef {
     return [...new Set(Array.from(this.network.dataNetworks, (dn) => dn.snssai))];
   }
 
+  /** Return all AMFs. */
+  public get amfs(): Array<Required<N.AMF>> {
+    let { amfs } = this.network;
+    if (!amfs?.length) {
+      amfs = [{ name: "amf" }];
+    }
+    const nssai = this.nssai;
+    return amfs.map((amf, i) => {
+      const result: Required<N.AMF> = {
+        name: `amf${i}`,
+        amfi: [1, i, 0],
+        nssai,
+        ...amf,
+      };
+      for (const [i, bits] of [8, 10, 6].entries()) {
+        const n = result.amfi[i]!;
+        assert(Number.isInteger(n) && n >= 0 && n < (1 << bits), "invalid AMFI");
+      }
+      return result;
+    });
+  }
+
+  /** Return all SMFs. */
+  public get smfs(): Array<Required<N.SMF>> {
+    let { smfs } = this.network;
+    if (!smfs?.length) {
+      smfs = [{ name: "smf" }];
+    }
+    const nssai = this.nssai;
+    return smfs.map((smf, i) => ({
+      name: `smf${i}`,
+      nssai,
+      ...smf,
+    }));
+  }
+
   /** Return normalized data path links. */
   public get dataPathLinks(): Array<Required<N.DataPathLink.Object>> {
     return Array.from(this.network.dataPaths.links, (link) => NetDef.normalizeDataPathLink(link));
@@ -274,15 +310,6 @@ export namespace NetDef {
       int: { sst: sstInt, sd: Number.parseInt(sd, 16) },
       ih: { sst: sstInt, sd },
     };
-  }
-
-  /** Validate AMF Identifier. */
-  export function validateAMFI(amfi: N.AMFI): N.AMFI {
-    const [region, set, pointer] = amfi;
-    assert(Number.isInteger(region) && region >= 0 && region <= 0b11111111);
-    assert(Number.isInteger(set) && set >= 0 && set <= 0b1111111111);
-    assert(Number.isInteger(pointer) && pointer >= 0 && pointer <= 0b111111);
-    return amfi;
   }
 
   /** Determine equality of two DataPathNodes. */
