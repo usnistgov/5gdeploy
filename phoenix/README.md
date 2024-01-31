@@ -16,7 +16,7 @@ This package offers these choices in the **netdef-compose** command:
   * allows up to two S-NSSAIs
   * UE does not register automatically, use [phoenix-rpc](../phoenix-rpc) to perform UE registration
 
-## netdef-compose Options
+## Advanced Options
 
 This package adds several phoenix-specific options to the **netdef-compose** command.
 

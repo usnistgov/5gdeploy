@@ -7,7 +7,7 @@ import { hideBin } from "yargs/helpers";
 import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc/netdef.js";
 import { NetDef } from "../netdef/netdef.js";
-import { oaiCP, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
+import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { gnbsimRAN } from "../omec/gnbsim.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
@@ -75,6 +75,7 @@ const args = await yargs(hideBin(process.argv))
   .option(dnOptions)
   .middleware(saveDNOptions)
   .option(phoenixOptions)
+  .option(oaiOptions)
   .parseAsync();
 
 const netdef = new NetDef(JSON.parse(await (args.netdef === "-" ? getStdin() : fs.readFile(args.netdef, "utf8"))));

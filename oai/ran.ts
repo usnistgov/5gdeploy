@@ -19,6 +19,7 @@ export async function oaiRAN(ctx: NetDefComposeContext): Promise<void> {
 /** Define gNB container and generate configuration */
 async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB): Promise<void> {
   const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${await oai_conf.getTag()}`, ["air", "n2", "n3"]);
+  compose.annotate(s, "cpus", 1);
   s.privileged = true;
 
   const c = await oai_conf.loadTemplate<OAI.gnb.Config>("gnb.sa.band78.106prb.rfsim");
@@ -72,6 +73,7 @@ async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB): Promi
 /** Define UE container and generate configuration. */
 async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscriber): Promise<void> {
   const s = ctx.defineService(ct, `oaisoftwarealliance/oai-nr-ue:${await oai_conf.getTag()}`, ["air"]);
+  compose.annotate(s, "cpus", 1);
   s.privileged = true;
 
   const c = await oai_conf.loadTemplate<OAI.ue.Config>("nrue.uicc");

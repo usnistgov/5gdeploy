@@ -10,6 +10,7 @@ import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import * as NetDefDN from "../netdef-compose/dn.js";
 import type { CN5G, ComposeService } from "../types/mod.js";
 import * as oai_conf from "./conf.js";
+import { type OAIOpts } from "./options.js";
 
 function hexPad(value: number, length: number): string {
   return value.toString(16).padStart(length, "0");
@@ -17,6 +18,7 @@ function hexPad(value: number, length: number): string {
 
 abstract class CN5GBuilder {
   constructor(protected readonly ctx: NetDefComposeContext) {}
+  protected get netdef() { return this.ctx.netdef; }
   protected c!: CN5G.Config;
 
   protected defineService(ct: string, nf: string, c: CN5G.NF, db: boolean, configPath: string): ComposeService {
@@ -51,6 +53,7 @@ abstract class CN5GBuilder {
     }
 
     const s = this.ctx.defineService(ct, `oaisoftwarealliance/oai-${nf}`, nets);
+    s.stop_signal = "SIGQUIT";
     s.cap_add.push("NET_ADMIN");
     s.volumes.push({
       type: "bind",
@@ -72,7 +75,7 @@ abstract class CN5GBuilder {
   }
 
   protected updateConfigDNNs(): void {
-    this.c.snssais = this.ctx.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
+    this.c.snssais = this.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
     this.c.dnns = this.ctx.network.dataNetworks.map((dn): CN5G.DNN => ({
       dnn: dn.dnn,
       pdu_session_type: "IPV4",
@@ -125,7 +128,7 @@ class CPBuilder extends CN5GBuilder {
     yield "DELETE FROM AccessAndMobilitySubscriptionData";
     yield "DELETE FROM AuthenticationSubscription";
     yield "DELETE FROM SessionManagementSubscriptionData";
-    for (const sub of this.ctx.netdef.listSubscribers()) {
+    for (const sub of this.netdef.listSubscribers()) {
       const nssai = {
         defaultSingleNssais: sub.subscribedNSSAI.map(({ snssai }) => NetDef.splitSNSSAI(snssai).ih),
       };
@@ -141,7 +144,7 @@ class CPBuilder extends CN5GBuilder {
   }
 
   private updateConfigAMF(): void {
-    const { amfs } = this.ctx.netdef;
+    const { amfs } = this.netdef;
     assert(amfs.length === 1, "support exactly 1 AMF");
     const amf = amfs[0]!;
 
@@ -164,13 +167,13 @@ class CPBuilder extends CN5GBuilder {
     c.plmn_support_list = [{
       mcc,
       mnc,
-      tac: `0x${hexPad(this.ctx.netdef.tac, 4)}`,
+      tac: `0x${hexPad(this.netdef.tac, 4)}`,
       nssai: this.c.snssais,
     }];
   }
 
   private updateConfigSMF(): void {
-    const { smfs } = this.ctx.netdef;
+    const { smfs } = this.netdef;
     assert(smfs.length === 1, "support exactly 1 SMF");
 
     const c = this.c.smf!;
@@ -184,7 +187,7 @@ class CPBuilder extends CN5GBuilder {
       };
     });
 
-    c.smf_info.sNssaiSmfInfoList = this.ctx.netdef.nssai.map((snssai): CN5G.smf.SNSSAIInfo => {
+    c.smf_info.sNssaiSmfInfoList = this.netdef.nssai.map((snssai): CN5G.smf.SNSSAIInfo => {
       const dns = this.ctx.network.dataNetworks.filter((dn) => dn.snssai === snssai);
       return {
         sNssai: NetDef.splitSNSSAI(snssai).ih,
@@ -202,16 +205,16 @@ class CPBuilder extends CN5GBuilder {
 }
 
 class UPBuilder extends CN5GBuilder {
-  public async build(): Promise<void> {
+  public async build(opts: OAIOpts): Promise<void> {
     NetDefDN.defineDNServices(this.ctx);
 
     this.c = await oai_conf.loadCN5G();
-    // rely on hosts entry because UP is created before CP so that NRF and SMF IP are unknown
-    // XXX this assumes there is only one NRF and one SMF
-    this.c.nfs.nrf!.host = "nrf.br-cp";
-    this.c.upf!.smfs = [{ host: "smf.br-n4" }];
+    // rely on hosts entry because UP is created before CP so that NRF and SMF IPs are unknown
+    this.c.nfs.nrf!.host = "nrf.br-cp"; // assuming only one NRF
+    this.c.upf!.smfs = this.netdef.smfs.map((smf): CN5G.upf.SMF => ({ host: `${smf.name}.br-n4` }));
 
     this.updateConfigDNNs();
+    this.c.upf!.support_features.enable_bpf_datapath = opts["oai-upf-bpf"];
     this.c.upf!.support_features.enable_snat = false;
     delete this.c.amf;
     delete this.c.smf;
@@ -219,9 +222,10 @@ class UPBuilder extends CN5GBuilder {
     for (const [ct, upf] of compose.suggestNames("upf", this.ctx.network.upfs)) {
       const configPath = `up-cfg/${ct}.yaml`;
       const s = this.defineService(ct, "upf", this.c.nfs.upf!, false, configPath);
+      compose.annotate(s, "cpus", opts["oai-upf-workers"]);
       s.devices.push("/dev/net/tun:/dev/net/tun");
 
-      const peers = this.ctx.netdef.gatherUPFPeers(upf);
+      const peers = this.netdef.gatherUPFPeers(upf);
       assert.equal(peers.N9.length, 0, "N9 not supported");
       compose.setCommands(s, [
         ...NetDefDN.makeUPFRoutes(this.ctx, peers),
@@ -238,7 +242,7 @@ class UPBuilder extends CN5GBuilder {
   private updateConfigUPF(peers: NetDef.UPFPeers): void {
     const { sNssaiUpfInfoList } = this.c.upf!.upf_info;
     sNssaiUpfInfoList.splice(0, Infinity);
-    for (const snssai of this.ctx.netdef.nssai) {
+    for (const snssai of this.netdef.nssai) {
       const sPeers = peers.N6IPv4.filter((peer) => peer.snssai === snssai);
       if (sPeers.length === 0) {
         continue;
@@ -256,7 +260,7 @@ export async function oaiCP(ctx: NetDefComposeContext): Promise<void> {
   await b.build();
 }
 
-export async function oaiUP(ctx: NetDefComposeContext): Promise<void> {
+export async function oaiUP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
   const b = new UPBuilder(ctx);
-  await b.build();
+  await b.build(opts);
 }

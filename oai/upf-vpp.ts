@@ -6,11 +6,12 @@ import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import * as NetDefDN from "../netdef-compose/dn.js";
+import type { OAIOpts } from "./options.js";
 
 const vppScript = await fs.readFile(new URL("upf-vpp.sh", import.meta.url));
 
 /** Build UP functions using oai-upf-vpp as UPF. */
-export async function oaiUPvpp(ctx: NetDefComposeContext): Promise<void> {
+export async function oaiUPvpp(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
   NetDefDN.defineDNServices(ctx);
   const [mcc, mnc] = NetDef.splitPLMN(ctx.network.plmn);
   await ctx.writeFile("oai-upf-vpp.sh", vppScript);
@@ -22,7 +23,7 @@ export async function oaiUPvpp(ctx: NetDefComposeContext): Promise<void> {
     const { sst, sd = "FFFFFF" } = NetDef.splitSNSSAI(dn.snssai).ih;
 
     const s = ctx.defineService(ct, "oaisoftwarealliance/oai-upf-vpp:v2.0.0", ["cp", "n4", "n6", "n3"]);
-    compose.annotate(s, "cpus", 2);
+    compose.annotate(s, "cpus", opts["oai-upf-workers"]);
     s.privileged = true;
     s.command = ["/bin/bash", "/upf-vpp.sh"];
     s.volumes.push({
