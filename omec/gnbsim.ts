@@ -85,7 +85,6 @@ type ProfileBase = Pick<OMEC.gnbsim.Profile, "profileType" | OptionalKeysOf<OMEC
 
 const PROFILES: readonly ProfileBase[] = [
   {
-    // "deregister" = Registration + UE initiated PDU Session Establishment + User Data packets + Deregister
     profileType: "deregister",
     dataPktCount: 5,
   },

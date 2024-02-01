@@ -57,7 +57,7 @@ export namespace gnbsim {
   }
 
   export interface Profile {
-    profileType: string;
+    profileType: ProfileType;
     profileName: string;
     enable: boolean;
     gnbName: string;
