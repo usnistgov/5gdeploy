@@ -1,7 +1,7 @@
 # 5gdeploy/scenario
 
 Package **scenario** contains a collection of concrete scenarios.
-Each scenario has a `scenario.ts` script that prints a [NetDef](../netdef) object, which can be passed to [netdef-compose](../netdef-compose) command to generate a Docker Compose.
+Each scenario has a `scenario.ts` script that prints a [NetDef](../netdef) object, which can be passed to [netdef-compose](../netdef-compose) command to generate a Compose context.
 
 Scenario list and brief description:
 
