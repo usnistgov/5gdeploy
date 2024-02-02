@@ -1,7 +1,7 @@
 # Traffic Generation
 
 This page describes how to generate traffic in scenarios that feature internet/vcam/vctl Data Networks.
-The same procedure is applicable to [20230817](README.md) and [20231017](../20231017/README.md).
+The same procedure is applicable to [20230817](README.md), [20231017](../20231017/README.md), and [20231214](../20231214/README.md).
 Unless otherwise noted, the snippets should be invoked in the Compose directory such as `~/compose/20230817`.
 
 ## nmap: ping UEs from Data Networks
@@ -19,7 +19,7 @@ $(./compose.sh at dn_vctl) exec dn_vctl nmap -sn 10.141.0.0/24
 Define traffic generators:
 
 ```bash
-alias 5giperf3='~/5gdeploy-scenario/20230817/iperf3.sh'
+alias 5giperf3='~/5gdeploy/scenario/20230817/iperf3.sh'
 5giperf3 init
 5giperf3 add internet "^ue1" 10.1.0.0/16 21000 -t 300 -u -b 15M
 5giperf3 add internet "^ue1" 10.1.0.0/16 22000 -t 300 -u -b 50M -R
@@ -30,6 +30,16 @@ alias 5giperf3='~/5gdeploy-scenario/20230817/iperf3.sh'
 # Set D5G_DNCPUSET environ to instead give a separate core to each iperf3 server, example:
 D5G_DNCPUSET=30-35 5giperf3 add internet "^ue1" 10.1.0.0/16 21000 -t 300 -u -b 50M -R
 ```
+
+`5giperf3` command line flags:
+
+1. Data Network Name.
+2. Regular expression to match UE containers.
+   For RAN simulators with combined gNB and UE (e.g. PacketRusher), there's no UE container, and this should match gNB containers instead.
+3. IP address range of the Data Network.
+   This is used for finding PDU session network interfaces in the UE containers.
+4. iperf3 port number, used for both server and client.
+5. All remaining flags are passed to iperf3 client running on the UE side.
 
 Run traffic generators:
 
@@ -69,7 +79,7 @@ Analyze the results:
 ## ns-3 3GPP HTTP application
 
 [ns-3 3GPP HTTP applications](https://www.nsnam.org/docs/release/3.35/models/html/applications.html) simulate web browsing traffic based on a commonly used 3GPP model in standardization.
-See `5gdeploy/docker/ns3http/README.md` for more explanation on how this container works and its optional command line flags.
+See [ns3http Docker image README](../../docker/ns3http/README.md) for more explanation on how this container works and its optional command line flags.
 
 ```bash
 # define variables

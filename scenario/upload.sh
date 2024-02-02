@@ -5,7 +5,7 @@ D=$1
 shift
 
 msg() {
-  echo -ne "\e[35m[5gdeploy-scenario] \e[94m"
+  echo -ne "\e[35m[5gdeploy] \e[94m"
   echo -n "$*"
   echo -e "\e[0m"
 }

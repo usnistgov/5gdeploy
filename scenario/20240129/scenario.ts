@@ -1,7 +1,7 @@
-import type { N } from "@usnistgov/5gdeploy/types/mod.ts";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
+import type { N } from "../../types/mod.ts";
 import * as ran from "../common/ran.js";
 
 const args = yargs(hideBin(process.argv))

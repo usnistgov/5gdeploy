@@ -31,7 +31,6 @@ They cannot access other *edge* data networks.
 ## Preparation
 
 You need three hosts: *cloud* (primary), *edge1*, *edge2*.
-See the multi-host preparation steps in [top-level README](../README.md).
 All commands shall be invoked on the *cloud* host.
 
 Define variables for SSH hostnames or IPs:
@@ -54,7 +53,7 @@ EXP_EDGE2=192.168.60.12
 Generate Compose file and upload to *edge* hosts:
 
 ```bash
-cd ~/5gdeploy-scenario
+cd ~/5gdeploy/scenario
 ./generate.sh 20230510 --ran=ueransim \
   --bridge=n2,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2} \
   --bridge=n4,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2} \

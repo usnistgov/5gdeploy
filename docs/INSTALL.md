@@ -10,6 +10,7 @@ sudo apt update
 echo 'wireshark-common wireshark-common/install-setuid boolean true' | sudo debconf-set-selections
 sudo DEBIAN_FRONTEND=noninteractive apt install -y httpie jq wireshark-common
 sudo adduser $(id -un) wireshark
+sudo snap install yq
 
 # install Node.js 20.x
 http --ignore-stdin GET https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
@@ -38,18 +39,17 @@ Logout and login again, so that your account has the necessary group memberships
 This repository should be cloned at `~/5gdeploy`, then:
 
 ```bash
-# install NPM dependencies
 cd ~/5gdeploy
-corepack pnpm install
-
-# build utility Docker images
-bash docker/build.sh bridge
-bash docker/build.sh dn
-
-# build JSON schema
-bash types/build-schema.sh
+./install.sh
 ```
 
 Additional steps are defined within each scenario.
 When you run these steps, you should never use `sudo` unless specifically instructed to do so.
 Excessive `sudo` usage would mess up file permissions and cause unexpected errors.
+
+If free5GC is needed, load the gtp5g module:
+
+```bash
+bash ~/5gdeploy/free5gc/load-gtp5g.sh
+# Repeat this step after every reboot.
+```

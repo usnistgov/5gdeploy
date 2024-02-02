@@ -1,6 +1,6 @@
-import type { N } from "@usnistgov/5gdeploy/types/mod.ts";
 import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
 
+import type { N } from "../../types/mod.ts";
 import * as ran from "./ran.js";
 
 export const cliOptions = {

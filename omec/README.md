@@ -1,4 +1,4 @@
-# omec
+# 5gdeploy/omec
 
 Package **omec** generates Open Mobile Evolved Core / Aether / SD-Core configurations.
 This package offers these choices in the **netdef-compose** command:

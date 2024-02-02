@@ -2,7 +2,7 @@
 set -euo pipefail
 
 msg() {
-  echo -ne "\e[35m[5gdeploy-scenario] \e[94m" >/dev/stderr
+  echo -ne "\e[35m[5gdeploy] \e[94m" >/dev/stderr
   echo -n "$*" >/dev/stderr
   echo -e "\e[0m" >/dev/stderr
 }

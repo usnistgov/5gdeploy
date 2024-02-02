@@ -1,4 +1,4 @@
-# free5gc
+# 5gdeploy/free5gc
 
 Package **free5gc** generates free5GC configuration.
 This package offers these choices in the **netdef-compose** command:

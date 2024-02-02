@@ -1,4 +1,4 @@
-# packetrusher
+# 5gdeploy/packetrusher
 
 Package **packetrusher** generates [PacketRusher](https://github.com/HewlettPackard/PacketRusher) configuration.
 This package offers these choices in the **netdef-compose** command:

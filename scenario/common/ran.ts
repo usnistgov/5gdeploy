@@ -1,6 +1,7 @@
-import type { N } from "@usnistgov/5gdeploy/types/mod.ts";
 import assert from "minimalistic-assert";
 import type { Options } from "yargs";
+
+import type { N } from "../../types/mod.ts";
 
 export function option(desc: string, dflt: number, max: number, min = 1) {
   return {

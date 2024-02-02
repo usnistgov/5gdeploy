@@ -1,4 +1,4 @@
-import type { N } from "@usnistgov/5gdeploy/types/mod.ts";
+import type { N } from "../../types/mod.ts";
 
 const network: N.Network = {
   plmn: "001-01",

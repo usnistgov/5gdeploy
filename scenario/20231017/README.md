@@ -16,12 +16,10 @@ These quantities can be adjusted via command line flags.
 
 ## Basic Usage
 
-First complete the installation steps in [top-level README](../README.md).
-
 Generate Compose file:
 
 ```bash
-cd ~/5gdeploy-scenario
+cd ~/5gdeploy/scenario
 ./generate.sh 20231017
 # Add --up=free5gc to select free5GC UPF instead of Open5GCore UPF.
 # Add --ran=ueransim to select UERANSIM gNB+UE instead of Open5GCore gNB+UE.
@@ -131,11 +129,11 @@ SWPORT_UPF1=Ethernet0
 SWPORT_UPF4=Ethernet1
 
 # generate SONiC config
-./node_modules/.bin/tsx 20231017/sonic-qos.ts --format=shell \
+$(corepack pnpm bin)/tsx 20231017/sonic-qos.ts --format=shell \
   --port-gnb=$SWPORT_GNB0 --port-upf1=$SWPORT_UPF1 --port-upf4=$SWPORT_UPF4 \
   --dl-gnb=2000 --dl-sched=STRICT
 
-./node_modules/.bin/tsx 20231017/sonic-qos.ts --format=shell \
+$(corepack pnpm bin)/tsx 20231017/sonic-qos.ts --format=shell \
   --port-gnb=$SWPORT_GNB0 --port-upf1=$SWPORT_UPF1 --port-upf4=$SWPORT_UPF4 \
   --dl-gnb=2000 --dl-sched=DWRR --dl-w1=20 --dl-w4=80
 ```

@@ -1,4 +1,4 @@
-# oai
+# 5gdeploy/oai
 
 Package **oai** generates OpenAirInterface and CN5G configurations.
 This package offers these choices in the **netdef-compose** command:

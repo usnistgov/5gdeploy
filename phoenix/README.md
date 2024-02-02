@@ -1,4 +1,4 @@
-# phoenix
+# 5gdeploy/phoenix
 
 Package **phoenix** reads and writes Open5GCore configuration files.
 

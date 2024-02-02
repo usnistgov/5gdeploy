@@ -6,11 +6,12 @@ TAG=${1:-master}
 if [[ -d free5gc-compose ]]; then
   git -C free5gc-compose fetch
   git -C free5gc-compose checkout "${TAG}"
+  git -C free5gc-compose pull || true
 else
   git clone --branch "${TAG}" https://github.com/free5gc/free5gc-compose.git
 fi
 
-docker run -i --rm mikefarah/yq '.services | to_entries | .[].value.image' - <free5gc-compose/docker-compose.yaml >images.txt
+yq '.services | to_entries | .[].value.image' - <free5gc-compose/docker-compose.yaml >images.txt
 
 if [[ -n ${https_proxy:-} ]]; then
   export _JAVA_OPTIONS="$(node -e '

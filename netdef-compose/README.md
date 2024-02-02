@@ -1,4 +1,4 @@
-# netdef-compose
+# 5gdeploy/netdef-compose
 
 Command **netdef-compose** generates Compose file and config folder from a [network definition](../netdef).
 

@@ -16,12 +16,10 @@ These quantities can be adjusted via command line flags.
 
 ## Basic Usage
 
-First complete the installation steps in [top-level README](../README.md).
-
 Generate Compose file:
 
 ```bash
-cd ~/5gdeploy-scenario
+cd ~/5gdeploy/scenario
 ./generate.sh 20230817 --ran=ueransim
 # --ran=ueransim is required.
 # Open5GCore gNB simulator allows up to 2 slices so it is incompatible.
@@ -42,7 +40,6 @@ See [trafficgen](trafficgen.md) for suggestions on how to generate traffic in th
 ## Multi-Host Usage
 
 We want to run Control Plane on primary host, User Plane and RAN on secondary host.
-See the multi-host preparation steps in [top-level README](../README.md).
 
 ```bash
 # define variables for SSH control IPs
