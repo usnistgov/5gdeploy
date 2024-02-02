@@ -32,5 +32,5 @@ Open5GCore UE simulator is only involved in registration and PDU session setup.
 After that, each PDU session is present in the container as a GRE tunnel interface, and user traffic does not pass through the UE simulator.
 Having a reserved CPU core is mostly helpful for other processes running inside the UE container, such as iperf3 client, to inherit CPU isolation.
 This option is specified as a list of SUPI suffixes.
-The default is an empty string, which is a suffix of every SUPI, and this gives every UE container a reserved CPU core.
+The default is an empty string, which is a suffix of every SUPI, and thus gives every UE container a reserved CPU core.
 To disable reserved CPU cores, set this option to "NONE", which would not be a suffix of any SUPI.

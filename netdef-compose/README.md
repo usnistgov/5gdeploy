@@ -107,7 +107,7 @@ If you are using VMware virtual machines, it is advised to change TX offload set
 sudo ethtool --offload ens160 tx-checksum-ip-generic off
 ```
 
-Bridge configuration scripts will setup VXLAN bridges, so that Docker networks with the specified name on different hosts can reach each other.
+Bridge configuration scripts will setup VXLAN bridges, such that identically named Docker networks on different hosts are connected with each other.
 This is achieved by creating a VXLAN tunnel between the first host and each subsequent host, and then adding these VXLAN tunnels to the bridges representing the specified Docker network.
 The first host serves as a virtual root switch and all traffic goes through it, even if the traffic flow is between second and third hosts.
 This does not change the L3 network topology in any way, but can have performance implications.
@@ -186,6 +186,10 @@ Example:
 --place="+(gnb*|ue*)@192.168.60.3(4,8-13)" --place="upf*@192.168.60.4(4-7)" --place="*@(16-31)"
 ```
 
-In each cpuset, two CPU cores are designated as *shared* and others are dedicated.
-Some network functions will request a specified number of dedicated cores.
-When dedicated cores are fully allocated, as well as for network functions that do not request dedicated cores, the shared cores will be used.
+Each network function can request a specific quantity of dedicated cores, denoted as `5gdeploy.cpus` annotation.
+When every network function matched in a `--place` flag is requesting dedicated cores and there are sufficient number of cores to satisfy all these requests, they will all receive dedicated cores.
+
+If some network functions are not requesting dedicated cores, or if there aren't enough cores to satisfy all requests, the first two cores in the cpuset are designated as *shared*, and all others are dedicated.
+Then, a subset of requests will be satisfied, others will receive the shared cores.
+Containers that requested dedicated cores but are allocated shared cores will have `5gdeploy.cpuset_warning` annotation.
+If you find this annotation is the Compose, consider revising the cpuset to include more cores.

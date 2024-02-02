@@ -2,12 +2,18 @@
 
 5gdeploy supports Ubuntu 22.04 operating system only.
 
-## Prepare Dependencies
+## Dependencies
 
-* Docker Engine
+To setup a single-host deployment or the *primary* host in a multi-host deployment, these should be installed:
+
 * Node.js 20.x
-* `httpie`, `jq`, `yq` commands for scripting
-* `dumpcap` command for capturing traffic traces (optional)
+* Docker Engine
+* APT packages:
+  * `httpie jq`: used in bash scripts
+  * `dumpcap`: for capturing traffic traces in scenarios
+  * `python3-libconf`: used by `oai/convert.py`
+* Snap packages:
+  * `yq`: used in bash scripts
 
 Run these commands to install dependencies:
 
@@ -15,7 +21,7 @@ Run these commands to install dependencies:
 # install system packages
 sudo apt update
 echo 'wireshark-common wireshark-common/install-setuid boolean true' | sudo debconf-set-selections
-sudo DEBIAN_FRONTEND=noninteractive apt install -y httpie jq wireshark-common
+sudo DEBIAN_FRONTEND=noninteractive apt install -y httpie jq python3-libconf wireshark-common
 sudo adduser $(id -un) wireshark
 sudo snap install yq
 
@@ -54,7 +60,7 @@ cd ~/5gdeploy
 ./install.sh
 ```
 
-If you do not have access to Open5GCore proprietary repository, disable it:
+If you do not have access to Open5GCore proprietary repository, disable it with `NOPHOENIX` environ:
 
 ```bash
 cd ~/5gdeploy
@@ -65,6 +71,7 @@ export NOPHOENIX=1
 ## Load gtp5g Kernel Module
 
 Both free5GC UPF and PacketRusher require the [gtp5g](https://github.com/free5gc/gtp5g) kernel module.
+This kernel module is compatible with Linux kernel 5.15, but incompatible with 6.x kernel.
 
 Install the compiler:
 
@@ -89,7 +96,7 @@ The *primary* host should have everything described above.
 The *secondary* hosts only need:
 
 * Docker Engine
-* kernel module for free5GC, if needed
+* gtp5g kernel module, if used
 
 The *primary* host should have SSH config and `id_ed25519` key to access each *secondary* host.
 The SSH user on each *secondary* host should be added to the `docker` group.
