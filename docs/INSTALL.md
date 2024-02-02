@@ -2,6 +2,13 @@
 
 5gdeploy supports Ubuntu 22.04 operating system only.
 
+## Prepare Dependencies
+
+* Docker Engine
+* Node.js 20.x
+* `httpie`, `jq`, `yq` commands for scripting
+* `dumpcap` command for capturing traffic traces (optional)
+
 Run these commands to install dependencies:
 
 ```bash
@@ -36,20 +43,63 @@ sudo systemctl restart docker
 
 Logout and login again, so that your account has the necessary group memberships.
 
-This repository should be cloned at `~/5gdeploy`, then:
+## Install 5gdeploy and Build Docker Images
+
+This repository must be cloned at `~/5gdeploy`.
+Open5GCore proprietary repository should be cloend at `~/phoenix-repo`.
+Open source 5G implementations will be pulled from Docker registries or source code repositories.
 
 ```bash
 cd ~/5gdeploy
 ./install.sh
 ```
 
-Additional steps are defined within each scenario.
-When you run these steps, you should never use `sudo` unless specifically instructed to do so.
-Excessive `sudo` usage would mess up file permissions and cause unexpected errors.
+If you do not have access to Open5GCore proprietary repository, disable it:
 
-If free5GC is needed, load the gtp5g module:
+```bash
+cd ~/5gdeploy
+export NOPHOENIX=1
+./install.sh
+```
+
+## Load gtp5g Kernel Module
+
+Both free5GC UPF and PacketRusher require the [gtp5g](https://github.com/free5gc/gtp5g) kernel module.
+
+Install the compiler:
+
+```bash
+sudo DEBIAN_FRONTEND=noninteractive apt install -y build-essential
+```
+
+Compile and load the kernel module:
 
 ```bash
 bash ~/5gdeploy/free5gc/load-gtp5g.sh
-# Repeat this step after every reboot.
+```
+
+You need to rerun `load-gtp5g.sh` after every reboot.
+
+## Multi-Host Preparation
+
+Some scenarios can/should be deployed over multiple hosts.
+Typically, one host is designated as *primary* and all other hosts are designed as *secondary*.
+
+The *primary* host should have everything described above.
+The *secondary* hosts only need:
+
+* Docker Engine
+* kernel module for free5GC, if needed
+
+The *primary* host should have SSH config and `id_ed25519` key to access each *secondary* host.
+The SSH user on each *secondary* host should be added to the `docker` group.
+The SSH host key of each *secondary* host should be added to the `known_hosts` file on the *primary* host.
+If the command below does not work, re-check these SSH requirements.
+
+Copy Docker images to *secondary* hosts:
+
+```bash
+cd ~/5gdeploy
+./upload.sh docker 192.168.60.2 192.168.60.3
+# change these IP addresses to the hosts in your setup
 ```

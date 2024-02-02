@@ -52,33 +52,3 @@ docker logs amf >& amf.log
 cd ~/compose/20230601
 ./compose.sh down
 ```
-
-## Multi-Host Preparation
-
-Some scenarios can/should be deployed over multiple hosts.
-Typically, one host is designated as *primary* and all other hosts are designed as *secondary*.
-
-The *primary* host should have:
-
-* Docker Engine
-* Node.js
-* `install.sh` completion
-* kernel module for free5GC, if needed
-
-The *secondary* host should have:
-
-* Docker Engine
-* kernel module for free5GC, if needed
-
-The *primary* host should have SSH config and `id_ed25519` key to access each *secondary* host.
-The SSH user on each *secondary* host should be added to the `docker` group.
-The SSH host key of each *secondary* host should be added to the `known_hosts` file on the *primary* host.
-If the command below does not work, re-check these SSH requirements.
-
-Copy Docker images to *secondary* hosts:
-
-```bash
-cd ~/5gdeploy/scenario
-./upload.sh docker 192.168.60.2 192.168.60.3
-# change these IP addresses to the hosts in your setup
-```

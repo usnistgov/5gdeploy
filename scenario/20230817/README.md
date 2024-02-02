@@ -57,7 +57,7 @@ EXP_UP=192.168.60.2
   --place="+(dn|upf|gnb|ue)*@$CTRL_UP"
 
 # upload Compose file and config folder to the secondary host
-./upload.sh ~/compose/20230817 $CTRL_UP
+../upload.sh ~/compose/20230817 $CTRL_UP
 
 # start the scenario
 ~/compose/20230817/compose.sh up

@@ -30,6 +30,10 @@ bash ./free5gc/download.sh
 bash ./oai/download.sh
 
 for IMG in bridge dn free5gc-upf gnbsim ns3http packetrusher phoenix ueransim; do
+  if [[ $IMG == phoenix ]] && [[ ${NOPHOENIX:-} -eq 1 ]]; then
+    msg Skipping Docker image $IMG
+    continue
+  fi
   msg Building Docker image $IMG
   bash ./docker/build.sh $IMG
 done
