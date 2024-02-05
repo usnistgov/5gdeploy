@@ -2,9 +2,9 @@ import assert from "minimalistic-assert";
 import { minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
-import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";
+import type { YargsInfer, YargsOptions } from "../util/yargs.js";
 import { annotate, scriptHead as baseScriptHead } from "./compose.js";
 
 export const splitOptions = {
@@ -19,9 +19,9 @@ export const splitOptions = {
     desc: "generate a separate Compose file for each host",
     type: "boolean",
   },
-} as const satisfies Record<string, YargsOptions>;
+} as const satisfies YargsOptions;
 
-export function splitOutput(c: ComposeFile, { place = [], split }: InferredOptionTypes<typeof splitOptions>): Map<string, unknown> {
+export function splitOutput(c: ComposeFile, { place = [], split }: YargsInfer<typeof splitOptions>): Map<string, unknown> {
   const outputFiles = new Map<string, unknown>([["compose.yml", c]]);
   if (place.length === 0) {
     outputFiles.set("compose.sh", minimalScript);

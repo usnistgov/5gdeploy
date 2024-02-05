@@ -53,7 +53,7 @@ After these, you can write netdef-compose flags.
 # CORRECT: pass "+gnbs=2" to scenario.ts, pass "--up=free5gc" to netdef-compose
 ./generate.sh 20230601 +gnbs=2 --up=free5gc
 
-# WRONG: "+gnbs=2" is a scenario.ts flag but it should have wrong "--" prefix
+# WRONG: "+gnbs=2" is a scenario.ts flag but it has wrong "--" prefix
 ./generate.sh 20230601 --gnbs=2 --up=free5gc
 
 # WRONG: scenario.ts flags are written after netdef-compose flags

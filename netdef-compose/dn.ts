@@ -2,11 +2,11 @@ import assert from "minimalistic-assert";
 import DefaultWeakMap from "mnemonist/default-weak-map.js";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
-import yargs, { type InferredOptionTypes, type Options as YargsOptions } from "yargs";
 
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import type { N } from "../types/mod.js";
+import { YargsDefaults, type YargsInfer, type YargsOptions } from "../util/yargs.js";
 import type { NetDefComposeContext } from "./context.js";
 
 export const dnOptions = {
@@ -15,9 +15,9 @@ export const dnOptions = {
     desc: "number of reserved CPU cores for each Data Network container",
     type: "number",
   },
-} as const satisfies Record<string, YargsOptions>;
-type DNOpts = InferredOptionTypes<typeof dnOptions>;
-let savedOpts: DNOpts = yargs([]).option(dnOptions).parseSync();
+} as const satisfies YargsOptions;
+type DNOpts = YargsInfer<typeof dnOptions>;
+let savedOpts: DNOpts = YargsDefaults(dnOptions);
 export function saveDNOptions(opts: DNOpts): void {
   savedOpts = opts;
 }

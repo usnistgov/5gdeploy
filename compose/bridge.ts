@@ -1,8 +1,8 @@
 import assert from "minimalistic-assert";
 import { ip2long, Netmask } from "netmask";
-import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
 
 import type { ComposeFile } from "../types/mod.js";
+import type { YargsInfer, YargsOptions } from "../util/yargs.js";
 import { defineService, disconnectNetif, setCommands } from "./compose.js";
 
 export const bridgeDockerImage = "5gdeploy.localhost/bridge";
@@ -15,7 +15,7 @@ export const bridgeOptions = {
     string: true,
     type: "array",
   },
-} as const satisfies Record<string, YargsOptions>;
+} as const satisfies YargsOptions;
 
 type BridgeBuilder = (c: ComposeFile, net: string, tokens: readonly string[], netIndex: number) => Generator<string, void, void>;
 
@@ -96,7 +96,7 @@ const bridgeModes: Record<string, BridgeBuilder> = {
  * @param c Compose file.
  * @param bridgeArgs command line `--bridge` arguments.
  */
-export function defineBridge(c: ComposeFile, opts: InferredOptionTypes<typeof bridgeOptions>): void {
+export function defineBridge(c: ComposeFile, opts: YargsInfer<typeof bridgeOptions>): void {
   if (!opts.bridge) {
     return;
   }

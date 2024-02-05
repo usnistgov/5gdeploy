@@ -1,7 +1,8 @@
 import assert from "minimalistic-assert";
 import BiMap from "mnemonist/bi-map.js";
 import { ip2long, long2ip, Netmask } from "netmask";
-import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
+
+import type { YargsInfer, YargsOptions } from "../util/yargs.js";
 
 export const ipAllocOptions = {
   "ip-space": {
@@ -19,8 +20,8 @@ export const ipAllocOptions = {
     string: true,
     type: "array",
   },
-} as const satisfies Record<string, YargsOptions>;
-type IPAllocOpts = InferredOptionTypes<typeof ipAllocOptions>;
+} as const satisfies YargsOptions;
+type IPAllocOpts = YargsInfer<typeof ipAllocOptions>;
 
 /** IP address allocator. */
 export class IPAlloc {

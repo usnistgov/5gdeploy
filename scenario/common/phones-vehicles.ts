@@ -1,15 +1,14 @@
-import type { InferredOptionTypes, Options as YargsOptions } from "yargs";
-
 import type { N } from "../../types/mod.ts";
+import type { YargsInfer, YargsOptions } from "../../util/yargs.js";
 import * as ran from "./ran.js";
 
 export const cliOptions = {
   gnbs: ran.option("gNB", 1, 9),
   phones: ran.option("phone", 6, 1000, 0),
   vehicles: ran.option("vehicle", 2, 1000, 0),
-} as const satisfies Record<string, YargsOptions>;
+} as const satisfies YargsOptions;
 
-export type CLIOptions = InferredOptionTypes<typeof cliOptions>;
+export type CLIOptions = YargsInfer<typeof cliOptions>;
 
 export interface ScenarioOptions {
   internetSNSSAI: N.SNSSAI;

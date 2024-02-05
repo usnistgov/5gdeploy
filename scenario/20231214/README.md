@@ -13,7 +13,7 @@ Generate Compose file:
 
 ```bash
 cd ~/5gdeploy/scenario
-./generate.sh 20231017 +gnbs=2 +phones=2 +vehicles=2
+./generate.sh 20231214 +gnbs=2 +phones=2 +vehicles=2
 ```
 
 While the script defaults to 1 gNB due to code reuse, it is recommended to adjust these quantities.
@@ -32,7 +32,7 @@ Thus, you would need to adjust quantities to satisfy (1) `+gnbs` equals `+phones
 
 ```bash
 cd ~/5gdeploy/scenario
-./generate.sh 20231017 +gnbs=6 +phones=6 +vehicles=0 \
+./generate.sh 20231214 +gnbs=6 +phones=6 +vehicles=0 \
   --cp=free5gc --up=free5gc --ran=packetrusher
 ```
 

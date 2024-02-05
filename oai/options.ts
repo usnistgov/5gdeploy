@@ -1,4 +1,4 @@
-import { type InferredOptionTypes, type Options as YargsOptions } from "yargs";
+import type { YargsInfer, YargsOptions } from "../util/yargs.js";
 
 export const oaiOptions = {
   "oai-upf-workers": {
@@ -13,5 +13,5 @@ export const oaiOptions = {
     group: "oai",
     type: "boolean",
   },
-} as const satisfies Record<string, YargsOptions>;
-export type OAIOpts = InferredOptionTypes<typeof oaiOptions>;
+} as const satisfies YargsOptions;
+export type OAIOpts = YargsInfer<typeof oaiOptions>;

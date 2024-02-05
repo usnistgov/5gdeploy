@@ -5,7 +5,6 @@ import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import sql from "sql-tagged-template-literal";
 import type { Constructor } from "type-fest";
-import yargs, { type InferredOptionTypes, type Options as YargsOptions } from "yargs";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
@@ -13,6 +12,7 @@ import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import * as NetDefDN from "../netdef-compose/dn.js";
 import { networkOptions, phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
 import type { N, PH } from "../types/mod.js";
+import { YargsDefaults, type YargsInfer, type YargsOptions } from "../util/yargs.js";
 import { ScenarioFolder } from "./folder.js";
 import { IPMAP } from "./ipmap.js";
 import type { NetworkFunction } from "./nf.js";
@@ -43,9 +43,9 @@ export const phoenixOptions = {
     string: true,
     type: "array",
   },
-} as const satisfies Record<string, YargsOptions>;
-type PhoenixOpts = InferredOptionTypes<typeof phoenixOptions>;
-const defaultOptions: PhoenixOpts = yargs([]).option(phoenixOptions).parseSync();
+} as const satisfies YargsOptions;
+type PhoenixOpts = YargsInfer<typeof phoenixOptions>;
+const defaultOptions: PhoenixOpts = YargsDefaults(phoenixOptions);
 
 const templatePath = fileURLToPath(new URL("../../phoenix-repo/phoenix-src/cfg", import.meta.url));
 
