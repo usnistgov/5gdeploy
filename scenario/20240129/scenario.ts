@@ -1,11 +1,8 @@
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
-
 import type { N } from "../../types/mod.ts";
+import { Yargs } from "../../util/yargs.js";
 import * as ran from "../common/ran.js";
 
-const args = yargs(hideBin(process.argv))
-  .strict()
+const args = Yargs()
   .option("dn", ran.option("Data Network", 1, 99))
   .option("upf", ran.option("UPF", 1, 9))
   .option("gnb", ran.option("gNB", 1, 9))

@@ -26,6 +26,9 @@ corepack pnpm netdef-compose --netdef ~/netdef.json --out ~/compose/example \
   --cp=free5gc --up=free5gc --ran=ueransim
 ```
 
+The default combination is `--cp=phoenix --up=phoenix --ran=phoenix` (subject to change).
+If you installed 5gdeploy with `NOPHOENIX=1` environ (Open5GCore disabled), you must explicitly choose other 5G implementations or the generation will fail.
+
 Due to incompatibilities in 5G implementations, not every combinations will work.
 These combinations are verified to be compatible:
 

@@ -1,12 +1,9 @@
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
-
+import { Yargs } from "../../util/yargs.js";
 import * as phones_vehicles from "../common/phones-vehicles.js";
 
-const args = await yargs(hideBin(process.argv))
-  .strict()
+const args = Yargs()
   .option(phones_vehicles.cliOptions)
-  .parseAsync();
+  .parseSync();
 
 const network = phones_vehicles.buildNetwork(args, {
   internetSNSSAI: "01000000",

@@ -1,13 +1,9 @@
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
-
+import { Yargs } from "../util/yargs.js";
 import { clientJ, clientU, createClients } from "./client.js";
 import { ueDeregister, ueRegister, ueStatus } from "./ue.js";
 import { print } from "./util.js";
 
-await yargs(hideBin(process.argv))
-  .strict()
-  .showHelpOnFail(false)
+await Yargs()
   .scriptName("phoenix-rpc")
   .option("host", {
     demandOption: true,

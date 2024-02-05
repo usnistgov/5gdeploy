@@ -1,14 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
-
 import * as compose from "../compose/mod.js";
 import { ScenarioFolder } from "../phoenix/mod.js";
+import { Yargs } from "../util/yargs.js";
 import * as ph_compose from "./compose.js";
 
-const args = await yargs(hideBin(process.argv))
+const args = Yargs()
   .option("cfg", {
     demandOption: true,
     desc: "Open5GCore cfg directory",
@@ -24,7 +22,7 @@ const args = await yargs(hideBin(process.argv))
     type: "string",
   })
   .option(compose.bridgeOptions)
-  .parseAsync();
+  .parseSync();
 
 const sf = await ScenarioFolder.load(args.cfg);
 await sf.save(path.resolve(args.out, "cfg"), path.resolve(args.out, "sql"));

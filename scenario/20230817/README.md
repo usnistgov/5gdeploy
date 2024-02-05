@@ -30,8 +30,8 @@ cd ~/5gdeploy/scenario
 ./generate.sh 20230817 +gnbs=2 +phones=48 +vehicles=12 --ran=ueransim
 ```
 
-The Compose file is placed at `~/compose/20230817`.
-You can interact with the Compose file and Docker containers in the usual way.
+The Compose context is created at `~/compose/20230817`.
+See [scenario general REAMDE](../README.md) on how to interact with the Compose context.
 
 ## Traffic Generation
 
@@ -39,7 +39,7 @@ See [trafficgen](trafficgen.md) for suggestions on how to generate traffic in th
 
 ## Multi-Host Usage
 
-We want to run Control Plane on primary host, User Plane and RAN on secondary host.
+In this sample, we run Control Plane on primary host, User Plane and RAN on secondary host.
 
 ```bash
 # define variables for SSH control IPs
@@ -84,4 +84,4 @@ MAC_N3_UPF141=02:00:00:03:00:05
   --bridge=n3,eth,gnb0=$MAC_N3_GNB0,gnb1=$MAC_N3_GNB1,upf1=$MAC_N3_UPF1,upf140=$MAC_N3_UPF140,upf141=$MAC_N3_UPF141
 ```
 
-See `5gdeploy/netdef-compose/READMD.md` for more details.
+See [netdef-compose READMD](../../netdef-compose/README.md) for more details.

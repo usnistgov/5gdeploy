@@ -9,7 +9,7 @@ import { annotate, scriptHead as baseScriptHead } from "./compose.js";
 
 export const splitOptions = {
   place: {
-    desc: "place containers on host",
+    desc: "place containers on host and set CPU isolation",
     nargs: 1,
     string: true,
     type: "array",

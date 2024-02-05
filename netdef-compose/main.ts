@@ -1,8 +1,6 @@
 import fs from "node:fs/promises";
 
 import getStdin from "get-stdin";
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
 
 import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc/netdef.js";
@@ -12,6 +10,7 @@ import { gnbsimRAN } from "../omec/gnbsim.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { ueransimRAN } from "../ueransim/netdef.js";
+import { Yargs } from "../util/yargs.js";
 import { NetDefComposeContext } from "./context.js";
 import { dnOptions, saveDNOptions } from "./dn.js";
 import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
@@ -39,8 +38,7 @@ const ranProviders: Providers = {
   ueransim: ueransimRAN,
 };
 
-const args = await yargs(hideBin(process.argv))
-  .strict()
+const args = Yargs()
   .option("netdef", {
     demandOption: true,
     desc: "network definition file, '-' for stdin",
@@ -76,7 +74,7 @@ const args = await yargs(hideBin(process.argv))
   .middleware(saveDNOptions)
   .option(phoenixOptions)
   .option(oaiOptions)
-  .parseAsync();
+  .parseSync();
 
 const netdef = new NetDef(JSON.parse(await (args.netdef === "-" ? getStdin() : fs.readFile(args.netdef, "utf8"))));
 netdef.validate();

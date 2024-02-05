@@ -54,6 +54,6 @@
     "@yoursunny/xo-config": "0.56.2"
   },
   "engines": {
-    "node": "^20.9.0"
+    "node": "^20.11.0"
   }
 }

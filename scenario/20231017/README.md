@@ -29,8 +29,8 @@ cd ~/5gdeploy/scenario
 # UERANSIM is recommended if large UE quantity is desired.
 ```
 
-The Compose file is placed at `~/compose/20231017`.
-You can interact with the Compose file and Docker containers in the usual way.
+The Compose context is created at `~/compose/20231017`.
+See [scenario general REAMDE](../README.md) on how to interact with the Compose context.
 
 Establish PDU sessions from Open5GCore UEs:
 

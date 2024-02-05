@@ -1,10 +1,7 @@
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
-
+import { Yargs } from "../../util/yargs.js";
 import * as phones_vehicles from "../common/phones-vehicles.js";
 
-const args = yargs(hideBin(process.argv))
-  .strict()
+const args = Yargs()
   .option(phones_vehicles.cliOptions)
   .parseSync();
 
