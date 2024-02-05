@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" style="background:#ffffff;">
+  <!-- CP -->
+  <g transform="translate(150 0)">
+    <rect width="100" height="50" fill="#0074b9"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">cp</text>
+  </g>
+  <!-- gNB -->
+  <g transform="translate(0 150)">
+    <rect width="100" height="50" fill="#aaaaaa"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">gnb0</text>
+  </g>
+  <!-- UPF -->
+  <g transform="translate(300 100)">
+    <rect width="100" height="50" fill="#2ecc40"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf1</text>
+  </g>
+  <g transform="translate(300 200)">
+    <rect width="100" height="50" fill="#2ecc40"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf140</text>
+  </g>
+  <g transform="translate(300 300)">
+    <rect width="100" height="50" fill="#2ecc40"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf141</text>
+  </g>
+  <!-- DN -->
+  <g transform="translate(500 100)">
+    <rect width="100" height="50" fill="#dddddd"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">dn_internet</text>
+  </g>
+  <g transform="translate(500 200)">
+    <rect width="100" height="50" fill="#dddddd"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">dn_vcam</text>
+  </g>
+  <g transform="translate(500 300)">
+    <rect width="100" height="50" fill="#dddddd"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">dn_vctl</text>
+  </g>
+  <!-- N2 -->
+  <text x="180" y="50" text-anchor="middle" font-size="18">N2</text>
+  <line x1="180" y1="50" x2="100" y2="150" stroke="#0074b9"/>
+  <!-- N4 -->
+  <text x="220" y="50" text-anchor="middle" font-size="18">N4</text>
+  <line x1="220" y1="50" x2="300" y2="100" stroke="#0074b9"/>
+  <line x1="220" y1="50" x2="300" y2="200" stroke="#0074b9"/>
+  <line x1="220" y1="50" x2="300" y2="300" stroke="#0074b9"/>
+  <!-- N3 -->
+  <text x="200" y="350" text-anchor="middle" font-size="18">N3</text>
+  <line x1="100" y1="175" x2="300" y2="125" stroke="#2ecc40"/>
+  <line x1="100" y1="175" x2="300" y2="225" stroke="#2ecc40"/>
+  <line x1="100" y1="175" x2="300" y2="325" stroke="#2ecc40"/>
+  <!-- N6 -->
+  <text x="450" y="350" text-anchor="middle" font-size="18">N6</text>
+  <line x1="400" y1="125" x2="500" y2="125" stroke="#2ecc40"/>
+  <line x1="400" y1="225" x2="500" y2="225" stroke="#2ecc40"/>
+  <line x1="400" y1="325" x2="500" y2="325" stroke="#2ecc40"/>
+</svg>

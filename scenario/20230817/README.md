@@ -11,8 +11,10 @@ There are three slices and three Data Networks:
 Each slice is served by a dedicated UPF.
 All control plane network functions are shared.
 
-There are 6 cellphones and 2 vehicles, sharing 1 gNB.
+There are 6 phones and 2 vehicles, sharing 1 gNB.
 These quantities can be adjusted via command line flags.
+
+![topology diagram](topo.svg)
 
 ## Basic Usage
 
