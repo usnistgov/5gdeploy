@@ -32,7 +32,7 @@ cd ~/5gdeploy/scenario
 ```
 
 The Compose context is created at `~/compose/20231017`.
-See [scenario general REAMDE](../README.md) on how to interact with the Compose context.
+See [scenario general README](../README.md) on how to interact with the Compose context.
 
 Establish PDU sessions from Open5GCore UEs:
 

@@ -20,7 +20,7 @@ While the script defaults to 1 gNB due to code reuse, it is recommended to adjus
 This helps ensure the bottleneck is in UPF being measured, instead of RAN simulators.
 
 The Compose context is created at `~/compose/20231214`.
-See [scenario general REAMDE](../README.md) on how to interact with the Compose context.
+See [scenario general README](../README.md) on how to interact with the Compose context.
 
 ## Choose 5G Implementations
 
