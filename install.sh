@@ -35,7 +35,7 @@ for IMG in bridge dn free5gc-upf gnbsim ns3http packetrusher phoenix ueransim; d
     continue
   fi
   msg Building Docker image $IMG
-  bash ./docker/build.sh $IMG
+  ./docker/build.sh $IMG
 done
 
 msg 5gdeploy is installed

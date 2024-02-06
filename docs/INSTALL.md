@@ -4,7 +4,7 @@
 
 ## Dependencies
 
-To setup a single-host deployment or the *primary* host in a multi-host deployment, these should be installed:
+To setup a single-host deployment or the *primary* host of a multi-host deployment, these should be installed:
 
 * Node.js 20.x
 * Docker Engine
@@ -68,6 +68,14 @@ export NOPHOENIX=1
 ./install.sh
 ```
 
+If you need to rebuild a Docker image for any reason:
+
+```bash
+cd ~/5gdeploy
+./docker/build.sh ueransim
+# change 'ueransim' to the image that you want to rebuild
+```
+
 ## Load gtp5g Kernel Module
 
 Both free5GC UPF and PacketRusher require the [gtp5g](https://github.com/free5gc/gtp5g) kernel module.
@@ -87,26 +95,24 @@ bash ~/5gdeploy/free5gc/load-gtp5g.sh
 
 You need to rerun `load-gtp5g.sh` after every reboot.
 
-## Multi-Host Preparation
+## Secondary Host
 
-Some scenarios can/should be deployed over multiple hosts.
-Typically, one host is designated as *primary* and all other hosts are designed as *secondary*.
-
-The *primary* host should have everything described above.
-The *secondary* hosts only need:
+See [multi-host deployment](multi-host.md) page for concepts of multi-host deployment.
+For a multi-host deployment, a *secondary* host requires only:
 
 * Docker Engine
 * gtp5g kernel module, if used
+* Docker images copied from *primary* hosts (see below)
 
 The *primary* host should have SSH config and `id_ed25519` key to access each *secondary* host.
 The SSH user on each *secondary* host should be added to the `docker` group.
 The SSH host key of each *secondary* host should be added to the `known_hosts` file on the *primary* host.
 If the command below does not work, re-check these SSH requirements.
 
-Copy Docker images to *secondary* hosts:
+To copy Docker images to *secondary* hosts, run this command on the *primary* host:
 
 ```bash
 cd ~/5gdeploy
 ./upload.sh docker 192.168.60.2 192.168.60.3
-# change these IP addresses to the hosts in your setup
+# change these IP addresses to the secondary hosts in your setup
 ```

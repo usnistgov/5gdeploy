@@ -60,12 +60,15 @@ cd ~/compose/phoenix-scp
 docker compose up -d bridge sql scp2 nrf2 udm ausf
 ```
 
+See [multi-host deployment](../docs/multi-host.md) for more information on `--bridge` flag.
+However, phoenix-compose does not support `--place` flag; instead, you must write container names on `docker compose up` command line.
+
 ## Open5GCore + srsENB + srsUE
 
 ```bash
 # build srsRAN 4G Docker image (not built in install.sh)
-cd ~/5gdeploy
-bash docker/build.sh srsran4g
+cd ~/5gdeploy/docker
+./build.sh srsran4g
 
 # prepare Compose context
 cd ~/5gdeploy

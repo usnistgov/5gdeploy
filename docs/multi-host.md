@@ -1,0 +1,207 @@
+# Multi-Host Deployment
+
+5gdeploy supports deploying a scenario over multiple host machines.
+This allows a scenario to scale up and make use of more hardware resources than what a single host offers, and provides complete isolation between groups of network functions.
+Most scenarios are compatible with multi-host deployment, with some scenarios strongly recommending multi-host deployment.
+The README of each scenario typically contains information on how a scenario can be deployed over multiple hosts.
+This page explains the basics of how multi-host deployment works and the command line flags that configure this feature.
+
+## Primary and Secondary Hosts
+
+In a multi-host deployment, one host is designated as *primary* and all other hosts are designated as *secondary*.
+Unless otherwise noted, all 5gdeploy scripts and commands should be executed on the *primary* host.
+
+Both the *primary* host and the *secondary* hosts can run network functions.
+There's no restriction on where a network function may run.
+The *primary* designation is only relevant to where to invoke (most of) the commands.
+
+Many commands, despited being invoked on the *primary* host, need to perform actions on multiple hosts, such as starting containers.
+They commands would internally connect to *secondary* hosts via SSH to perform these actions.
+The [installation guide](INSTALL.md) "secondary hosts" section explains how to setup SSH keys to enable such control.
+
+## How Multi-Host Deployment Works
+
+Both [netdef-compose](../netdef-compose/README.md) and [phoenix-compose](../phoenix-compose/README.md) commands support multi-host deployment.
+They generate a Compose context with multi-host deployment with these steps:
+
+1. The 5G network, defined in either [NetDef](../netdef/README.md) or ph\_init input, is initially converted to a Compose context for single-host deployment.
+
+    * This Compose file defines what network functions (i.e. containers) should be running, how they are connected to each other via Docker networks, and the IP address of each network interface.
+    * You can view this Compose file if you do not specify any command line flags for multi-host deployment.
+      Viewing the single-host Compose file is an important step in understanding how the scenario works and for designing the multi-host deployment.
+
+2. 5gdeploy processes the `--bridge` command line flags, which allows network functions on different hosts to communicate with each other.
+
+    * If two network functions that need to communicate with each other would be running on separate hosts, you must specify a bridge to facilitate such communication.
+      Otherwise, when they are separated to multiple hosts, they cannot reach each other, and the 5G network will not work.
+    * You can identify which network functions belong to the same Docker network by reading the single-host Compose file.
+    * Establishing bridges should not change the logical network topology or IP address assignments in any way.
+
+3. 5gdeploy processes the `--place` command line flags, which specifies where to run each network function.
+
+    * `--place` is only supported in netdef-compose command.
+    * Using pattern matches, every network function (i.e. container) is placed on exactly one host.
+    * The `5gdeploy.host` annotations in the Compose file indicates where a network function is being placed.
+
+4. 5gdeploy processes CPU isolation instructions in `--place` command line flags, too.
+
+5. The output is written as an annotated Compose file and a `compose.sh` script.
+
+    * In the Compose file, each network function is annotated with host and CPU core assignements.
+    * The `compose.sh` allows starting and stopping the Compose context at both *primary* and *secondary* hosts, invoked from the *primary* host.
+
+## Bridges
+
+Defining a bridge allows network functions in different hosts to communicate with each other.
+
+5gdeploy supports two kinds of bridges:
+
+* The **VXLAN** bridge interconnects Docker networks of the same name across multiple hosts.
+  * A Docker network is created on each host.
+  * Containers on each host are still attached to the Docker network, in the same way as a single-host deployment.
+  * VXLAN tunnels are established to interconnect the Docker networks from multiple hosts, so that packets sent from a container on one host could reach another container attached to a Docket network with the same name on another host.
+* The **Ethernet** bridge replaces the Docket network with an external physical switch.
+  * The Docker network is deleted from the Compose file and would not be created on each host.
+  * Each container previously on the Docket network is given either a physical Ethernet adapter or a MACVLAN sub-interface, with its own MAC address.
+  * Each physical Ethernet adapter involved in an Ethernet bridge must be connected to an external physical switch.
+
+You can mix-and-match both kinds of bridges, for different Docker networks.
+
+5gdeploy generates bridge configuration scripts that should run on every host machine.
+They are defined as the command line of a special `bridge` container.
+You may view these commands with:
+
+```bash
+yq .services.bridge.command.2 compose.yml | sed 's/\$\$/$/g'
+```
+
+The `compose.sh` script would ensure:
+
+* The `bridge` container is started on every host machine.
+* Each of other containers are started on exactly one host machine.
+
+If you want to start the containers manually, you must ensure the same condition.
+The bridge configuration scripts would wait for other containers and physical Ethernet adapter to appear, and then configure the bridges.
+
+![bridge sample](multi-host.svg)
+
+### VXLAN Bridge
+
+`--bridge=NETWORK,vx,IP0,IP1,...` creates a VXLAN bridge for Docker network *NETWORK*, over host IP addresses *IP0*, *IP1*, etc.
+In the example diagram, there are two VXLAN bridges for N2 and N4 networks, shown in fuchsia.
+They can be created with command line flags like this:
+
+```text
+--bridge=n2,vx,192.168.62.1,192.168.62.2
+--bridge=n4,vx,192.168.64.1,192.168.64.3
+```
+
+Notably, each bridge command lists two IPv4 addresses, one for each host participating in the bridge, regardless of how many network functions on a host would attach to the Docker network.
+The listed IPv4 addresses must be manually configured onto the host network interfaces before starting the Compose context.
+In the IP firewall, you should allow UDP port 4789 for VXLAN communication.
+If you are using VMware virtual machines, it is advised to change TX offload settings on the network interfaces used by tunnel endpoints:
+
+```bash
+sudo ethtool --offload ens160 tx-checksum-ip-generic off
+```
+
+Bridge configuration scripts will setup VXLAN bridges, such that identically named Docker networks on different hosts are connected with each other.
+This is achieved by creating a VXLAN tunnel between the first host and each subsequent host, and then adding these VXLAN tunnels to the bridges representing the specified Docker network.
+If there are more than two hosts in a VXLAN bridge, the first host serves as a virtual root switch and all traffic goes through it, including traffic flows between second and third hosts.
+This does not change the L3 network topology in any way, but can have performance implications.
+
+### Physical Ethernet Ports
+
+`--bridge=NETWORK,eth,NF0=MAC0,NF1@MAC1,...` binds physical Ethernet ports to the containers.
+It replaces a Docker network with a "physical" network connected to an external switch; QoS and other policies can be applied through the switch.
+In the example diagram, there are one Ethernet bridge for N3 networks, shown in yellow.
+It can be created with command line flags like this:
+
+```text
+--bridge=n3,eth,gnb0=02:00:00:03:00:10,gnb1=02:00:00:03:00:11,upf0=02:00:00:03:00:20,upf1=02:00:00:03:00:21
+```
+
+The flag must list all containers originally attached to a Docker network.
+The operator between a container name and a host interface MAC address could be either `=` or `@`:
+
+* The `=` operator moves the host interface into the container.
+  It becomes inaccessible from the host and cannot be shared among multiple containers.
+  The original MAC address is adopted by the container.
+* The `@` operator creates a MACVLAN subinterface on the host interface.
+  The host interface remains accessible on the host.
+  Multiple containers may share the same host interface; each container gets a random MAC address.
+  Currently this uses MACVLAN "bridge" mode, so that traffic between two containers on the same host interface is switched internally in the Ethernet adapter and does not appear on the connected Ethernet switch.
+
+Bridge configuration scripts will locate the host interface and invoke [pipework](https://github.com/jpetazzo/pipework) to make the move.
+The specified host interface MAC address must exist on the host machine where you start the relevant network function, otherwise this procedure will fail.
+
+## Placement
+
+By default, if you simply run `docker compose up -d`, all network functions are started on the primary host.
+`--place=PATTERN@HOST` moves network functions matching pattern *PATTERN* to the Docker host *HOST*.
+In the example diagram, gNBs and UEs are placed on *ran* host, UPFs and Data Networks are placed on *dn* host, everything else are placed on the *primary* host.
+These can be specified with command line flags like this:
+
+```text
+--place="+(gnb*|ue*)@192.168.60.2"
+--place="+(upf*|dn*)@192.168.60.3"
+```
+
+The patterns should be written in [minimatch](https://www.npmjs.com/package/minimatch)-compatible syntax.
+They are matched in the order they are specified.
+If a container name does not match any pattern, it stays on the primary host.
+The `bridge` container will always run on every host.
+
+It is your responsibility to ensure Docker networks that span multiple hosts have a bridge connecting them.
+Otherwise, the 5G network probably will not work.
+
+A `compose.sh` script is generated, which allows you to interact with the multi-host scenario:
+
+```bash
+# start the scenario on all hosts
+./compose.sh up
+
+# stop the scenario on all hosts
+./compose.sh down
+
+# execute a Docker command on the host machine of the specified network function
+$(./compose.sh at CT) CMD
+# example:
+$(./compose.sh at ue1000) logs -f ue1000
+# $(./compose.sh at CT) expands to either:
+# - 'docker', if the named container is placed on the primary host
+# - 'docker -H ssh://HOST', if the named container is placed on a secondary host
+```
+
+With `--place` flags, all containers are defined in a single Compose file but the `compose.sh` script will list each container name for the proper host machine.
+You can add `--split` flag to generate a separate Compose file for each host machine, if you prefer that way.
+
+## CPU Isolation
+
+It is possible to configure CPU isolation as part of the `--place` flag.
+`--place=PATTERN@HOST(CPUSET)` allocates CPU cores in *CPUSET* on *HOST* to network functions matching pattern *PATTERN*.
+To allocate CPU cores on the primary host, omit the `HOST` part and write `--place=PATTERN@(CPUSET)` only.
+Example:
+
+```text
+--place="+(gnb*|ue*)@192.168.60.2(4,8-13)"
+--place="upf*@192.168.60.3(4-7)"
+--place="dn*@192.168.60.3(8-11)"
+--place="*@(16-31)"
+```
+
+Each network function can request a specific quantity of dedicated cores.
+The requested quantities are coded when integrating a 5G implementation, with some being configurable via advanced options (e.g. `--oai-upf-workers`) and others non-configurable.
+They can be seen within `5gdeploy.cpus` annotation in the output Compose file.
+The annotation by itself has no effect; it is only useful when the network function is matched by a `--place` flag pattern that has a cpuset.
+
+CPU assignment is performed for each `--place` flag separately: the CPU cores in the cpuset are assigned to the group of network functions selected by the pattern.
+When every network function matched in a `--place` flag is requesting dedicated cores and there are sufficient number of cores to satisfy all these requests, they will all receive dedicated cores.
+If some network functions are not requesting dedicated cores, or if there aren't enough cores to satisfy all requests:
+
+1. The first two cores in the cpuset are designated as *shared*, and all others are dedicated.
+2. Requests for dedicated cores are satisfied as much as possible.
+3. Network functions that do not request dedicated cores will receive the two *shared* cores.
+4. Network functions that request dedicated cores but cannot be satisfied will also receive the same two *shared* cores.
+   They will also gain a `5gdeploy.cpuset_warning` annotation to indicate this condition.
+   If you find `5gdeploy.cpuset_warning` annotation in the Compose file, consider including more cores in the cpuset or placing network functions differently, to ensure predictable performance.
