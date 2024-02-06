@@ -1,4 +1,4 @@
-import { Yargs } from "../util/yargs.js";
+import { Yargs } from "../util/mod.js";
 import { clientJ, clientU, createClients } from "./client.js";
 import { ueDeregister, ueRegister, ueStatus } from "./ue.js";
 import { print } from "./util.js";

@@ -4,7 +4,7 @@ import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";
-import type { YargsInfer, YargsOptions } from "../util/yargs.js";
+import type { YargsInfer, YargsOptions } from "../util/mod.js";
 import { annotate, scriptHead as baseScriptHead } from "./compose.js";
 
 /** Yargs options definition for splitting Compose services over multiple hosts. */

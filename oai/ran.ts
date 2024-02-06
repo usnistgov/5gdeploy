@@ -3,12 +3,12 @@ import assert from "minimalistic-assert";
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import type { N, OAI } from "../types/mod.js";
+import type { OAI } from "../types/mod.js";
 import * as oai_conf from "./conf.js";
 
 /** Build RAN functions using OpenAirInterface5G. */
 export async function oaiRAN(ctx: NetDefComposeContext): Promise<void> {
-  for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {
+  for (const [ct, gnb] of compose.suggestNames("gnb", ctx.netdef.gnbs)) {
     await makeGNB(ctx, ct, gnb);
   }
 
@@ -18,7 +18,7 @@ export async function oaiRAN(ctx: NetDefComposeContext): Promise<void> {
 }
 
 /** Define gNB container and generate configuration */
-async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: N.GNB): Promise<void> {
+async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: NetDef.GNB): Promise<void> {
   const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${await oai_conf.getTag()}`, ["air", "n2", "n3"]);
   compose.annotate(s, "cpus", 1);
   s.privileged = true;

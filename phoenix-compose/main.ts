@@ -3,7 +3,7 @@ import path from "node:path";
 
 import * as compose from "../compose/mod.js";
 import { ScenarioFolder } from "../phoenix/mod.js";
-import { Yargs } from "../util/yargs.js";
+import { Yargs } from "../util/mod.js";
 import * as ph_compose from "./compose.js";
 
 const args = Yargs()

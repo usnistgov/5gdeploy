@@ -2,6 +2,7 @@ import assert from "minimalistic-assert";
 import type { Options } from "yargs";
 
 import type { N } from "../../types/mod.ts";
+import { decPad } from "../../util/mod.ts";
 
 export function option(desc: string, dflt: number, max: number, min = 1) {
   return {
@@ -25,10 +26,10 @@ export function addUEsPerGNB(network: N.Network, firstSUPI: string, total: numbe
   let supi = BigInt(firstSUPI);
   for (let i = 0; i < nGNBs && total > 0; ++i) {
     network.subscribers.push({
-      supi: supi.toString().padStart(15, "0"),
+      supi: decPad(supi, 15),
       count: Math.min(each, total),
       subscribedNSSAI,
-      gnbs: [network.gnbs[i]!.name],
+      gnbs: [network.gnbs[i]!.name!],
     });
     total -= each;
     supi += BigInt(each);

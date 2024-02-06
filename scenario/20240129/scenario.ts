@@ -1,5 +1,5 @@
 import type { N } from "../../types/mod.ts";
-import { Yargs } from "../../util/yargs.js";
+import { decPad, hexPad, Yargs } from "../../util/mod.js";
 import * as ran from "../common/ran.js";
 
 const args = Yargs()
@@ -33,19 +33,15 @@ const network: N.Network = {
 
 const { dn: dnCount, upf: upfCount, gnb: gnbCount, sameSnssai, dnPerUe } = args;
 
-function pad(n: number, maxLength: number, radix = 10): string {
-  return n.toString(radix).toUpperCase().padStart(maxLength, "0");
-}
-
 for (let upfIndex = 0; upfIndex < upfCount; ++upfIndex) {
   network.upfs.push({
-    name: `upf${pad(upfIndex, 1)}`,
+    name: `upf${upfIndex}`,
   });
 }
 
 for (let dnIndex = 0; dnIndex < dnCount; ++dnIndex) {
-  const dnn = `n${pad(dnIndex, 2)}`;
-  const snssai: N.SNSSAI = sameSnssai ? "01000000" : `${pad(0x80 + dnIndex, 2, 16)}000000`;
+  const dnn = `n${decPad(dnIndex, 2)}`;
+  const snssai: N.SNSSAI = sameSnssai ? "01000000" : `${hexPad(0x80 + dnIndex, 2)}000000`;
 
   network.dataNetworks.push({
     dnn,
@@ -57,20 +53,17 @@ for (let dnIndex = 0; dnIndex < dnCount; ++dnIndex) {
   const upfIndex = dnIndex % upfCount;
   network.dataPaths.links.push([
     { dnn, snssai },
-    `upf${pad(upfIndex, 1)}`,
+    `upf${upfIndex}`,
   ]);
 }
 
 let supi = 7005551000n;
 for (let gnbIndex = 0; gnbIndex < gnbCount; ++gnbIndex) {
-  const gnbName = `gnb${pad(gnbIndex, 1)}`;
-  network.gnbs.push({
-    name: gnbName,
-    nci: pad(gnbIndex, 6, 16) + pad(gnbIndex, 3, 16),
-  });
+  const gnbName = `gnb${gnbIndex}`;
+  network.gnbs.push({ name: gnbName });
 
   for (let upfIndex = 0; upfIndex < upfCount; ++upfIndex) {
-    network.dataPaths.links.push([gnbName, `upf${pad(upfIndex, 1)}`]);
+    network.dataPaths.links.push([gnbName, `upf${upfIndex}`]);
   }
 
   for (let dnFirst = 0; dnFirst < dnCount; dnFirst += dnPerUe) {
@@ -82,13 +75,13 @@ for (let gnbIndex = 0; gnbIndex < gnbCount; ++gnbIndex) {
         dnns: [],
       });
       for (let dnIndex = dnFirst; dnIndex < dnLast; ++dnIndex) {
-        subscribedNSSAI[0]!.dnns.push(`n${pad(dnIndex, 2)}`);
+        subscribedNSSAI[0]!.dnns.push(`n${decPad(dnIndex, 2)}`);
       }
     } else {
       for (let dnIndex = dnFirst; dnIndex < dnLast; ++dnIndex) {
         subscribedNSSAI.push({
-          snssai: `${pad(0x80 + dnIndex, 2, 16)}000000`,
-          dnns: [`n${pad(dnIndex, 2)}`],
+          snssai: `${hexPad(0x80 + dnIndex, 2)}000000`,
+          dnns: [`n${decPad(dnIndex, 2)}`],
         });
       }
     }

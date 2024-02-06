@@ -6,6 +6,7 @@ import { arr2hex, randomBytes } from "uint8-util";
 
 import type { N } from "../types/mod.js";
 import netdefSchema from "../types/netdef.schema.json";
+import { decPad, findByName, hexPad } from "../util/mod.js";
 
 const validate = new Ajv({
   allErrors: true,
@@ -18,10 +19,6 @@ export function validateNetDef(network: N.Network): void {
   if (!valid) {
     throw new AggregateAjvError(validate.errors!);
   }
-}
-
-function formatSUPI(value: bigint): string {
-  return value.toString(10).padStart(15, "0");
 }
 
 /** 5G network definition model. */
@@ -39,12 +36,27 @@ export class NetDef {
     return Number.parseInt(this.network.tac, 16);
   }
 
-  /** Return all unique S-NSSAIs. */
+  /** List all unique S-NSSAIs. */
   public get nssai(): N.SNSSAI[] {
     return [...new Set(Array.from(this.network.dataNetworks, (dn) => dn.snssai))];
   }
 
-  /** Return all AMFs. */
+  /** List all gNBs. */
+  public get gnbs(): NetDef.GNB[] {
+    const { gnbs } = this.network;
+    return gnbs.map((gnb, i) => {
+      const {
+        name = `gnb${i}`,
+        nci = hexPad(((1 + i) << (36 - this.network.gnbIdLength)) | 0xF, 9),
+      } = gnb;
+      return {
+        name,
+        nci: Object.assign(nci, this.splitNCI(nci)),
+      };
+    });
+  }
+
+  /** List all AMFs. */
   public get amfs(): Array<Required<N.AMF>> {
     let { amfs } = this.network;
     if (!amfs?.length) {
@@ -66,7 +78,7 @@ export class NetDef {
     });
   }
 
-  /** Return all SMFs. */
+  /** List all SMFs. */
   public get smfs(): Array<Required<N.SMF>> {
     let { smfs } = this.network;
     if (!smfs?.length) {
@@ -80,7 +92,7 @@ export class NetDef {
     }));
   }
 
-  /** Return normalized data path links. */
+  /** List normalized data path links. */
   public get dataPathLinks(): Array<Required<N.DataPathLink.Object>> {
     return Array.from(this.network.dataPaths.links, (link) => NetDef.normalizeDataPathLink(link));
   }
@@ -109,7 +121,7 @@ export class NetDef {
       snssai,
       dnns: this.network.dataNetworks.filter((dn) => dn.snssai === snssai).map((dn) => dn.dnn),
     }));
-    const allGNBs = this.network.gnbs.map((gnb) => gnb.name);
+    const allGNBs = this.gnbs.map((gnb) => gnb.name);
 
     const list: NetDef.Subscriber[] = [];
     for (const subscriber of this.network.subscribers) {
@@ -145,25 +157,15 @@ export class NetDef {
       let supiN = BigInt(sub.supi);
       if (expandCount && sub.count > 1) {
         for (let i = 0; i < sub.count; ++i) {
-          const supi = formatSUPI(supiN++);
+          const supi = decPad(supiN++, 15);
           list.push({ ...sub, supi, supiLast: supi, count: 1 });
         }
       } else {
-        sub.supiLast = formatSUPI(supiN + BigInt(sub.count - 1));
+        sub.supiLast = decPad(supiN + BigInt(sub.count - 1), 15);
         list.push(sub);
       }
     }
     return list;
-  }
-
-  /** Find gNB by short name. */
-  public findGNB(name: string): N.GNB | undefined {
-    return this.network.gnbs.find((gnb) => gnb.name === name);
-  }
-
-  /** Find UPF by short name. */
-  public findUPF(name: string): N.UPF | undefined {
-    return this.network.upfs.find((upf) => upf.name === name);
   }
 
   /** Find Data Network by dnn and optional snssai. */
@@ -199,13 +201,13 @@ export class NetDef {
     };
     for (const [peer, cost] of this.listDataPathPeers(upf.name)) {
       if (typeof peer === "string") {
-        const gnb = this.findGNB(peer);
+        const gnb = findByName(peer, this.gnbs);
         if (gnb) {
           peers.N3.push(gnb);
           continue;
         }
 
-        const upf = this.findUPF(peer);
+        const upf = findByName(peer, this.network.upfs);
         if (upf) {
           peers.N9.push(upf);
           continue;
@@ -237,6 +239,10 @@ export namespace NetDef {
     gnb: number;
     cell: number;
     nci: number;
+  }
+
+  export interface GNB extends Required<N.GNB> {
+    nci: string & NCI;
   }
 
   /** S-NSSAI components. */
@@ -280,7 +286,7 @@ export namespace NetDef {
 
   /** N3,N9,N6 peers of a UPF. */
   export interface UPFPeers {
-    N3: N.GNB[];
+    N3: GNB[];
     N9: N.UPF[];
     N6Ethernet: UPFN6Peer[];
     N6IPv4: UPFN6Peer[];

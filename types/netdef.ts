@@ -100,14 +100,18 @@ export interface SubscriberSNSSAI {
 
 /** gNodeB definition. */
 export interface GNB {
-  /** Short name. */
-  name: string;
+  /**
+   * Short name.
+   * @defaultValue sequentially assigned "gnbI"
+   */
+  name?: string;
 
   /**
    * NR Cell Identity (gNB ID + cell ID, 36 bits, 9 hexadecimal digits).
+   * @defaultValue sequentially assigned `[1+i,0xF]`
    * @see {@link https://www.techplayon.com/5g-nr-cell-global-identity-planning/}
    */
-  nci: string;
+  nci?: string;
 }
 
 /** User Plane Function (UPF) definition. */
@@ -120,13 +124,13 @@ export interface UPF {
 export interface AMF {
   /**
    * Short name.
-   * @defaultValue Sequentially assigned "amfI"
+   * @defaultValue sequentially assigned "amfI"
    */
   name?: string;
 
   /**
    * AMF Identifier.
-   * @defaultValue Sequentially assigned `[1, i, 0]`
+   * @defaultValue sequentially assigned `[1, i, 0]`
    */
   amfi?: AMFI;
 
@@ -141,7 +145,7 @@ export interface AMF {
 export interface SMF {
   /**
    * Short name.
-   * @defaultValue Sequentially assigned "smfI"
+   * @defaultValue sequentially assigned "smfI"
    */
   name?: string;
 

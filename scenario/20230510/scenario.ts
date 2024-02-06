@@ -25,14 +25,8 @@ const network: N.Network = {
     },
   ],
   gnbs: [
-    {
-      name: "gnb1",
-      nci: "000001001",
-    },
-    {
-      name: "gnb2",
-      nci: "000002001",
-    },
+    { name: "gnb1" },
+    { name: "gnb2" },
   ],
   upfs: [
     { name: "upf0" },

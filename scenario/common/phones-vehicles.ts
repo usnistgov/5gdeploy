@@ -1,5 +1,5 @@
 import type { N } from "../../types/mod.ts";
-import type { YargsInfer, YargsOptions } from "../../util/yargs.js";
+import type { YargsInfer, YargsOptions } from "../../util/mod.js";
 import * as ran from "./ran.js";
 
 export const cliOptions = {
@@ -53,7 +53,7 @@ export function buildNetwork(c: CLIOptions, s: ScenarioOptions): N.Network {
 
   for (let i = 0; i < c.gnbs; ++i) {
     const name = `gnb${i}`;
-    network.gnbs.push({ name, nci: `00000${i}001` });
+    network.gnbs.push({ name });
     network.dataPaths.links.push(...upfs.map((upf): N.DataPathLink => [name, upf]));
   }
 

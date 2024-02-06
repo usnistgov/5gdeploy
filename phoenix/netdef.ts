@@ -12,7 +12,7 @@ import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import * as NetDefDN from "../netdef-compose/dn.js";
 import { networkOptions, phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
 import type { N, PH } from "../types/mod.js";
-import { YargsDefaults, type YargsInfer, type YargsOptions } from "../util/yargs.js";
+import { findByName, YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { ScenarioFolder } from "./folder.js";
 import { IPMAP } from "./ipmap.js";
 import type { NetworkFunction } from "./nf.js";
@@ -344,10 +344,10 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     if (typeof node !== "string") {
       return "DNN";
     }
-    if (this.netdef.findGNB(node) !== undefined) {
+    if (findByName(node, this.netdef.gnbs) !== undefined) {
       return "gNodeB";
     }
-    if (this.netdef.findUPF(node) !== undefined) {
+    if (findByName(node, this.network.upfs) !== undefined) {
       return "UPF";
     }
     throw new Error(`data path node ${node} not found`);
@@ -369,16 +369,16 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       }
       case "gNodeB": {
         assert(peerType === "UPF");
-        const gnb = this.netdef.findGNB(node as string)!;
+        const gnb = findByName(node as string, this.netdef.gnbs)!;
         return {
           type: "gNodeB",
-          id: this.netdef.splitNCI(gnb.nci).gnb,
+          id: gnb.nci.gnb,
           ip: "255.255.255.255",
         };
       }
     }
 
-    const upf = this.netdef.findUPF(node as string)!;
+    const upf = findByName(node as string, this.network.upfs)!;
     return {
       type: "UPF",
       id: IPMAP.formatEnv(upf.name, "n4"),
@@ -516,7 +516,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     assert(slices.length <= sliceKeys.length, `gNB allows up to ${sliceKeys.length} slices`);
     const nWorkers = this.opts["phoenix-gnb-workers"];
 
-    for (const [ct, gnb] of this.createNetworkFunction("5g/gnb1.json", ["air", "n2", "n3"], this.ctx.network.gnbs)) {
+    for (const [ct, gnb] of this.createNetworkFunction("5g/gnb1.json", ["air", "n2", "n3"], this.ctx.netdef.gnbs)) {
       compose.annotate(this.ctx.c.services[ct]!, "cpus", nWorkers);
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("gnb");
@@ -528,7 +528,8 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
         }));
         config.mcc = "%MCC";
         config.mnc = "%MNC";
-        ({ gnb: config.gnb_id, nci: config.cell_id } = this.netdef.splitNCI(gnb.nci));
+        config.gnb_id = gnb.nci.gnb;
+        config.cell_id = gnb.nci.cell;
         config.tac = this.netdef.tac;
 
         for (const [i, k] of sliceKeys.entries()) {
@@ -576,10 +577,10 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 
         config.Cell = sub.gnbs.map((name): PH.ue_5g_nas_only.Cell => {
           const ip = IPMAP.formatEnv(name, "air");
-          const gnb = this.netdef.findGNB(name);
+          const gnb = findByName(name, this.netdef.gnbs);
           assert(!!gnb);
           return {
-            cell_id: this.netdef.splitNCI(gnb.nci).nci,
+            cell_id: gnb.nci.nci,
             mcc: "%MCC",
             mnc: "%MNC",
             gnb_cp_addr: ip,

@@ -3,7 +3,7 @@ import type { NetDefComposeContext } from "../netdef-compose/context.js";
 
 /** Build RAN functions using UERANSIM. */
 export async function ueransimRAN(ctx: NetDefComposeContext): Promise<void> {
-  for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {
+  for (const [ct, gnb] of compose.suggestNames("gnb", ctx.netdef.gnbs)) {
     const s = ctx.defineService(ct, "5gdeploy.localhost/ueransim", ["air", "n2", "n3"]);
     compose.setCommands(s, [
       ...compose.renameNetifs(s, { pipeworkWait: true }),

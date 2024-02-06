@@ -1,4 +1,4 @@
-import type { YargsInfer, YargsOptions } from "../util/yargs.js";
+import type { YargsInfer, YargsOptions } from "../util/mod.js";
 
 /** Yargs options definition for OAI. */
 export const oaiOptions = {

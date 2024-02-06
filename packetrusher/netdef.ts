@@ -4,12 +4,13 @@ import type { PartialDeep } from "type-fest";
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import type { N, prush } from "../types/mod.js";
+import type { prush } from "../types/mod.js";
+import { hexPad } from "../util/mod.js";
 
 /** Build RAN functions using PacketRusher. */
 export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> {
   assert(ctx.network.gnbIdLength === 24, "only support 24-bit gNB ID");
-  const gnbs = new Map<string, N.GNB>(ctx.network.gnbs.map((gnb) => [gnb.name, gnb]));
+  const gnbs = new Map<string, NetDef.GNB>(ctx.netdef.gnbs.map((gnb) => [gnb.name, gnb]));
   for (const sub of ctx.netdef.listSubscribers()) {
     assert(sub.gnbs.length === 1, "each UE can only connect to 1 gNB");
     const gnb = gnbs.get(sub.gnbs[0]!);
@@ -20,7 +21,7 @@ export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> 
   }
 }
 
-function defineGnbUe(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Subscriber): void {
+function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Subscriber): void {
   const s = ctx.defineService(gnb.name, "5gdeploy.localhost/packetrusher", ["n2", "n3"]);
   s.cap_add.push("NET_ADMIN");
   s.devices.push("/dev/net/tun:/dev/net/tun");
@@ -37,9 +38,8 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Subscrib
   ], "ash");
 }
 
-function makeConfigUpdate(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Subscriber): PartialDeep<prush.Root> {
+function makeConfigUpdate(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Subscriber): PartialDeep<prush.Root> {
   const [mcc, mnc] = NetDef.splitPLMN(ctx.network.plmn);
-  const nci = ctx.netdef.splitNCI(gnb.nci);
   const s = ctx.c.services[gnb.name]!;
 
   const c: PartialDeep<prush.Root> = {};
@@ -52,8 +52,8 @@ function makeConfigUpdate(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Sub
     plmnlist: {
       mcc,
       mnc,
-      tac: ctx.netdef.tac.toString(16).padStart(6, "0"),
-      gnbid: nci.gnb.toString(16).padStart(6, "0"),
+      tac: hexPad(ctx.netdef.tac, 6),
+      gnbid: hexPad(gnb.nci.gnb, 6),
     },
   };
 

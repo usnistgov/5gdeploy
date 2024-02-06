@@ -1,4 +1,4 @@
-import { Yargs } from "../../util/yargs.js";
+import { Yargs } from "../../util/mod.js";
 import * as phones_vehicles from "../common/phones-vehicles.js";
 
 const args = Yargs()

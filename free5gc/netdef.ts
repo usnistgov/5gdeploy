@@ -7,6 +7,7 @@ import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import * as NetDefDN from "../netdef-compose/dn.js";
 import type { ComposeService, F5, N } from "../types/mod.js";
+import { hexPad } from "../util/mod.js";
 import * as f5_conf from "./conf.js";
 import type * as W from "./webconsole-openapi/models/index.js";
 
@@ -218,7 +219,7 @@ class F5CPBuilder {
       const amfi = (BigInt(region) << 16n) | (BigInt(set) << 6n) | BigInt(pointer);
       c.servedGuamiList = [{
         plmnId: this.plmn,
-        amfId: amfi.toString(16).padStart(6, "0"),
+        amfId: hexPad(amfi, 6),
       }];
       c.supportTaiList = [{
         plmnId: this.plmn,
@@ -279,7 +280,7 @@ class F5CPBuilder {
     };
 
     let gnbPeers: [name: string, peersJoined: string, peers: readonly string[]] | undefined;
-    for (const gnb of network.gnbs) {
+    for (const gnb of netdef.gnbs) {
       const peers: string[] = [];
       for (const [upfName] of netdef.listDataPathPeers(gnb.name)) {
         assert(typeof upfName === "string");

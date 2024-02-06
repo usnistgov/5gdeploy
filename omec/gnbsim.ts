@@ -5,10 +5,11 @@ import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import type { ComposeService, N, OMEC } from "../types/mod.js";
+import { hexPad } from "../util/mod.js";
 
 /** Build RAN functions using gNBSim. */
 export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
-  for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {
+  for (const [ct, gnb] of compose.suggestNames("gnb", ctx.netdef.gnbs)) {
     const s = ctx.defineService(ct, "5gdeploy.localhost/gnbsim", ["mgmt", "n2", "n3"]);
     s.cap_add.push("NET_ADMIN");
     const c = makeConfigUpdate(ctx, s, gnb);
@@ -32,9 +33,8 @@ function makePLMNID(network: N.Network): OMEC.PLMNID {
   return { mcc, mnc };
 }
 
-function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: N.GNB): PartialDeep<OMEC.Root<OMEC.gnbsim.Configuration>> {
+function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: NetDef.GNB): PartialDeep<OMEC.Root<OMEC.gnbsim.Configuration>> {
   const plmnId = makePLMNID(ctx.network);
-  const nci = ctx.netdef.splitNCI(gnb.nci);
   const amfIP = ctx.gatherIPs("amf", "n2")[0]!;
   const g: OMEC.gnbsim.GNB = {
     n2IpAddr: s.networks.n2!.ipv4_address,
@@ -46,7 +46,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: N.G
       plmnId,
       gNbId: {
         bitLength: ctx.network.gnbIdLength,
-        gNBValue: nci.gnb.toString(16).padStart(Math.ceil(ctx.network.gnbIdLength / 4), "0"),
+        gNBValue: hexPad(gnb.nci.gnb, Math.ceil(ctx.network.gnbIdLength / 4)),
       },
     },
     supportedTaList: [{
@@ -91,7 +91,7 @@ const PROFILES: readonly ProfileBase[] = [
   },
 ];
 
-function makeProfile(ctx: NetDefComposeContext, gnb: N.GNB, sub: NetDef.Subscriber, base: ProfileBase): OMEC.gnbsim.Profile {
+function makeProfile(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Subscriber, base: ProfileBase): OMEC.gnbsim.Profile {
   assert(sub.requestedDN.length > 0);
   const dn = ctx.netdef.findDN(sub.requestedDN[0]!);
   assert(!!dn);

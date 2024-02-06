@@ -2,7 +2,7 @@ import assert from "minimalistic-assert";
 import { ip2long, Netmask } from "netmask";
 
 import type { ComposeFile } from "../types/mod.js";
-import type { YargsInfer, YargsOptions } from "../util/yargs.js";
+import { hexPad, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { defineService, disconnectNetif, setCommands } from "./compose.js";
 
 export const bridgeDockerImage = "5gdeploy.localhost/bridge";
@@ -76,9 +76,9 @@ const bridgeModes: Record<string, BridgeBuilder> = {
           break;
         }
         case "@": {
-          const macaddr = `52:00${ip2long(ip).toString(16).padStart(8, "0").replaceAll(/([\da-f]{2})/g, ":$1")}`;
+          const macaddr = `52:00${hexPad(ip2long(ip), 8).replaceAll(/([\da-f]{2})/gi, ":$1")}`;
           yield `      msg Using MACVLAN ${macaddr} on ${hostif} as ${ct}:${net}`;
-          yield `      pipework mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${macaddr}`;
+          yield `      pipework mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${macaddr.toLowerCase()}`;
           break;
         }
       }

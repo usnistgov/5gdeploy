@@ -10,7 +10,7 @@ import { gnbsimRAN } from "../omec/gnbsim.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { ueransimRAN } from "../ueransim/netdef.js";
-import { Yargs } from "../util/yargs.js";
+import { Yargs } from "../util/mod.js";
 import { NetDefComposeContext } from "./context.js";
 import { dnOptions, saveDNOptions } from "./dn.js";
 import { IPAlloc, ipAllocOptions } from "./ipalloc.js";

@@ -6,7 +6,7 @@ import * as shlex from "shlex";
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import type { N } from "../types/mod.js";
-import { YargsDefaults, type YargsInfer, type YargsOptions } from "../util/yargs.js";
+import { YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import type { NetDefComposeContext } from "./context.js";
 
 /** Yargs options definition for Data Networks. */

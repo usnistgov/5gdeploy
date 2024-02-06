@@ -9,12 +9,9 @@ import { NetDef } from "../netdef/netdef.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import * as NetDefDN from "../netdef-compose/dn.js";
 import type { CN5G, ComposeService } from "../types/mod.js";
+import { hexPad } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
 import { type OAIOpts } from "./options.js";
-
-function hexPad(value: number, length: number): string {
-  return value.toString(16).padStart(length, "0");
-}
 
 abstract class CN5GBuilder {
   constructor(protected readonly ctx: NetDefComposeContext) {}
