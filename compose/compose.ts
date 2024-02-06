@@ -14,8 +14,10 @@ export function nameToNf(ct: string): string {
 
 /**
  * Suggest container names for network function.
- * @param nf network function name.
- * @param list relevant config objects.
+ * @param nf - Network function name.
+ * @param list - Relevant config objects.
+ *
+ * @remarks
  * If a config object has a .name property, it must reflect the templated network function.
  */
 export function suggestNames<T>(nf: string, list: readonly T[]): Map<string, T> {
@@ -46,7 +48,7 @@ export function suggestUENames<T extends { supi: string }>(list: readonly T[]): 
   return m;
 }
 
-/** Create empty Compose file. */
+/** Create an empty Compose file. */
 export function create(): ComposeFile {
   return {
     networks: {},
@@ -69,6 +71,8 @@ export function save(c: ComposeFile): string {
 
 /**
  * Define a Compose network.
+ *
+ * @remarks
  * If a network with same name already exists, it is not replaced.
  */
 export function defineNetwork(c: ComposeFile, name: string, subnet: string, {
@@ -100,6 +104,8 @@ export namespace defineNetwork {
 
 /**
  * Define a Compose service.
+ *
+ * @remarks
  * If a service with same name already exists, it is not replaced.
  */
 export function defineService(c: ComposeFile, name: string, image: string): ComposeService {
@@ -183,7 +189,9 @@ export function disconnectNetif(c: ComposeFile, ct: string, net: string): string
 
 /**
  * Generate commands to rename netifs.
- * The container shall have NET_ADMIN capability.
+ *
+ * @remarks
+ * The container shall have `NET_ADMIN` capability.
  */
 export function* renameNetifs(service: ComposeService, {
   pipeworkWait = false,
@@ -214,8 +222,10 @@ export namespace renameNetifs {
   export interface Options {
     /**
      * Whether to wait for netifs to appear with pipework.
-     * Setting to true requires pipework to be installed in the container.
-     * Default is false.
+     * @defaultValue false
+     *
+     * @remarks
+     * Setting to true requires `pipework` to be installed in the container.
      */
     pipeworkWait?: boolean;
   }
@@ -223,9 +233,10 @@ export namespace renameNetifs {
 
 /**
  * Generate commands to merge JSON/YAML configuration.
- * This requires yq to be installed in the container.
+ * @param cfg - Config update object or mounted filename.
  *
- * @param cfg config update object or mounted filename.
+ * @remarks
+ * This requires `yq` to be installed in the container.
  */
 export function* mergeConfigFile(cfg: unknown, { base, update, merged }: mergeConfigFile.Options): Iterable<string> {
   const ext = path.extname(base);
@@ -255,6 +266,7 @@ export namespace mergeConfigFile {
   }
 }
 
+/** Shell script heading with `msg` and `die` functions. */
 export const scriptHead = [
   "set -euo pipefail",
   "msg() { echo -ne \"\\e[35m[5gdeploy] \\e[94m\"; echo -n \"$*\"; echo -e \"\\e[0m\"; }",
@@ -263,9 +275,9 @@ export const scriptHead = [
 
 /**
  * Set commands on a service.
- * @param service Compose service to edit.
- * @param commands list of commands.
- * @param shell should be set to 'ash' for alpine based images.
+ * @param service - Compose service to edit.
+ * @param commands - list of commands.
+ * @param shell - Shell program. This should be set to `ash` for alpine based images.
  */
 export function setCommands(service: ComposeService, commands: Iterable<string>, shell = "bash"): void {
   const joined = [...scriptHead, ...commands].join("\n").replaceAll("$", "$$$$");

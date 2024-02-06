@@ -8,6 +8,7 @@ import assert from "minimalistic-assert";
 import type DefaultMap from "mnemonist/default-map.js";
 import type MultiMap from "mnemonist/multi-map.js";
 import { type AnyIterable } from "streaming-iterables";
+import type { Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { IPMAP } from "./ipmap.js";
@@ -20,7 +21,7 @@ const fsWalkPromise = promisify(fsWalk.walk);
 export class ScenarioFolder {
   /**
    * Load from directory.
-   * @param dir phoenix-src/cfg/*
+   * @param dir - `phoenix-src/cfg/*` subfolder.
    */
   public static async load(dir: string): Promise<ScenarioFolder> {
     const sf = new ScenarioFolder();
@@ -49,9 +50,9 @@ export class ScenarioFolder {
   }
 
   private files = new Map<string, FileAction>();
-  /** Environment variables in env.sh. */
+  /** Environment variables in `env.sh`. */
   public env = new Map<string, string>();
-  /** IP address assignments (ip-map). */
+  /** IP address assignments in `ip-map`. */
   public ipmap = IPMAP.parse("");
   /** Per-container initialization commands and routes. */
   public other = new OtherTable();
@@ -95,7 +96,7 @@ export class ScenarioFolder {
     this.files.delete(file);
   }
 
-  /** Edit a network function .json file. */
+  /** Edit a network function JSON file. */
   public editNetworkFunction(ct: string, ...edits: ReadonlyArray<(c: NetworkFunction) => void | Promise<void>>): void {
     this.edit(`${ct}.json`, async (body) => {
       const c = NetworkFunction.parse(body);
@@ -113,8 +114,8 @@ export class ScenarioFolder {
 
   /**
    * Save to directory, applying pending edits.
-   * @param cfg configuration directory.
-   * @param sql SQL script directory.
+   * @param cfg - Output configuration directory.
+   * @param sql - Output SQL script directory.
    */
   public async save(cfg: string, sql: string): Promise<void> {
     await fs.rm(cfg, { recursive: true, force: true });
@@ -142,7 +143,7 @@ export class ScenarioFolder {
   }
 }
 export namespace ScenarioFolder {
-  export type EditFunc = (body: string) => string | Promise<string>;
+  export type EditFunc = (body: string) => Promisable<string>;
 }
 
 interface FileAction {

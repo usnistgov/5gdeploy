@@ -51,7 +51,7 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@yoursunny/xo-config": "0.56.2"
+    "@yoursunny/xo-config": "0.57.0"
   },
   "engines": {
     "node": "^20.11.0"

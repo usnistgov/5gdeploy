@@ -35,7 +35,7 @@ export async function loadTemplate<T extends {}>(tpl: string): Promise<T & { sav
   return c;
 }
 
-/** Save OAI config 'this' to libconfig string. */
+/** Save OAI config `this` to libconfig string. */
 async function save(this: unknown): Promise<string> {
   const subprocess = await execa("python3", [convertCommand, "json2conf"], {
     input: JSON.stringify(this),

@@ -42,41 +42,43 @@ export type PLMN = string;
 
 /**
  * S-NSSAI, single network slice selection assistance information.
+ *
+ * @remarks
  * SST only: 2 hexadecimal digits, example: "01".
  * SST+SD: 8 hexadecimal digits, example: "80000001".
- * @see https://www.techplayon.com/5g-ran-and-5gc-network-slice-signaling/
+ * @see {@link https://www.techplayon.com/5g-ran-and-5gc-network-slice-signaling/}
  */
 export type SNSSAI = string;
 
 /**
  * Subscriber SIM card definition.
- * @see https://nickvsnetworking.com/hss-usim-authentication-in-lte-nr-4g-5g/
+ * @see {@link https://nickvsnetworking.com/hss-usim-authentication-in-lte-nr-4g-5g/}
  */
 export interface Subscriber {
   /** Subscriber identifier (15 decimal digits). */
   supi: string;
 
   /**
-   * Repeat the subscriber with successive supi.
-   * Default is 1.
+   * Repeat the subscriber with successive SUPI.
+   * @defaultValue 1
    */
   count?: number;
 
   /**
    * USIM secret key (32 hexadecimal digits).
-   * Default is .subscriberDefault.k or random value.
+   * @defaultValue `.subscriberDefault.k ?? random`
    */
   k?: string;
 
   /**
    * Operator secret key (32 hexadecimal digits).
-   * Default is .subscriberDefault.opc or random value.
+   * @defaultValue `.subscriberDefault.opc ?? random`
    */
   opc?: string;
 
   /**
    * Subscribed S-NSSAIs and DNNs (stored in the UDM).
-   * Default is all defined S-NSSAIs and DataNetworks.
+   * @defaultValue all defined S-NSSAIs and DataNetworks
    */
   subscribedNSSAI?: SubscriberSNSSAI[];
 
@@ -85,7 +87,7 @@ export interface Subscriber {
 
   /**
    * Detected gNBs (short names).
-   * Default is all defined gNBs.
+   * @defaultValue all defined gNBs
    */
   gnbs?: string[];
 }
@@ -103,7 +105,7 @@ export interface GNB {
 
   /**
    * NR Cell Identity (gNB ID + cell ID, 36 bits, 9 hexadecimal digits).
-   * @see https://www.techplayon.com/5g-nr-cell-global-identity-planning/
+   * @see {@link https://www.techplayon.com/5g-nr-cell-global-identity-planning/}
    */
   nci: string;
 }
@@ -118,19 +120,19 @@ export interface UPF {
 export interface AMF {
   /**
    * Short name.
-   * @defaultValue Sequentially assigned "amfI".
+   * @defaultValue Sequentially assigned "amfI"
    */
   name?: string;
 
   /**
    * AMF Identifier.
-   * @defaultValue Sequentially assigned [1, i, 0].
+   * @defaultValue Sequentially assigned `[1, i, 0]`
    */
   amfi?: AMFI;
 
   /**
    * Served S-NSSAIs.
-   * Default is all S-NSSAIs defined in DataNetworks.
+   * @defaultValue all S-NSSAIs defined in DataNetworks
    */
   nssai?: SNSSAI[];
 }
@@ -139,22 +141,24 @@ export interface AMF {
 export interface SMF {
   /**
    * Short name.
-   * @defaultValue Sequentially assigned "smfI".
+   * @defaultValue Sequentially assigned "smfI"
    */
   name?: string;
 
   /**
    * Served S-NSSAIs.
-   * Default is all S-NSSAIs defined in DataNetworks.
+   * @defaultValue all S-NSSAIs defined in DataNetworks
    */
   nssai?: SNSSAI[];
 }
 
 /**
  * AMF Identifier.
- * AMF Region ID: 8 bits.
- * AMF Set ID: 10 bits.
- * AMF Pointer: 6 bits.
+ *
+ * @remarks
+ * - AMF Region ID: 8 bits.
+ * - AMF Set ID: 10 bits.
+ * - AMF Pointer: 6 bits.
  */
 export type AMFI = [region: number, set: number, pointer: number];
 
@@ -174,7 +178,9 @@ export interface DataNetwork extends DataNetworkID {
 
   /**
    * IP subnet (CIDR format).
-   * IPv4 example: 10.5.5.0/24
+   *
+   * @remarks
+   * IPv4 example: `10.5.5.0/24`
    */
   subnet?: string;
 }
@@ -193,6 +199,7 @@ export type DataPathNode = string | DataNetworkID;
 /**
  * Link in DN data path.
  *
+ * @remarks
  * Each end of a link may be either:
  * (1) a string that identifies the short name of a gNB or UPF.
  * (2) a DataNetworkID that identifies a DataNetwork.
@@ -201,6 +208,8 @@ export type DataPathLink = DataPathLink.Tuple | DataPathLink.Object;
 export namespace DataPathLink {
   /**
    * Two ends of a link.
+   *
+   * @remarks
    * Cost is the default.
    */
   export type Tuple = [a: DataPathNode, b: DataPathNode];
@@ -212,7 +221,11 @@ export namespace DataPathLink {
     /** One end of a link. */
     b: DataPathNode;
 
-    /** Link cost (positive integer, default is 1). */
+    /**
+     * Link cost (positive integer).
+     *
+     * @defaultValue 1
+     */
     cost?: number;
   }
 }

@@ -97,6 +97,7 @@ export let dockerContainer: Dockerode.Container;
 export let clientJ: PhoenixClientJSONRPC;
 export let clientU: PhoenixClientUDP;
 
+/** Assign {@link dockerContainer}, {@link clientJ}, {@link clientU} variables. */
 export async function createClients(
     { host, jsonrpcPort, udpPort }: { host: string; jsonrpcPort: number; udpPort: number },
 ): Promise<void> {

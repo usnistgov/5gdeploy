@@ -6,13 +6,14 @@ export const phoenixdir = "/opt/phoenix";
 export const cfgdir = `${phoenixdir}/cfg/current`;
 export const phoenixDockerImage = "5gdeploy.localhost/phoenix";
 
+/** Per-network options. */
 export const networkOptions: Record<string, compose.defineNetwork.Options> = {
   mgmt: { wantNAT: true },
   air: { mtu: 1470 },
   n6: { mtu: 1456 },
 };
 
-/** Convert ip-map to Compose file. */
+/** Convert `ip-map` to Compose file. */
 export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
   const skipNf = ["prometheus"];
   if (deleteRAN) {
@@ -38,6 +39,7 @@ export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
   return c;
 }
 
+/** Update Composer service properties to match Open5GCore expectation. */
 export function updateService(s: ComposeService, opts: updateService.Options = {}): void {
   const nf = compose.nameToNf(s.container_name);
   updateNf[nf]?.(s, opts);
@@ -47,7 +49,16 @@ export function updateService(s: ComposeService, opts: updateService.Options = {
 }
 export namespace updateService {
   export interface Options {
+    /**
+     * Output configuration directory.
+     * @defaultValue "./cfg"
+     */
     cfg?: string;
+
+    /**
+     * Output SQL script directory.
+     * @defaultValue "./sql"
+     */
     sql?: string;
   }
 }

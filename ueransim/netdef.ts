@@ -1,6 +1,7 @@
 import * as compose from "../compose/mod.js";
 import type { NetDefComposeContext } from "../netdef-compose/context.js";
 
+/** Build RAN functions using UERANSIM. */
 export async function ueransimRAN(ctx: NetDefComposeContext): Promise<void> {
   for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {
     const s = ctx.defineService(ct, "5gdeploy.localhost/ueransim", ["air", "n2", "n3"]);

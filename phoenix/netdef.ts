@@ -390,6 +390,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     };
   }
 }
+/** Build CP functions using Open5GCore. */
 export const phoenixCP = makeBuilder(PhoenixCPBuilder);
 
 class PhoenixUPBuilder extends PhoenixScenarioBuilder {
@@ -497,6 +498,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
     }
   }
 }
+/** Build UP functions using Open5GCore as UPF. */
 export const phoenixUP = makeBuilder(PhoenixUPBuilder);
 
 class PhoenixRANBuilder extends PhoenixScenarioBuilder {
@@ -591,6 +593,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     }
   }
 }
+/** Build RAN functions using Open5GCore RAN simulators. */
 export const phoenixRAN = makeBuilder(PhoenixRANBuilder);
 
 function setNrfClientSlices(c: NetworkFunction, nssai: readonly N.SNSSAI[]): void {

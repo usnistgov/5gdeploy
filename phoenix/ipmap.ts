@@ -4,12 +4,13 @@ import { Netmask } from "netmask";
 
 import type { ComposeFile } from "../types/mod.js";
 
-/** Content of ph_init ip-map file. */
+/** Content of ph_init `ip-map` file. */
 export class IPMAP {
   /**
-   * Parse ip-map file.
-   * @param body ip-map file content.
-   * @param rejectEnv convert rejected records as ct_net_IP=ip environs.
+   * Parse `ip-map` file.
+   * @param body - `ip-map` file content.
+   * @param rejectEnv - If specified, it will be populated with rejected records
+   * as `ct_net_IP=ip` environs.
    */
   public static parse(body: string, rejectEnv?: Map<string, string>): IPMAP {
     const networks = new Map<string, Netmask>();
@@ -57,6 +58,8 @@ export class IPMAP {
 
   /**
    * List networks.
+   *
+   * @remarks
    * Each key is a network name.
    * Each value is a subnet of the network.
    */
@@ -66,6 +69,8 @@ export class IPMAP {
 
   /**
    * List containers.
+   *
+   * @remarks
    * Each key is a container name.
    * Each value is a map whose key is network name and value is IP address in the network.
    */
@@ -73,7 +78,7 @@ export class IPMAP {
     return this.containers_;
   }
 
-  /** Resolve ct_net_IP environment variable. */
+  /** Resolve `ct_net_IP` environment variable. */
   public resolveEnv(env: string): string | undefined {
     let tokens: string[];
     if ((tokens = env.toLowerCase().split("_")).length < 3 || tokens.at(-1) !== "ip") {
@@ -84,7 +89,7 @@ export class IPMAP {
     return this.containers_.get(ct)?.get(net);
   }
 
-  /** Save ip-map file. */
+  /** Save `ip-map` file. */
   public save(): string {
     const lines: string[] = [];
     for (const [ct, netifs] of this.containers_) {
@@ -97,7 +102,7 @@ export class IPMAP {
   }
 }
 export namespace IPMAP {
-  /** Format ct_net_IP environment variable name. */
+  /** Format `ct_net_IP` environment variable name. */
   export function formatEnv(ct: string, net: string, prefix = "%"): string {
     return `${prefix}${ct.toUpperCase()}_${net.toUpperCase()}_IP`;
   }

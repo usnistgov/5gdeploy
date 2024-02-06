@@ -12,7 +12,7 @@ const validate = new Ajv({
   verbose: true,
 }).compile(netdefSchema);
 
-/** Validate against schema. */
+/** Validate NetDef object against JSON schema. */
 export function validateNetDef(network: N.Network): void {
   const valid = validate(network);
   if (!valid) {
@@ -33,7 +33,7 @@ export class NetDef {
     validateNetDef(this.network);
   }
 
-  /** Return Tracking Area Code (TAC) as int. */
+  /** Return Tracking Area Code (TAC) as integer. */
   public get tac(): number {
     assert(/^[\da-f]{6}$/i.test(this.network.tac));
     return Number.parseInt(this.network.tac, 16);
@@ -99,7 +99,7 @@ export class NetDef {
 
   /**
    * Iterate over subscribers.
-   * @param expandCount if true, emit .count>1 entry as multiple entries.
+   * @param expandCount - If true, emit each `.count>1` entry as multiple entries.
    */
   public listSubscribers({ expandCount = true }: NetDef.ListSubscribersOptions = {}): NetDef.Subscriber[] {
     this.network.subscriberDefault ??= {};
@@ -255,24 +255,26 @@ export namespace NetDef {
     };
   }
 
-  /** Options to netdef.listSubscribers(). */
+  /** {@link NetDef.listSubscribers} options. */
   export interface ListSubscribersOptions {
-    /** If true, emit .count>1 entry as multiple entries. */
+    /** If true, emit `.count>1` entry as multiple entries. */
     expandCount?: boolean;
   }
 
   /** Information about a subscriber. */
   export interface Subscriber extends SetRequired<N.Subscriber, "count" | "k" | "opc" | "subscribedNSSAI" | "gnbs"> {
     /**
-     * Last SUPI.
-     * This would be same as .supi if .count==1.
+     * Last SUPI (inclusive).
+     *
+     * @remarks
+     * This would be same as `.supi` if `.count==1`.
      */
     supiLast: string;
 
-    /** Subscribed Data Networks, derived from .subscribedNSSAI . */
+    /** Subscribed Data Networks, derived from `.subscribedNSSAI`. */
     subscribedDN: N.DataNetworkID[];
 
-    /** Requested Data Networks, derived from .requestedNSSAI . */
+    /** Requested Data Networks, derived from `.requestedNSSAI`. */
     requestedDN: N.DataNetworkID[];
   }
 
@@ -291,7 +293,7 @@ export namespace NetDef {
     cost: number;
   }
 
-  /** Split S-NSSAI to sst and sd. */
+  /** Split S-NSSAI as sst and sd. */
   export function splitSNSSAI(snssai: N.SNSSAI): SNSSAI {
     assert(/^[\da-f]{2}(?:[\da-f]{6})?$/i.test(snssai));
     if (snssai.length === 2) {

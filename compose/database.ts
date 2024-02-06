@@ -2,6 +2,7 @@ import type { AnyIterable } from "streaming-iterables";
 
 import type { ComposeService } from "../types/mod.js";
 
+/** MySQL database container helpers. */
 export const mysql = {
   image: "bitnami/mariadb:10.6",
   init(s: ComposeService, startdb?: string): void {
@@ -41,6 +42,7 @@ export const mysql = {
   },
 };
 
+/** Mongo database container helpers. */
 export const mongo = {
   image: "mongo:7",
   init(s: ComposeService): void {

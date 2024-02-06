@@ -9,6 +9,7 @@ import type { N } from "../types/mod.js";
 import { YargsDefaults, type YargsInfer, type YargsOptions } from "../util/yargs.js";
 import type { NetDefComposeContext } from "./context.js";
 
+/** Yargs options definition for Data Networks. */
 export const dnOptions = {
   "dn-workers": {
     default: 1,
@@ -39,6 +40,8 @@ function makeDNServiceName(ctx: NetDefComposeContext, dn: N.DataNetworkID): stri
 
 /**
  * Define Compose services for Data Networks.
+ *
+ * @remarks
  * This shall be called before creating UPFs.
  */
 export function defineDNServices(ctx: NetDefComposeContext): void {
@@ -68,6 +71,8 @@ function* makeDNRoutes(ctx: NetDefComposeContext, dn: N.DataNetwork): Iterable<s
 
 /**
  * Set commands on Compose services for Data Networks.
+ *
+ * @remarks
  * This shall be called after creating UPFs.
  */
 export function setDNCommands(ctx: NetDefComposeContext): void {
@@ -87,7 +92,9 @@ export function setDNCommands(ctx: NetDefComposeContext): void {
 
 /**
  * Generate commands to configure routes for Data Networks in UPF.
- * This shall be called after defineDNServices and before setDNCommands.
+ *
+ * @remarks
+ * This shall be called after {@link defineDNServices} and before {@link setDNCommands}.
  */
 export function* makeUPFRoutes(ctx: NetDefComposeContext, peers: NetDef.UPFPeers, { msg = true }: makeUPFRoutes.Options = {}): Iterable<string> {
   for (const dn of peers.N6IPv4) {
@@ -112,7 +119,7 @@ export namespace makeUPFRoutes {
   export interface Options {
     /**
      * Whether to print informational messages.
-     * @default true
+     * @defaultValue true
      */
     msg?: boolean;
   }

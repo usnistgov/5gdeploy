@@ -1,5 +1,6 @@
 import type { YargsInfer, YargsOptions } from "../util/yargs.js";
 
+/** Yargs options definition for OAI. */
 export const oaiOptions = {
   "oai-upf-workers": {
     default: 2,

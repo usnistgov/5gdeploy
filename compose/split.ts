@@ -7,6 +7,7 @@ import type { ComposeFile, ComposeService } from "../types/mod.js";
 import type { YargsInfer, YargsOptions } from "../util/yargs.js";
 import { annotate, scriptHead as baseScriptHead } from "./compose.js";
 
+/** Yargs options definition for splitting Compose services over multiple hosts. */
 export const splitOptions = {
   place: {
     desc: "place containers on host and set CPU isolation",
@@ -21,6 +22,10 @@ export const splitOptions = {
   },
 } as const satisfies YargsOptions;
 
+/**
+ * Split Compose services over multiple hosts.
+ * @returns A mapping from output filename to file contents.
+ */
 export function splitOutput(c: ComposeFile, { place = [], split }: YargsInfer<typeof splitOptions>): Map<string, unknown> {
   const outputFiles = new Map<string, unknown>([["compose.yml", c]]);
   if (place.length === 0) {

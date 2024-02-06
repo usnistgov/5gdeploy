@@ -6,6 +6,7 @@ import type { NetDefComposeContext } from "../netdef-compose/context.js";
 import type { N, OAI } from "../types/mod.js";
 import * as oai_conf from "./conf.js";
 
+/** Build RAN functions using OpenAirInterface5G. */
 export async function oaiRAN(ctx: NetDefComposeContext): Promise<void> {
   for (const [ct, gnb] of compose.suggestNames("gnb", ctx.network.gnbs)) {
     await makeGNB(ctx, ct, gnb);

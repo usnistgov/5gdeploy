@@ -255,11 +255,13 @@ class UPBuilder extends CN5GBuilder {
   }
 }
 
+/** Build CP functions using OAI-CN5G. */
 export async function oaiCP(ctx: NetDefComposeContext): Promise<void> {
   const b = new CPBuilder(ctx);
   await b.build();
 }
 
+/** Build UP functions using oai-cn5g-upf as UPF. */
 export async function oaiUP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
   const b = new UPBuilder(ctx);
   await b.build(opts);

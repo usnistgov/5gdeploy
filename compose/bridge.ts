@@ -7,7 +7,7 @@ import { defineService, disconnectNetif, setCommands } from "./compose.js";
 
 export const bridgeDockerImage = "5gdeploy.localhost/bridge";
 
-/** yargs options definition for bridge container. */
+/** Yargs options definition for bridge container. */
 export const bridgeOptions = {
   bridge: {
     desc: "bridge a network over several hosts",
@@ -93,8 +93,8 @@ const bridgeModes: Record<string, BridgeBuilder> = {
 
 /**
  * Define a bridge container.
- * @param c Compose file.
- * @param bridgeArgs command line `--bridge` arguments.
+ * @param c - Compose file.
+ * @param bridgeArgs - Command line `--bridge` arguments.
  */
 export function defineBridge(c: ComposeFile, opts: YargsInfer<typeof bridgeOptions>): void {
   if (!opts.bridge) {

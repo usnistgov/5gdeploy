@@ -4,6 +4,7 @@ import { ip2long, long2ip, Netmask } from "netmask";
 
 import type { YargsInfer, YargsOptions } from "../util/yargs.js";
 
+/** Yargs options definition for IPv4 address allocator. */
 export const ipAllocOptions = {
   "ip-space": {
     coerce(arg): Netmask {
@@ -23,7 +24,7 @@ export const ipAllocOptions = {
 } as const satisfies YargsOptions;
 type IPAllocOpts = YargsInfer<typeof ipAllocOptions>;
 
-/** IP address allocator. */
+/** IPv4 address allocator. */
 export class IPAlloc {
   constructor({
     "ip-space": space,
@@ -49,7 +50,7 @@ export class IPAlloc {
 
   /**
    * Allocate a subnet.
-   * @param net subnet name.
+   * @param net - Subnet name.
    * @returns /24 subnet.
    */
   public allocNetwork(net: string): string {
@@ -59,9 +60,9 @@ export class IPAlloc {
 
   /**
    * Allocate a netif address.
-   * @param net subnet name, must exist.
-   * @param host host name.
-   * @returns address in subnet.
+   * @param net - Subnet name. It must exist.
+   * @param host - Host name.
+   * @returns - IPv4 address within subnet.
    */
   public allocNetif(net: string, host: string): string {
     const c = this.networks.get(net);

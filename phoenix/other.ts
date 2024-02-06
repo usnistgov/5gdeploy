@@ -2,9 +2,9 @@ import DefaultMap from "mnemonist/default-map.js";
 import MultiMap from "mnemonist/multi-map.js";
 import { Netmask } from "netmask";
 
-/** Content of ph_init other file. */
+/** Content of ph_init `other` file. */
 export class OtherTable {
-  /** Parse other file. */
+  /** Parse `other` file. */
   public static parse(body: string): OtherTable {
     const other = new OtherTable();
     for (const line of body.split("\n")) {
@@ -50,7 +50,10 @@ export class OtherTable {
     }
   }
 
+  /** Per-container initialization commands. */
   public readonly commands = new DefaultMap<string, string[]>(() => []);
+
+  /** Per-container IPv4 routes. */
   public readonly routes = new MultiMap<string, OtherTable.Route>();
 
   /** List commands in specific container. */
@@ -58,7 +61,7 @@ export class OtherTable {
     return [...(this.commands.peek(ct) ?? []), ...Array.from(this.routes.get(ct) ?? [], (route) => routeToCommand(route))];
   }
 
-  /** Save other file. */
+  /** Save `other` file. */
   public save(): string {
     const lines: string[] = [];
     for (const [ct, cmds] of this.commands) {
