@@ -7,9 +7,7 @@ import sql from "sql-tagged-template-literal";
 import type { Constructor } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
-import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import * as NetDefDN from "../netdef-compose/dn.js";
+import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
 import { networkOptions, phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
 import type { N, PH } from "../types/mod.js";
 import { findByName, YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";

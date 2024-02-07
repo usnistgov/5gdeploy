@@ -5,9 +5,7 @@ import assert from "minimalistic-assert";
 import sql from "sql-tagged-template-literal";
 
 import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
-import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import * as NetDefDN from "../netdef-compose/dn.js";
+import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
 import type { CN5G, ComposeService } from "../types/mod.js";
 import { hexPad } from "../util/mod.js";
 import * as oai_conf from "./conf.js";

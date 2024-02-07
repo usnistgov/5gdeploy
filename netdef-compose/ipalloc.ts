@@ -22,14 +22,13 @@ export const ipAllocOptions = {
     type: "array",
   },
 } as const satisfies YargsOptions;
-type IPAllocOpts = YargsInfer<typeof ipAllocOptions>;
 
 /** IPv4 address allocator. */
 export class IPAlloc {
   constructor({
     "ip-space": space,
     "ip-fixed": fixed = [],
-  }: IPAllocOpts) {
+  }: YargsInfer<typeof ipAllocOptions>) {
     this.nextNetwork.n = space.netLong;
     this.nextNetwork.max = ip2long(space.last);
 

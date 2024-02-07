@@ -3,9 +3,7 @@ import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
-import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import * as NetDefDN from "../netdef-compose/dn.js";
+import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
 import type { ComposeService, F5, N } from "../types/mod.js";
 import { hexPad } from "../util/mod.js";
 import * as f5_conf from "./conf.js";

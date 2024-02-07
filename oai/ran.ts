@@ -1,8 +1,7 @@
 import assert from "minimalistic-assert";
 
 import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
-import type { NetDefComposeContext } from "../netdef-compose/context.js";
+import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { OAI } from "../types/mod.js";
 import * as oai_conf from "./conf.js";
 

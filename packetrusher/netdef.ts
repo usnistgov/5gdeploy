@@ -2,8 +2,7 @@ import assert from "minimalistic-assert";
 import type { PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
-import type { NetDefComposeContext } from "../netdef-compose/context.js";
+import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { prush } from "../types/mod.js";
 import { hexPad } from "../util/mod.js";
 

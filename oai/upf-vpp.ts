@@ -3,9 +3,7 @@ import fs from "node:fs/promises";
 import assert from "minimalistic-assert";
 
 import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
-import type { NetDefComposeContext } from "../netdef-compose/context.js";
-import * as NetDefDN from "../netdef-compose/dn.js";
+import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
 import type { OAIOpts } from "./options.js";
 
 const vppScript = await fs.readFile(new URL("upf-vpp.sh", import.meta.url));

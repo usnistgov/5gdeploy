@@ -1,5 +1,5 @@
 import * as compose from "../compose/mod.js";
-import type { NetDefComposeContext } from "../netdef-compose/context.js";
+import type { NetDefComposeContext } from "../netdef-compose/mod.js";
 
 /** Build RAN functions using UERANSIM. */
 export async function ueransimRAN(ctx: NetDefComposeContext): Promise<void> {
