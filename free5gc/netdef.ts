@@ -16,8 +16,7 @@ function convertSNSSAI(input: string): F5.SNSSAI {
 
 class F5CPBuilder {
   constructor(protected readonly ctx: NetDefComposeContext) {
-    const [mcc, mnc] = NetDef.splitPLMN(ctx.network.plmn);
-    this.plmn = { mcc, mnc };
+    this.plmn = NetDef.splitPLMN(ctx.network.plmn);
   }
 
   private readonly plmn: F5.PLMNID;

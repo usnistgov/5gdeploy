@@ -31,10 +31,10 @@ async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: NetDef.GNB): 
   g0.gNB_name = gnb.name;
   g0.tracking_area_code = ctx.netdef.tac;
 
-  const [mcc, mnc] = NetDef.splitPLMN(ctx.netdef.network.plmn);
+  const { mcc, mnc } = NetDef.splitPLMN(ctx.network.plmn);
   g0.plmn_list = [{
-    mcc: Number.parseInt(mcc, 16),
-    mnc: Number.parseInt(mnc, 16),
+    mcc: Number.parseInt(mcc, 10),
+    mnc: Number.parseInt(mnc, 10),
     mnc_length: mnc.length,
     snssaiList: ctx.netdef.nssai.map((snssai): OAI.gnb.SNSSAI => NetDef.splitSNSSAI(snssai).int),
     "snssaiList:dtype": "l",
@@ -77,10 +77,9 @@ async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscri
   s.privileged = true;
 
   const c = await oai_conf.loadTemplate<OAI.ue.Config>("nrue.uicc");
-  const [, mnc] = NetDef.splitPLMN(ctx.netdef.network.plmn);
   c.uicc0 = {
     imsi: sub.supi,
-    nmc_size: mnc.length,
+    nmc_size: NetDef.splitPLMN(ctx.network.plmn).mnc.length,
     key: sub.k,
     opc: sub.opc,
     dnn: "",

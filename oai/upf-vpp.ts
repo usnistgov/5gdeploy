@@ -11,7 +11,7 @@ const vppScript = await fs.readFile(new URL("upf-vpp.sh", import.meta.url));
 /** Build UP functions using oai-upf-vpp as UPF. */
 export async function oaiUPvpp(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
   NetDefDN.defineDNServices(ctx);
-  const [mcc, mnc] = NetDef.splitPLMN(ctx.network.plmn);
+  const { mcc, mnc } = NetDef.splitPLMN(ctx.network.plmn);
   await ctx.writeFile("oai-upf-vpp.sh", vppScript);
 
   for (const [ct, upf] of compose.suggestNames("upf", ctx.network.upfs)) {

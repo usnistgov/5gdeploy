@@ -67,7 +67,7 @@ abstract class PhoenixScenarioBuilder {
       this.ctx.defineNetwork(net, opts);
     }
 
-    const [mcc, mnc] = NetDef.splitPLMN(this.network.plmn);
+    const { mcc, mnc } = NetDef.splitPLMN(this.network.plmn);
     assert(mnc.length === 2, "Open5GCore only supports 2-digit MNC");
     this.sf.env.set("MCC", mcc);
     this.sf.env.set("MNC", mnc);

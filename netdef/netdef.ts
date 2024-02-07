@@ -229,9 +229,16 @@ export class NetDef {
 }
 export namespace NetDef {
   /** Split PLMN to MCC and MNC. */
-  export function splitPLMN(plmn: N.PLMN): [mcc: string, mnc: string] {
+  export function splitPLMN(plmn: N.PLMN): PLMN {
     assert(/^\d{3}-\d{2,3}$/.test(plmn));
-    return plmn.split("-") as [string, string];
+    const [mcc, mnc] = plmn.split("-") as [string, string];
+    return { mcc, mnc };
+  }
+
+  /** PLMN components. */
+  export interface PLMN {
+    mcc: string;
+    mnc: string;
   }
 
   /** NR Cell Identity components. */

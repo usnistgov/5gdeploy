@@ -3,7 +3,7 @@ import type { OptionalKeysOf, PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { ComposeService, N, OMEC } from "../types/mod.js";
+import type { ComposeService, OMEC } from "../types/mod.js";
 import { hexPad } from "../util/mod.js";
 
 /** Build RAN functions using gNBSim. */
@@ -27,13 +27,8 @@ export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
   }
 }
 
-function makePLMNID(network: N.Network): OMEC.PLMNID {
-  const [mcc, mnc] = NetDef.splitPLMN(network.plmn);
-  return { mcc, mnc };
-}
-
 function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: NetDef.GNB): PartialDeep<OMEC.Root<OMEC.gnbsim.Configuration>> {
-  const plmnId = makePLMNID(ctx.network);
+  const plmnId: OMEC.PLMNID = NetDef.splitPLMN(ctx.network.plmn);
   const amfIP = ctx.gatherIPs("amf", "n2")[0]!;
   const g: OMEC.gnbsim.GNB = {
     n2IpAddr: s.networks.n2!.ipv4_address,
@@ -98,7 +93,7 @@ function makeProfile(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
     .filter((node): node is string => typeof node === "string");
   assert(upfNames.length > 0);
   const upfService = ctx.c.services[upfNames[0]!]!;
-  const plmnId = makePLMNID(ctx.network);
+  const plmnId: OMEC.PLMNID = NetDef.splitPLMN(ctx.network.plmn);
 
   return {
     profileName: `${base.profileType}-${sub.supi}`,

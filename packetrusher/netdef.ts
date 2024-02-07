@@ -38,7 +38,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
 }
 
 function makeConfigUpdate(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Subscriber): PartialDeep<prush.Root> {
-  const [mcc, mnc] = NetDef.splitPLMN(ctx.network.plmn);
+  const plmn = NetDef.splitPLMN(ctx.network.plmn);
   const s = ctx.c.services[gnb.name]!;
 
   const c: PartialDeep<prush.Root> = {};
@@ -49,8 +49,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDe
     controlif: { ip: s.networks.n2!.ipv4_address },
     dataif: { ip: s.networks.n3!.ipv4_address },
     plmnlist: {
-      mcc,
-      mnc,
+      ...plmn,
       tac: hexPad(ctx.netdef.tac, 6),
       gnbid: hexPad(gnb.nci.gnb, 6),
     },
@@ -60,7 +59,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDe
     msin: sub.supi.slice(-10),
     key: sub.k,
     opc: sub.opc,
-    hplmn: { mcc, mnc },
+    hplmn: plmn,
   };
 
   if (sub.requestedDN.length > 0) {

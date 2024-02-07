@@ -117,7 +117,7 @@ class CPBuilder extends CN5GBuilder {
   }
 
   private *populateSQL(): Iterable<string> {
-    const [mcc, mnc] = NetDef.splitPLMN(this.ctx.network.plmn);
+    const { mcc, mnc } = NetDef.splitPLMN(this.ctx.network.plmn);
     const servingPlmnid = `${mcc}${mnc}`;
     yield "SELECT @sqn_json:=sequenceNumber FROM AuthenticationSubscription LIMIT 1";
     yield "DELETE FROM AccessAndMobilitySubscriptionData";
@@ -151,17 +151,15 @@ class CPBuilder extends CN5GBuilder {
     }
     c.supported_integrity_algorithms = c.supported_integrity_algorithms.filter((algo) => algo !== "NIA0");
 
-    const [mcc, mnc] = NetDef.splitPLMN(this.ctx.network.plmn);
+    const plmn = NetDef.splitPLMN(this.ctx.network.plmn);
     c.served_guami_list = [{
-      mcc,
-      mnc,
+      ...plmn,
       amf_region_id: hexPad(amf.amfi[0], 2),
       amf_set_id: hexPad(amf.amfi[1], 3),
       amf_pointer: hexPad(amf.amfi[2], 2),
     }];
     c.plmn_support_list = [{
-      mcc,
-      mnc,
+      ...plmn,
       tac: `0x${hexPad(this.netdef.tac, 4)}`,
       nssai: this.c.snssais,
     }];
