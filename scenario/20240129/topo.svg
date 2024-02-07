@@ -16,52 +16,52 @@
   <!-- UPF -->
   <g transform="translate(300 100)">
     <rect width="100" height="50" fill="#2ecc40"/>
-    <text x="50" y="25" text-anchor="middle" font-size="18">upf0</text>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf_a</text>
   </g>
   <g transform="translate(300 200)">
     <rect width="100" height="50" fill="#2ecc40"/>
-    <text x="50" y="25" text-anchor="middle" font-size="18">upf1</text>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf_b</text>
   </g>
   <g transform="translate(300 300)">
     <rect width="100" height="50" fill="#2ecc40"/>
-    <text x="50" y="25" text-anchor="middle" font-size="18">upf2</text>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf_c</text>
   </g>
   <g transform="translate(300 400)">
     <rect width="100" height="50" fill="#2ecc40"/>
-    <text x="50" y="25" text-anchor="middle" font-size="18">upf3</text>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf_d</text>
   </g>
   <!-- DN -->
   <g transform="translate(500 100)">
     <rect width="100" height="25" fill="#dddddd"/>
-    <text x="50" y="20" text-anchor="middle" font-size="18">dn_n00</text>
+    <text x="50" y="20" text-anchor="middle" font-size="18">dn_a00</text>
   </g>
   <g transform="translate(500 130)">
     <rect width="100" height="25" fill="#dddddd"/>
-    <text x="50" y="20" text-anchor="middle" font-size="18">dn_n04</text>
+    <text x="50" y="20" text-anchor="middle" font-size="18">dn_a01</text>
   </g>
   <g transform="translate(500 200)">
     <rect width="100" height="25" fill="#dddddd"/>
-    <text x="50" y="20" text-anchor="middle" font-size="18">dn_n01</text>
+    <text x="50" y="20" text-anchor="middle" font-size="18">dn_b02</text>
   </g>
   <g transform="translate(500 230)">
     <rect width="100" height="25" fill="#dddddd"/>
-    <text x="50" y="20" text-anchor="middle" font-size="18">dn_n05</text>
+    <text x="50" y="20" text-anchor="middle" font-size="18">dn_b03</text>
   </g>
   <g transform="translate(500 300)">
     <rect width="100" height="25" fill="#dddddd"/>
-    <text x="50" y="20" text-anchor="middle" font-size="18">dn_n02</text>
+    <text x="50" y="20" text-anchor="middle" font-size="18">dn_c04</text>
   </g>
   <g transform="translate(500 330)">
     <rect width="100" height="25" fill="#dddddd"/>
-    <text x="50" y="20" text-anchor="middle" font-size="18">dn_n06</text>
+    <text x="50" y="20" text-anchor="middle" font-size="18">dn_c05</text>
   </g>
   <g transform="translate(500 400)">
     <rect width="100" height="25" fill="#dddddd"/>
-    <text x="50" y="20" text-anchor="middle" font-size="18">dn_n03</text>
+    <text x="50" y="20" text-anchor="middle" font-size="18">dn_d06</text>
   </g>
   <g transform="translate(500 430)">
     <rect width="100" height="25" fill="#dddddd"/>
-    <text x="50" y="20" text-anchor="middle" font-size="18">dn_n07</text>
+    <text x="50" y="20" text-anchor="middle" font-size="18">dn_d07</text>
   </g>
   <!-- N2 -->
   <text x="180" y="50" text-anchor="middle" font-size="18">N2</text>
