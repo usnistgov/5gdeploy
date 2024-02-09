@@ -11,7 +11,7 @@ const noColor = (process.env.NO_COLOR ?? "") !== "";
 
 /** Execute command in Open5GCore network function. */
 export interface PhoenixClient {
-  executeCommand(cmd: string, args: readonly string[]): Promise<PhoenixClient.ExecuteCommandResult>;
+  executeCommand: (cmd: string, args: readonly string[]) => Promise<PhoenixClient.ExecuteCommandResult>;
 }
 export namespace PhoenixClient {
   export interface ExecuteCommandResult {

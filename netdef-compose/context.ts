@@ -133,5 +133,5 @@ export namespace NetDefComposeContext {
 }
 
 interface Saver {
-  save(): Promisable<unknown>;
+  save: () => Promisable<unknown>;
 }

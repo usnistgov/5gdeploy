@@ -19,7 +19,7 @@ export async function getTag(): Promise<string> {
 }
 
 /** Load OAI config from libconfig template. */
-export async function loadTemplate<T extends {}>(tpl: string): Promise<T & { save(): Promise<string> }> {
+export async function loadTemplate<T extends {}>(tpl: string): Promise<T & { save: () => Promise<string> }> {
   const subprocess = await execa("python3", [convertCommand, "conf2json", `${tpl}.conf`], {
     cwd: templatePath,
     stdin: "ignore",
