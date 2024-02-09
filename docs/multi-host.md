@@ -205,3 +205,14 @@ If some network functions are not requesting dedicated cores, or if there aren't
 4. Network functions that request dedicated cores but cannot be satisfied will also receive the same two *shared* cores.
    They will also gain a `5gdeploy.cpuset_warning` annotation to indicate this condition.
    If you find `5gdeploy.cpuset_warning` annotation in the Compose file, consider including more cores in the cpuset or placing network functions differently, to ensure predictable performance.
+
+You can see a quick report of host placement and cpuset with this command:
+
+```bash
+yq -o tsv '.services | map([
+  .container_name,
+  (.annotations["5gdeploy.host"] | with(select(.==""); .="PRIMARY")),
+  .cpuset,
+  .annotations["5gdeploy.cpuset_warning"]
+])' compose.yml | sort -k2,2 -k1,1 | column -t -N CONTAINER,HOST,CPUSET,CPUSET-WARNING
+```

@@ -60,7 +60,7 @@ They are deployed on 3 hosts:
 * *cd*: `upf_c`, `upf_d`, associated Data Networks.
 
 There are two network interfaces available for experiments on each host, used for N3 and N4 networks respectively.
-This means, some network interfaces would be shared between two network functions (containers).
+Some network interfaces would be shared between two network functions (containers).
 
 host    | netif | used by
 --------|-------|---------------
@@ -81,17 +81,17 @@ These commands create a Compose context using VXLAN bridges:
 
 ```bash
 # define variables
-CTRL_AB=192.168.164.47
-CTRL_CD=192.168.164.46
+CTRL_AB=192.168.60.2
+CTRL_CD=192.168.60.3
 CPUSET_PRIMARY="(4-31)"
 CPUSET_AB="(4-15)"
 CPUSET_CD="(4-15)"
-N3_PRIMARY=10.141.7.3
-N3_AB=10.141.7.4
-N3_CD=10.141.7.5
-N4_PRIMARY=10.141.7.3
-N4_AB=10.141.7.4
-N4_CD=10.141.7.5
+N3_PRIMARY=192.168.3.1
+N3_AB=192.168.3.2
+N3_CD=192.168.3.3
+N4_PRIMARY=192.168.4.1
+N4_AB=192.168.4.2
+N4_CD=192.168.4.3
 
 # generate Compose context
 ./generate.sh 20240129 +dn=8 +upf=4 +gnb=2 +same-snssai=true --cp=phoenix --up=phoenix --ran=phoenix \
@@ -105,21 +105,74 @@ N4_CD=10.141.7.5
 ../upload.sh ~/compose/20240129 $CTRL_AB $CTRL_CD
 ```
 
-Explanation and variations:
+Explanations:
 
 * First and second `--place` flags place UPF and DN containers onto *secondary* hosts, assigning dedicated CPU cores if applicable.
 * Last `--place` flags keep the remaining containers (i.e. control plane and RAN simulators) on the *primary* host, but assigns dedicated CPU cores if applicable.
 * Each `--bridge` flag creates a VXLAN bridge, interconnecting N3 and N4 networks on all three hosts.
-  Notice that the container names are not listed in these lines, only the host IPs.
+  * Notice that the container names are not listed in these lines, only the host IPs.
+  * This implies that, if you move containers between hosts or increase/decrease container quantities, you do not need to change this flag.
+  * If you deploy onto more/fewer hosts, you need to change this flag.
 * You must assign the IP addresses in `N3_*` and `N4_*` variables to the physical network interfaces on each host, prior to starting the Compose context.
+
+Variations:
+
 * If you have only one network interface for experiment on each host, you can reuse the same IP addresses in `N3_*` and `N4_*` variables.
-  The VXLAN bridges would stay isolated because they would have different VNI.
+  * The VXLAN bridges would remain isolated because they would have different VNI.
 * If you have only one network interface for both control and experiment on each host, you can reuse the control IP addresses in `N3_*` and `N4_*` variables too.
-  Having VXLAN bridge(s) does not affect other traffic using the same interface and would not unassign these IP addresses.
+  * Having VXLAN bridge(s) does not affect other traffic using the same interface and would not unassign these IP addresses.
 
 ### Ethernet Bridges with MACVLAN
 
-MACVLAN procedure is in development.
+These commands create a Compose context using Ethernet bridges in MACVLAN mode:
+
+```bash
+# define variables
+CTRL_AB=192.168.60.2
+CTRL_CD=192.168.60.3
+CPUSET_PRIMARY="(4-31)"
+CPUSET_AB="(4-15)"
+CPUSET_CD="(4-15)"
+N3_PRIMARY=02:00:00:03:00:01
+N3_AB=02:00:00:03:00:02
+N3_CD=02:00:00:03:00:03
+N4_PRIMARY=02:00:00:04:00:01
+N4_AB=02:00:00:04:00:02
+N4_CD=02:00:00:04:00:03
+
+# generate Compose context
+./generate.sh 20240129 +dn=8 +upf=4 +gnb=2 +same-snssai=true --cp=phoenix --up=phoenix --ran=phoenix \
+  --bridge=n3,eth,gnb0@$N3_PRIMARY,gnb1@$N3_PRIMARY,upf_a@$N3_AB,upf_b@$N3_AB,upf_c@$N3_CD,upf_d@$N3_CD \
+  --bridge=n4,eth,smf@$N4_PRIMARY,upf_a@$N4_AB,upf_b@$N4_AB,upf_c@$N4_CD,upf_d@$N4_CD \
+  --place="+(upf|dn)_[ab]*@$CTRL_AB$CPUSET_AB" \
+  --place="+(upf|dn)_[cd]*@$CTRL_CD$CPUSET_CD" \
+  --place="*@$CPUSET_PRIMARY"
+
+# upload to secondary hosts
+../upload.sh ~/compose/20240129 $CTRL_AB $CTRL_CD
+```
+
+Explanations:
+
+* `--place` flags are same as the VXLAN setup.
+* Each `--bridge` flag replaces a Docker network with an Ethernet bridge, backed by an external Ethernet switch.
+  * Notice that every container name on the Docker network must be listed in these lines.
+  * This implies that, if you increase/decrease container quantities, you must change this flag accordingly.
+  * You can find out the container names by reading the single-host Compose file, generated without `--bridge` and `--place` flags.
+* The `@` operator makes each container use a MACVLAN sub-interface.
+  * This allows sharing a physical Ethernet adapter among multiple containers.
+  * Each container will have its own distinct MAC address, which would be seen on the external Ethernet switch.
+  * This may not work inside a virtual machine if the "physical" Ethernet adapter is virtualized.
+  * This may not work if the external Ethernet switch restricts which MAC addresses are allowed on each port.
+
+Variations:
+
+* You can reuse the same physical Ethernet adapter for both N3 and N4, by writing the same MAC addresses in both `--bridge` flags.
+  * The traffic would appear "mixed" on the external Ethernet switch, but the scenario should still work because each network interface has distinct IPv4 addresses.
+* You can reuse the same physical Ethernet adapter for both control and experiment traffic.
+  * Having MACVLAN sub-interface(s) does not affect other traffic using the same physical Ethernet adapter.
+* You can mix-and-match VXLAN and Ethernet bridges, such as Ethernet bridge for N3 and VXLAN bridge for N4.
+  Each `--bridge` flag shall follow the syntax of the chosen bridge type.
 
 ## Traffic Generation
 
