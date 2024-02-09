@@ -7,9 +7,10 @@ import type { ComposeFile, ComposeService } from "../types/mod.js";
 import type { YargsInfer, YargsOptions } from "../util/mod.js";
 import { annotate, scriptHead as baseScriptHead } from "./compose.js";
 
-/** Yargs options definition for splitting Compose services over multiple hosts. */
-export const splitOptions = {
+/** Yargs options definition for placing Compose services onto multiple hosts. */
+export const placeOptions = {
   place: {
+    default: [],
     desc: "place containers on host and set CPU isolation",
     nargs: 1,
     string: true,
@@ -23,12 +24,12 @@ export const splitOptions = {
 } as const satisfies YargsOptions;
 
 /**
- * Split Compose services over multiple hosts.
+ * Place Compose services onto multiple hosts.
  * @returns A mapping from output filename to file contents.
  */
-export function splitOutput(c: ComposeFile, { place = [], split }: YargsInfer<typeof splitOptions>): Map<string, unknown> {
+export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): Map<string, unknown> {
   const outputFiles = new Map<string, unknown>([["compose.yml", c]]);
-  if (place.length === 0) {
+  if (opts.place.length === 0) {
     outputFiles.set("compose.sh", minimalScript);
     return outputFiles;
   }
@@ -36,7 +37,7 @@ export function splitOutput(c: ComposeFile, { place = [], split }: YargsInfer<ty
   const services = new Map<string, ComposeService>(Object.entries(c.services));
   const hostServices = new DefaultMap<string, ComposeFile["services"]>(() => ({}));
   hostServices.set("", {});
-  for (const line of place) {
+  for (const line of opts.place) {
     const m = /^([^@]+)@([^@()]*)(?:\((\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)\))?$/.exec(line);
     if (!m) {
       throw new Error(`--place=${line} invalid`);
@@ -66,7 +67,7 @@ export function splitOutput(c: ComposeFile, { place = [], split }: YargsInfer<ty
     hostServices.get("")[ct] = s;
   }
 
-  if (split) {
+  if (opts.split) {
     for (const [host, services] of hostServices) {
       outputFiles.set(makeFilename(host), {
         networks: JSON.parse(JSON.stringify(c.networks)),
@@ -74,7 +75,7 @@ export function splitOutput(c: ComposeFile, { place = [], split }: YargsInfer<ty
       } as ComposeFile);
     }
   }
-  outputFiles.set("compose.sh", Array.from(makeScript(hostServices, split)).join("\n"));
+  outputFiles.set("compose.sh", Array.from(makeScript(hostServices, opts.split)).join("\n"));
   return outputFiles;
 }
 

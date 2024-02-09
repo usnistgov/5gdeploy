@@ -68,7 +68,7 @@ const args = Yargs()
     type: "string",
   })
   .option(compose.bridgeOptions)
-  .option(compose.splitOptions)
+  .option(compose.placeOptions)
   .option(ipAllocOptions)
   .option(dnOptions)
   .middleware(saveDNOptions)
@@ -84,6 +84,6 @@ await cpProviders[args.cp]!(ctx, args);
 await ranProviders[args.ran]!(ctx, args);
 compose.defineBridge(ctx.c, args);
 await Promise.all(Array.from(
-  compose.splitOutput(ctx.c, args),
+  compose.place(ctx.c, args),
   ([filename, body]) => ctx.writeFile(filename, body, { executable: filename.endsWith(".sh") }),
 ));

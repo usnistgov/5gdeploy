@@ -1,4 +1,5 @@
 import assert from "minimalistic-assert";
+import { minimatch } from "minimatch";
 import { ip2long, Netmask } from "netmask";
 
 import type { ComposeFile } from "../types/mod.js";
@@ -17,78 +18,107 @@ export const bridgeOptions = {
   },
 } as const satisfies YargsOptions;
 
-type BridgeBuilder = (c: ComposeFile, net: string, tokens: readonly string[], netIndex: number) => Generator<string, void, void>;
+function* buildVxlan(c: ComposeFile, net: string, ips: readonly string[], netIndex: number): Iterable<string> {
+  void c;
+  assert(ips.length >= 2, "at least 2 hosts");
+  assert(ips.every((ip) => ip2long(ip) !== 0), "some IP is invalid");
 
-const bridgeModes: Record<string, BridgeBuilder> = {
-  *vx(c, net, ips, netIndex) {
-    void c;
-    assert(ips.length >= 2, "at least 2 hosts");
-    assert(ips.every((ip) => ip2long(ip) !== 0), "some IP is invalid");
-    yield `msg Setting up VXLAN bridge for br-${net}`;
-    yield `pipework --wait -i br-${net}`;
-    yield "SELF=''";
-    for (const [i, ip] of ips.entries()) {
-      yield `if [[ -n "$(ip -o addr show to ${ip})" ]]; then`;
-      yield `  SELF=${i}`;
-      yield `  SELFIP=${ip}`;
-      yield "fi";
-    }
-    yield "if [[ -z $SELF ]]; then die This host is not part of the bridge; fi";
-    for (const [i, ip] of ips.entries()) {
-      const netif = `vx-${net}-${i}`;
-      yield `if [[ $SELF -ne ${i} ]] && ( [[ $SELF -eq 0 ]] || [[ ${i} -eq 0 ]] ); then`;
-      yield `  if [[ $SELF -lt ${i} ]]; then`;
-      yield `    VXI=$((${1000000 * netIndex + i} + 1000 * SELF))`;
-      yield "  else";
-      yield `    VXI=$((${1000000 * netIndex + 1000 * i} + SELF))`;
-      yield "  fi";
-      yield `  msg Connecting br-${net} to ${ip} on ${netif} with VXLAN id $VXI`;
-      yield `  ip link del ${netif} 2>/dev/null || true`;
-      yield `  CLEANUPS=$CLEANUPS"; ip link del ${netif} 2>/dev/null || true"`;
-      yield `  ip link add ${netif} type vxlan id $VXI remote ${ip} local $SELFIP dstport 4789`;
-      yield `  ip link set ${netif} up master br-${net}`;
-      yield "fi";
-    }
-  },
-  *eth(c, net, tokens) {
-    yield `msg Setting up Ethernet adapters for br-${net}`;
-    const cidr = new Netmask(c.networks[net]!.ipam.config[0]!.subnet).bitmask;
-    for (const token of tokens) {
-      const m = /^(\w+)([=@])((?:[\da-f]{2}:){5}[\da-f]{2})$/i.exec(token);
-      assert(m, `invalid parameter ${token}`);
-      let [, ct, op, hostif] = m as unknown as [string, string, "=" | "@", string];
-      hostif = hostif.toLowerCase();
-      const ip = disconnectNetif(c, ct, net);
+  yield `msg Setting up VXLAN bridge for br-${net}`;
+  yield `pipework --wait -i br-${net}`;
 
-      yield "I=0; while true; do";
-      yield `  case $(docker inspect ${ct} --format='{{.State.Running}}' 2>/dev/null || echo none) in`;
-      yield "    false)";
-      yield "      I=$((I+1))";
-      yield "      if [[ $I -eq 1 ]]; then";
-      yield `        msg Waiting for container ${ct} to start`;
-      yield "      fi";
-      yield "      sleep 1 ;;";
-      yield "    true)";
-      switch (op) {
-        case "=": {
-          yield `      msg Using physical interface ${hostif} as ${ct}:${net}`;
-          yield `      pipework --direct-phys mac:${hostif} -i ${net} ${ct} ${ip}/${cidr}`;
-          break;
-        }
-        case "@": {
-          const macaddr = `52:00${hexPad(ip2long(ip), 8).replaceAll(/([\da-f]{2})/gi, ":$1")}`;
-          yield `      msg Using MACVLAN ${macaddr} on ${hostif} as ${ct}:${net}`;
-          yield `      pipework mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${macaddr.toLowerCase()}`;
-          break;
-        }
+  // Find current host in `ips` array.
+  // SELF= index into `ips` that current host is assigned
+  // SELFIP= the corresponding IP address
+  yield "SELF=''";
+  for (const [i, ip] of ips.entries()) {
+    yield `if [[ -n "$(ip -o addr show to ${ip})" ]]; then`;
+    yield `  SELF=${i}`;
+    yield `  SELFIP=${ip}`;
+    yield "fi";
+  }
+  yield `if [[ -z $SELF ]]; then die "This host is not part of the bridge. Did you assign ${ips.join(" or ")} to a host netif?"; fi`;
+
+  // Unicast VXLAN tunnels are created between first host (SELF=0) and each subsequent host.
+  // VNI= 100000*netIndex + 1000*MIN(SELF,PEER) + 1*MAX(SELF,PEER)
+  for (const [i, ip] of ips.entries()) {
+    const netif = `vx-${net}-${i}`;
+    yield `if [[ $SELF -ne ${i} ]] && ( [[ $SELF -eq 0 ]] || [[ ${i} -eq 0 ]] ); then`;
+    yield `  if [[ $SELF -lt ${i} ]]; then`;
+    yield `    VNI=$((${1000000 * netIndex + i} + 1000 * SELF))`;
+    yield "  else";
+    yield `    VNI=$((${1000000 * netIndex + 1000 * i} + SELF))`;
+    yield "  fi";
+    yield `  msg Connecting br-${net} to ${ip} on ${netif} with VXLAN id $VNI`;
+    yield `  ip link del ${netif} 2>/dev/null || true`;
+    yield `  CLEANUPS=$CLEANUPS"; ip link del ${netif} 2>/dev/null || true"`;
+    yield `  ip link add ${netif} type vxlan id $VNI remote ${ip} local $SELFIP dstport 4789`;
+    yield `  ip link set ${netif} up master br-${net}`;
+    yield "fi";
+  }
+}
+
+function* parseEthDef(
+    c: ComposeFile, net: string, tokens: readonly string[],
+): Iterable<[ct: string, op: "=" | "@", hostif: string]> {
+  const cts = new Set(Object.keys(c.services).filter((ct) => c.services[ct]!.networks[net]));
+  for (const token of tokens) {
+    const m = /([=@])((?:[\da-f]{2}:){5}[\da-f]{2})$/i.exec(token);
+    assert(m, `invalid parameter ${token}`);
+    const op = m[1]! as "=" | "@";
+    const hostif = m[2]!.toLowerCase();
+    const pattern = token.slice(0, -m[0].length);
+    const matched = minimatch.match(Array.from(cts), pattern);
+    assert(matched.length > 0, `${pattern} does not match any container on br-${net}`);
+    assert(op === "@" || matched.length === 1, `${pattern} matches multiple containers (${
+      matched.join(", ")}) on br-${net} reusing a physical interface`);
+    for (const ct of matched) {
+      yield [ct, op, hostif];
+      cts.delete(ct);
+    }
+  }
+  assert(cts.size === 0,
+    `containers ${Array.from(cts).join(", ")} on br-${net} did not match any pattern`);
+}
+
+function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]): Iterable<string> {
+  yield `msg Setting up Ethernet adapters for br-${net}`;
+  const cidr = new Netmask(c.networks[net]!.ipam.config[0]!.subnet).bitmask;
+  for (const [ct, op, hostif] of parseEthDef(c, net, tokens)) {
+    const ip = disconnectNetif(c, ct, net);
+
+    yield "I=0; while true; do";
+    yield `  case $(docker inspect ${ct} --format='{{.State.Running}}' 2>/dev/null || echo none) in`;
+    yield "    false)";
+    yield "      I=$((I+1))";
+    yield "      if [[ $I -eq 1 ]]; then";
+    yield `        msg Waiting for container ${ct} to start`;
+    yield "      fi";
+    yield "      sleep 1 ;;";
+    yield "    true)";
+    switch (op) {
+      case "=": {
+        yield `      msg Using physical interface ${hostif} as ${ct}:${net}`;
+        yield `      pipework --direct-phys mac:${hostif} -i ${net} ${ct} ${ip}/${cidr}`;
+        break;
       }
-      yield "      break ;;";
-      yield "    *none)";
-      yield "      break ;;";
-      yield "  esac";
-      yield "done";
+      case "@": {
+        const macaddr = `52:00${hexPad(ip2long(ip), 8).replaceAll(/([\da-f]{2})/gi, ":$1")}`;
+        yield `      msg Using MACVLAN ${macaddr} on ${hostif} as ${ct}:${net}`;
+        yield `      pipework mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${macaddr.toLowerCase()}`;
+        break;
+      }
     }
-  },
+    yield "      break ;;";
+    yield "    *none)";
+    yield "      break ;;";
+    yield "  esac";
+    yield "done";
+  }
+}
+
+const bridgeModes: Record<string, (c: ComposeFile, net: string, tokens: readonly string[], netIndex: number) => Iterable<string>> = {
+  vx: buildVxlan,
+  eth: buildEthernet,
 };
 
 /**

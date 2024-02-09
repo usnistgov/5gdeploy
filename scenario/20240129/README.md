@@ -142,8 +142,8 @@ N4_CD=02:00:00:04:00:03
 
 # generate Compose context
 ./generate.sh 20240129 +dn=8 +upf=4 +gnb=2 +same-snssai=true --cp=phoenix --up=phoenix --ran=phoenix \
-  --bridge=n3,eth,gnb0@$N3_PRIMARY,gnb1@$N3_PRIMARY,upf_a@$N3_AB,upf_b@$N3_AB,upf_c@$N3_CD,upf_d@$N3_CD \
-  --bridge=n4,eth,smf@$N4_PRIMARY,upf_a@$N4_AB,upf_b@$N4_AB,upf_c@$N4_CD,upf_d@$N4_CD \
+  --bridge="n3,eth,gnb*@$N3_PRIMARY,upf_[ab]@$N3_AB,upf_[cd]@$N3_CD" \
+  --bridge="n4,eth,smf@$N4_PRIMARY,upf_[ab]@$N4_AB,upf_[cd]@$N4_CD" \
   --place="+(upf|dn)_[ab]*@$CTRL_AB$CPUSET_AB" \
   --place="+(upf|dn)_[cd]*@$CTRL_CD$CPUSET_CD" \
   --place="*@$CPUSET_PRIMARY"
@@ -155,10 +155,10 @@ N4_CD=02:00:00:04:00:03
 Explanations:
 
 * `--place` flags are same as the VXLAN setup.
-* Each `--bridge` flag replaces a Docker network with an Ethernet bridge, backed by an external Ethernet switch.
+* Each `--bridge` flag replaces a Docker network with an Ethernet bridge, connected via an external Ethernet switch.
   * Notice that every container name on the Docker network must be listed in these lines.
   * This implies that, if you increase/decrease container quantities, you must change this flag accordingly.
-  * You can find out the container names by reading the single-host Compose file, generated without `--bridge` and `--place` flags.
+  * You can find out the container names by reading the single-host Compose file.
 * The `@` operator makes each container use a MACVLAN sub-interface.
   * This allows sharing a physical Ethernet adapter among multiple containers.
   * Each container will have its own distinct MAC address, which would be seen on the external Ethernet switch.

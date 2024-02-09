@@ -1,3 +1,4 @@
+import { type ReadonlyDeep } from "type-fest";
 import yargs, { type Argv, type InferredOptionTypes, type Options } from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -11,7 +12,7 @@ export function Yargs(): Argv {
 
 export type YargsOptions = Record<string, Options>;
 
-export type YargsInfer<T extends YargsOptions> = InferredOptionTypes<T>;
+export type YargsInfer<T extends YargsOptions> = ReadonlyDeep<InferredOptionTypes<T>>;
 
 export function YargsDefaults<T extends YargsOptions>(opts: T) {
   return yargs([]).option(opts).parseSync();

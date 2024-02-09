@@ -113,7 +113,7 @@ This does not change the L3 network topology in any way, but can have performanc
 ### Physical Ethernet Ports
 
 `--bridge=NETWORK,eth,NF0=MAC0,NF1@MAC1,...` binds physical Ethernet ports to the containers.
-It replaces a Docker network with a "physical" network connected to an external switch; QoS and other policies can be applied through the switch.
+It replaces a Docker network with a "physical" network connected to an external Ethernet switch, which could apply QoS and other policies.
 In the example diagram, there are one Ethernet bridge for N3 networks, shown in yellow.
 It can be created with command line flags like this:
 
@@ -121,19 +121,22 @@ It can be created with command line flags like this:
 --bridge=n3,eth,gnb0=02:00:00:03:00:10,gnb1=02:00:00:03:00:11,upf0=02:00:00:03:00:20,upf1=02:00:00:03:00:21
 ```
 
-The flag must list all containers originally attached to a Docker network.
-The operator between a container name and a host interface MAC address could be either `=` or `@`:
+After "eth", each token should be a [minimatch](https://www.npmjs.com/package/minimatch)-compatible pattern, an operator (see below), and a host interface MAC address.
+The patterns must collectively match all containers originally attached to the Docker network.
+The operator could be either `=` or `@`:
 
 * The `=` operator moves the host interface into the container.
-  It becomes inaccessible from the host and cannot be shared among multiple containers.
-  The original MAC address is adopted by the container.
+  * The pattern must match exactly one container.
+  * The interface becomes inaccessible from the host and cannot be shared among multiple containers.
+  * The original MAC address is adopted by the container.
 * The `@` operator creates a MACVLAN subinterface on the host interface.
-  The host interface remains accessible on the host.
-  Multiple containers may share the same host interface; each container gets a random MAC address.
-  Currently this uses MACVLAN "bridge" mode, so that traffic between two containers on the same host interface is switched internally in the Ethernet adapter and does not appear on the connected Ethernet switch.
+  * The pattern may match one or more containers.
+  * The host interface remains accessible on the host.
+  * Multiple containers may share the same host interface; where each container gets a random MAC address.
+  * Currently this uses MACVLAN "bridge" mode, so that traffic between two containers on the same host interface is switched internally in the Ethernet adapter and does not appear on the external Ethernet switch.
 
 Bridge configuration scripts will locate the host interface and invoke [pipework](https://github.com/jpetazzo/pipework) to make the move.
-The specified host interface MAC address must exist on the host machine where you start the relevant network function, otherwise this procedure will fail.
+The specified host interface MAC address must exist on the host machine where you start the relevant network function, otherwise this procedure will fail (you will see the `bridge` container *Exited*).
 
 ## Placement
 
