@@ -59,7 +59,6 @@ for (let upfIndex = 0; upfIndex < upfCount; ++upfIndex) {
 }
 assert(network.dataNetworks.length === dnCount);
 
-let supi = 7005551000n;
 for (let gnbIndex = 0; gnbIndex < gnbCount; ++gnbIndex) {
   const gnbName = `gnb${gnbIndex}`;
   network.gnbs.push({ name: gnbName });
@@ -67,6 +66,7 @@ for (let gnbIndex = 0; gnbIndex < gnbCount; ++gnbIndex) {
     network.dataPaths.links.push([gnbName, upfName]);
   }
 
+  let supi = BigInt(`700555${gnbIndex}000`);
   for (let dnFirst = 0; dnFirst < dnCount; dnFirst += dnPerUe) {
     const dnLast = Math.min(dnFirst + dnPerUe, dnCount);
     const subscribedNSSAI: N.SubscriberSNSSAI[] = [];

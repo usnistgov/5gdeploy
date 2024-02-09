@@ -100,3 +100,16 @@ docker logs amf >& amf.log
 cd ~/compose/20230601
 ./compose.sh down
 ```
+
+If you are using Open5GCore RAN simulators in the scenario, the UEs will not register automatically.
+You can use [phoenix-rpc command](../phoenix-rpc) to register UEs and establish PDU sessions as defined in their configurations:
+
+```bash
+cd ~/5gdeploy
+for UECT in $(docker ps --format='{{.Names}}' | grep '^ue'); do
+  corepack pnpm -s phoenix-rpc --host=$UECT ue-register '--dnn=*'
+done
+# note: In multi-host deployment, this only works for UEs running on the primary host. If some UEs
+# are placed on secondary hosts, you'll need to install 5gdeploy on each secondary host and run
+# this command from there.
+```

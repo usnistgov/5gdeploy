@@ -90,7 +90,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt install -y build-essential
 Compile and load the kernel module:
 
 ```bash
-bash ~/5gdeploy/free5gc/load-gtp5g.sh
+~/5gdeploy/free5gc/load-gtp5g.sh
 ```
 
 You need to rerun `load-gtp5g.sh` after every reboot.

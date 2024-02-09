@@ -527,7 +527,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
         config.mcc = "%MCC";
         config.mnc = "%MNC";
         config.gnb_id = gnb.nci.gnb;
-        config.cell_id = gnb.nci.cell;
+        config.cell_id = gnb.nci.nci;
         config.tac = this.netdef.tac;
 
         for (const [i, k] of sliceKeys.entries()) {

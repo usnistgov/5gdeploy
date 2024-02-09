@@ -32,19 +32,7 @@ cd ~/5gdeploy/scenario
 ```
 
 The Compose context is created at `~/compose/20231017`.
-See [scenario general README](../README.md) on how to interact with the Compose context.
-
-Establish PDU sessions from Open5GCore UEs:
-
-```bash
-cd ~/5gdeploy
-for UECT in $(docker ps --format='{{.Names}}' | grep '^ue'); do
-  corepack pnpm -s phoenix-rpc --host=$UECT ue-register '--dnn=*'
-done
-# note: In multi-host deployment, this only works for UEs running on the primary host. If some UEs
-# are placed on secondary hosts, you'll need to install 5gdeploy on each secondary host and run
-# this command from there.
-```
+See [scenario general README](../README.md) on how to interact with the Compose context, including how to establish PDU sessions from Open5GCore UE simulators.
 
 ## Traffic Generation
 
@@ -54,9 +42,9 @@ See [trafficgen](../20230817/trafficgen.md) for suggestions on how to generate t
 
 In this sample, we use three physical/virtual machines, each running these services:
 
-* **main**: Control Plane, gNB and UE simulators.
-* **upf1**: UPF1, Data Network `internet`.
-* **upf4**: UPF4, Data Network `vcam`, Data Network `vctl`.
+* *primary*: Control Plane, gNB and UE simulators.
+* *upf1*: UPF1, Data Network `internet`.
+* *upf4*: UPF4, Data Network `vcam`, Data Network `vctl`.
 
 Each machine shall have two network interfaces apart from the control interface.
 
