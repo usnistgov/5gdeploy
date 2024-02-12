@@ -72,15 +72,14 @@ interface Saver {
 
 /**
  * Write file.
- * @param filename - Filename.
+ * @param filename - Filename, "-" or "-.*" for stdout.
  * @param body - File content.
  *
  * @remarks
  * If `body.save` is a function, its return value is used as body.
  *
  * Uint8Array and string are written directly.
- * Array of string is joined when filename ends with ".sh".
- * All others are serialized as either JSON or YAML (when filename ends with ".yaml" or ".yml").
+ * Other types are serialized as either JSON or YAML (when filename ends with ".yaml" or ".yml").
  *
  * Parent directories are created automatically.
  * File is set to executable when filename ends with ".sh".
@@ -91,13 +90,19 @@ export async function write(filename: string | URL, body: unknown): Promise<void
     body = await (body as Saver).save();
   }
   if (!(typeof body === "string" || body instanceof Uint8Array)) {
-    if (Array.isArray(body) && filename.endsWith(".sh")) {
-      body = body.join("\n");
-    } else if (filename.endsWith(".yaml") || filename.endsWith(".yml")) {
+    if (filename.endsWith(".yaml") || filename.endsWith(".yml")) {
       body = yaml.dump(body, { forceQuotes: true, sortKeys: true });
     } else {
       body = stringify(body, { space: "  " });
     }
+  }
+
+  if (filename === "-" || filename.startsWith("-.")) {
+    if (typeof body === "string" && !body.endsWith("\n")) {
+      body += "\n";
+    }
+    process.stdout.write(body as string | Uint8Array);
+    return;
   }
 
   await fs.mkdir(path.dirname(filename), { recursive: true });

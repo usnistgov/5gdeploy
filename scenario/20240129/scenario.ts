@@ -1,7 +1,7 @@
 import assert from "minimalistic-assert";
 
 import type { N } from "../../types/mod.ts";
-import { decPad, hexPad, Yargs } from "../../util/mod.js";
+import { decPad, file_io, hexPad, Yargs } from "../../util/mod.js";
 import * as ran from "../common/ran.js";
 
 const ALPHABET = "abcdefgh";
@@ -87,4 +87,4 @@ for (let gnbIndex = 0; gnbIndex < gnbCount; ++gnbIndex) {
   }
 }
 
-process.stdout.write(`${JSON.stringify(network)}\n`);
+await file_io.write("-.json", network);

@@ -1,4 +1,4 @@
-import { Yargs } from "../../util/mod.js";
+import { file_io, Yargs } from "../../util/mod.js";
 import * as phones_vehicles from "../common/phones-vehicles.js";
 
 const args = Yargs()
@@ -14,4 +14,4 @@ const network = phones_vehicles.buildNetwork(args, {
   vctlUPF: "upf0",
 });
 
-process.stdout.write(`${JSON.stringify(network)}\n`);
+await file_io.write("-.json", network);

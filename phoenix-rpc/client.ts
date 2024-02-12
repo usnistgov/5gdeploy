@@ -85,7 +85,7 @@ export class PhoenixClientUDP implements PhoenixClient {
       sock.connect(this.port, this.host);
       await pEvent(sock, "connect", { timeout: 1000 });
       sock.send(`${cmd} ${args.join(" ")}`);
-      const result = (await pEvent(sock, "message", { timeout: 1000 })) as Buffer;
+      const result = await pEvent(sock, "message", { timeout: 1000 }) as Buffer;
       return new CommandResult(result.toString("utf8"));
     } finally {
       sock.close();

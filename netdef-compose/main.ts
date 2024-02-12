@@ -73,7 +73,7 @@ const args = Yargs()
   .option(oaiOptions)
   .parseSync();
 
-const netdef = new NetDef((await file_io.readJSON(args.netdef)) as N.Network);
+const netdef = new NetDef(await file_io.readJSON(args.netdef) as N.Network);
 netdef.validate();
 const ctx = new NetDefComposeContext(netdef, args.out, new IPAlloc(args));
 await upProviders[args.up]!(ctx, args);

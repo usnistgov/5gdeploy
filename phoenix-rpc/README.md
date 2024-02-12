@@ -52,7 +52,7 @@ corepack pnpm -s phoenix-rpc --host=ue1000 ue-register --dnn=default --dnn=inter
 # register and establish PDU sessions matching pattern(s)
 #  This is only supported when --host refers to a Docker container.
 #  The patterns should be written in minimatch-compatible syntax.
-corepack pnpm -s phoenix-rpc --host=ue1000 ue-register '--dnn=*'
+corepack pnpm -s phoenix-rpc --host=ue1000 ue-register --dnn='*'
 
 # deregister
 corepack pnpm -s phoenix-rpc --host=ue1000 ue-deregister

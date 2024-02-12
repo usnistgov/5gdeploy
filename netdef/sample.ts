@@ -1,4 +1,5 @@
 import type { N } from "../types/mod.js";
+import { file_io } from "../util/mod.js";
 import { validateNetDef } from "./netdef.js";
 
 const network: N.Network = {
@@ -93,4 +94,4 @@ const network: N.Network = {
 };
 
 validateNetDef(network);
-process.stdout.write(`${JSON.stringify(network)}\n`);
+await file_io.write("-.json", network);

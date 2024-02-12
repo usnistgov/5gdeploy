@@ -3,6 +3,8 @@ import * as shlex from "shlex";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
+import { file_io } from "../../util/mod";
+
 const args = await yargs(hideBin(process.argv))
   .strict()
   .option("op", {
@@ -126,15 +128,15 @@ for (const table of tables) {
 
 switch (args.format) {
   case "patch": {
-    process.stdout.write(`${JSON.stringify(patch)}\n`);
+    await file_io.write("-", `${JSON.stringify(patch)}\n`);
     break;
   }
   case "pretty": {
-    process.stdout.write(JSON.stringify(patch, undefined, 2));
+    await file_io.write("-.json", patch);
     break;
   }
   case "shell": {
-    process.stdout.write(`echo ${shlex.quote(JSON.stringify(patch))} | sudo config apply /dev/stdin\n`);
+    await file_io.write("-.sh", `echo ${shlex.quote(JSON.stringify(patch))} | sudo config apply /dev/stdin\n`);
     break;
   }
 }

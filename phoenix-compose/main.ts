@@ -31,7 +31,7 @@ await sf.save(path.resolve(args.out, "cfg"), path.resolve(args.out, "sql"));
 
 const composeFile = ph_compose.convert(sf.ipmap, !!args.ran);
 if (args.ran && args.ran !== "false") {
-  const ranCompose = (await file_io.readYAML(args.ran)) as ComposeFile;
+  const ranCompose = await file_io.readYAML(args.ran) as ComposeFile;
   assert(ranCompose.services);
   Object.assign(composeFile.services, ranCompose.services);
 }

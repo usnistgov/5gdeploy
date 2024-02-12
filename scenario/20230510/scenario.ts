@@ -1,4 +1,5 @@
 import type { N } from "../../types/mod.ts";
+import { file_io } from "../../util/mod.ts";
 
 const network: N.Network = {
   plmn: "001-01",
@@ -51,4 +52,4 @@ const network: N.Network = {
   },
 };
 
-process.stdout.write(`${JSON.stringify(network)}\n`);
+await file_io.write("-.json", network);

@@ -365,7 +365,7 @@ class F5CPBuilder {
     const s = this.ctx.defineService(ct, await f5_conf.getImage(nf), nets);
     s.stop_signal = "SIGQUIT";
     s.environment.GIN_MODE = "release";
-    const cfg = (await f5_conf.loadTemplate(`${nf}cfg`)) as F5.Root<C>;
+    const cfg = await f5_conf.loadTemplate(`${nf}cfg`) as F5.Root<C>;
     if ((cfg.configuration as unknown as F5.SBI).sbi !== undefined) {
       this.updateSBI(s, cfg.configuration as unknown as F5.SBI);
     }
@@ -416,7 +416,7 @@ export async function f5UP(ctx: NetDefComposeContext): Promise<void> {
     ]);
     s.cap_add.push("NET_ADMIN");
 
-    const c = (await f5_conf.loadTemplate("upfcfg")) as F5.upf.Root;
+    const c = await f5_conf.loadTemplate("upfcfg") as F5.upf.Root;
     c.pfcp.addr = s.networks.n4!.ipv4_address;
     c.pfcp.nodeID = s.networks.n4!.ipv4_address;
     // go-upf gtp5g driver listens on the first interface defined in ifList and does not distinguish N3 or N9
