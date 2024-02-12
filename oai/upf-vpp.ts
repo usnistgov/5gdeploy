@@ -1,12 +1,11 @@
-import fs from "node:fs/promises";
-
 import assert from "minimalistic-assert";
 
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
+import { file_io } from "../util/mod.js";
 import type { OAIOpts } from "./options.js";
 
-const vppScript = await fs.readFile(new URL("upf-vpp.sh", import.meta.url));
+const vppScript = await file_io.readText(new URL("upf-vpp.sh", import.meta.url));
 
 /** Build UP functions using oai-upf-vpp as UPF. */
 export async function oaiUPvpp(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {

@@ -1,4 +1,3 @@
-import * as fs from "node:fs/promises";
 import path from "node:path";
 
 import assert from "minimalistic-assert";
@@ -7,7 +6,7 @@ import sql from "sql-tagged-template-literal";
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
 import type { CN5G, ComposeService } from "../types/mod.js";
-import { hexPad } from "../util/mod.js";
+import { file_io, hexPad } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
 import { type OAIOpts } from "./options.js";
 
@@ -111,7 +110,7 @@ class CPBuilder extends CN5GBuilder {
         `GRANT SELECT,INSERT,UPDATE,DELETE ON ${dbc.database_name}.*
         TO ${dbc.user}@'%' IDENTIFIED BY '${dbc.password}'`,
       ],
-      await fs.readFile(path.resolve(oai_conf.cn5gPath, "database/oai_db2.sql"), "utf8"),
+      await file_io.readText(path.resolve(oai_conf.cn5gPath, "database/oai_db2.sql")),
       this.populateSQL(),
     ));
   }

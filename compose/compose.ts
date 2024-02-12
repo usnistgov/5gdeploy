@@ -1,6 +1,5 @@
 import path from "node:path";
 
-import yaml from "js-yaml";
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
@@ -54,19 +53,6 @@ export function create(): ComposeFile {
     networks: {},
     services: {},
   };
-}
-
-/** Parse Compose file from YAML string. */
-export function parse(input: string): ComposeFile {
-  const c = yaml.load(input) as ComposeFile;
-  assert(c.networks);
-  assert(c.services);
-  return c;
-}
-
-/** Serialize Compose file as YAML string. */
-export function save(c: ComposeFile): string {
-  return yaml.dump(c, { forceQuotes: true, sortKeys: true });
 }
 
 /**

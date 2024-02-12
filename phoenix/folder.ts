@@ -11,6 +11,7 @@ import { type AnyIterable } from "streaming-iterables";
 import type { Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
+import { file_io } from "../util/mod.js";
 import { IPMAP } from "./ipmap.js";
 import { NetworkFunction } from "./nf.js";
 import { OtherTable } from "./other.js";
@@ -25,9 +26,9 @@ export class ScenarioFolder {
    */
   public static async load(dir: string): Promise<ScenarioFolder> {
     const sf = new ScenarioFolder();
-    sf.env = parseEnv(await fs.readFile(path.resolve(dir, "env.sh"), "utf8"));
-    sf.ipmap = IPMAP.parse(await fs.readFile(path.resolve(dir, "ip-map"), "utf8"), sf.env);
-    sf.other = OtherTable.parse(await fs.readFile(path.resolve(dir, "other"), "utf8"));
+    sf.env = parseEnv(await file_io.readText(path.resolve(dir, "env.sh")));
+    sf.ipmap = IPMAP.parse(await file_io.readText(path.resolve(dir, "ip-map")), sf.env);
+    sf.other = OtherTable.parse(await file_io.readText(path.resolve(dir, "other")));
 
     const walk = await fsWalkPromise(dir, {
       entryFilter(entry) {
@@ -130,16 +131,16 @@ export class ScenarioFolder {
         continue;
       }
 
-      let body = fa.readFromFile ? await fs.readFile(fa.readFromFile, "utf8") : (fa.initialContent ?? "");
+      let body = fa.readFromFile ? await file_io.readText(fa.readFromFile) : (fa.initialContent ?? "");
       for (const edit of fa.edits) {
         body = await edit(body);
       }
-      await fs.writeFile(dstPath, body);
+      await file_io.write(dstPath, body);
     }
 
-    await fs.writeFile(path.resolve(cfg, "env.sh"), saveEnv(this.env));
-    await fs.writeFile(path.resolve(cfg, "ip-map"), this.ipmap.save());
-    await fs.writeFile(path.resolve(cfg, "other"), this.other.save());
+    await file_io.write(path.resolve(cfg, "env.sh"), saveEnv(this.env));
+    await file_io.write(path.resolve(cfg, "ip-map"), this.ipmap);
+    await file_io.write(path.resolve(cfg, "other"), this.other);
   }
 }
 export namespace ScenarioFolder {

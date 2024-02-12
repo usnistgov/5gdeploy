@@ -43,7 +43,7 @@ class F5CPBuilder {
   }
 
   private async buildWebUI(): Promise<void> {
-    const [s, webuicfg] = this.defineService<F5.webui.Configuration>("webui", ["mgmt", "db"]);
+    const [s, webuicfg] = await this.defineService<F5.webui.Configuration>("webui", ["mgmt", "db"]);
     const c = webuicfg.configuration;
     c.mongodb.url = this.mongoUrl.toString();
 
@@ -121,7 +121,7 @@ class F5CPBuilder {
         };
         const payload = JSON.stringify(webconsole.SubscriptionToJSON(j));
         if (sub.count > 1) {
-          yield `msg Inserting UEs ${sub.supi}..${sub.supiLast}`;
+          yield `msg Inserting UEs ${sub.supi}..${NetDef.listSUPIs(sub).at(-1)}`;
         } else {
           yield `msg Inserting UE ${sub.supi}`;
         }
@@ -144,7 +144,7 @@ class F5CPBuilder {
   }
 
   private async buildNRF(): Promise<void> {
-    const [s, nrfcfg] = this.defineService<F5.nrf.Configuration>("nrf", ["db", "cp"]);
+    const [s, nrfcfg] = await this.defineService<F5.nrf.Configuration>("nrf", ["db", "cp"]);
     const c = nrfcfg.configuration;
     c.DefaultPlmnId = this.plmn;
     c.MongoDBUrl = this.mongoUrl.toString();
@@ -156,7 +156,7 @@ class F5CPBuilder {
   }
 
   private async buildUDR(): Promise<void> {
-    const [s, udrcfg] = this.defineService<F5.udr.Configuration>("udr", ["db", "cp"]);
+    const [s, udrcfg] = await this.defineService<F5.udr.Configuration>("udr", ["db", "cp"]);
     const c = udrcfg.configuration;
     c.mongodb.url = this.mongoUrl.toString();
 
@@ -167,7 +167,7 @@ class F5CPBuilder {
   }
 
   private async buildUDM(): Promise<void> {
-    const [s, udmcfg] = this.defineService<F5.udm.Configuration>("udm", ["cp"]);
+    const [s, udmcfg] = await this.defineService<F5.udm.Configuration>("udm", ["cp"]);
     s.command = [
       "./udm",
       "-c", await this.saveConfig(s, "cp-cfg/udm.yaml", "udmcfg.yaml", udmcfg),
@@ -175,7 +175,7 @@ class F5CPBuilder {
   }
 
   private async buildAUSF(): Promise<void> {
-    const [s, ausfcfg] = this.defineService<F5.ausf.Configuration>("ausf", ["cp"]);
+    const [s, ausfcfg] = await this.defineService<F5.ausf.Configuration>("ausf", ["cp"]);
     const c = ausfcfg.configuration;
     c.plmnSupportList = [this.plmn];
 
@@ -186,7 +186,7 @@ class F5CPBuilder {
   }
 
   private async buildNSSF(): Promise<void> {
-    const [s, nssfcfg] = this.defineService<F5.nssf.Configuration>("nssf", ["cp"]);
+    const [s, nssfcfg] = await this.defineService<F5.nssf.Configuration>("nssf", ["cp"]);
     s.command = [
       "./nssf",
       "-c", await this.saveConfig(s, "cp-cfg/nssf.yaml", "nssfcfg.yaml", nssfcfg),
@@ -194,7 +194,7 @@ class F5CPBuilder {
   }
 
   private async buildPCF(): Promise<void> {
-    const [s, pcfcfg] = this.defineService<F5.pcf.Configuration>("pcf", ["db", "cp"]);
+    const [s, pcfcfg] = await this.defineService<F5.pcf.Configuration>("pcf", ["db", "cp"]);
     const c = pcfcfg.configuration;
     c.mongodb.url = this.mongoUrl.toString();
 
@@ -207,7 +207,7 @@ class F5CPBuilder {
   private async buildAMFs(): Promise<void> {
     const { network, netdef } = this.ctx;
     for (const [ct, amf] of compose.suggestNames("amf", netdef.amfs)) {
-      const [s, amfcfg] = this.defineService<F5.amf.Configuration>(ct, ["cp", "n2"]);
+      const [s, amfcfg] = await this.defineService<F5.amf.Configuration>(ct, ["cp", "n2"]);
       const c = amfcfg.configuration;
       c.amfName = amf.name;
       c.ngapIpList = [s.networks.n2!.ipv4_address];
@@ -238,7 +238,7 @@ class F5CPBuilder {
   private async buildSMFs(): Promise<void> {
     const { network, netdef } = this.ctx;
     for (const [ct, smf] of compose.suggestNames("smf", netdef.smfs)) {
-      const [s, smfcfg] = this.defineService<F5.smf.Configuration>(ct, ["cp", "n2", "n4"]);
+      const [s, smfcfg] = await this.defineService<F5.smf.Configuration>(ct, ["cp", "n2", "n4"]);
       const uerouting = f5_conf.loadTemplate("uerouting");
 
       const c = smfcfg.configuration;
@@ -360,12 +360,12 @@ class F5CPBuilder {
     return upi;
   }
 
-  private defineService<C extends {}>(ct: string, nets: readonly string[]): [s: ComposeService, cfg: F5.Root<C>] {
+  private async defineService<C extends {}>(ct: string, nets: readonly string[]): Promise<[s: ComposeService, cfg: F5.Root<C>]> {
     const nf = compose.nameToNf(ct);
-    const s = this.ctx.defineService(ct, f5_conf.getImage(nf), nets);
+    const s = this.ctx.defineService(ct, await f5_conf.getImage(nf), nets);
     s.stop_signal = "SIGQUIT";
     s.environment.GIN_MODE = "release";
-    const cfg = f5_conf.loadTemplate(`${nf}cfg`) as F5.Root<C>;
+    const cfg = (await f5_conf.loadTemplate(`${nf}cfg`)) as F5.Root<C>;
     if ((cfg.configuration as unknown as F5.SBI).sbi !== undefined) {
       this.updateSBI(s, cfg.configuration as unknown as F5.SBI);
     }
@@ -416,7 +416,7 @@ export async function f5UP(ctx: NetDefComposeContext): Promise<void> {
     ]);
     s.cap_add.push("NET_ADMIN");
 
-    const c = f5_conf.loadTemplate("upfcfg") as F5.upf.Root;
+    const c = (await f5_conf.loadTemplate("upfcfg")) as F5.upf.Root;
     c.pfcp.addr = s.networks.n4!.ipv4_address;
     c.pfcp.nodeID = s.networks.n4!.ipv4_address;
     // go-upf gtp5g driver listens on the first interface defined in ifList and does not distinguish N3 or N9

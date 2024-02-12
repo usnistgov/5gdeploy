@@ -132,7 +132,6 @@ export class NetDef {
         subscribedNSSAI: dfltSubscribedNSSAI,
         gnbs: allGNBs,
         ...subscriber,
-        supiLast: subscriber.supi,
         subscribedDN: [],
         requestedDN: [],
       };
@@ -158,10 +157,9 @@ export class NetDef {
       if (expandCount && sub.count > 1) {
         for (let i = 0; i < sub.count; ++i) {
           const supi = decPad(supiN++, 15);
-          list.push({ ...sub, supi, supiLast: supi, count: 1 });
+          list.push({ ...sub, supi, count: 1 });
         }
       } else {
-        sub.supiLast = decPad(supiN + BigInt(sub.count - 1), 15);
         list.push(sub);
       }
     }
@@ -276,19 +274,17 @@ export namespace NetDef {
 
   /** Information about a subscriber. */
   export interface Subscriber extends SetRequired<N.Subscriber, "count" | "k" | "opc" | "subscribedNSSAI" | "gnbs"> {
-    /**
-     * Last SUPI (inclusive).
-     *
-     * @remarks
-     * This would be same as `.supi` if `.count==1`.
-     */
-    supiLast: string;
-
     /** Subscribed Data Networks, derived from `.subscribedNSSAI`. */
     subscribedDN: N.DataNetworkID[];
 
     /** Requested Data Networks, derived from `.requestedNSSAI`. */
     requestedDN: N.DataNetworkID[];
+  }
+
+  /** List SUPIs of a (possibly multi-count) subscriber. */
+  export function listSUPIs({ supi, count }: Subscriber): string[] {
+    let n = BigInt(supi);
+    return Array.from({ length: count }, () => decPad(n++, 15));
   }
 
   /** N3,N9,N6 peers of a UPF. */

@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,16 +5,15 @@ import { execa } from "execa";
 import yaml from "js-yaml";
 
 import type { CN5G } from "../types/mod.js";
+import { file_io } from "../util/mod.js";
 
-let tag: string | undefined;
 export const templatePath = fileURLToPath(new URL("conf_files", import.meta.url));
 export const cn5gPath = fileURLToPath(new URL("docker-compose", import.meta.url));
 export const convertCommand = fileURLToPath(new URL("convert.py", import.meta.url));
 
 /** Retrieve OAI git repository tag name. */
 export async function getTag(): Promise<string> {
-  tag ??= (await fs.readFile(path.resolve(templatePath, "TAG"), "utf8")).trim();
-  return tag;
+  return (file_io.readText(path.resolve(templatePath, "TAG"), { once: true }));
 }
 
 /** Load OAI config from libconfig template. */
@@ -47,10 +45,9 @@ async function save(this: unknown): Promise<string> {
 
 /** Load OAI CN5G config.yaml file. */
 export async function loadCN5G(): Promise<CN5G.Config> {
-  const c = yaml.load(
-    await fs.readFile(path.resolve(cn5gPath, "conf/basic_nrf_config.yaml"), "utf8"),
-    { schema: yaml.FAILSAFE_SCHEMA },
-  );
+  const c = await file_io.readYAML(path.resolve(cn5gPath, "conf/basic_nrf_config.yaml"), {
+    schema: yaml.FAILSAFE_SCHEMA,
+  });
   return JSON.parse(JSON.stringify(c, (key, value) => {
     switch (value) {
       case "true":

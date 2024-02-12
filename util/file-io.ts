@@ -1,0 +1,108 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import getStdin from "get-stdin";
+import yaml from "js-yaml";
+import stringify from "json-stringify-deterministic";
+import DefaultMap from "mnemonist/default-map.js";
+import type { Promisable } from "type-fest";
+
+function toFilename(filename: string | URL): string {
+  return typeof filename === "string" ? filename : fileURLToPath(filename);
+}
+
+function doReadText(filename: string): Promise<string> {
+  return filename === "-" ? getStdin() : fs.readFile(filename, "utf8");
+}
+
+const readOnce = new DefaultMap<string, Promise<string>>(
+  (filename) => doReadText(filename),
+);
+
+/**
+ * Read file as UTF-8 text.
+ * @param filename - Filename, "-" for stdin.
+ */
+export function readText(filename: string | URL, { once = false }: readText.Options = {}): Promise<string> {
+  filename = toFilename(filename);
+  if (once) {
+    return readOnce.get(filename);
+  }
+  return doReadText(filename);
+}
+export namespace readText {
+  /** {@link readText} options. */
+  export interface Options {
+    /**
+     * If `true`, file is read only once and then cached.
+     * @defaultValue false
+     */
+    once?: boolean;
+  }
+}
+
+/**
+ * Read file as UTF-8 text and parse as JSON.
+ * @param filename - Filename, "-" for stdin.
+ */
+export async function readJSON(filename: string | URL, opts: readText.Options = {}): Promise<unknown> {
+  return JSON.parse(await readText(filename, opts));
+}
+
+/**
+ * Read file as UTF-8 text and parse as YAML.
+ * @param filename - Filename, "-" for stdin.
+ */
+export async function readYAML(filename: string | URL, opts: readYAML.Options = {}): Promise<unknown> {
+  return yaml.load(await readText(filename, opts), {
+    filename: toFilename(filename),
+    schema: opts.schema,
+  });
+}
+export namespace readYAML {
+  /** {@link readYAML} options. */
+  export interface Options extends readText.Options, Pick<yaml.LoadOptions, "schema"> {
+  }
+}
+
+interface Saver {
+  save: () => Promisable<unknown>;
+}
+
+/**
+ * Write file.
+ * @param filename - Filename.
+ * @param body - File content.
+ *
+ * @remarks
+ * If `body.save` is a function, its return value is used as body.
+ *
+ * Uint8Array and string are written directly.
+ * Array of string is joined when filename ends with ".sh".
+ * All others are serialized as either JSON or YAML (when filename ends with ".yaml" or ".yml").
+ *
+ * Parent directories are created automatically.
+ * File is set to executable when filename ends with ".sh".
+ */
+export async function write(filename: string | URL, body: unknown): Promise<void> {
+  filename = toFilename(filename);
+  while (typeof (body as Saver).save === "function") {
+    body = await (body as Saver).save();
+  }
+  if (!(typeof body === "string" || body instanceof Uint8Array)) {
+    if (Array.isArray(body) && filename.endsWith(".sh")) {
+      body = body.join("\n");
+    } else if (filename.endsWith(".yaml") || filename.endsWith(".yml")) {
+      body = yaml.dump(body, { forceQuotes: true, sortKeys: true });
+    } else {
+      body = stringify(body, { space: "  " });
+    }
+  }
+
+  await fs.mkdir(path.dirname(filename), { recursive: true });
+  await fs.writeFile(filename, body as string | Uint8Array);
+  if (filename.endsWith(".sh")) {
+    await fs.chmod(filename, 0o755);
+  }
+}

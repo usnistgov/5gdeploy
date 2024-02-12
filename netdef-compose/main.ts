@@ -1,7 +1,3 @@
-import fs from "node:fs/promises";
-
-import getStdin from "get-stdin";
-
 import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc/netdef.js";
 import { NetDef } from "../netdef/netdef.js";
@@ -9,8 +5,9 @@ import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { gnbsimRAN } from "../omec/gnbsim.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
+import { type N } from "../types/mod.js";
 import { ueransimRAN } from "../ueransim/netdef.js";
-import { Yargs } from "../util/mod.js";
+import { file_io, Yargs } from "../util/mod.js";
 import { NetDefComposeContext } from "./context.js";
 import { dnOptions, saveDNOptions } from "./dn.js";
 import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
@@ -76,7 +73,7 @@ const args = Yargs()
   .option(oaiOptions)
   .parseSync();
 
-const netdef = new NetDef(JSON.parse(await (args.netdef === "-" ? getStdin() : fs.readFile(args.netdef, "utf8"))));
+const netdef = new NetDef((await file_io.readJSON(args.netdef)) as N.Network);
 netdef.validate();
 const ctx = new NetDefComposeContext(netdef, args.out, new IPAlloc(args));
 await upProviders[args.up]!(ctx, args);
@@ -85,5 +82,5 @@ await ranProviders[args.ran]!(ctx, args);
 compose.defineBridge(ctx.c, args);
 await Promise.all(Array.from(
   compose.place(ctx.c, args),
-  ([filename, body]) => ctx.writeFile(filename, body, { executable: filename.endsWith(".sh") }),
+  ([filename, body]) => ctx.writeFile(filename, body),
 ));

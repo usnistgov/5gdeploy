@@ -1,9 +1,11 @@
-import fs from "node:fs/promises";
 import path from "node:path";
+
+import assert from "minimalistic-assert";
 
 import * as compose from "../compose/mod.js";
 import { ScenarioFolder } from "../phoenix/mod.js";
-import { Yargs } from "../util/mod.js";
+import { type ComposeFile } from "../types/compose.js";
+import { file_io, Yargs } from "../util/mod.js";
 import * as ph_compose from "./compose.js";
 
 const args = Yargs()
@@ -29,10 +31,11 @@ await sf.save(path.resolve(args.out, "cfg"), path.resolve(args.out, "sql"));
 
 const composeFile = ph_compose.convert(sf.ipmap, !!args.ran);
 if (args.ran && args.ran !== "false") {
-  const ranCompose = compose.parse(await fs.readFile(args.ran, "utf8"));
+  const ranCompose = (await file_io.readYAML(args.ran)) as ComposeFile;
+  assert(ranCompose.services);
   Object.assign(composeFile.services, ranCompose.services);
 }
 
 compose.defineBridge(composeFile, args);
 
-await fs.writeFile(path.resolve(args.out, "compose.yml"), compose.save(composeFile));
+await file_io.write(path.resolve(args.out, "compose.yml"), composeFile);
