@@ -25,6 +25,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
   s.cap_add.push("NET_ADMIN");
   s.devices.push("/dev/net/tun:/dev/net/tun");
   compose.annotate(s, "cpus", 1);
+  compose.annotate(s, "ue_supi", sub.supi);
 
   const c = makeConfigUpdate(ctx, gnb, sub);
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;

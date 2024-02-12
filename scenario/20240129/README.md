@@ -33,6 +33,7 @@ Typically, DN quantity should be no less than UPF quantity, otherwise some UPFs 
 
 UPFs are named alphabetically.
 Each Data Network Name starts with the connected UPF name, followed by a sequentially assigned number.
+These naming schemes are chosen to ease the pattern matching in a multi-host deployment.
 
 The `+same-snssai` flag specifies S-NSSAI assignment:
 
@@ -179,13 +180,14 @@ Variations:
 Count how many UEs are connected:
 
 ```bash
+cd ~/compose/20240129
 jq -r '.dataNetworks[] | (
   "$(./compose.sh at dn_" + .dnn + ") exec dn_" + .dnn +
-  " nmap -sn " + (.subnet|split("/")[0]) + "/24"
+  " nmap -sn " + (.subnet|sub("/\\d+";"/24"))
 )' netdef.json | bash -x
 ```
 
-It is expected that each `nmap` reports that *U* hosts are up, where *U* equals gNB quantity.
+It is expected for each `nmap` to report that *U* hosts are up, where *U* equals gNB quantity.
 This is because there should be exactly one UE attached to each gNB that has a PDU session to each Data Network.
 
 iperf3 procedure is in development.

@@ -74,6 +74,7 @@ async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: NetDef.GNB): 
 async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscriber): Promise<void> {
   const s = ctx.defineService(ct, `oaisoftwarealliance/oai-nr-ue:${await oai_conf.getTag()}`, ["air"]);
   compose.annotate(s, "cpus", 1);
+  compose.annotate(s, "ue_supi", sub.supi);
   s.privileged = true;
 
   const c = await oai_conf.loadTemplate<OAI.ue.Config>("nrue.uicc");

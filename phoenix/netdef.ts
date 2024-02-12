@@ -549,9 +549,9 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
   private buildUEs(): void {
     const { "phoenix-ue-isolated": isolated } = this.opts;
     for (const [ct, sub] of this.createNetworkFunction("5g/ue1.json", ["air"], this.ctx.netdef.listSubscribers())) {
-      compose.annotate(this.ctx.c.services[ct]!, "cpus",
-        isolated.some((suffix) => sub.supi.endsWith(suffix)) ? 1 : 0,
-      );
+      const s = this.ctx.c.services[ct]!;
+      compose.annotate(s, "cpus", isolated.some((suffix) => sub.supi.endsWith(suffix)) ? 1 : 0);
+      compose.annotate(s, "ue_supi", sub.supi);
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("ue_5g_nas_only");
         config.usim = {

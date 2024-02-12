@@ -1,5 +1,5 @@
 import * as compose from "../compose/mod.js";
-import type { NetDefComposeContext } from "../netdef-compose/mod.js";
+import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 
 /** Build RAN functions using UERANSIM. */
 export async function ueransimRAN(ctx: NetDefComposeContext): Promise<void> {
@@ -31,6 +31,7 @@ export async function ueransimRAN(ctx: NetDefComposeContext): Promise<void> {
       sessions.add(`${dnn}:${snssai}`);
     }
     const s = ctx.defineService(ct, "5gdeploy.localhost/ueransim", ["air"]);
+    compose.annotate(s, "ue_supi", NetDef.listSUPIs(sub).join(","));
     s.command = ["/entrypoint.sh", "ue"];
     Object.assign(s.environment, {
       PLMN: ctx.network.plmn,

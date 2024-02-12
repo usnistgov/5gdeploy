@@ -4,7 +4,7 @@ import assert from "minimalistic-assert";
 
 import * as compose from "../compose/mod.js";
 import { ScenarioFolder } from "../phoenix/mod.js";
-import { type ComposeFile } from "../types/compose.js";
+import type { ComposeFile } from "../types/mod.js";
 import { file_io, Yargs } from "../util/mod.js";
 import * as ph_compose from "./compose.js";
 
