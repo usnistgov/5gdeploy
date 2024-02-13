@@ -13,7 +13,7 @@ export const convertCommand = fileURLToPath(new URL("convert.py", import.meta.ur
 
 /** Retrieve OAI git repository tag name. */
 export async function getTag(): Promise<string> {
-  return (file_io.readText(path.resolve(templatePath, "TAG"), { once: true }));
+  return (await file_io.readText(path.resolve(templatePath, "TAG"), { once: true })).trim();
 }
 
 /** Load OAI config from libconfig template. */

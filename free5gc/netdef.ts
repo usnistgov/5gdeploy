@@ -239,7 +239,7 @@ class F5CPBuilder {
     const { network, netdef } = this.ctx;
     for (const [ct, smf] of compose.suggestNames("smf", netdef.smfs)) {
       const [s, smfcfg] = await this.defineService<F5.smf.Configuration>(ct, ["cp", "n2", "n4"]);
-      const uerouting = f5_conf.loadTemplate("uerouting");
+      const uerouting = await f5_conf.loadTemplate("uerouting");
 
       const c = smfcfg.configuration;
       c.smfName = smf.name;
