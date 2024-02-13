@@ -114,6 +114,7 @@ export function defineService(c: ComposeFile, name: string, image: string): Comp
       },
       networks: {},
     };
+
     for (const key of ["sysctls", "environment", "networks"] as const satisfies ReadonlyArray<keyof ComposeService>) {
       Object.defineProperty(service, key, {
         enumerable: true,
@@ -121,6 +122,22 @@ export function defineService(c: ComposeFile, name: string, image: string): Comp
         value: service[key],
       });
     }
+
+    let networkMode: string | undefined;
+    Object.defineProperty(service, "network_mode", {
+      enumerable: true,
+      get() {
+        return networkMode;
+      },
+      set(value?: string) {
+        networkMode = value;
+        if (value) {
+          service!.hostname = "";
+          assert(Object.keys(service!.networks).length === 0,
+            "cannot set ComposeService.network_mode with non-empty ComposeService.networks");
+        }
+      },
+    });
     c.services[name] = service;
   }
   return service;
@@ -140,6 +157,26 @@ export function annotate(s: ComposeService, key: string, value?: string | number
   s.annotations ??= {};
   s.annotations[key] = `${value}`;
   return s;
+}
+
+/** Find a service with annotation matching a predicate. */
+export function findByAnnotation(
+    c: ComposeFile, key: string,
+    predicate: string | number | ((value: string) => boolean),
+): ComposeService | undefined {
+  key = `5gdeploy.${key}`;
+  if (typeof predicate !== "function") {
+    const value = `${predicate}`;
+    predicate = (v) => v === value;
+  }
+
+  for (const s of Object.values(c.services)) {
+    const value = s.annotations?.[key];
+    if (value !== undefined && predicate(value)) {
+      return s;
+    }
+  }
+  return undefined;
 }
 
 /** Add a netif to a service. */

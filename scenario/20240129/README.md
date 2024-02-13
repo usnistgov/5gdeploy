@@ -177,6 +177,8 @@ Variations:
 
 ## Traffic Generation
 
+### nmap
+
 Count how many UEs are connected:
 
 ```bash
@@ -190,4 +192,41 @@ jq -r '.dataNetworks[] | (
 It is expected for each `nmap` to report that *U* hosts are up, where *U* equals gNB quantity.
 This is because there should be exactly one UE attached to each gNB that has a PDU session to each Data Network.
 
-iperf3 procedure is in development.
+### iperf3
+
+Prepare iperf3 flows:
+
+```bash
+cd ~/5gdeploy/scenario
+$(corepack pnpm bin)/tsx 20240129/iperf3.ts --dir=$(readlink -f ~/compose/20240129) \
+  --flow='*= -t 60 -u -b 10M' --flow='*= -t 60 -u -b 10M -R'
+```
+
+You can only run `20240129/iperf3.ts` script after the UEs have started and PDU sessions have been established.
+The script gathers information about currently connected PDU sessions and prepares an iperf3 flow for each PDU session between UE and Data Network.
+Its output includes:
+
+* Compose file at `~/compose/20240129/compose.iperf3.yml`, which defines necessary iperf3 containers
+* bash script at `~/compose/20240129/iperf3.sh`, which runs iperf3 containers and gathers statistics in JSON format
+
+The most important command line flag is `--flow` (repeatable).
+Each `--flow` value consists of:
+
+1. a [minimatch](https://www.npmjs.com/package/minimatch)-compatible pattern that matches a Data Network Name (DNN)
+2. the `=` operator
+3. a sequence of iperf3 flags
+
+Each PDU session whose DNN matches the pattern would have an iperf3 flow with the specified flags.
+If the same PDU session matches multiple patterns in different `--flow` flags, multiple iperf3 flows would be created for the same PDU session.
+
+After generation, you can run the iperf3 flows and analyze its results as follows:
+
+```bash
+cd ~/compose/20240129
+./iperf3.sh
+
+alias 5giperf3='~/5gdeploy/scenario/20230817/iperf3.sh'
+5giperf3 each iperf3/*.json
+5giperf3 total iperf3/*.json
+# note: do not use other 5giperf3 subcommands with this scenario
+```

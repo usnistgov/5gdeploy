@@ -150,7 +150,8 @@ function makeFilename(host: string): string {
   return `compose.${host.replaceAll(/\W/g, "_")}.yml`;
 }
 
-function makeDockerH(host: string): string {
+/** Make `docker` command with optional `-H` flag. */
+export function makeDockerH(host?: string): string {
   if (!host) {
     return "docker";
   }
