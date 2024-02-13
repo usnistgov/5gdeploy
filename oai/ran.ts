@@ -22,7 +22,7 @@ async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: NetDef.GNB): 
   compose.annotate(s, "cpus", 1);
   s.privileged = true;
 
-  const c = await oai_conf.loadTemplate<OAI.gnb.Config>("gnb.sa.band78.106prb.rfsim");
+  const c = await oai_conf.loadLibconf<OAI.gnb.Config>("gnb.sa.band78.106prb.rfsim");
   c.Active_gNBs = [gnb.name];
 
   assert(c.gNBs.length === 1);
@@ -77,7 +77,7 @@ async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscri
   compose.annotate(s, "ue_supi", sub.supi);
   s.privileged = true;
 
-  const c = await oai_conf.loadTemplate<OAI.ue.Config>("nrue.uicc");
+  const c = await oai_conf.loadLibconf<OAI.ue.Config>("nrue.uicc");
   c.uicc0 = {
     imsi: sub.supi,
     nmc_size: NetDef.splitPLMN(ctx.network.plmn).mnc.length,

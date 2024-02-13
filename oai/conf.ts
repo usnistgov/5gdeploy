@@ -16,8 +16,8 @@ export async function getTag(): Promise<string> {
   return (await file_io.readText(path.resolve(templatePath, "TAG"), { once: true })).trim();
 }
 
-/** Load OAI config from libconfig template. */
-export async function loadTemplate<T extends {}>(tpl: string): Promise<T & { save: () => Promise<string> }> {
+/** Load OAI config from libconfig template file. */
+export async function loadLibconf<T extends {}>(tpl: string): Promise<T & { save: () => Promise<string> }> {
   const subprocess = await execa("python3", [convertCommand, "conf2json", `${tpl}.conf`], {
     cwd: templatePath,
     stdin: "ignore",
@@ -28,13 +28,13 @@ export async function loadTemplate<T extends {}>(tpl: string): Promise<T & { sav
   Object.defineProperty(c, "save", {
     configurable: true,
     enumerable: false,
-    value: save,
+    value: saveLibconf,
   });
   return c;
 }
 
 /** Save OAI config `this` to libconfig string. */
-async function save(this: unknown): Promise<string> {
+async function saveLibconf(this: unknown): Promise<string> {
   const subprocess = await execa("python3", [convertCommand, "json2conf"], {
     input: JSON.stringify(this),
     stdout: "pipe",

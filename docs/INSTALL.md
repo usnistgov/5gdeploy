@@ -10,7 +10,7 @@ To setup a single-host deployment or the *primary* host of a multi-host deployme
 * Docker Engine
 * APT packages:
   * `httpie jq`: used in bash scripts
-  * `dumpcap`: for capturing traffic traces in scenarios
+  * `wireshark-common`: for capturing traffic traces with `dumpcap` in scenarios
   * `python3-libconf`: used by `oai/convert.py`
 * Snap packages:
   * `yq`: used in bash scripts
@@ -52,7 +52,7 @@ Logout and login again, so that your account has the necessary group memberships
 ## Install 5gdeploy and Build Docker Images
 
 This repository must be cloned at `~/5gdeploy`.
-Open5GCore proprietary repository should be cloend at `~/phoenix-repo`.
+Open5GCore proprietary repository should be cloned at `~/phoenix-repo`.
 Open source 5G implementations will be pulled from Docker registries or source code repositories.
 
 ```bash

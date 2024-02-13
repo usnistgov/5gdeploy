@@ -1,7 +1,29 @@
+"""
+This script converts between libconfig and JSON formats.
+
+libconfig has a distinction between an array and a list:
+
+- An array `[scalar,scalar]` is a sequence of scalar values, all of which must have the same type.
+  They are represented as a Python list.
+- A list `(value,value)` is a sequence of values of any type.
+  They are represented as a Python tuple.
+
+When converting to JSON, both become JSON arrays, and the type information is lost. To make the
+conversion roundtrip, this script tags libconfig arrays with `:dtype=a` and libconfig lists with
+`:dtype=l`. This only works for values enclosed within a libconfig group (i.e. Python dict or JSON
+object). The tag is represented as an additional property in the JSON object, with ":dtype"
+appended after the property name being described.
+
+When converting from JSON to libconfig, the same tags must exist for each JSON array within a JSON
+object. Otherwise, it is an error. Currently, array/list within a list is not supported.
+"""
+
+
 import json
-import libconf
 import sys
 import typing as T
+
+import libconf
 
 
 def tag_la(parent: dict[str, T.Any] | None, key: str, value: T.Any) -> T.Any:
