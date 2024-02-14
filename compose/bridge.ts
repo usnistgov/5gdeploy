@@ -59,20 +59,22 @@ function* buildVxlan(c: ComposeFile, net: string, ips: readonly string[], netInd
 
 function* parseEthDef(
     c: ComposeFile, net: string, tokens: readonly string[],
-): Iterable<[ct: string, op: "=" | "@", hostif: string]> {
+): Iterable<[ct: string, op: "=" | "@", hostif: string, vlan: number | undefined]> {
   const cts = new Set(Object.keys(c.services).filter((ct) => c.services[ct]!.networks[net]));
   for (const token of tokens) {
-    const m = /([=@])((?:[\da-f]{2}:){5}[\da-f]{2})$/i.exec(token);
+    const m = /([=@])((?:[\da-f]{2}:){5}[\da-f]{2})(\+vlan\d+)?$/i.exec(token);
     assert(m, `invalid parameter ${token}`);
     const op = m[1]! as "=" | "@";
     const hostif = m[2]!.toLowerCase();
     const pattern = token.slice(0, -m[0].length);
     const matched = minimatch.match(Array.from(cts), pattern);
+    const vlan = m[3] ? Number.parseInt(m[3].slice(5), 10) : undefined;
     assert(matched.length > 0, `${pattern} does not match any container on br-${net}`);
     assert(op === "@" || matched.length === 1, `${pattern} matches multiple containers (${
       matched.join(", ")}) on br-${net} reusing a physical interface`);
+    assert(vlan === undefined || (vlan >= 1 && vlan < 4095), "bad VLAN ID");
     for (const ct of matched) {
-      yield [ct, op, hostif];
+      yield [ct, op, hostif, vlan];
       cts.delete(ct);
     }
   }
@@ -83,33 +85,35 @@ function* parseEthDef(
 function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]): Iterable<string> {
   yield `msg Setting up Ethernet adapters for br-${net}`;
   const cidr = new Netmask(c.networks[net]!.ipam.config[0]!.subnet).bitmask;
-  for (const [ct, op, hostif] of parseEthDef(c, net, tokens)) {
+  for (const [ct, op, hostif, vlan] of parseEthDef(c, net, tokens)) {
     const ip = disconnectNetif(c, ct, net);
+    const vlanDesc = vlan ? ` VLAN ${vlan}` : "";
+    const vlanFlag = vlan ? `@${vlan}` : "";
 
     yield "I=0; while true; do";
     yield `  case $(docker inspect ${ct} --format='{{.State.Running}}' 2>/dev/null || echo none) in`;
-    yield "    false)";
+    yield "    false)"; // container exists but not started - wait
     yield "      I=$((I+1))";
     yield "      if [[ $I -eq 1 ]]; then";
     yield `        msg Waiting for container ${ct} to start`;
     yield "      fi";
     yield "      sleep 1 ;;";
-    yield "    true)";
+    yield "    true)"; // container exists and started - execute
     switch (op) {
       case "=": {
-        yield `      msg Using physical interface ${hostif} as ${ct}:${net}`;
-        yield `      pipework --direct-phys mac:${hostif} -i ${net} ${ct} ${ip}/${cidr}`;
+        yield `      msg Using physical interface ${hostif}${vlanDesc} as ${ct}:${net}`;
+        yield `      pipework --direct-phys mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${vlanFlag}`;
         break;
       }
       case "@": {
-        const macaddr = `52:00${hexPad(ip2long(ip), 8).replaceAll(/([\da-f]{2})/gi, ":$1")}`;
-        yield `      msg Using MACVLAN ${macaddr} on ${hostif} as ${ct}:${net}`;
-        yield `      pipework mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${macaddr.toLowerCase()}`;
+        const macaddr = `52:00${hexPad(ip2long(ip), 8).replaceAll(/([\da-f]{2})/gi, ":$1").toLowerCase()}`;
+        yield `      msg Using MACVLAN ${macaddr} on ${hostif}${vlanDesc} as ${ct}:${net}`;
+        yield `      pipework mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${macaddr} ${vlanFlag}`;
         break;
       }
     }
     yield "      break ;;";
-    yield "    *none)";
+    yield "    *none)"; // container does not exist (i.e. not on current host) - skip
     yield "      break ;;";
     yield "  esac";
     yield "done";

@@ -97,7 +97,7 @@ They can be created with command line flags like this:
 ```
 
 Notably, each bridge command lists two IPv4 addresses, one for each host participating in the bridge, regardless of how many network functions on a host would attach to the Docker network.
-The listed IPv4 addresses must be manually configured onto the host network interfaces before starting the Compose context.
+Prior to starting the scenario, you must manually configure the IP addresses onto host network interfaces and bring up those interfaces.
 In the IP firewall, you should allow UDP port 4789 for VXLAN communication.
 If you are using VMware virtual machines, it is advised to change TX offload settings on the network interfaces used by tunnel endpoints:
 
@@ -118,11 +118,18 @@ In the example diagram, there are one Ethernet bridge for N3 networks, shown in 
 It can be created with command line flags like this:
 
 ```text
---bridge=n3,eth,gnb0=02:00:00:03:00:10,gnb1=02:00:00:03:00:11,upf0=02:00:00:03:00:20,upf1=02:00:00:03:00:21
+--bridge='n3,eth,gnb0=02:00:00:03:00:10,gnb1=02:00:00:03:00:11,upf0=02:00:00:03:00:20+vlan3,upf1=02:00:00:03:00:21+vlan3'
 ```
 
-After "eth", each token should be a [minimatch](https://www.npmjs.com/package/minimatch)-compatible pattern, an operator (see below), and a host interface MAC address.
-The patterns must collectively match all containers originally attached to the Docker network.
+After "eth", each parameter consists of:
+
+1. A [minimatch](https://www.npmjs.com/package/minimatch)-compatible pattern that selects containers attached to the Docker network.
+   The patterns from all parameters in an `--bridge` flag must collectively match all containers originally attached to the Docker network.
+2. An operator (see below).
+3. A host interface MAC address.
+4. VLAN ID (optional).
+   This should be written as "+vlan" followed by an integer between 1 and 4094.
+
 The operator could be either `=` or `@`:
 
 * The `=` operator moves the host interface into the container.
@@ -136,7 +143,17 @@ The operator could be either `=` or `@`:
   * Currently this uses MACVLAN "bridge" mode, so that traffic between two containers on the same host interface is switched internally in the Ethernet adapter and does not appear on the external Ethernet switch.
 
 Bridge configuration scripts will locate the host interface and invoke [pipework](https://github.com/jpetazzo/pipework) to make the move.
-The specified host interface MAC address must exist on the host machine where you start the relevant network function, otherwise this procedure will fail (you will see the `bridge` container *Exited*).
+The specified host interface MAC address must exist on the host machine where you start the relevant network function.
+Otherwise, pipework will fail with error message "no host interface matched".
+
+When VLAN ID is specified, the host interface name should be no longer than 10 characters.
+pipework will append VLAN ID after the host interface name to form the VLAN interface name, which cannot exceed 15 characters.
+If this is violated, iproute2 will fail with error message "name not a valid ifname".
+
+Per initial testing, when VLAN ID is specified:
+
+* With `=` operator, each hostif + VLAN ID combination can only be used with a single container.
+* With `@` operator, pipework completes but the containers cannot communicate.
 
 ## Placement
 
