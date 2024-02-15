@@ -20,7 +20,6 @@ export async function ueransimRAN(ctx: NetDefComposeContext): Promise<void> {
       AMF_IPS: ctx.gatherIPs("amf", "n2").join(","),
       SLICES: ctx.netdef.nssai.join(","),
     });
-    s.cap_add.push("NET_ADMIN");
   }
 
   for (const [ct, sub] of compose.suggestUENames(ctx.netdef.listSubscribers({ expandCount: false }))) {

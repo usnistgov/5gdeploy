@@ -3,6 +3,7 @@ import path from "node:path";
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
+import type { ConditionalKeys } from "type-fest";
 
 import type { ComposeFile, ComposeNetif, ComposeNetwork, ComposeService } from "../types/mod.js";
 
@@ -95,9 +96,9 @@ export namespace defineNetwork {
  * If a service with same name already exists, it is not replaced.
  */
 export function defineService(c: ComposeFile, name: string, image: string): ComposeService {
-  let service = c.services[name];
-  if (service === undefined) {
-    service = {
+  let s = c.services[name];
+  if (s === undefined) {
+    s = {
       container_name: name,
       hostname: name,
       image: image,
@@ -114,33 +115,56 @@ export function defineService(c: ComposeFile, name: string, image: string): Comp
       },
       networks: {},
     };
+    attachServiceValidations(s);
+    c.services[name] = s;
+  }
+  return s;
+}
 
-    for (const key of ["sysctls", "environment", "networks"] as const satisfies ReadonlyArray<keyof ComposeService>) {
-      Object.defineProperty(service, key, {
-        enumerable: true,
-        writable: false,
-        value: service[key],
+function attachServiceValidations(s: ComposeService): void {
+  for (const key of [
+    "sysctls", "environment", "networks",
+  ] as ReadonlyArray<ConditionalKeys<ComposeService, Record<string, unknown>>>) {
+    Object.defineProperty(s, key, {
+      enumerable: true,
+      writable: false,
+      value: s[key],
+    });
+  }
+
+  for (const [key, uniq] of [
+    ["cap_add", true], ["devices", true], ["volumes", false],
+  ] as ReadonlyArray<[key: ConditionalKeys<ComposeService, unknown[]>, uniq: boolean]>) {
+    Object.defineProperty(s, key, {
+      enumerable: true,
+      writable: false,
+      value: s[key],
+    });
+    if (uniq) {
+      Object.defineProperty(s[key], "push", {
+        enumerable: false,
+        value: function<T>(this: T[], ...items: T[]): number {
+          return Array.prototype.push.apply(this, items.filter((item) => !this.includes(item)));
+        },
       });
     }
-
-    let networkMode: string | undefined;
-    Object.defineProperty(service, "network_mode", {
-      enumerable: true,
-      get() {
-        return networkMode;
-      },
-      set(value?: string) {
-        networkMode = value;
-        if (value) {
-          service!.hostname = "";
-          assert(Object.keys(service!.networks).length === 0,
-            "cannot set ComposeService.network_mode with non-empty ComposeService.networks");
-        }
-      },
-    });
-    c.services[name] = service;
   }
-  return service;
+
+  let networkMode: string | undefined;
+  Object.defineProperty(s, "network_mode", {
+    enumerable: true,
+    get() {
+      return networkMode;
+    },
+    set(value?: string) {
+      networkMode = value;
+      if (value) {
+        s.hostname = "";
+        assert(Object.keys(s.networks).length === 0,
+          "cannot set ComposeService.network_mode with non-empty ComposeService.networks");
+      }
+    },
+  });
 }
 
 /** Get service annotation. */
@@ -211,15 +235,15 @@ export function disconnectNetif(c: ComposeFile, ct: string, net: string): string
 }
 
 /**
- * Generate commands to rename netifs.
- *
- * @remarks
- * The container shall have `NET_ADMIN` capability.
+ * Generate commands to rename netifs to network names.
+ * @param s  - Compose service. NET_ADMIN capability is added.
  */
-export function* renameNetifs(service: ComposeService, {
+export function* renameNetifs(s: ComposeService, {
   pipeworkWait = false,
 }: renameNetifs.Options = {}): Iterable<string> {
-  for (const [net, { ipv4_address }] of Object.entries(service.networks)) {
+  s.cap_add.push("NET_ADMIN");
+
+  for (const [net, { ipv4_address }] of Object.entries(s.networks)) {
     yield `IFNAME=$(ip -o addr show to ${ipv4_address} | awk '{ print $2 }')`;
     yield "if [[ -z $IFNAME ]]; then";
     if (pipeworkWait) {
@@ -231,8 +255,7 @@ export function* renameNetifs(service: ComposeService, {
     yield `elif [[ $IFNAME != ${net} ]]; then`;
     yield `  msg Renaming netif $IFNAME with IPv4 ${ipv4_address} to ${net}`;
     yield "  ip link set dev $IFNAME down";
-    yield `  ip link set dev $IFNAME name ${net}`;
-    yield `  ip link set dev ${net} up`;
+    yield `  ip link set dev $IFNAME up name ${net}`;
     yield "fi";
   }
 
@@ -257,6 +280,7 @@ export namespace renameNetifs {
 /**
  * Generate commands to merge JSON/YAML configuration.
  * @param cfg - Config update object or mounted filename.
+ * @returns Shell commands.
  *
  * @remarks
  * This requires `yq` to be installed in the container.
@@ -299,7 +323,7 @@ export const scriptHead = [
 /**
  * Set commands on a service.
  * @param service - Compose service to edit.
- * @param commands - list of commands.
+ * @param commands - List of commands.
  * @param shell - Shell program. This should be set to `ash` for alpine based images.
  */
 export function setCommands(service: ComposeService, commands: Iterable<string>, shell = "bash"): void {

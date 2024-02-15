@@ -27,10 +27,10 @@ export interface ComposeService {
   tty?: boolean;
   stop_signal?: `SIG${string}`;
   privileged?: boolean;
-  cap_add: string[];
-  devices: string[];
+  readonly cap_add: string[];
+  readonly devices: string[];
   readonly sysctls: Record<string, string | number>;
-  volumes: ComposeVolume[];
+  readonly volumes: ComposeVolume[];
   readonly environment: Record<string, string>;
   pid?: "host";
   network_mode?: "host" | "none" | `service:${string}`;

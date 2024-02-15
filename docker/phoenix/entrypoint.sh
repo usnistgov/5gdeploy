@@ -18,8 +18,7 @@ awk -vCT=$CT 'NF==4 && $1==CT { print $2, $3 }' ip-map | while read IFNAME IP; d
   if [[ -n $IFOLDNAME ]]; then
     msg Renaming $IFOLDNAME to $IFNAME
     ip link set dev $IFOLDNAME down
-    ip link set dev $IFOLDNAME name $IFNAME
-    ip link set dev $IFNAME up
+    ip link set dev $IFOLDNAME up name $IFNAME
   else
     msg Waiting for $IFNAME to appear
     pipework --wait -i $IFNAME

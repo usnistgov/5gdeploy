@@ -51,7 +51,6 @@ export function defineDNServices(ctx: NetDefComposeContext): void {
       continue;
     }
     const s = ctx.defineService(makeDNServiceName(ctx, dn), dnDockerImage, ["mgmt", "n6"]);
-    s.cap_add.push("NET_ADMIN");
     compose.annotate(s, "cpus", nWorkers);
     compose.annotate(s, "dn", `${dn.snssai}_${dn.dnn}`);
   }

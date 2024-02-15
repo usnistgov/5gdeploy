@@ -414,7 +414,6 @@ export async function f5UP(ctx: NetDefComposeContext): Promise<void> {
       ...NetDefDN.makeUPFRoutes(ctx, peers),
       "exec ./upf -c ./config/upfcfg.yaml",
     ]);
-    s.cap_add.push("NET_ADMIN");
 
     const c = await f5_conf.loadTemplate("upfcfg") as F5.upf.Root;
     c.pfcp.addr = s.networks.n4!.ipv4_address;
