@@ -17,10 +17,28 @@ import type { NetworkFunction } from "./nf.js";
 
 export const phoenixOptions = {
   "phoenix-upf-workers": {
-    default: 2,
+    default: 3,
     desc: "number of worker threads in UPF",
     group: "phoenix",
     type: "number",
+  },
+  "phoenix-upf-single-worker-n3": {
+    default: true,
+    desc: "set N3 interface to single_thread mode",
+    group: "phoenix",
+    type: "boolean",
+  },
+  "phoenix-upf-single-worker-n9": {
+    default: false,
+    desc: "set N9 interface to single_thread mode",
+    group: "phoenix",
+    type: "boolean",
+  },
+  "phoenix-upf-single-worker-n6": {
+    default: false,
+    desc: "set N6 interface to single_thread mode",
+    group: "phoenix",
+    type: "boolean",
   },
   "phoenix-upf-xdp": {
     default: false,
@@ -419,6 +437,17 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         assert(config.data_plane_mode === "integrated");
         assert(config.DataPlane.xdp);
 
+        let nThreadPoolWorkers = nWorkers;
+        let needThreadPool = false;
+        const getInterfaceMode = (intf: "n3" | "n9" | "n6"): PH.pfcp.Interface["mode"] => {
+          if (this.opts[`phoenix-upf-single-worker-${intf}`]) {
+            --nThreadPoolWorkers;
+            return "single_thread";
+          }
+          needThreadPool = true;
+          return "thread_pool";
+        };
+
         config.ethernet_session_identifier = peers.N6Ethernet[0]?.dnn;
         config.DataPlane.threads = nWorkers;
         config.DataPlane.interfaces = [];
@@ -428,7 +457,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
             type: "n3_n9",
             name: "n3",
             bind_ip: IPMAP.formatEnv(ct, "n3"),
-            mode: "thread_pool",
+            mode: getInterfaceMode("n3"),
           });
           config.DataPlane.xdp.interfaces.push({
             type: "n3_n9",
@@ -440,7 +469,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
             type: "n3_n9",
             name: "n9",
             bind_ip: IPMAP.formatEnv(ct, "n9"),
-            mode: "thread_pool",
+            mode: getInterfaceMode("n9"),
           });
           config.DataPlane.xdp.interfaces.push({
             type: "n3_n9",
@@ -452,7 +481,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
             type: "n6_l3",
             name: "n6_tun",
             bind_ip: IPMAP.formatEnv(ct, "n6"),
-            mode: "thread_pool",
+            mode: getInterfaceMode("n6"),
           });
           config.DataPlane.xdp.interfaces.push({
             type: "n6_l3",
@@ -463,15 +492,18 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
           config.DataPlane.interfaces.push({
             type: "n6_l2",
             name: "n6_tap",
-            mode: "thread_pool",
+            mode: getInterfaceMode("n6"),
           });
         }
+
         assert(config.DataPlane.interfaces.length <= 8, "pfcp.so allows up to 8 interfaces");
         if (this.opts["phoenix-upf-xdp"]) {
           s.cap_add.push("BPF", "SYS_ADMIN");
         } else {
           delete config.DataPlane.xdp;
         }
+        assert(needThreadPool ? nThreadPoolWorkers > 0 : nThreadPoolWorkers >= 0,
+          "insufficient thread_pool workers after satisfying single_thread interfaces");
 
         config.hacks.qfi = 1;
       });
