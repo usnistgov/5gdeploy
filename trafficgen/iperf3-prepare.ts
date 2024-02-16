@@ -121,9 +121,11 @@ await pipeline(
       ...flags,
     ];
 
+    const dir = flags.includes("-R") ? "<" : ">";
     for (const s of [server, client]) {
       compose.annotate(s, "iperf3_dn", `${snssai}_${dnn}`);
       compose.annotate(s, "iperf3_ue", supi);
+      compose.annotate(s, "iperf3_dir", dir);
       compose.annotate(s, "iperf3_port", port);
     }
   }),
@@ -133,7 +135,10 @@ await pipeline(
 await file_io.write(path.join(args.dir, "compose.iperf3.yml"), output);
 
 function* makeScript(): Iterable<string> {
+  yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
+  yield "COMPOSE_CTX=$PWD";
   yield "ACT=${1:-}"; // eslint-disable-line no-template-curly-in-string
+  yield "[[ -z $ACT ]] || shift";
 
   yield "if [[ -z $ACT ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
@@ -179,6 +184,14 @@ function* makeScript(): Iterable<string> {
     yield `  with_retry ${dockerH} rm -f ${names.join(" ")}`;
   }
   yield "fi";
+
+  yield "if [[ -z $ACT ]] || [[ $ACT == stats ]]; then";
+  yield "  msg Gathering iperf3 statistics table to iperf3.tsv";
+  yield `  cd ${path.join(import.meta.dirname, "..")}`;
+  yield "  $(corepack pnpm bin)/tsx trafficgen/iperf3-stats.ts --dir=$COMPOSE_CTX";
+  yield "  cd $COMPOSE_CTX";
+  yield "  column -t <iperf3.tsv";
+  yield "fi";
 }
 
 await file_io.write(path.join(args.dir, "iperf3.sh"), [
@@ -186,3 +199,5 @@ await file_io.write(path.join(args.dir, "iperf3.sh"), [
   ...compose.scriptHead,
   ...makeScript(),
 ].join("\n"));
+
+process.stdout.write(`${Object.keys(output.services).length / 2}\n`);

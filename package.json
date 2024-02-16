@@ -24,6 +24,7 @@
     "@types/sql-tagged-template-literal": "^1.2.2",
     "@types/yargs": "^17.0.32",
     "ajv": "^8.12.0",
+    "csv-stringify": "^6.4.5",
     "dockerfilelint": "^1.8.0",
     "dockerode": "^4.0.2",
     "envfile": "^7.1.0",

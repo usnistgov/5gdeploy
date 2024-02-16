@@ -186,7 +186,7 @@ const scriptHead = [
   "cd \"$(dirname \"${BASH_SOURCE[0]}\")\"", // eslint-disable-line no-template-curly-in-string
   "COMPOSE_CTX=$PWD",
   "ACT=${1:-}", // eslint-disable-line no-template-curly-in-string
-  "shift",
+  "[[ -z $ACT ]] || shift",
 ];
 
 const scriptTail = [
@@ -221,7 +221,7 @@ function* makeScript(hostServices: Iterable<[host: string, services: ComposeFile
   yield* scriptHead;
 
   yield "if [[ $ACT == at ]]; then";
-  yield "  case ${2:-} in"; // eslint-disable-line no-template-curly-in-string
+  yield "  case ${1:-} in"; // eslint-disable-line no-template-curly-in-string
   for (const [host, services] of hostServices) {
     yield `    ${Object.keys(services).join("|")}) echo ${makeDockerH(host)};;`;
   }

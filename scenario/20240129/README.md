@@ -202,11 +202,6 @@ cd ~/compose/20240129
 ```
 
 This script gathers information about currently connected PDU sessions and prepares an iperf3 flow for each PDU session between UE and Data Network.
-Its output includes:
-
-* Compose file at `~/compose/20240129/compose.iperf3.yml`, which defines necessary iperf3 containers
-* bash script at `~/compose/20240129/iperf3.sh`, which runs iperf3 containers and gathers statistics in JSON format
-
 The most important command line flag is `--flow` (repeatable).
 Each `--flow` value consists of:
 
@@ -217,14 +212,17 @@ Each `--flow` value consists of:
 Each PDU session whose DNN matches the pattern would have an iperf3 flow with the specified flags.
 If the same PDU session matches multiple patterns in different `--flow` flags, multiple iperf3 flows would be created for the same PDU session.
 
+The output of this script includes:
+
+* Compose file at `~/compose/20240129/compose.iperf3.yml`, which defines necessary iperf3 containers
+* bash script at `~/compose/20240129/iperf3.sh`, which runs iperf3 containers and gathers statistics in JSON format
+
 After generation, you can run the iperf3 flows and analyze its results as follows:
 
 ```bash
 cd ~/compose/20240129
 ./iperf3.sh
-
-alias 5giperf3='~/5gdeploy/scenario/20230817/iperf3.sh'
-5giperf3 each iperf3/*.json
-5giperf3 total iperf3/*.json
-# note: do not use other 5giperf3 subcommands with this scenario
 ```
+
+This command runs the pipeline and prints statistics at last.
+These statistics are also saved in `iperf3.tsv`.
