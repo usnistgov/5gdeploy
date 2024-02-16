@@ -64,7 +64,7 @@ class F5CPBuilder {
     function* generateCommands() {
       yield* compose.scriptHead;
       yield "msg Waiting for WebUI to become ready";
-      yield `while ! nc -z ${serverIP} ${serverPort}; do sleep 0.2; done`;
+      yield `with_retry nc -z ${serverIP} ${serverPort}`;
       yield "sleep 1";
       for (const sub of netdef.listSubscribers({ expandCount: false })) {
         const smData = new DefaultMap<N.SNSSAI, Record<string, W.DnnConfiguration>>(() => ({}));

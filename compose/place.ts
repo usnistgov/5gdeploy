@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import assert from "minimalistic-assert";
 import { minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
@@ -151,19 +153,16 @@ function makeFilename(host: string): string {
 }
 
 /** Make `docker` command with optional `-H` flag. */
-export function makeDockerH(host?: string): string {
+export function makeDockerH(host?: string | ComposeService): string {
+  if (typeof (host as ComposeService | undefined)?.container_name === "string") {
+    host = annotate(host as ComposeService, "host");
+  }
+
   if (!host) {
     return "docker";
   }
   return `docker -H ssh://${host}`;
 }
-
-const scriptHead = [
-  "#!/bin/bash",
-  ...baseScriptHead,
-  "cd \"$(dirname \"${BASH_SOURCE[0]}\")\"", // eslint-disable-line no-template-curly-in-string
-  "ACT=${1:-}", // eslint-disable-line no-template-curly-in-string
-];
 
 const scriptUsage = `Usage:
   ./compose.sh up
@@ -174,17 +173,48 @@ const scriptUsage = `Usage:
     Run Docker command CMD on the host machine of container CT.
   ./compose.sh create
     Create scenario containers to prepare for traffic capture.
+  ./compose.sh phoenix-register
+    Register Open5GCore UEs.
+  ./compose.sh iperf3
+    Prepare iperf3.sh traffic generation script.
+    The scenario must be started and the PDU sessions must be established.
 `;
+
+const scriptHead = [
+  "#!/bin/bash",
+  ...baseScriptHead,
+  "cd \"$(dirname \"${BASH_SOURCE[0]}\")\"", // eslint-disable-line no-template-curly-in-string
+  "COMPOSE_CTX=$PWD",
+  "ACT=${1:-}", // eslint-disable-line no-template-curly-in-string
+  "shift",
+];
+
+const scriptTail = [
+  "elif [[ $ACT == phoenix-register ]]; then",
+  `  cd ${path.join(import.meta.dirname, "..")}`,
+  "  for UECT in $(docker ps --format='{{.Names}}' | grep '^ue'); do",
+  "    corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn='*'",
+  "  done",
+  "elif [[ $ACT == iperf3 ]]; then",
+  `  cd ${path.join(import.meta.dirname, "..")}`,
+  "  $(corepack pnpm bin)/tsx trafficgen/iperf3-prepare.ts --dir=$COMPOSE_CTX \"$@\"",
+  "else",
+  `  echo ${shlex.quote(scriptUsage)}`,
+  "  exit 1",
+  "fi",
+];
 
 const minimalScript = [
   ...scriptHead,
-  "case $ACT in",
-  "  at) echo docker;;",
-  "  create) docker compose create;;",
-  "  up) docker compose up -d;;",
-  "  down) docker compose down --remove-orphans;;",
-  `  *) echo ${shlex.quote(scriptUsage)}; exit 1;;`,
-  "esac",
+  "if [[ $ACT == at ]]; then",
+  "  echo docker",
+  "elif [[ $ACT == create ]]; then",
+  "  docker compose create",
+  "elif [[ $ACT == up ]]; then",
+  "  docker compose up -d",
+  "elif [[ $ACT == down ]]; then",
+  "  docker compose down --remove-orphans",
+  ...scriptTail,
 ].join("\n");
 
 function* makeScript(hostServices: Iterable<[host: string, services: ComposeFile["services"]]>, split: boolean): Iterable<string> {
@@ -214,8 +244,45 @@ function* makeScript(hostServices: Iterable<[host: string, services: ComposeFile
     }
   }
 
-  yield "else";
-  yield `  echo ${shlex.quote(scriptUsage)}`;
-  yield "  exit 1";
-  yield "fi";
+  yield* scriptTail;
+}
+
+/**
+ * Gather services per host.
+ * @param c - Compose file.
+ * @param filter - Filter for container names.
+ */
+export function* classifyByHost(c: ComposeFile, filter = /^.*$/): Iterable<classifyByHost.Result> {
+  const services = Object.values(c.services).filter(({ container_name }) => filter.test(container_name));
+  const byHost = new DefaultMap<string, ComposeService[]>(() => []);
+  for (const s of services) {
+    const host = annotate(s, "host");
+    if (host === undefined) {
+      continue;
+    }
+    byHost.get(host).push(s);
+  }
+  for (const [host, services] of byHost) {
+    yield {
+      host,
+      hostDesc: host || "PRIMARY",
+      dockerH: makeDockerH(host),
+      services,
+      names: services.map((s) => s.container_name),
+    };
+  }
+}
+export namespace classifyByHost {
+  export interface Result {
+    /** Host name, "" for primary. */
+    host: string;
+    /** Host description, "PRIMARY" for primary. */
+    hostDesc: string;
+    /** `docker -H` command line. */
+    dockerH: string;
+    /** Services. */
+    services: readonly ComposeService[];
+    /** Container names. */
+    names: readonly string[];
+  }
 }

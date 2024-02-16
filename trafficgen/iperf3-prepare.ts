@@ -3,15 +3,14 @@ import path from "node:path";
 import type { LinkWithAddressInfo } from "iproute";
 import assert from "minimalistic-assert";
 import { Minimatch } from "minimatch";
-import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
 import { consume, flatTransform, pipeline, tap, transform } from "streaming-iterables";
 
-import * as compose from "../../compose/mod.js";
-import { NetDef } from "../../netdef/netdef.ts";
-import type { ComposeFile, ComposeService, N } from "../../types/mod.ts";
-import { dockerode, file_io, Yargs } from "../../util/mod.js";
+import * as compose from "../compose/mod.js";
+import { NetDef } from "../netdef/netdef.ts";
+import type { ComposeFile, N } from "../types/mod.ts";
+import { dockerode, file_io, Yargs } from "../util/mod.js";
 
 const args = Yargs()
   .option("dir", {
@@ -20,11 +19,22 @@ const args = Yargs()
     type: "string",
   })
   .option("netdef", {
-    defaultDescription: "netdef.json in Compose context",
+    defaultDescription: "(--dir)/netdef.json",
     desc: "NetDef filename",
     type: "string",
   })
   .option("flow", {
+    coerce(lines: readonly string[]): Array<[pattern: Minimatch, flags: readonly string[]]> {
+      assert(Array.isArray(lines));
+      return Array.from(lines, (line) => {
+        const tokens = line.split("=");
+        assert(tokens.length === 2, `bad --flow ${line}`);
+        return [
+          new Minimatch(tokens[0].trim()),
+          shlex.split(tokens[1].trim()),
+        ];
+      });
+    },
     demandOption: true,
     desc: "iperf3 flags for PDU sessions",
     nargs: 1,
@@ -33,18 +43,6 @@ const args = Yargs()
   })
   .parseSync();
 args.netdef ??= path.join(args.dir, "netdef.json");
-
-const iperf3flows = Array.from<string, [pattern: Minimatch, flags: readonly string[]]>(
-  args.flow,
-  (line) => {
-    const index = line.indexOf("=");
-    assert(index >= 1, `invalid --flags ${line}`);
-    return [
-      new Minimatch(line.slice(0, index)),
-      shlex.split(line.slice(index + 1)),
-    ];
-  },
-);
 
 const c = await file_io.readYAML(path.join(args.dir, "compose.yml")) as ComposeFile;
 const netdef = new NetDef(await file_io.readJSON(args.netdef) as N.Network);
@@ -89,14 +87,14 @@ await pipeline(
   }),
   flatTransform(16, function*(ctx) {
     const { dn: { dnn } } = ctx;
-    const flagsTuple = iperf3flows.filter(([pattern]) => pattern.match(dnn));
+    const flagsTuple = args.flow.filter(([pattern]) => pattern.match(dnn));
     for (const [, flags] of flagsTuple) {
       yield { ...ctx, flags };
     }
   }),
   tap((ctx) => {
     const { sub: { supi }, ueService, ueHost, dn: { snssai, dnn }, dnHost, dnService, dnIP, pduIP, flags } = ctx;
-    const port = ++nextPort;
+    const port = nextPort++;
     const server = compose.defineService(output, `iperf3_${port}_s`, "networkstatic/iperf3");
     compose.annotate(server, "host", dnHost);
     server.cpuset = dnService.cpuset;
@@ -134,60 +132,53 @@ await pipeline(
 
 await file_io.write(path.join(args.dir, "compose.iperf3.yml"), output);
 
-function* listContainersByHost(suffix: string): Iterable<[host: string, docker: string, cts: readonly string[]]> {
-  const services = Object.values(output.services).filter((s) => s.container_name.endsWith(suffix));
-  const byHost = new DefaultMap<string, ComposeService[]>(() => []);
-  for (const s of services) {
-    byHost.get(compose.annotate(s, "host")!).push(s);
-  }
-  for (const [host, services] of byHost) {
-    yield [
-      host || "PRIMARY",
-      compose.makeDockerH(host),
-      services.map((s) => s.container_name),
-    ];
-  }
-}
-
-function withRetry(cmd: string): string {
-  return `while ! ${cmd}; do sleep 0.1; done`;
-}
-
 function* makeScript(): Iterable<string> {
-  for (const [host, docker, cts] of listContainersByHost("")) {
-    yield `msg Deleting old iperf3 servers and clients on ${host}`;
-    yield withRetry(`${docker} rm -f ${cts.join(" ")}`);
-  }
+  yield "ACT=${1:-}"; // eslint-disable-line no-template-curly-in-string
 
-  for (const [host, docker, cts] of listContainersByHost("_s")) {
-    yield `msg Starting iperf3 servers on ${host}`;
-    yield withRetry(`${docker} compose -f compose.yml -f compose.iperf3.yml up -d ${cts.join(" ")}`);
+  yield "if [[ -z $ACT ]]; then";
+  for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
+    yield `  msg Deleting old iperf3 servers and clients on ${hostDesc}`;
+    yield `  with_retry ${dockerH} rm -f ${names.join(" ")}`;
   }
-  yield "sleep 5";
-  for (const [host, docker, cts] of listContainersByHost("_c")) {
-    yield `msg Starting iperf3 clients on ${host}`;
-    yield withRetry(`${docker} compose -f compose.yml -f compose.iperf3.yml up -d ${cts.join(" ")}`);
-  }
+  yield "fi";
 
-  yield "msg Waiting for iperf3 clients to finish";
-  for (const [, docker, cts] of listContainersByHost("_c")) {
-    for (const ct of cts) {
-      yield `${docker} wait ${ct}`;
-    }
+  yield "if [[ -z $ACT ]] || [[ $ACT == servers ]]; then";
+  for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, /_s$/)) {
+    yield `  msg Starting iperf3 servers on ${hostDesc}`;
+    yield `  with_retry ${dockerH} compose -f compose.yml -f compose.iperf3.yml up -d ${names.join(" ")}`;
   }
+  yield "  sleep 5";
+  yield "fi";
 
-  yield "msg Gathering iperf3 statistics to 'iperf3/*.json'";
-  yield "mkdir -p iperf3/";
-  for (const [, docker, cts] of listContainersByHost("_c")) {
-    for (const ct of cts) {
-      yield `${docker} logs ${ct} | jq -s .[-1] >iperf3/${ct.slice(7)}.json`;
-    }
+  yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
+  for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, /_c$/)) {
+    yield `  msg Starting iperf3 clients on ${hostDesc}`;
+    yield `  with_retry ${dockerH} compose -f compose.yml -f compose.iperf3.yml up -d ${names.join(" ")}`;
   }
+  yield "fi";
 
-  for (const [host, docker, cts] of listContainersByHost("")) {
-    yield `msg Deleting iperf3 servers and clients on ${host}`;
-    yield withRetry(`${docker} rm -f ${cts.join(" ")}`);
+  yield "if [[ -z $ACT ]] || [[ $ACT == wait ]]; then";
+  yield "  msg Waiting for iperf3 clients to finish";
+  for (const s of Object.values(output.services).filter((s) => s.container_name.endsWith("_c"))) {
+    yield `  ${compose.makeDockerH(s)} wait ${s.container_name}`;
   }
+  yield "fi";
+
+  yield "if [[ -z $ACT ]] || [[ $ACT == collect ]]; then";
+  yield "  msg Gathering iperf3 statistics to 'iperf3/*.json'";
+  yield "  mkdir -p iperf3/";
+  for (const s of Object.values(output.services).filter((s) => s.container_name.endsWith("_c"))) {
+    const ct = s.container_name;
+    yield `  ${compose.makeDockerH(s)} logs ${ct} | jq -s .[-1] >iperf3/${ct.slice(7)}.json`;
+  }
+  yield "fi";
+
+  yield "if [[ -z $ACT ]] || [[ $ACT == stop ]]; then";
+  for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
+    yield `  msg Deleting iperf3 servers and clients on ${hostDesc}`;
+    yield `  with_retry ${dockerH} rm -f ${names.join(" ")}`;
+  }
+  yield "fi";
 }
 
 await file_io.write(path.join(args.dir, "iperf3.sh"), [

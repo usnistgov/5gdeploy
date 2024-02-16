@@ -84,7 +84,16 @@ export function defineNetwork(c: ComposeFile, name: string, subnet: string, {
 }
 export namespace defineNetwork {
   export interface Options {
+    /**
+     * Whether to enable IPv4 NAT, which allows Internet access.
+     * @defaultValue false
+     */
     wantNAT?: boolean;
+
+    /**
+     * Network interface MTU.
+     * @defaultValue 1500
+     */
     mtu?: number;
   }
 }
@@ -183,7 +192,7 @@ export function annotate(s: ComposeService, key: string, value?: string | number
   return s;
 }
 
-/** Find a service with annotation matching a predicate. */
+/** Find a service whose annotation matching a predicate. */
 export function findByAnnotation(
     c: ComposeFile, key: string,
     predicate: string | number | ((value: string) => boolean),
@@ -313,11 +322,12 @@ export namespace mergeConfigFile {
   }
 }
 
-/** Shell script heading with `msg` and `die` functions. */
+/** Shell script heading with common shell functions. */
 export const scriptHead = [
   "set -euo pipefail",
   "msg() { echo -ne \"\\e[35m[5gdeploy] \\e[94m\"; echo -n \"$*\"; echo -e \"\\e[0m\"; }",
   "die() { msg \"$*\"; exit 1; }",
+  "with_retry() { while ! \"$@\"; do sleep 0.2; done }",
 ];
 
 /**

@@ -194,16 +194,14 @@ This is because there should be exactly one UE attached to each gNB that has a P
 
 ### iperf3
 
-Prepare iperf3 flows:
+After UEs have started and PDU sessions have been established, prepare iperf3 flows:
 
 ```bash
-cd ~/5gdeploy/scenario
-$(corepack pnpm bin)/tsx 20240129/iperf3.ts --dir=$(readlink -f ~/compose/20240129) \
-  --flow='*= -t 60 -u -b 10M' --flow='*= -t 60 -u -b 10M -R'
+cd ~/compose/20240129
+./compose.sh iperf3 --flow='* = -t 60 -u -b 10M' --flow='* = -t 60 -u -b 10M -R'
 ```
 
-You can only run `20240129/iperf3.ts` script after the UEs have started and PDU sessions have been established.
-The script gathers information about currently connected PDU sessions and prepares an iperf3 flow for each PDU session between UE and Data Network.
+This script gathers information about currently connected PDU sessions and prepares an iperf3 flow for each PDU session between UE and Data Network.
 Its output includes:
 
 * Compose file at `~/compose/20240129/compose.iperf3.yml`, which defines necessary iperf3 containers
