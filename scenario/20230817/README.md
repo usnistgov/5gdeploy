@@ -6,7 +6,9 @@ There are three slices and three Data Networks:
 
 * sst=1, sd=0x000000, dnn=internet: generic cellphone, `10.1.0.0/16`.
 * sst=140, sd=0x000000, dnn=vcam: remote driving camera stream, `10.140.0.0/16`.
+  * `+sst4` command line flag changes to sst=4.
 * sst=141, sd=0x000000, dnn=vctl: remote driving control stream, `10.141.0.0/16`.
+  * `+sst4` command line flag changes to sst=4.
 
 Each slice is served by a dedicated UPF.
 All control plane network functions are shared.
@@ -23,13 +25,16 @@ Generate Compose file:
 ```bash
 cd ~/5gdeploy/scenario
 ./generate.sh 20230817 --ran=ueransim
-# --ran=ueransim is required.
-# Open5GCore gNB simulator allows up to 2 slices so it is incompatible.
-#
-# Add --up=free5gc to select free5GC UPF instead of Open5GCore UPF.
 
 # adjust gNB and UE quantities
 ./generate.sh 20230817 +gnbs=2 +phones=48 +vehicles=12 --ran=ueransim
+```
+
+Open5GCore gNB simulator allows up to 2 slices so that it is incompatible with this scenario that has 3 slices.
+If you want to run with Open5GCore gNB simulator, add `+sst4` flag to change SSTs:
+
+```bash
+./generate.sh 20230817 +sst4 --ran=phoenix
 ```
 
 The Compose context is created at `~/compose/20230817`.
@@ -86,4 +91,4 @@ MAC_N3_UPF141=02:00:00:03:00:05
   --bridge=n3,eth,gnb0=$MAC_N3_GNB0,gnb1=$MAC_N3_GNB1,upf1=$MAC_N3_UPF1,upf140=$MAC_N3_UPF140,upf141=$MAC_N3_UPF141
 ```
 
-See [netdef-compose READMD](../../netdef-compose/README.md) for more details.
+See [multi-host](../../docs/multi-host.md) for more details.
