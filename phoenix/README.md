@@ -37,8 +37,6 @@ You can change them via `--phoenix-upf-single-worker-n3|n9|n6` flags.
 
 ## RAN Options
 
-This package adds several phoenix-specific options to the **netdef-compose** command.
-
 `--phoenix-gnb-workers` specifies number of worker threads in each gNB.
 The default is 2 worker threads.
 This also determines how many dedicated CPU cores are requested for the gNB, when used with [CPU isolation](../docs/multi-host.md) feature.

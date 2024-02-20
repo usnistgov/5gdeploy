@@ -121,7 +121,7 @@ await pipeline(
       ...flags,
     ];
 
-    const dir = flags.includes("-R") ? "<" : ">";
+    const dir = flags.includes("-R") ? ">" : "<";
     for (const s of [server, client]) {
       compose.annotate(s, "iperf3_dn", `${snssai}_${dnn}`);
       compose.annotate(s, "iperf3_ue", supi);

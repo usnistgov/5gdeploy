@@ -27,7 +27,7 @@ corepack pnpm netdef-compose --netdef ~/netdef.json --out ~/compose/example \
 ```
 
 The default combination is `--cp=phoenix --up=phoenix --ran=phoenix` (subject to change).
-If you installed 5gdeploy with `NOPHOENIX=1` environ (Open5GCore disabled), you must explicitly choose other 5G implementations or the generation will fail.
+If you installed 5gdeploy with `NOPHOENIX=1` environ (Open5GCore disabled), you must explicitly choose other 5G implementations.
 
 Due to incompatibilities in 5G implementations, not every combinations will work.
 These combinations are verified to be compatible:

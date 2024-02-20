@@ -175,7 +175,7 @@ const scriptUsage = `Usage:
     Create scenario containers to prepare for traffic capture.
   ./compose.sh phoenix-register
     Register Open5GCore UEs.
-  ./compose.sh iperf3
+  ./compose.sh iperf3 FLAGS
     Prepare iperf3.sh traffic generation script.
     The scenario must be started and the PDU sessions must be established.
 `;
