@@ -73,7 +73,8 @@ await pipeline(
       const dnService = compose.findByAnnotation(c, "dn", `${dn.snssai}_${dn.dnn}`);
       assert(dnService, `DN container for ${dn.dnn} not found`);
       const dnHost = compose.annotate(dnService, "host") ?? "";
-      const dnIP = dnService.networks.n6!.ipv4_address;
+      const dnIP = compose.annotate(dnService, "ip_n6");
+      assert(dnIP !== undefined);
 
       const pduIP = ueIPs.flatMap((link) => {
         const addr = link.addr_info.find((addr) => addr.family === "inet" && dnSubnet.contains(addr.local));

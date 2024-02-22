@@ -214,14 +214,15 @@ export function findByAnnotation(
 
 /** Add a netif to a service. */
 export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string): ComposeNetif {
-  const service = c.services[ct];
-  assert(service, `service ${ct} missing`);
+  const s = c.services[ct];
+  assert(s, `service ${ct} missing`);
   const network = c.networks[net];
   assert(network, `network ${net} missing`);
   const subnet = new Netmask(network.ipam.config[0]?.subnet ?? "255.255.255.255/32");
   assert(subnet.contains(ip), `network ${net} subnet ${subnet} does not contain IP ${ip}`);
   const netif: ComposeNetif = { ipv4_address: ip };
-  service.networks[net] = netif;
+  s.networks[net] = netif;
+  annotate(s, `ip_${net}`, ip);
   return netif;
 }
 
