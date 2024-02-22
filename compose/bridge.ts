@@ -36,13 +36,16 @@ function* buildVxlan(c: ComposeFile, net: string, ips: readonly string[], netInd
     yield `  SELFIP=${ip}`;
     yield "fi";
   }
-  yield `if [[ -z $SELF ]]; then die "This host is not part of the bridge. Did you assign ${ips.join(" or ")} to a host netif?"; fi`;
+  yield "if [[ -z $SELF ]]; then";
+  yield `  msg "This host is not part of br-${net}. If this is unexpected, assign ${ips.join(" or ")} to a host netif."`;
+  yield "  SELF=-1";
+  yield "fi";
 
   // Unicast VXLAN tunnels are created between first host (SELF=0) and each subsequent host.
   // VNI= 100000*netIndex + 1000*MIN(SELF,PEER) + 1*MAX(SELF,PEER)
   for (const [i, ip] of ips.entries()) {
     const netif = `vx-${net}-${i}`;
-    yield `if [[ $SELF -ne ${i} ]] && ( [[ $SELF -eq 0 ]] || [[ ${i} -eq 0 ]] ); then`;
+    yield `if [[ $SELF -ge 0 ]] && [[ $SELF -ne ${i} ]] && ( [[ $SELF -eq 0 ]] || [[ ${i} -eq 0 ]] ); then`;
     yield `  if [[ $SELF -lt ${i} ]]; then`;
     yield `    VNI=$((${1000000 * netIndex + i} + 1000 * SELF))`;
     yield "  else";
