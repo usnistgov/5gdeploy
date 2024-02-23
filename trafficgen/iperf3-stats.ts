@@ -40,31 +40,33 @@ const table = await pipeline(
       };
       const { sum, cpu_utilization_percent: cpu } = report.end;
       return [
-        port,
         dn,
-        sum.sender ? ">" : "<",
+        dir,
         ue,
+        port,
         sum.sender ? cpu.host_total : cpu.remote_total,
         sum.sender ? cpu.remote_total : cpu.host_total,
         sum.bits_per_second / 1e6,
         sum.bits_per_second * (1 - sum.lost_percent / 100) / 1e6,
       ];
     } catch {
-      return [port, dn, dir, ue, Number.NaN, Number.NaN, Number.NaN, Number.NaN];
+      return [dn, dir, ue, port, Number.NaN, Number.NaN, Number.NaN, Number.NaN];
     }
   }),
   collect,
 );
-table.sort(([aFlow, aDN, aDir], [bFlow, bDN, bDir]) => `${aDN}|${aDir}|${aFlow}`.localeCompare(`${bDN}|${bDir}|${bFlow}`));
+table.sort((a, b) => a.slice(0, 4).join(",").localeCompare(b.slice(0, 4).join(",")));
 
 const sums = new DefaultMap<string, [number, string, string]>(
   (key: string) => [0, ...key.split("|")] as [number, string, string],
 );
-for (const [,dn, dir,,,,,recv] of table) { // eslint-disable-line unicorn/no-unreadable-array-destructuring
+for (const row of table) {
+  const [dn, dir] = row;
+  const recv = row.at(-1);
   sums.get(`${dir}|${dn}`)[0] += recv as number;
 }
 table.push(...Array.from(sums.values(),
-  ([value, dir, dn]) => ["*", dn, dir, "TOTAL", "_", "_", "_", value]),
+  ([value, dir, dn]) => [dn, dir, "TOTAL", "*", "_", "_", "_", value]),
 );
 
 await file_io.write(
@@ -77,6 +79,6 @@ await file_io.write(
   })), {
     delimiter: "\t",
     header: true,
-    columns: ["flow", "snssai_dnn", "d", "supi", "send-CPU", "recv-CPU", "send-Mbps", "recv-Mbps"],
+    columns: ["snssai_dnn", "dir", "supi", "port", "send-CPU", "recv-CPU", "send-Mbps", "recv-Mbps"],
   }),
 );

@@ -194,35 +194,4 @@ This is because there should be exactly one UE attached to each gNB that has a P
 
 ### iperf3
 
-After UEs have started and PDU sessions have been established, prepare iperf3 flows:
-
-```bash
-cd ~/compose/20240129
-./compose.sh iperf3 --flow='* = -t 60 -u -b 10M' --flow='* = -t 60 -u -b 10M -R'
-```
-
-This script gathers information about currently connected PDU sessions and prepares an iperf3 flow for each PDU session between UE and Data Network.
-The most important command line flag is `--flow` (repeatable).
-Each `--flow` value consists of:
-
-1. a [minimatch](https://www.npmjs.com/package/minimatch)-compatible pattern that matches a Data Network Name (DNN)
-2. the `=` operator
-3. a sequence of iperf3 flags
-
-Each PDU session whose DNN matches the pattern would have an iperf3 flow with the specified flags.
-If the same PDU session matches multiple patterns in different `--flow` flags, multiple iperf3 flows would be created for the same PDU session.
-
-The output of this script includes:
-
-* Compose file at `~/compose/20240129/compose.iperf3.yml`, which defines necessary iperf3 containers
-* bash script at `~/compose/20240129/iperf3.sh`, which runs iperf3 containers and gathers statistics in JSON format
-
-After generation, you can run the iperf3 flows and analyze its results as follows:
-
-```bash
-cd ~/compose/20240129
-./iperf3.sh
-```
-
-This command runs the pipeline and prints statistics at last.
-These statistics are also saved in `iperf3.tsv`.
+See [trafficgen/iperf3](../../trafficgen/iperf3.md).

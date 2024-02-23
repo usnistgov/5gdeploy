@@ -1,11 +1,12 @@
 import path from "node:path";
 
+import { stringify as csv } from "csv-stringify/sync";
 import type { LinkWithAddressInfo } from "iproute";
 import assert from "minimalistic-assert";
 import { Minimatch } from "minimatch";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
-import { consume, flatTransform, pipeline, tap, transform } from "streaming-iterables";
+import { collect, flatTransform, map, pipeline, transform } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.ts";
@@ -24,14 +25,15 @@ const args = Yargs()
     type: "string",
   })
   .option("flow", {
-    coerce(lines: readonly string[]): Array<[pattern: Minimatch, flags: readonly string[]]> {
+    coerce(lines: readonly string[]): Array<[dn: Minimatch, ue: Minimatch, flags: readonly string[]]> {
       assert(Array.isArray(lines));
       return Array.from(lines, (line) => {
-        const tokens = line.split("=");
-        assert(tokens.length === 2, `bad --flow ${line}`);
+        const tokens = line.split("|");
+        assert(tokens.length === 3, `bad --flow ${line}`);
         return [
           new Minimatch(tokens[0].trim()),
-          shlex.split(tokens[1].trim()),
+          new Minimatch(tokens[1].trim()),
+          shlex.split(tokens[2].trim()),
         ];
       });
     },
@@ -50,7 +52,7 @@ netdef.validate();
 
 const output = compose.create();
 let nextPort = 20000;
-await pipeline(
+const table = await pipeline(
   () => netdef.listSubscribers(),
   transform(16, async (sub) => {
     const ueService = compose.findByAnnotation(c, "ue_supi", (value) => value.split(",").includes(sub.supi));
@@ -87,14 +89,15 @@ await pipeline(
     }
   }),
   flatTransform(16, function*(ctx) {
-    const { dn: { dnn } } = ctx;
-    const flagsTuple = args.flow.filter(([pattern]) => pattern.match(dnn));
-    for (const [, flags] of flagsTuple) {
-      yield { ...ctx, flags };
+    const { sub: { supi }, dn: { dnn } } = ctx;
+    for (const [index, [dnPattern, uePattern, flags]] of args.flow.entries()) {
+      if (dnPattern.match(dnn) && uePattern.match(supi)) {
+        yield { ...ctx, index, flags };
+      }
     }
   }),
-  tap((ctx) => {
-    const { sub: { supi }, ueService, ueHost, dn: { snssai, dnn }, dnHost, dnService, dnIP, pduIP, flags } = ctx;
+  map((ctx) => {
+    const { sub: { supi }, ueService, ueHost, dn: { snssai, dnn }, dnHost, dnService, dnIP, pduIP, index, flags } = ctx;
     const port = nextPort++;
     const server = compose.defineService(output, `iperf3_${port}_s`, "networkstatic/iperf3");
     compose.annotate(server, "host", dnHost);
@@ -122,16 +125,26 @@ await pipeline(
       ...flags,
     ];
 
-    const dir = flags.includes("-R") ? ">" : "<";
+    const dn = `${snssai}_${dnn}`;
+    const dir = flags.includes("-R") ? "DL>" : "<UL";
     for (const s of [server, client]) {
-      compose.annotate(s, "iperf3_dn", `${snssai}_${dnn}`);
+      compose.annotate(s, "iperf3_dn", dn);
       compose.annotate(s, "iperf3_ue", supi);
       compose.annotate(s, "iperf3_dir", dir);
       compose.annotate(s, "iperf3_port", port);
     }
+
+    return [
+      index,
+      dn,
+      dir,
+      supi,
+      port,
+    ];
   }),
-  consume,
+  collect,
 );
+table.sort((a, b) => a.join(",").localeCompare(b.join(",")));
 
 await file_io.write(path.join(args.dir, "compose.iperf3.yml"), output);
 
@@ -201,4 +214,8 @@ await file_io.write(path.join(args.dir, "iperf3.sh"), [
   ...makeScript(),
 ].join("\n"));
 
-process.stdout.write(`${Object.keys(output.services).length / 2}\n`);
+process.stdout.write(csv(table, {
+  delimiter: "\t",
+  header: true,
+  columns: ["#", "snssai_dnn", "dir", "supi", "port"],
+}));

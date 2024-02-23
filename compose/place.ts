@@ -197,7 +197,7 @@ const scriptTail = [
   "  done",
   "elif [[ $ACT == iperf3 ]]; then",
   `  cd ${path.join(import.meta.dirname, "..")}`,
-  "  $(corepack pnpm bin)/tsx trafficgen/iperf3-prepare.ts --dir=$COMPOSE_CTX \"$@\"",
+  "  $(corepack pnpm bin)/tsx trafficgen/iperf3-prepare.ts --dir=$COMPOSE_CTX \"$@\" | column -t",
   "else",
   `  echo ${shlex.quote(scriptUsage)}`,
   "  exit 1",

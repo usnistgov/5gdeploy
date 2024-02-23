@@ -16,6 +16,10 @@ $(./compose.sh at dn_vctl) exec dn_vctl nmap -sn 10.141.0.0/24
 
 ## iperf3
 
+See [trafficgen/iperf3](../../trafficgen/iperf3.md).
+
+## iperf3 (old)
+
 Define traffic generators:
 
 ```bash
