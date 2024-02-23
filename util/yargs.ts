@@ -10,7 +10,9 @@ export function Yargs(): Argv {
     .wrap(yargs([]).terminalWidth());
 }
 
-export type YargsOptions = Record<string, Options>;
+export type YargsOpt = Options;
+
+export type YargsOptions = Record<string, YargsOpt>;
 
 export type YargsInfer<T extends YargsOptions> = ReadonlyDeep<InferredOptionTypes<T>>;
 
