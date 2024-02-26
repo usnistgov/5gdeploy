@@ -1,29 +1,17 @@
 import path from "node:path";
 
 import { stringify as csv } from "csv-stringify/sync";
-import type { LinkWithAddressInfo } from "iproute";
 import assert from "minimalistic-assert";
 import { Minimatch } from "minimatch";
-import { Netmask } from "netmask";
 import * as shlex from "shlex";
-import { collect, flatTransform, map, pipeline, transform } from "streaming-iterables";
+import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.ts";
-import type { ComposeFile, N } from "../types/mod.ts";
-import { dockerode, file_io, Yargs } from "../util/mod.js";
+import { file_io, Yargs } from "../util/mod.js";
+import { ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 
 const args = Yargs()
-  .option("dir", {
-    demandOption: true,
-    desc: "Compose context directory",
-    type: "string",
-  })
-  .option("netdef", {
-    defaultDescription: "(--dir)/netdef.json",
-    desc: "NetDef filename",
-    type: "string",
-  })
+  .option(ctxOptions)
   .option("flow", {
     coerce(lines: readonly string[]): Array<[dn: Minimatch, ue: Minimatch, flags: readonly string[]]> {
       assert(Array.isArray(lines));
@@ -44,50 +32,13 @@ const args = Yargs()
     type: "array",
   })
   .parseSync();
-args.netdef ??= path.join(args.dir, "netdef.json");
 
-const c = await file_io.readYAML(path.join(args.dir, "compose.yml")) as ComposeFile;
-const netdef = new NetDef(await file_io.readJSON(args.netdef) as N.Network);
-netdef.validate();
+const [c, netdef] = await loadCtx(args);
 
 const output = compose.create();
 let nextPort = 20000;
 const table = await pipeline(
-  () => netdef.listSubscribers(),
-  transform(16, async (sub) => {
-    const ueService = compose.findByAnnotation(c, "ue_supi", (value) => value.split(",").includes(sub.supi));
-    assert(ueService, `UE container for ${sub.supi} not found`);
-    const ueHost = compose.annotate(ueService, "host") ?? "";
-    const ct = dockerode.getContainer(ueService.container_name, ueHost);
-    const ipAddrs = await dockerode.execCommand(ct, ["ip", "-j", "addr", "show"]);
-    const ueIPs = JSON.parse(ipAddrs.stdout) as LinkWithAddressInfo[];
-    return { sub, ueService, ueHost, ueIPs };
-  }),
-  flatTransform(16, function*(ctx) {
-    const { sub, ueIPs } = ctx;
-    for (const dnID of sub.subscribedDN) {
-      const dn = netdef.findDN(dnID);
-      if (!dn?.subnet) {
-        continue;
-      }
-      const dnSubnet = new Netmask(dn.subnet);
-
-      const dnService = compose.findByAnnotation(c, "dn", `${dn.snssai}_${dn.dnn}`);
-      assert(dnService, `DN container for ${dn.dnn} not found`);
-      const dnHost = compose.annotate(dnService, "host") ?? "";
-      const dnIP = compose.annotate(dnService, "ip_n6");
-      assert(dnIP !== undefined);
-
-      const pduIP = ueIPs.flatMap((link) => {
-        const addr = link.addr_info.find((addr) => addr.family === "inet" && dnSubnet.contains(addr.local));
-        return addr ?? [];
-      })[0];
-      if (!pduIP) {
-        continue;
-      }
-      yield { ...ctx, dn, dnService, dnHost, dnIP, pduIP: pduIP.local };
-    }
-  }),
+  () => gatherPduSessions(c, netdef),
   flatTransform(16, function*(ctx) {
     const { sub: { supi }, dn: { dnn } } = ctx;
     for (const [index, [dnPattern, uePattern, flags]] of args.flow.entries()) {

@@ -175,9 +175,12 @@ const scriptUsage = `Usage:
     Create scenario containers to prepare for traffic capture.
   ./compose.sh phoenix-register
     Register Open5GCore UEs.
+
+The following are available after UE registration and PDU session establishment:
+  ./compose.sh list-pdu
+    List PDU sessions.
   ./compose.sh iperf3 FLAGS
     Prepare iperf3.sh traffic generation script.
-    The scenario must be started and the PDU sessions must be established.
 `;
 
 const scriptHead = [
@@ -195,9 +198,9 @@ const scriptTail = [
   "  for UECT in $(docker ps --format='{{.Names}}' | grep '^ue'); do",
   "    corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn='*'",
   "  done",
-  "elif [[ $ACT == iperf3 ]]; then",
+  "elif [[ $ACT == list-pdu ]] || [[ $ACT == iperf3 ]]; then",
   `  cd ${path.join(import.meta.dirname, "..")}`,
-  "  $(corepack pnpm bin)/tsx trafficgen/iperf3-prepare.ts --dir=$COMPOSE_CTX \"$@\" | column -t",
+  "  $(corepack pnpm bin)/tsx trafficgen/$ACT.ts --dir=$COMPOSE_CTX \"$@\" | column -t",
   "else",
   `  echo ${shlex.quote(scriptUsage)}`,
   "  exit 1",

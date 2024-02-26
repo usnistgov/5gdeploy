@@ -12,15 +12,15 @@
     "shfmt": "git ls-files -- '*.sh' | xargs docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@8.15.3+sha256.fc4a49bd609550a41e14d20efbce802a4b892aa4cac877322de2f0924f122991",
+  "packageManager": "pnpm@8.15.4+sha256.cea6d0bdf2de3a0549582da3983c70c92ffc577ff4410cbf190817ddc35137c2",
   "dependencies": {
     "@nodelib/fs.walk": "^2.0.0",
     "@segment/ajv-human-errors": "^2.12.0",
-    "@types/dockerode": "^3.3.23",
+    "@types/dockerode": "^3.3.24",
     "@types/js-yaml": "^4.0.9",
     "@types/minimalistic-assert": "^1.0.3",
     "@types/netmask": "^2.0.5",
-    "@types/node": "^20.11.19",
+    "@types/node": "^20.11.20",
     "@types/sql-tagged-template-literal": "^1.2.2",
     "@types/yargs": "^17.0.32",
     "ajv": "^8.12.0",
