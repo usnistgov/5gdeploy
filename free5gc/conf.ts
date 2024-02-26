@@ -1,6 +1,6 @@
 import yaml from "js-yaml";
 
-import { file_io } from "../util/mod";
+import { file_io } from "../util/mod.js";
 
 /** Retrieve free5GC Docker image name. */
 export async function getImage(nf: string): Promise<string> {

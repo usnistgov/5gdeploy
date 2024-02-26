@@ -6,7 +6,7 @@ import { sortBy } from "sort-by-typescript";
 import { collect, parallelMap, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
-import type { ComposeFile } from "../types/mod.ts";
+import type { ComposeFile } from "../types/mod.js";
 import { file_io, Yargs } from "../util/mod.js";
 
 const args = Yargs()

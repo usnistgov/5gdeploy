@@ -1,4 +1,4 @@
-import type { N } from "../../types/mod.ts";
+import type { N } from "../../types/mod.js";
 import type { YargsInfer, YargsOptions } from "../../util/mod.js";
 import * as ran from "./ran.js";
 

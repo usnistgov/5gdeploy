@@ -1,4 +1,4 @@
-import type { Info, Logger, PLMNID, Root } from "./free5gc";
+import type { Info, Logger, PLMNID, Root } from "./free5gc.js";
 
 export type { Root, Info, Logger, PLMNID };
 

@@ -1,8 +1,8 @@
 import assert from "minimalistic-assert";
 import type { Options } from "yargs";
 
-import type { N } from "../../types/mod.ts";
-import { decPad } from "../../util/mod.ts";
+import type { N } from "../../types/mod.js";
+import { decPad } from "../../util/mod.js";
 
 export function option(desc: string, dflt: number, max: number, min = 1) {
   return {

@@ -1,5 +1,5 @@
-import type { N } from "../../types/mod.ts";
-import { file_io } from "../../util/mod.ts";
+import type { N } from "../../types/mod.js";
+import { file_io } from "../../util/mod.js";
 
 const network: N.Network = {
   plmn: "001-01",

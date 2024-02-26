@@ -1,6 +1,6 @@
 import assert from "minimalistic-assert";
 
-import type { N } from "../../types/mod.ts";
+import type { N } from "../../types/mod.js";
 import { decPad, file_io, hexPad, Yargs } from "../../util/mod.js";
 import * as ran from "../common/ran.js";
 
