@@ -52,10 +52,35 @@ export const phoenixOptions = {
     group: "phoenix",
     type: "number",
   },
+  "phoenix-gnb-to-upf-dscp": {
+    coerce(lines: readonly string[]): Array<[upf: string, dscp: number]> {
+      assert(Array.isArray(lines));
+      return Array.from(lines, (line: string) => {
+        const tokens = line.split("=");
+        assert(tokens.length === 2, `bad --phoenix-gnb-to-upf-dscp ${line}`);
+        const upf = tokens[0]!.trim();
+        assert.equal(compose.nameToNf(upf), "upf", `bad UPF in --phoenix-gnb-to-upf-dscp ${line}`);
+        let dscp = Number.parseInt(tokens[1]!, 0); // eslint-disable-line radix
+        if (Number.isNaN(dscp) && tokens[1]!.startsWith("cs")) {
+          dscp = Number.parseInt(tokens[1]!.slice(2), 10) << 3;
+        }
+        assert(Number.isInteger(dscp) && dscp >= 0 && dscp < 64,
+          `bad DSCP in --phoenix-gnb-to-upf-dscp ${line}`);
+        return [upf, dscp];
+      });
+    },
+    default: [],
+    desc: "alter outer IPv4 DSCP for gNB-to-UPF traffic",
+    group: "phoenix",
+    nargs: 1,
+    string: true,
+    type: "array",
+  },
   "phoenix-ue-isolated": {
     default: [""],
-    desc: "UEs with a reserved CPU core (list of SUPI suffixes)",
+    desc: "allocate a reserved CPU core to UEs matching SUPI suffix",
     group: "phoenix",
+    nargs: 1,
     string: true,
     type: "array",
   },
@@ -547,7 +572,8 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     const nWorkers = this.opts["phoenix-gnb-workers"];
 
     for (const [ct, gnb] of this.createNetworkFunction("5g/gnb1.json", ["air", "n2", "n3"], this.ctx.netdef.gnbs)) {
-      compose.annotate(this.ctx.c.services[ct]!, "cpus", nWorkers);
+      const s = this.ctx.c.services[ct]!;
+      compose.annotate(s, "cpus", nWorkers);
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("gnb");
         delete config.amf_addr;
@@ -574,7 +600,17 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
       });
       this.sf.initCommands.set(ct, [
         "iptables -I OUTPUT -p icmp --icmp-type destination-unreachable -j DROP",
+        ...this.makeGnbDscpCommands(ct),
       ]);
+    }
+  }
+
+  private *makeGnbDscpCommands(gnb: string): Iterable<string> {
+    for (const [upf, dscp] of this.opts["phoenix-gnb-to-upf-dscp"]) {
+      const s = this.ctx.c.services[upf];
+      assert(!!s, `UPF ${upf} in --phoenix-gnb-to-upf-dscp does not exist`);
+      yield `iptables -t mangle -A OUTPUT -s ${IPMAP.formatEnv(gnb, "n3", "$")
+      } -d ${IPMAP.formatEnv(upf, "n3", "$")} -j DSCP --set-dscp ${dscp}`;
     }
   }
 

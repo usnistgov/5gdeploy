@@ -41,6 +41,14 @@ You can change them via `--phoenix-upf-single-worker-n3|n9|n6` flags.
 The default is 2 worker threads.
 This also determines how many dedicated CPU cores are requested for the gNB, when used with [CPU isolation](../docs/multi-host.md) feature.
 
+`--phoenix-gnb-to-upf-dscp` alters outer IPv4 DSCP field for gNB-to-UPF traffic.
+This is used in conjunction with SONiC QoS scripts for uplink QoS classification.
+The syntax looks like `--phoenix-gnb-to-upf-dscp='upf4=32'`, where each value contains three parts:
+
+1. a UPF name, which must exist in the topology
+2. the `=` operator
+3. a DSCP value between 0 and 63 (written as decimal or hexadecimal) or Class Selector (written as `cs0` thru `cs7`)
+
 `--phoenix-ue-isolated` specifies which UEs shall have a reserved CPU core.
 Open5GCore UE simulator is only involved in registration and PDU session setup.
 After that, each PDU session is present in the container as a GRE tunnel interface, and user traffic does not pass through the UE simulator.
