@@ -4,6 +4,7 @@ import { stringify as csv } from "csv-stringify/sync";
 import assert from "minimalistic-assert";
 import { Minimatch } from "minimatch";
 import * as shlex from "shlex";
+import { sortBy } from "sort-by-typescript";
 import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
@@ -95,7 +96,7 @@ const table = await pipeline(
   }),
   collect,
 );
-table.sort((a, b) => a.join(",").localeCompare(b.join(",")));
+table.sort(sortBy("0", "1", "2", "3"));
 
 await file_io.write(path.join(args.dir, "compose.iperf3.yml"), output);
 

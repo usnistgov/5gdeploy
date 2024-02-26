@@ -1,4 +1,5 @@
 import { stringify as csv } from "csv-stringify/sync";
+import { sortBy } from "sort-by-typescript";
 import { collect, map, pipeline } from "streaming-iterables";
 
 import { Yargs } from "../util/mod.js";
@@ -23,7 +24,7 @@ const table = await pipeline(
   ]),
   collect,
 );
-table.sort((a, b) => `${a[0]}${a[4]}`.localeCompare(`${b[0]}${b[4]}`));
+table.sort(sortBy("4", "0"));
 
 process.stdout.write(csv(table, {
   delimiter: "\t",

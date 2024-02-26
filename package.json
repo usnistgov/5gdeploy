@@ -42,6 +42,7 @@
     "netmask": "^2.0.2",
     "p-event": "^6.0.0",
     "shlex": "^2.1.2",
+    "sort-by-typescript": "^1.2.5",
     "sql-tagged-template-literal": "^1.2.0",
     "streaming-iterables": "^8.0.1",
     "ts-json-schema-generator": "^1.5.0",

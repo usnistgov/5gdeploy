@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { stringify as csv } from "csv-stringify/sync";
 import DefaultMap from "mnemonist/default-map.js";
+import { sortBy } from "sort-by-typescript";
 import { collect, parallelMap, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
@@ -55,7 +56,7 @@ const table = await pipeline(
   }),
   collect,
 );
-table.sort((a, b) => a.slice(0, 4).join(",").localeCompare(b.slice(0, 4).join(",")));
+table.sort(sortBy("0", "1", "2", "3", "4"));
 
 const sums = new DefaultMap<string, [number, string, string]>(
   (key: string) => [0, ...key.split("|")] as [number, string, string],
