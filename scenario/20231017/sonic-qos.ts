@@ -2,7 +2,7 @@ import { Yargs } from "../../util/mod.js";
 import * as sonic from "../common/sonic.js";
 
 const args = Yargs()
-  .option(sonic.makeOptions("20231017"))
+  .option(sonic.basicOptions("20231017"))
   .option("port-gnb", {
     demandOption: true,
     desc: "gNB switchport(s)",
@@ -38,8 +38,8 @@ const args = Yargs()
   .parseSync();
 
 const b = new sonic.Builder(args);
-b.assignTrafficClass("upf1", args.portUpf1, 1);
-b.assignTrafficClass("upf4", args.portUpf4, 0);
+b.assignTrafficClassUncond("upf1", args.portUpf1, 1);
+b.assignTrafficClassUncond("upf4", args.portUpf4, 0);
 
 for (const [i, gnbPort] of args.portGnb.entries()) {
   b.assignScheduler(`gnb${i}`, gnbPort, args.dlSched, args.dlGnb, {

@@ -7,7 +7,7 @@ import type { ArrayValues } from "type-fest";
 import { file_io, type YargsInfer, type YargsOpt, type YargsOptions } from "../../util/mod.js";
 
 /** Construct yargs options for SONiC builder basics. */
-export function makeOptions(id: string) {
+export function basicOptions(id: string) {
   return {
     op: {
       choices: ["add", "replace", "remove", "drop"],
@@ -30,21 +30,46 @@ export function makeOptions(id: string) {
 }
 
 /** Construct yargs option for SONiC scheduler. */
-export function schedOption(name: string) {
+export function schedOption(name = "") {
   return {
     choices: ["STRICT", "WRR", "DWRR"] as const,
     default: "STRICT",
-    desc: `${name} scheduler type`,
+    desc: `${name} scheduler type`.trim(),
     type: "string",
   } as const satisfies YargsOpt;
 }
 
+/** Construct yargs option for switchport. */
+export function swportOption(name: string) {
+  return {
+    demandOption: true,
+    desc: `${name} switchport`,
+    type: "string",
+  } as const satisfies YargsOpt;
+}
+
+/** Construct yargs option for switchports. */
+export function swportsOption(name: string) {
+  return {
+    demandOption: true,
+    desc: `${name} switchport(s)`,
+    nargs: 1,
+    string: true,
+    type: "array",
+  } as const satisfies YargsOpt;
+}
+
 type SchedType = ArrayValues<ReturnType<typeof schedOption>["choices"]>;
+
+function assertIsPort(port: string): void {
+  assert(/^Ethernet\d+$/.test(port));
+}
+
 type TrafficClass = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 /** SONiC patch builder. */
 export class Builder {
-  constructor(private readonly opts: YargsInfer<ReturnType<typeof makeOptions>>) {}
+  constructor(private readonly opts: YargsInfer<ReturnType<typeof basicOptions>>) {}
 
   private readonly tables = new Set<string>();
   private readonly objects = new Map<string, unknown>();
@@ -75,12 +100,34 @@ export class Builder {
    * @param port - Ingress port.
    * @param tc - Traffic class, integer between 0 and 7.
    */
-  public assignTrafficClass(name: string, port: string, tc: TrafficClass): void {
-    assert(/^Ethernet\d+$/.test(port));
+  public assignTrafficClassUncond(name: string, port: string, tc: TrafficClass): void {
+    assertIsPort(port);
     const { prefix } = this.opts;
     this.set(`/DOT1P_TO_TC_MAP/${prefix}${name}`, { 0: `${tc}` });
     this.set(`/PORT_QOS_MAP/${port}`, {
       dot1p_to_tc_map: `${prefix}${name}`,
+    });
+  }
+
+  /**
+   * Assign traffic class based on DSCP value on packets received on a port.
+   * @param name - Rule name.
+   * @param port - Ingress port.
+   * @param dscpTC - DSCP to Traffic class map.
+   */
+  public assignTrafficClassDSCP(name: string, port: string, dscpTC: Record<number, TrafficClass>): void {
+    assertIsPort(port);
+    const { prefix } = this.opts;
+
+    const map: Record<string, string> = {};
+    for (const [dscpS, tc] of Object.entries(dscpTC)) {
+      const dscp = Number.parseInt(dscpS, 10);
+      assert(Number.isInteger(dscp) && dscp >= 0 && dscp < 64);
+      map[`${dscp}`] = `${tc}`;
+    }
+    this.set(`/DSCP_TO_TC_MAP/${prefix}${name}`, map);
+    this.set(`/PORT_QOS_MAP/${port}`, {
+      dscp_to_tc_map: `${prefix}${name}`,
     });
   }
 
@@ -96,7 +143,7 @@ export class Builder {
       name: string, port: string, type: SchedType, shapeMbps: number,
       queueWeights: Partial<Record<TrafficClass, number>>,
   ): void {
-    assert(/^Ethernet\d+$/.test(port));
+    assertIsPort(port);
     const { prefix } = this.opts;
     const bytesPerSec = Math.ceil(shapeMbps * 1e6 / 8);
     this.set(`/SCHEDULER/${prefix}${name}`, {
