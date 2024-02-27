@@ -32,7 +32,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
   compose.setCommands(s, [
     "msg Preparing PacketRusher config",
     ...compose.mergeConfigFile(c, { base: "/config.default.yml", merged: filename }),
-    "sleep 10",
+    "sleep 20",
     "msg Starting PacketRusher",
     `exec /packetrusher --config ${filename} multi-ue -n 1 -d -t --tunnel-vrf=false`,
   ], "ash");

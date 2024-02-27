@@ -242,9 +242,7 @@ function* makeScript(hostServices: Iterable<[host: string, services: ComposeFile
       yield `  ${makeDockerH(host)} compose${split ? ` -f ${makeFilename(host)}` : ""} ${cmd}${
         listServiceNames ? ` ${Object.keys(services).join(" ")}` : ""}`;
     }
-    if (msg2) {
-      yield `  msg ${shlex.quote(msg2)}`;
-    }
+    yield `  msg ${shlex.quote(msg2)}`;
   }
 
   yield* scriptTail;
