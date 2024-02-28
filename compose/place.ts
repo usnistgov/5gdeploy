@@ -173,6 +173,8 @@ const scriptUsage = `Usage:
     Run Docker command CMD on the host machine of container CT.
   ./compose.sh create
     Create scenario containers to prepare for traffic capture.
+  ./compose.sh ps
+    View containers on each host machine.
   ./compose.sh phoenix-register
     Register Open5GCore UEs.
 
@@ -207,16 +209,21 @@ const scriptTail = [
   "fi",
 ];
 
+const scriptActions = [
+  ["create", "create", true, "Creating scenario containers", "Scenario containers have been created, ready for traffic capture"],
+  ["up", "up -d", true, "Starting the scenario", "Scenario has started"],
+  ["ps", "ps -a", false, "Checking containers", "If any container is 'Exited', please investigate why it failed"],
+  ["down", "down --remove-orphans", false, "Stopping the scenario", "Scenario has stopped"],
+] as const;
+
 const minimalScript = [
   ...scriptHead,
   "if [[ $ACT == at ]]; then",
   "  echo docker",
-  "elif [[ $ACT == create ]]; then",
-  "  docker compose create",
-  "elif [[ $ACT == up ]]; then",
-  "  docker compose up -d",
-  "elif [[ $ACT == down ]]; then",
-  "  docker compose down --remove-orphans",
+  ...scriptActions.flatMap(([act, cmd]) => [
+    `elif [[ $ACT == ${act} ]]; then`,
+    `  docker compose ${cmd}`,
+  ]),
   ...scriptTail,
 ].join("\n");
 
@@ -231,11 +238,7 @@ function* makeScript(hostServices: Iterable<[host: string, services: ComposeFile
   yield "    *) die Container not found;;";
   yield "  esac";
 
-  for (const [act, cmd, listServiceNames, msg1, msg2] of [
-    ["create", "create", true, "Creating scenario containers", "Scenario containers have been created, ready for traffic capture"],
-    ["up", "up -d", true, "Starting the scenario", "Scenario has started"],
-    ["down", "down --remove-orphans", false, "Stopping the scenario", "Scenario has stopped"],
-  ] as const) {
+  for (const [act, cmd, listServiceNames, msg1, msg2] of scriptActions) {
     yield `elif [[ $ACT == ${act} ]]; then`;
     for (const [host, services] of hostServices) {
       yield `  msg ${shlex.quote(msg1)} on ${host || "PRIMARY"}`;
