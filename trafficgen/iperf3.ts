@@ -14,6 +14,11 @@ import { ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 
 const args = Yargs()
   .option(ctxOptions)
+  .option("json", {
+    default: true,
+    desc: "want JSON output",
+    type: "boolean",
+  })
   .option("flow", {
     coerce(lines: readonly string[]): Array<[dn: Minimatch, ue: Minimatch, flags: readonly string[]]> {
       assert(Array.isArray(lines));
@@ -51,6 +56,7 @@ const table = await pipeline(
   }),
   map((ctx) => {
     const { sub: { supi }, ueService, ueHost, dn: { snssai, dnn }, dnHost, dnService, dnIP, pduIP, index, flags } = ctx;
+    const jsonFlag = args.json ? ["--json"] : [];
     const port = nextPort++;
     const server = compose.defineService(output, `iperf3_${port}_s`, "networkstatic/iperf3");
     compose.annotate(server, "host", dnHost);
@@ -58,7 +64,7 @@ const table = await pipeline(
     server.network_mode = `service:${dnService.container_name}`;
     server.command = [
       "--forceflush",
-      "--json",
+      ...jsonFlag,
       "-B", dnIP,
       "-p", `${port}`,
       "-s",
@@ -70,7 +76,7 @@ const table = await pipeline(
     client.network_mode = `service:${ueService.container_name}`;
     client.command = [
       "--forceflush",
-      "--json",
+      ...jsonFlag,
       "-B", pduIP,
       "-p", `${port}`,
       "--cport", `${port}`,
@@ -111,6 +117,7 @@ function* makeScript(): Iterable<string> {
     yield `  msg Deleting old iperf3 servers and clients on ${hostDesc}`;
     yield `  with_retry ${dockerH} rm -f ${names.join(" ")}`;
   }
+  yield "  rm -rf iperf3/";
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == servers ]]; then";
@@ -135,12 +142,13 @@ function* makeScript(): Iterable<string> {
   }
   yield "fi";
 
+  const extname = args.json ? ".json" : ".log";
   yield "if [[ -z $ACT ]] || [[ $ACT == collect ]]; then";
-  yield "  msg Gathering iperf3 statistics to 'iperf3/*.json'";
+  yield `  msg Gathering iperf3 statistics to 'iperf3/*${extname}'`;
   yield "  mkdir -p iperf3/";
   for (const s of Object.values(output.services)) {
     const ct = s.container_name;
-    yield `  ${compose.makeDockerH(s)} logs ${ct} | jq -s .[-1] >iperf3/${ct.slice(7)}.json`;
+    yield `  ${compose.makeDockerH(s)} logs ${ct} >iperf3/${ct.slice(7)}${extname}`;
   }
   yield "fi";
 
@@ -152,11 +160,16 @@ function* makeScript(): Iterable<string> {
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == stats ]]; then";
-  yield "  msg Gathering iperf3 statistics table to iperf3.tsv";
-  yield `  cd ${path.join(import.meta.dirname, "..")}`;
-  yield "  $(corepack pnpm bin)/tsx trafficgen/iperf3-stats.ts --dir=$COMPOSE_CTX";
-  yield "  cd $COMPOSE_CTX";
-  yield "  column -t <iperf3.tsv";
+  if (args.json) {
+    yield "  msg Gathering iperf3 statistics table to iperf3.tsv";
+    yield `  cd ${path.join(import.meta.dirname, "..")}`;
+    yield "  $(corepack pnpm bin)/tsx trafficgen/iperf3-stats.ts --dir=$COMPOSE_CTX";
+    yield "  cd $COMPOSE_CTX";
+    yield "  column -t <iperf3.tsv";
+  } else {
+    yield "  msg Showing final results from iperf3 text output"
+    yield "  grep -w receiver iperf3/*_c.log"
+  }
   yield "fi";
 }
 

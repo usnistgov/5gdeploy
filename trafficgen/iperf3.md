@@ -21,6 +21,9 @@ Each `--flow` flag is processed separately, so that the same PDU session may mat
 The command prints a brief report on the matched PDU sessions and iperf3 flows.
 If there are fewer than expected iperf3 flows, please check that UEs are registered and PDU sessions have been established.
 
+If you want iperf3 text output instead of JSON output, add `--json=false` flag.
+The text output would be save to `~/compose/20230601/iperf3` folder, but the script cannot gather statistics from it.
+
 The output of this script includes:
 
 * Compose file `compose.iperf3.yml`, which defines necessary iperf3 containers
