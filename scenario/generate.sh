@@ -39,7 +39,9 @@ if [[ ${1:-} == +help ]] || [[ ${1:-} == --help ]]; then
   exit 0
 fi
 
-OUT=$(readlink -f ../../compose/$D)
+OUT=../../compose/$D
+mkdir -p $OUT
+OUT=$(readlink -f $OUT)
 
 if [[ -f $OUT/compose.yml ]]; then
   msg Deleting existing scenario
@@ -48,7 +50,6 @@ if [[ -f $OUT/compose.yml ]]; then
 fi
 
 msg Generating scenario via netdef
-mkdir -p $OUT
 SARGS=()
 while [[ ${1:-} == +* ]]; do
   SARGS+=("${1/#+/--}")
