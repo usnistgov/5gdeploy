@@ -58,7 +58,7 @@ const table = await pipeline(
 );
 table.sort(sortBy("0", "1", "2", "3", "4"));
 
-const sums = new DefaultMap<string, [number, string, string]>(
+const sums = new DefaultMap<string, [sum: number, dir: string, dn: string]>(
   (key: string) => [0, ...key.split("|")] as [number, string, string],
 );
 for (const row of table) {
@@ -67,8 +67,8 @@ for (const row of table) {
   sums.get(`${dir}|${dn}`)[0] += recv as number;
 }
 table.push(...Array.from(sums.values(),
-  ([value, dir, dn]) => [dn, dir, "TOTAL", "*", "_", "_", "_", value]),
-);
+  ([value, dir, dn]) => [dn, dir, "TOTAL", "*", "_", "_", "_", value],
+));
 
 await file_io.write(
   path.join(args.dir, "iperf3.tsv"),

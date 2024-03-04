@@ -3,6 +3,7 @@ import path from "node:path";
 import { stringify as csv } from "csv-stringify/sync";
 import assert from "minimalistic-assert";
 import { Minimatch } from "minimatch";
+import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 import { collect, flatTransform, map, pipeline } from "streaming-iterables";
@@ -96,7 +97,6 @@ const table = await pipeline(
   }),
   collect,
 );
-table.sort(sortBy("0", "1", "2", "3"));
 
 await file_io.write(path.join(args.dir, "compose.iperf3.yml"), output);
 
@@ -138,7 +138,7 @@ function* makeScript(): Iterable<string> {
   yield "if [[ -z $ACT ]] || [[ $ACT == collect ]]; then";
   yield "  msg Gathering iperf3 statistics to 'iperf3/*.json'";
   yield "  mkdir -p iperf3/";
-  for (const s of Object.values(output.services).filter((s) => s.container_name.endsWith("_c"))) {
+  for (const s of Object.values(output.services)) {
     const ct = s.container_name;
     yield `  ${compose.makeDockerH(s)} logs ${ct} | jq -s .[-1] >iperf3/${ct.slice(7)}.json`;
   }
@@ -166,6 +166,15 @@ await file_io.write(path.join(args.dir, "iperf3.sh"), [
   ...makeScript(),
 ].join("\n"));
 
+table.sort(sortBy("0", "1", "2", "3"));
+const counts = new DefaultMap<number, [cnt: number, index: number]>((index: number) => [0, index]);
+for (const row of table) {
+  const index = row[0]! as number;
+  counts.get(index)[0] += 1;
+}
+table.push(...Array.from(counts.values(),
+  ([cnt, index]) => [index, "*", "*", "COUNT", cnt],
+));
 process.stdout.write(csv(table, {
   delimiter: "\t",
   header: true,
