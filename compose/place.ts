@@ -202,7 +202,7 @@ const scriptTail = [
   "  done",
   "elif [[ $ACT == list-pdu ]] || [[ $ACT == iperf3 ]]; then",
   `  cd ${path.join(import.meta.dirname, "..")}`,
-  "  $(corepack pnpm bin)/tsx trafficgen/$ACT.ts --dir=$COMPOSE_CTX \"$@\" | column -t",
+  "  $(corepack pnpm bin)/tsx trafficgen/$ACT.ts --dir=$COMPOSE_CTX \"$@\"",
   "else",
   `  echo ${shlex.quote(scriptUsage)}`,
   "  exit 1",

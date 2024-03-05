@@ -1,6 +1,5 @@
 import path from "node:path";
 
-import { stringify as csv } from "csv-stringify/sync";
 import DefaultMap from "mnemonist/default-map.js";
 import { sortBy } from "sort-by-typescript";
 import { collect, parallelMap, pipeline } from "streaming-iterables";
@@ -70,16 +69,17 @@ table.push(...Array.from(sums.values(),
   ([value, dir, dn]) => [dn, dir, "TOTAL", "*", "_", "_", "_", value],
 ));
 
-await file_io.write(
-  path.join(args.dir, "iperf3.tsv"),
-  csv(table.map((row) => row.map((col) => {
+for (const row of table) {
+  for (const [i, col] of row.entries()) {
     if (typeof col === "number" && !Number.isInteger(col)) {
-      return Math.trunc(col * 1e3) / 1e3;
+      row[i] = Math.trunc(col * 1e3) / 1e3;
     }
-    return col;
-  })), {
-    delimiter: "\t",
-    header: true,
-    columns: ["snssai_dnn", "dir", "supi", "port", "send-CPU", "recv-CPU", "send-Mbps", "recv-Mbps"],
-  }),
+  }
+}
+
+const tTable = file_io.toTable(
+  ["snssai_dnn", "dir", "supi", "port", "send-CPU", "recv-CPU", "send-Mbps", "recv-Mbps"],
+  table,
 );
+await file_io.write(path.join(args.dir, "iperf3.tsv"), tTable.tsv);
+await file_io.write("-", tTable.tui);

@@ -2,6 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import asTable from "as-table";
+import { stringify as csv } from "csv-stringify/sync";
 import getStdin from "get-stdin";
 import yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
@@ -109,5 +111,32 @@ export async function write(filename: string | URL, body: unknown): Promise<void
   await fs.writeFile(filename, body as string | Uint8Array);
   if (filename.endsWith(".sh")) {
     await fs.chmod(filename, 0o755);
+  }
+}
+
+/** Arrange a table into textual format. */
+export function toTable(
+    columns: readonly string[],
+    table: ReadonlyArray<ReadonlyArray<string | number>>,
+): toTable.Result {
+  return {
+    get tsv() {
+      return csv(table as any[], {
+        delimiter: "\t",
+        header: true,
+        columns: columns as string[],
+      });
+    },
+    get tui() {
+      return asTable([columns, ...table]);
+    },
+  };
+}
+export namespace toTable {
+  export interface Result {
+    /** TAB separated values format. */
+    readonly tsv: string;
+    /** Terminal UI format. */
+    readonly tui: string;
   }
 }

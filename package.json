@@ -24,6 +24,7 @@
     "@types/sql-tagged-template-literal": "^1.2.2",
     "@types/yargs": "^17.0.32",
     "ajv": "^8.12.0",
+    "as-table": "^1.0.55",
     "csv-stringify": "^6.4.6",
     "dockerfilelint": "^1.8.0",
     "dockerode": "^4.0.2",
@@ -48,7 +49,7 @@
     "ts-json-schema-generator": "^1.5.0",
     "tslib": "^2.6.2",
     "tsx": "^4.7.1",
-    "type-fest": "^4.11.0",
+    "type-fest": "^4.11.1",
     "typescript": "~5.3.3",
     "uint8-util": "^2.2.4",
     "yargs": "^17.7.2"

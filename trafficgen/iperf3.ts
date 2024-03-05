@@ -1,6 +1,5 @@
 import path from "node:path";
 
-import { stringify as csv } from "csv-stringify/sync";
 import assert from "minimalistic-assert";
 import { Minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
@@ -164,11 +163,9 @@ function* makeScript(): Iterable<string> {
     yield "  msg Gathering iperf3 statistics table to iperf3.tsv";
     yield `  cd ${path.join(import.meta.dirname, "..")}`;
     yield "  $(corepack pnpm bin)/tsx trafficgen/iperf3-stats.ts --dir=$COMPOSE_CTX";
-    yield "  cd $COMPOSE_CTX";
-    yield "  column -t <iperf3.tsv";
   } else {
-    yield "  msg Showing final results from iperf3 text output"
-    yield "  grep -w receiver iperf3/*_c.log"
+    yield "  msg Showing final results from iperf3 text output";
+    yield "  grep -w receiver iperf3/*_c.log";
   }
   yield "fi";
 }
@@ -188,8 +185,7 @@ for (const row of table) {
 table.push(...Array.from(counts.values(),
   ([cnt, index]) => [index, "*", "*", "COUNT", cnt],
 ));
-process.stdout.write(csv(table, {
-  delimiter: "\t",
-  header: true,
-  columns: ["#", "snssai_dnn", "dir", "supi", "port"],
-}));
+await file_io.write("-", file_io.toTable(
+  ["#", "snssai_dnn", "dir", "supi", "port"],
+  table,
+).tui);

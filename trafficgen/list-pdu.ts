@@ -1,9 +1,8 @@
-import { stringify as csv } from "csv-stringify/sync";
 import DefaultMap from "mnemonist/default-map.js";
 import { sortBy } from "sort-by-typescript";
 import { collect, map, pipeline } from "streaming-iterables";
 
-import { Yargs } from "../util/mod.js";
+import { file_io, Yargs } from "../util/mod.js";
 import { ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 
 const args = Yargs()
@@ -36,8 +35,7 @@ table.push(...Array.from(counts.values(),
   ([cnt, dn]) => ["COUNT", `${cnt}`, "_", "_", dn, "_", "_"],
 ));
 
-process.stdout.write(csv(table, {
-  delimiter: "\t",
-  header: true,
-  columns: ["supi", "ueCt", "ueHost", "pduIP", "snssai_dnn", "dnHost", "dnIP"],
-}));
+await file_io.write("-", file_io.toTable(
+  ["supi", "ueCt", "ueHost", "pduIP", "snssai_dnn", "dnHost", "dnIP"],
+  table,
+).tui);
