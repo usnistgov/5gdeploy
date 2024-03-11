@@ -18,7 +18,7 @@ export function nameToNf(ct: string): string {
  * @param list - Relevant config objects.
  *
  * @remarks
- * If a config object has a .name property, it must reflect the templated network function.
+ * If a config object has a `.name` property, it must reflect the templated network function.
  */
 export function suggestNames<T>(nf: string, list: readonly T[]): Map<string, T> {
   const m = new Map<string, T>();
@@ -133,7 +133,7 @@ export function defineService(c: ComposeFile, name: string, image: string): Comp
 function attachServiceValidations(s: ComposeService): void {
   for (const key of [
     "sysctls", "environment", "networks",
-  ] as ReadonlyArray<ConditionalKeys<ComposeService, Record<string, unknown>>>) {
+  ] as const satisfies ReadonlyArray<ConditionalKeys<ComposeService, Record<string, unknown>>>) {
     Object.defineProperty(s, key, {
       enumerable: true,
       writable: false,
@@ -143,7 +143,7 @@ function attachServiceValidations(s: ComposeService): void {
 
   for (const [key, uniq] of [
     ["cap_add", true], ["devices", true], ["volumes", false],
-  ] as ReadonlyArray<[key: ConditionalKeys<ComposeService, unknown[]>, uniq: boolean]>) {
+  ] as const satisfies ReadonlyArray<[key: ConditionalKeys<ComposeService, unknown[]>, uniq: boolean]>) {
     Object.defineProperty(s, key, {
       enumerable: true,
       writable: false,
