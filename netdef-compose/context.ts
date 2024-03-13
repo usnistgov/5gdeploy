@@ -4,7 +4,7 @@ import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import type { ComposeFile, ComposeService } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
-import { type IPAlloc } from "./ipalloc.js";
+import type { IPAlloc } from "./ipalloc.js";
 
 /** Contextual information and helpers while converting NetDef into Compose context. */
 export class NetDefComposeContext {
@@ -20,7 +20,7 @@ export class NetDefComposeContext {
   constructor(
       public readonly netdef: NetDef,
       public readonly out: string,
-      private readonly ipAlloc: IPAlloc,
+      public readonly ipAlloc: IPAlloc,
   ) {}
 
   /** Access NetDef JSON. */

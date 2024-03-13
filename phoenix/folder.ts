@@ -98,7 +98,7 @@ export class ScenarioFolder {
   }
 
   /** Edit a network function JSON file. */
-  public editNetworkFunction(ct: string, ...edits: ReadonlyArray<(c: NetworkFunction) => void | Promise<void>>): void {
+  public editNetworkFunction(ct: string, ...edits: ReadonlyArray<(c: NetworkFunction) => Promisable<void>>): void {
     this.edit(`${ct}.json`, async (body) => {
       const c = NetworkFunction.parse(body);
       for (const edit of edits) {

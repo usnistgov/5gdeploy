@@ -11,6 +11,7 @@ import { file_io, Yargs } from "../util/mod.js";
 import { NetDefComposeContext } from "./context.js";
 import { dnOptions, saveDNOptions } from "./dn.js";
 import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
+import { definePrometheus, prometheusOptions } from "./prometheus.js";
 
 type Providers = Record<string, (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>>;
 
@@ -69,6 +70,7 @@ const args = Yargs()
   .option(ipAllocOptions)
   .option(dnOptions)
   .middleware(saveDNOptions)
+  .option(prometheusOptions)
   .option(phoenixOptions)
   .option(oaiOptions)
   .parseSync();
@@ -79,6 +81,7 @@ const ctx = new NetDefComposeContext(netdef, args.out, new IPAlloc(args));
 await upProviders[args.up]!(ctx, args);
 await cpProviders[args.cp]!(ctx, args);
 await ranProviders[args.ran]!(ctx, args);
+await definePrometheus(ctx, args);
 compose.defineBridge(ctx.c, args);
 await Promise.all(Array.from(
   compose.place(ctx.c, args),

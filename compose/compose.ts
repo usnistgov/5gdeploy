@@ -192,24 +192,27 @@ export function annotate(s: ComposeService, key: string, value?: string | number
   return s;
 }
 
-/** Find a service whose annotation matching a predicate. */
-export function findByAnnotation(
+/**
+ * List services whose annotation matching a predicate.
+ * @param c - Compose file.
+ * @param key - Annotation key.
+ * @param predicate - Expected value or predicate function.
+ * @returns List of matched services.
+ */
+export function listByAnnotation(
     c: ComposeFile, key: string,
     predicate: string | number | ((value: string) => boolean),
-): ComposeService | undefined {
+): ComposeService[] {
   key = `5gdeploy.${key}`;
   if (typeof predicate !== "function") {
-    const value = `${predicate}`;
-    predicate = (v) => v === value;
+    const expected = `${predicate}`;
+    predicate = (v) => v === expected;
   }
 
-  for (const s of Object.values(c.services)) {
+  return Object.values(c.services).filter((s) => {
     const value = s.annotations?.[key];
-    if (value !== undefined && predicate(value)) {
-      return s;
-    }
-  }
-  return undefined;
+    return value !== undefined && predicate(value);
+  });
 }
 
 /** Add a netif to a service. */

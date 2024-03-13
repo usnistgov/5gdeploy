@@ -34,7 +34,7 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: A
   return pipeline(
     () => subscribers,
     transform(16, async (sub) => {
-      const ueService = compose.findByAnnotation(c, "ue_supi", (value) => value.split(",").includes(sub.supi));
+      const ueService = compose.listByAnnotation(c, "ue_supi", (value) => value.split(",").includes(sub.supi))[0];
       assert(ueService, `UE container for ${sub.supi} not found`);
       const ueHost = compose.annotate(ueService, "host") ?? "";
       const ct = dockerode.getContainer(ueService.container_name, ueHost);
@@ -50,7 +50,7 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: A
         }
         const dnSubnet = new Netmask(dn.subnet);
 
-        const dnService = compose.findByAnnotation(c, "dn", `${dn.snssai}_${dn.dnn}`);
+        const dnService = compose.listByAnnotation(c, "dn", `${dn.snssai}_${dn.dnn}`)[0];
         assert(dnService, `DN container for ${dn.dnn} not found`);
         const dnHost = compose.annotate(dnService, "host") ?? "";
         const dnIP = compose.annotate(dnService, "ip_n6");

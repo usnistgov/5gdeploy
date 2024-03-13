@@ -15,6 +15,7 @@ export interface ModuleConfigMap {
   command: command.Config;
   gnb: gnb.Config;
   httpd: httpd.Config;
+  monitoring: monitoring.Config;
   nrf_client: nrf_client.Config;
   pfcp: pfcp.Config;
   sdn_routing_topology: sdn_routing_topology.Config;
@@ -116,6 +117,19 @@ export namespace httpd {
     bind: string;
     port: number;
     [k: string]: unknown;
+  }
+}
+
+export namespace monitoring {
+  export interface Config {
+    Prometheus?: Prometheus;
+  }
+
+  export interface Prometheus {
+    listener: string;
+    port: number;
+    enabled: 0 | 1;
+    register_memstat_to_metrics?: boolean;
   }
 }
 

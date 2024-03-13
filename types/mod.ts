@@ -5,5 +5,6 @@ export * as OAI from "./oai.js";
 export * as OMEC from "./omec.js";
 export * as PH from "./phoenix.js";
 export * as PhoenixUE from "./phoenix-ue.js";
+export * as prom from "./prometheus.js";
 export * as prush from "./packetrusher.js";
 export * from "./compose.js";

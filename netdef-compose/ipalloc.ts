@@ -58,6 +58,16 @@ export class IPAlloc {
   }
 
   /**
+   * Find network by IP address.
+   * @param ip - IPv4 address.
+   * @returns Subnet name or undefined if unknown.
+   */
+  public findNetwork(ip: string): string | undefined {
+    const c = ip2long(ip) & ~0xFF;
+    return this.networks.inverse.get(c);
+  }
+
+  /**
    * Allocate a netif address.
    * @param net - Subnet name. It must exist.
    * @param host - Host name.

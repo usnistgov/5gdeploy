@@ -139,7 +139,7 @@ abstract class PhoenixScenarioBuilder {
     const m = nf === "ue" ? compose.suggestUENames(list as ReadonlyArray<T & { supi: string }>) : compose.suggestNames(nf, list);
 
     for (const ct of m.keys()) {
-      this.ctx.defineService(ct, phoenixDockerImage, nets);
+      const s = this.ctx.defineService(ct, phoenixDockerImage, nets);
       const ctFile = `${ct}.json`;
       this.sf.createFrom(ctFile, tplFile);
       this.sf.edit(ctFile, (body) => body.replaceAll(`%${tplCt.toUpperCase()}_`, `%${ct.toUpperCase()}_`));
@@ -154,6 +154,22 @@ abstract class PhoenixScenarioBuilder {
         const nrfClient = c.getModule("nrf_client", true);
         if (nrfClient) {
           nrfClient.config.nf_profile.nfInstanceId = globalThis.crypto.randomUUID();
+        }
+
+        const monitoring = c.getModule("monitoring", true);
+        if (monitoring) {
+          const mgmt = s.networks.mgmt!.ipv4_address;
+          monitoring.config.Prometheus = {
+            listener: mgmt,
+            port: 9888,
+            enabled: 1,
+          };
+
+          const target = new URL("http://localhost:9888/metrics");
+          target.hostname = mgmt;
+          target.searchParams.set("job_name", "phoenix");
+          target.searchParams.append("labels", `phnf=${s.container_name}`);
+          compose.annotate(s, "prometheus_target", target.toString());
         }
       });
     }
