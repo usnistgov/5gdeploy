@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
+import { sortBy } from "sort-by-typescript";
 import sql from "sql-tagged-template-literal";
 import type { Constructor } from "type-fest";
 
@@ -144,7 +145,7 @@ abstract class PhoenixScenarioBuilder {
       this.sf.createFrom(ctFile, tplFile);
       this.sf.edit(ctFile, (body) => body.replaceAll(`%${tplCt.toUpperCase()}_`, `%${ct.toUpperCase()}_`));
       this.sf.editNetworkFunction(ct, (c) => {
-        c.Phoenix.Module.sort((a, b) => a.binaryFile.localeCompare(b.binaryFile));
+        c.Phoenix.Module.sort(sortBy("binaryFile"));
 
         const command = c.getModule("command", true);
         if (command) {

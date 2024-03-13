@@ -4,7 +4,7 @@ import { ip2long, Netmask } from "netmask";
 
 import type { ComposeFile } from "../types/mod.js";
 import { hexPad, type YargsInfer, type YargsOptions } from "../util/mod.js";
-import { defineService, disconnectNetif, setCommands } from "./compose.js";
+import { annotate, defineService, disconnectNetif, setCommands } from "./compose.js";
 
 export const bridgeDockerImage = "5gdeploy.localhost/bridge";
 
@@ -165,6 +165,7 @@ export function defineBridge(c: ComposeFile, opts: YargsInfer<typeof bridgeOptio
   );
 
   const s = defineService(c, "bridge", bridgeDockerImage);
+  annotate(s, "every_host", 1);
   s.network_mode = "host";
   s.cap_add.push("NET_ADMIN");
   if (modes.has("eth")) {

@@ -193,9 +193,6 @@ $(./compose.sh at ue1000) logs -f ue1000
 # - 'docker -H ssh://HOST', if the named container is placed on a secondary host
 ```
 
-With `--place` flags, all containers are defined in a single Compose file but the `compose.sh` script will list each container name for the proper host machine.
-You can add `--split` flag to generate a separate Compose file for each host machine, if you prefer that way.
-
 ## CPU Isolation
 
 It is possible to configure CPU isolation as part of the `--place` flag.

@@ -4,6 +4,7 @@ import assert from "minimalistic-assert";
 import { minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
+import { sortBy } from "sort-by-typescript";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";
 import type { YargsInfer, YargsOptions } from "../util/mod.js";
@@ -17,11 +18,6 @@ export const placeOptions = {
     nargs: 1,
     string: true,
     type: "array",
-  },
-  split: {
-    default: false,
-    desc: "generate a separate Compose file for each host",
-    type: "boolean",
   },
 } as const satisfies YargsOptions;
 
@@ -37,8 +33,6 @@ export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): Ma
   }
 
   const services = new Map<string, ComposeService>(Object.entries(c.services));
-  const hostServices = new DefaultMap<string, ComposeFile["services"]>(() => ({}));
-  hostServices.set("", {});
   for (const line of opts.place) {
     const m = /^([^@]+)@([^@()]*)(?:\((\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)\))?$/.exec(line);
     if (!m) {
@@ -48,7 +42,7 @@ export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): Ma
     const assignCpuset = cpuset ? new AssignCpuset(cpuset) : undefined;
 
     for (const [ct, s] of services) {
-      if (ctEveryHost.has(ct)) {
+      if (annotate(s, "every_host")) {
         //
       } else if (minimatch(ct, pattern)) {
         services.delete(ct);
@@ -57,31 +51,19 @@ export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): Ma
         continue;
       }
       assignCpuset?.prepare(s);
-      hostServices.get(host)[ct] = s;
     }
 
     assignCpuset?.update();
   }
-  for (const [ct, s] of services) {
-    if (!ctEveryHost.has(ct)) {
+  for (const s of services.values()) {
+    if (!annotate(s, "every_host")) {
       annotate(s, "host", "");
     }
-    hostServices.get("")[ct] = s;
   }
 
-  if (opts.split) {
-    for (const [host, services] of hostServices) {
-      outputFiles.set(makeFilename(host), {
-        networks: JSON.parse(JSON.stringify(c.networks)),
-        services,
-      } as ComposeFile);
-    }
-  }
-  outputFiles.set("compose.sh", Array.from(makeScript(hostServices, opts.split)).join("\n"));
+  outputFiles.set("compose.sh", Array.from(makeScript(c)).join("\n"));
   return outputFiles;
 }
-
-const ctEveryHost = new Set(["bridge"]);
 
 class AssignCpuset {
   constructor(cpuset: string) {
@@ -108,7 +90,7 @@ class AssignCpuset {
   private wantDedicated = 0;
 
   public prepare(s: ComposeService): void {
-    if (ctEveryHost.has(s.container_name)) {
+    if (annotate(s, "every_host")) {
       return;
     }
 
@@ -143,13 +125,6 @@ class AssignCpuset {
       }
     }
   }
-}
-
-function makeFilename(host: string): string {
-  if (!host) {
-    return "compose.PRIMARY.yml";
-  }
-  return `compose.${host.replaceAll(/\W/g, "_")}.yml`;
 }
 
 /** Make `docker` command with optional `-H` flag. */
@@ -227,23 +202,25 @@ const minimalScript = [
   ...scriptTail,
 ].join("\n");
 
-function* makeScript(hostServices: Iterable<[host: string, services: ComposeFile["services"]]>, split: boolean): Iterable<string> {
+function* makeScript(c: ComposeFile): Iterable<string> {
+  const hostServices = Array.from(classifyByHost(c));
+  hostServices.sort(sortBy("host"));
+
   yield* scriptHead;
 
   yield "if [[ $ACT == at ]]; then";
   yield "  case ${1:-} in"; // eslint-disable-line no-template-curly-in-string
-  for (const [host, services] of hostServices) {
-    yield `    ${Object.keys(services).join("|")}) echo ${makeDockerH(host)};;`;
+  for (const { dockerH, names } of hostServices) {
+    yield `    ${names.join("|")}) echo ${shlex.quote(dockerH)};;`;
   }
   yield "    *) die Container not found;;";
   yield "  esac";
 
   for (const [act, cmd, listServiceNames, msg1, msg2] of scriptActions) {
     yield `elif [[ $ACT == ${act} ]]; then`;
-    for (const [host, services] of hostServices) {
-      yield `  msg ${shlex.quote(msg1)} on ${host || "PRIMARY"}`;
-      yield `  ${makeDockerH(host)} compose${split ? ` -f ${makeFilename(host)}` : ""} ${cmd}${
-        listServiceNames ? ` ${Object.keys(services).join(" ")}` : ""}`;
+    for (const { hostDesc, dockerH, names } of hostServices) {
+      yield `  msg ${shlex.quote(`${msg1} on ${hostDesc}`)}`;
+      yield `  ${dockerH} compose ${cmd}${listServiceNames ? ` ${names.join(" ")}` : ""}`;
     }
     yield `  msg ${shlex.quote(msg2)}`;
   }
@@ -257,16 +234,27 @@ function* makeScript(hostServices: Iterable<[host: string, services: ComposeFile
  * @param filter - Filter for container names.
  */
 export function* classifyByHost(c: ComposeFile, filter = /^.*$/): Iterable<classifyByHost.Result> {
-  const services = Object.values(c.services).filter(({ container_name }) => filter.test(container_name));
+  const everyHostServices: ComposeService[] = [];
   const byHost = new DefaultMap<string, ComposeService[]>(() => []);
-  for (const s of services) {
-    const host = annotate(s, "host");
-    if (host === undefined) {
+  for (const s of Object.values(c.services)) {
+    if (!filter.test(s.container_name)) {
       continue;
     }
-    byHost.get(host).push(s);
+
+    if (annotate(s, "every_host")) {
+      everyHostServices.push(s);
+      continue;
+    }
+
+    const host = annotate(s, "host");
+    if (host !== undefined) {
+      byHost.get(host).push(s);
+    }
   }
-  for (const [host, services] of byHost) {
+
+  for (const [host, hostServices] of byHost) {
+    const services = [...everyHostServices, ...hostServices];
+    services.sort(sortBy("container_name"));
     yield {
       host,
       hostDesc: host || "PRIMARY",
