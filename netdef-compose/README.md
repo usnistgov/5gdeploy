@@ -75,8 +75,8 @@ Example:
 ## Metrics Collections with Prometheus and Grafana
 
 Prometheus and Grafana are included in the Compose file, if one or more containers define their Prometheus targets.
-Prometheus is accessible on its `mgmt` IP, port 9090.
-Grafana is accessible on its `mgmt` IP, port 3000.
+Prometheus is accessible on its `meas` IP, port 9090.
+Grafana is accessible on its `meas` IP, port 3000.
 Set `--prometheus=false` flag to disable these services.
 
 Currently, Prometheus targets are defined for Open5GCore only.

@@ -29,23 +29,23 @@ export class IPAlloc {
     "ip-space": space,
     "ip-fixed": fixed = [],
   }: YargsInfer<typeof ipAllocOptions>) {
-    this.nextNetwork.n = space.netLong;
-    this.nextNetwork.max = ip2long(space.last);
+    this.nextNetwork.n = BigInt(space.netLong);
+    this.nextNetwork.max = BigInt(ip2long(space.last));
 
     for (const line of fixed) {
       const m = /^(\w+),(\w+),([\d.]+)$/.exec(line);
       assert(!!m, `bad --ip-fixed=${line}`);
       const [, host, net, ipStr] = m as string[] as [string, string, string, string];
-      const ip = ip2long(ipStr);
-      saveFixed("network", this.networks, net, ip & ~0xFF);
-      saveFixed("host", this.hosts, host, ip & 0xFF);
+      const ip = BigInt(ip2long(ipStr));
+      saveFixed("network", this.networks, net, ip & ~0xFFn);
+      saveFixed("host", this.hosts, host, ip & 0xFFn);
     }
   }
 
-  private readonly networks = new BiMap<string, number>();
-  private nextNetwork = { n: -1, step: 256, max: -1 };
-  private readonly hosts = BiMap.from<string, number>({ ".0": 0, ".1": 1 });
-  private nextHost = { n: 2, step: 1, max: 254 };
+  private readonly networks = new BiMap<string, bigint>();
+  private nextNetwork = { n: -1n, step: 256n, max: -1n };
+  private readonly hosts = BiMap.from<string, bigint>({ ".0": 0n, ".1": 1n });
+  private nextHost = { n: 2n, step: 1n, max: 254n };
 
   /**
    * Allocate a subnet.
@@ -54,7 +54,7 @@ export class IPAlloc {
    */
   public allocNetwork(net: string): string {
     const c = allocOne("network", this.networks, this.nextNetwork, net);
-    return `${long2ip(c)}/24`;
+    return `${long2ip(Number(c))}/24`;
   }
 
   /**
@@ -63,7 +63,7 @@ export class IPAlloc {
    * @returns Subnet name or undefined if unknown.
    */
   public findNetwork(ip: string): string | undefined {
-    const c = ip2long(ip) & ~0xFF;
+    const c = BigInt(ip2long(ip)) & ~0xFFn;
     return this.networks.inverse.get(c);
   }
 
@@ -78,25 +78,25 @@ export class IPAlloc {
     assert(c, "network does not exist");
 
     const d = allocOne("host", this.hosts, this.nextHost, host);
-    return long2ip(c | d);
+    return long2ip(Number(c | d));
   }
 }
 
-function saveFixed(kind: string, m: BiMap<string, number>, key: string, value: number): void {
-  let conflictValue: number;
+function saveFixed(kind: string, m: BiMap<string, bigint>, key: string, value: bigint): void {
+  let conflictValue: bigint;
   if (m.has(key) && (conflictValue = m.get(key)!) !== value) {
-    throw new Error(`${kind} "${key}" has conflicting assignment ${long2ip(conflictValue)}`);
+    throw new Error(`${kind} "${key}" has conflicting assignment ${long2ip(Number(conflictValue))}`);
   }
 
   let conflictKey: string;
   if (m.inverse.has(value) && (conflictKey = m.inverse.get(value)!) !== key) {
-    throw new Error(`${kind} ${long2ip(value)} has conflicting assignment "${conflictKey}"`);
+    throw new Error(`${kind} ${long2ip(Number(value))} has conflicting assignment "${conflictKey}"`);
   }
 
   m.set(key, value);
 }
 
-function allocOne(kind: string, m: BiMap<string, number>, next: { n: number; step: number; max: number }, key: string): number {
+function allocOne(kind: string, m: BiMap<string, bigint>, next: { n: bigint; step: bigint; max: bigint }, key: string): bigint {
   let v = m.get(key);
   if (v === undefined) {
     do {
