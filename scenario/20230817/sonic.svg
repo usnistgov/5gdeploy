@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="250" style="background:#ffffff;">
+  <!-- gNB -->
+  <g transform="translate(0 50)">
+    <rect width="100" height="50" fill="#aaaaaa"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">gnb0</text>
+  </g>
+  <g transform="translate(0 150)">
+    <rect width="100" height="50" fill="#aaaaaa"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">gnb1</text>
+  </g>
+  <!-- sw -->
+  <g transform="translate(150 50)">
+    <rect width="100" height="50" rx="10" fill="#ffdc00"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">G0</text>
+  </g>
+  <g transform="translate(150 150)">
+    <rect width="100" height="50" rx="10" fill="#ffdc00"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">G1</text>
+  </g>
+  <g transform="translate(300 100)">
+    <rect width="100" height="50" rx="10" fill="#ffdc00"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">U</text>
+  </g>
+  <!-- UPF -->
+  <g transform="translate(500 0)">
+    <rect width="100" height="50" fill="#2ecc40"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf1</text>
+  </g>
+  <g transform="translate(500 100)">
+    <rect width="100" height="50" fill="#2ecc40"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf140</text>
+  </g>
+  <g transform="translate(500 200)">
+    <rect width="100" height="50" fill="#2ecc40"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf141</text>
+  </g>
+  <!-- gnb-G -->
+  <line x1="100" y1="75" x2="150" y2="75" stroke="#2ecc40"/>
+  <text x="100" y="75" text-anchor="end" font-size="12">n3</text>
+  <text x="150" y="75" text-anchor="start" font-size="12">Eth24</text>
+  <line x1="100" y1="175" x2="150" y2="175" stroke="#2ecc40"/>
+  <text x="100" y="175" text-anchor="end" font-size="12">n3</text>
+  <text x="150" y="175" text-anchor="start" font-size="12">Eth25</text>
+  <!-- G-U -->
+  <line x1="250" y1="75" x2="300" y2="110" stroke="#2ecc40"/>
+  <text x="250" y="75" text-anchor="end" font-size="12">Eth22</text>
+  <text x="300" y="110" text-anchor="start" font-size="12">Eth20</text>
+  <line x1="250" y1="175" x2="300" y2="140" stroke="#2ecc40"/>
+  <text x="250" y="175" text-anchor="end" font-size="12">Eth23</text>
+  <text x="300" y="140" text-anchor="start" font-size="12">Eth21</text>
+  <!-- U-UPF -->
+  <line x1="400" y1="110" x2="500" y2="25" stroke="#2ecc40"/>
+  <text x="400" y="110" text-anchor="end" font-size="12">Eth16</text>
+  <text x="500" y="25" text-anchor="start" font-size="12">n3</text>
+  <line x1="400" y1="125" x2="500" y2="125" stroke="#2ecc40"/>
+  <text x="400" y="125" text-anchor="end" font-size="12">Eth17</text>
+  <text x="500" y="125" text-anchor="start" font-size="12">n3</text>
+  <line x1="400" y1="140" x2="500" y2="225" stroke="#2ecc40"/>
+  <text x="400" y="140" text-anchor="end" font-size="12">Eth18</text>
+  <text x="500" y="225" text-anchor="start" font-size="12">n3</text>
+</svg>
