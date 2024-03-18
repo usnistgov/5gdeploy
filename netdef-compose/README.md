@@ -76,7 +76,7 @@ Example:
 
 Prometheus and Grafana are included in the Compose file, if one or more containers define their Prometheus targets.
 Prometheus is accessible on its `meas` IP, port 9090.
-Grafana is accessible on its `meas` IP, port 3000.
+Grafana is accessible on its `meas` IP, port 3000; login with admin/grafana.
 Set `--prometheus=false` flag to disable these services.
 
 Currently, Prometheus targets are defined for Open5GCore only.

@@ -1,5 +1,4 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
@@ -8,15 +7,21 @@ import sql from "sql-tagged-template-literal";
 import type { Constructor } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
+import { importGrafanaDashboard, NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
 import { networkOptions, phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
 import type { N, PH } from "../types/mod.js";
-import { findByName, YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { file_io, findByName, YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { ScenarioFolder } from "./folder.js";
 import { IPMAP } from "./ipmap.js";
 import type { NetworkFunction } from "./nf.js";
 
 export const phoenixOptions = {
+  "phoenix-cfg": {
+    default: path.resolve(import.meta.dirname, "../../phoenix-repo/phoenix-src/cfg"),
+    desc: "path to phoenix-src/cfg",
+    group: "phoenix",
+    type: "string",
+  },
   "phoenix-upf-workers": {
     default: 3,
     desc: "number of worker threads in UPF",
@@ -89,8 +94,6 @@ export const phoenixOptions = {
 type PhoenixOpts = YargsInfer<typeof phoenixOptions>;
 const defaultOptions: PhoenixOpts = YargsDefaults(phoenixOptions);
 
-const templatePath = fileURLToPath(new URL("../../phoenix-repo/phoenix-src/cfg", import.meta.url));
-
 function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext, PhoenixOpts]>): (ctx: NetDefComposeContext, opts?: PhoenixOpts) => Promise<void> {
   return async (ctx, opts = defaultOptions): Promise<void> => {
     const b = new cls(ctx, opts);
@@ -102,6 +105,7 @@ function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeCont
 abstract class PhoenixScenarioBuilder {
   protected abstract nfKind: string;
   protected abstract nfFilter: readonly string[];
+  private hasPrometheus = false;
 
   constructor(
       protected readonly ctx: NetDefComposeContext,
@@ -115,7 +119,6 @@ abstract class PhoenixScenarioBuilder {
     assert(mnc.length === 2, "Open5GCore only supports 2-digit MNC");
     this.sf.env.set("MCC", mcc);
     this.sf.env.set("MNC", mnc);
-    this.sf.env.set("PROMETHEUS_ENABLED", "0");
     this.sf.env.set("COMMAND_DISABLED", "0");
     this.sf.env.set("DISABLE_REMOTE_COMMAND", "0");
   }
@@ -127,7 +130,7 @@ abstract class PhoenixScenarioBuilder {
   public abstract build(): void;
 
   protected tplFile(relPath: string): string {
-    return path.resolve(templatePath, relPath);
+    return path.resolve(this.opts["phoenix-cfg"], relPath);
   }
 
   protected createNetworkFunction<T>(tpl: `${string}.json`, nets: readonly string[], list?: readonly T[]): Map<string, T> {
@@ -159,6 +162,7 @@ abstract class PhoenixScenarioBuilder {
 
         const monitoring = c.getModule("monitoring", true);
         if (monitoring) {
+          this.hasPrometheus = true;
           const mgmt = s.networks.mgmt!.ipv4_address;
           monitoring.config.Prometheus = {
             listener: mgmt,
@@ -204,6 +208,14 @@ abstract class PhoenixScenarioBuilder {
     }
 
     await this.sf.save(path.resolve(this.ctx.out, `${this.nfKind}-cfg`), path.resolve(this.ctx.out, `${this.nfKind}-sql`));
+
+    if (this.hasPrometheus) {
+      for (const entry of await file_io.fsWalk(this.tplFile("5g/prometheus"), {
+        entryFilter: (entry) => entry.name.endsWith(".json"),
+      })) {
+        await importGrafanaDashboard(this.ctx, entry.path);
+      }
+    }
   }
 }
 

@@ -1,13 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 
-import fsWalk from "@nodelib/fs.walk";
 import * as envfile from "envfile";
 import assert from "minimalistic-assert";
 import type DefaultMap from "mnemonist/default-map.js";
 import type MultiMap from "mnemonist/multi-map.js";
-import { type AnyIterable } from "streaming-iterables";
+import type { AnyIterable } from "streaming-iterables";
 import type { Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
@@ -15,8 +13,6 @@ import { file_io } from "../util/mod.js";
 import { IPMAP } from "./ipmap.js";
 import { NetworkFunction } from "./nf.js";
 import { OtherTable } from "./other.js";
-
-const fsWalkPromise = promisify(fsWalk.walk);
 
 /** ph_init scenario folder. */
 export class ScenarioFolder {
@@ -30,7 +26,7 @@ export class ScenarioFolder {
     sf.ipmap = IPMAP.parse(await file_io.readText(path.resolve(dir, "ip-map")), sf.env);
     sf.other = OtherTable.parse(await file_io.readText(path.resolve(dir, "other")));
 
-    const walk = await fsWalkPromise(dir, {
+    const walk = await file_io.fsWalk(dir, {
       entryFilter(entry) {
         if (!entry.dirent.isFile()) {
           return false;
@@ -75,14 +71,14 @@ export class ScenarioFolder {
 
   /** Create a file from an external file. */
   public createFrom(dst: string, src: string): void {
-    this.files.set(dst, { readFromFile: src, edits: [] });
+    this.files.set(dst, new FileAction(src));
   }
 
   /** Duplicate a file without pending edits. */
   public copy(dst: string, src: string): void {
     const fa = this.files.get(src);
     assert(fa, "source file not found");
-    this.files.set(dst, { readFromFile: fa.readFromFile, initialContent: fa.initialContent, edits: [] });
+    this.files.set(dst, new FileAction(fa.readFromFile, fa.initialContent));
   }
 
   /** Edit a file. */
@@ -121,23 +117,11 @@ export class ScenarioFolder {
   public async save(cfg: string, sql: string): Promise<void> {
     await fs.rm(cfg, { recursive: true, force: true });
     await fs.rm(sql, { recursive: true, force: true });
-    await fs.mkdir(cfg, { recursive: true });
 
     for (const [dst, fa] of this.files) {
       const dstPath = dst.startsWith("sql/") ? path.resolve(sql, dst.slice(4)) : path.resolve(cfg, dst);
-      await fs.mkdir(path.dirname(dstPath), { recursive: true });
-      if (fa.readFromFile && fa.edits.length === 0) {
-        await fs.copyFile(fa.readFromFile, dstPath);
-        continue;
-      }
-
-      let body = fa.readFromFile ? await file_io.readText(fa.readFromFile) : (fa.initialContent ?? "");
-      for (const edit of fa.edits) {
-        body = await edit(body);
-      }
-      await file_io.write(dstPath, body);
+      await file_io.write(dstPath, fa);
     }
-
     await file_io.write(path.resolve(cfg, "env.sh"), saveEnv(this.env));
     await file_io.write(path.resolve(cfg, "ip-map"), this.ipmap);
     await file_io.write(path.resolve(cfg, "other"), this.other);
@@ -147,10 +131,25 @@ export namespace ScenarioFolder {
   export type EditFunc = (body: string) => Promisable<string>;
 }
 
-interface FileAction {
-  initialContent?: string;
-  readFromFile?: string;
-  edits: ScenarioFolder.EditFunc[];
+class FileAction implements file_io.write.Saver {
+  constructor(
+      public readonly readFromFile?: string,
+      public readonly initialContent = "",
+  ) {}
+
+  public readonly edits: ScenarioFolder.EditFunc[] = [];
+
+  public async save(): Promise<unknown> {
+    if (this.readFromFile && this.edits.length === 0) {
+      return file_io.write.copyFrom(this.readFromFile);
+    }
+
+    let body = this.readFromFile ? await file_io.readText(this.readFromFile) : this.initialContent;
+    for (const edit of this.edits) {
+      body = await edit(body);
+    }
+    return body;
+  }
 }
 
 function parseEnv(body: string): Map<string, string> {

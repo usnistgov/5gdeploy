@@ -1,6 +1,8 @@
+import path from "node:path";
+
 import * as compose from "../compose/mod.js";
 import type { ComposeService, prom } from "../types/mod.js";
-import type { YargsInfer, YargsOptions } from "../util/mod.js";
+import { file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import type { NetDefComposeContext } from "./context.js";
 
 /** Yargs options definition for Prometheus. */
@@ -84,11 +86,21 @@ class PromBuilder {
   }
 
   private async buildGrafana(promUrl: URL): Promise<void> {
-    const s = this.ctx.defineService("grafana", "grafana/grafana", ["meas"]);
+    const s = this.ctx.defineService("grafana", "grafana/grafana-oss", ["meas"]);
     s.environment.GF_SECURITY_ADMIN_USER = "admin";
     s.environment.GF_SECURITY_ADMIN_PASSWORD = "grafana";
+    s.environment.GF_FEATURE_TOGGLES_ENABLE = "autoMigrateOldPanels";
 
-    const cfg = {
+    await this.ctx.writeFile("grafana-dashboards", file_io.write.MKDIR, {
+      s,
+      target: "/var/lib/grafana/dashboards",
+    });
+
+    await this.ctx.writeFile("grafana-provisioning", file_io.write.MKDIR, {
+      s,
+      target: "/etc/grafana/provisioning",
+    });
+    await this.ctx.writeFile("grafana-provisioning/datasources/prometheus.yml", {
       apiVersion: 1,
       datasources: [{
         name: "Prometheus",
@@ -98,10 +110,16 @@ class PromBuilder {
         access: "proxy",
         editable: true,
       }],
-    };
-    await this.ctx.writeFile("grafana-datasource.yml", cfg, {
-      s,
-      target: "/etc/grafana/provisioning/datasources/datasource.yml",
+    });
+    await this.ctx.writeFile("grafana-provisioning/dashboards/default.yml", {
+      apiVersion: 1,
+      providers: [{
+        name: "Default",
+        type: "file",
+        options: {
+          path: "/var/lib/grafana/dashboards",
+        },
+      }],
     });
   }
 }
@@ -110,4 +128,14 @@ class PromBuilder {
 export async function prometheus(ctx: NetDefComposeContext, opts: YargsInfer<typeof prometheusOptions>): Promise<void> {
   const b = new PromBuilder(ctx, opts);
   await b.build();
+}
+
+/**
+ * Import a Grafana dashboard definition file.
+ * @param file - Dashboard definition filename.
+ */
+export async function importGrafanaDashboard(ctx: NetDefComposeContext, file: string): Promise<void> {
+  let def = await file_io.readText(file);
+  def = def.replaceAll("${DS_PROMETHEUS}", "Prometheus"); // eslint-disable-line no-template-curly-in-string
+  return ctx.writeFile(path.join("grafana-dashboards", path.basename(file)), def);
 }
