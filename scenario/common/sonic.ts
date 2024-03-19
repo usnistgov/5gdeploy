@@ -51,11 +51,11 @@ export function swportOption(name: string) {
 /** Construct yargs option for switchports. */
 export function swportsOption(name: string) {
   return {
+    array: true,
     demandOption: true,
     desc: `${name} switchport(s)`,
     nargs: 1,
-    string: true,
-    type: "array",
+    type: "string",
   } as const satisfies YargsOpt;
 }
 

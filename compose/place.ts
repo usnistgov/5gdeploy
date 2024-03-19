@@ -13,11 +13,11 @@ import { annotate, scriptHead as baseScriptHead } from "./compose.js";
 /** Yargs options definition for placing Compose services onto multiple hosts. */
 export const placeOptions = {
   place: {
+    array: true,
     default: [],
     desc: "place containers on host and set CPU isolation",
     nargs: 1,
-    string: true,
-    type: "array",
+    type: "string",
   },
 } as const satisfies YargsOptions;
 
@@ -25,11 +25,9 @@ export const placeOptions = {
  * Place Compose services onto multiple hosts.
  * @returns A mapping from output filename to file contents.
  */
-export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): Map<string, unknown> {
-  const outputFiles = new Map<string, unknown>([["compose.yml", c]]);
+export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): void {
   if (opts.place.length === 0) {
-    outputFiles.set("compose.sh", minimalScript);
-    return outputFiles;
+    return;
   }
 
   const services = new Map<string, ComposeService>(Object.entries(c.services));
@@ -60,9 +58,6 @@ export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): Ma
       annotate(s, "host", "");
     }
   }
-
-  outputFiles.set("compose.sh", Array.from(makeScript(c)).join("\n"));
-  return outputFiles;
 }
 
 class AssignCpuset {
@@ -170,6 +165,11 @@ const scriptHead = [
 ];
 
 const scriptTail = [
+  "elif [[ $ACT == meas ]]; then",
+  "  msg Prometheus is at $(yq '.services.prometheus.annotations[\"5gdeploy.ip_meas\"]' compose.yml):9090",
+  "  msg Grafana is at $(yq '.services.grafana.annotations[\"5gdeploy.ip_meas\"]' compose.yml):3000 , login with admin/grafana",
+  "  msg Setup SSH port forwarding to access these services in a browser",
+  "  msg \"'null'\" means the relevant service has been disabled",
   "elif [[ $ACT == phoenix-register ]]; then",
   `  cd ${path.join(import.meta.dirname, "..")}`,
   "  for UECT in $(docker ps --format='{{.Names}}' | grep '^ue'); do",
@@ -202,10 +202,7 @@ const minimalScript = [
   ...scriptTail,
 ].join("\n");
 
-function* makeScript(c: ComposeFile): Iterable<string> {
-  const hostServices = Array.from(classifyByHost(c));
-  hostServices.sort(sortBy("host"));
-
+function* makeScriptLines(hostServices: readonly classifyByHost.Result[]): Iterable<string> {
   yield* scriptHead;
 
   yield "if [[ $ACT == at ]]; then";
@@ -226,6 +223,16 @@ function* makeScript(c: ComposeFile): Iterable<string> {
   }
 
   yield* scriptTail;
+}
+
+/** Generate compose.sh script. */
+export function makeScript(c: ComposeFile): string {
+  const hostServices = Array.from(classifyByHost(c));
+  if (hostServices.length === 0) {
+    return minimalScript;
+  }
+  hostServices.sort(sortBy("host"));
+  return Array.from(makeScriptLines(hostServices)).join("\n");
 }
 
 /**

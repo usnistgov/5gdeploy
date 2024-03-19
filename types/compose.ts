@@ -35,6 +35,7 @@ export interface ComposeService {
   pid?: "host";
   network_mode?: "host" | "none" | `service:${string}`;
   readonly networks: Record<string, ComposeNetif>;
+  readonly ports: ComposePort[];
   cpuset?: string;
 }
 
@@ -49,4 +50,13 @@ export interface ComposeVolume {
 /** Compose service network interface. */
 export interface ComposeNetif {
   ipv4_address: string;
+}
+
+/** Compose service exposed port. */
+export interface ComposePort {
+  protocol: string;
+  target: number;
+  mode: "host";
+  host_ip?: string;
+  published: `${number}`;
 }

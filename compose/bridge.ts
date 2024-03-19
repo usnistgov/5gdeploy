@@ -11,10 +11,10 @@ export const bridgeDockerImage = "5gdeploy.localhost/bridge";
 /** Yargs options definition for bridge container. */
 export const bridgeOptions = {
   bridge: {
+    array: true,
     desc: "bridge a network over several hosts",
     nargs: 1,
-    string: true,
-    type: "array",
+    type: "string",
   },
 } as const satisfies YargsOptions;
 

@@ -17,9 +17,9 @@ export const ipAllocOptions = {
     type: "string",
   },
   "ip-fixed": {
+    array: true,
     desc: "fixed IP address assignment",
-    string: true,
-    type: "array",
+    type: "string",
   },
 } as const satisfies YargsOptions;
 

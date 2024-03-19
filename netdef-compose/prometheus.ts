@@ -1,54 +1,118 @@
 import path from "node:path";
 
+import DefaultWeakMap from "mnemonist/default-weak-map.js";
+import type { OverrideProperties } from "type-fest";
+
 import * as compose from "../compose/mod.js";
 import type { ComposeService, prom } from "../types/mod.js";
-import { file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { file_io, YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import type { NetDefComposeContext } from "./context.js";
 
 /** Yargs options definition for Prometheus. */
 export const prometheusOptions = {
   prometheus: {
     default: true,
-    defaultDescription: "enabled if Prometheus targets exist",
     desc: "add Prometheus and Grafana containers",
     group: "measurements",
     type: "boolean",
+  },
+  "prometheus-scrape-interval": {
+    default: 15,
+    desc: "Prometheus scrape interval (seconds)",
+    group: "measurements",
+    type: "number",
   },
 } as const satisfies YargsOptions;
 
 class PromBuilder {
   constructor(
       private readonly ctx: NetDefComposeContext,
-      private readonly opts: YargsInfer<typeof prometheusOptions>,
   ) {}
 
-  public async build(): Promise<void> {
+  private opts = YargsDefaults(prometheusOptions);
+  private readonly scrapeJobs = new Map<string, prom.ScrapeConfig>();
+
+  public async build(opts: YargsInfer<typeof prometheusOptions>): Promise<void> {
+    this.opts = opts;
     if (!this.opts.prometheus) {
       return;
     }
 
+    this.ctx.defineNetwork("meas", { wantNAT: true });
+    await this.buildProcessExporter();
     const services = compose.listByAnnotation(this.ctx.c, "prometheus_target", () => true);
-    if (services.length === 0) {
-      // no Prometheus target
-      return;
-    }
-
-    const promUrl = await this.buildPrometheus(services);
+    const promUrl = this.buildPrometheus(services);
     await this.buildGrafana(promUrl);
   }
 
-  private async buildPrometheus(services: readonly ComposeService[]): Promise<URL> {
-    const scrapeJobs = new Map<string, prom.ScrapeConfig>();
-    const nets = new Set<string>();
+  public async finish(): Promise<void> {
+    if (!this.opts.prometheus) {
+      return;
+    }
+    this.configureProcessExporter();
+    await this.configurePrometheus();
+  }
+
+  public readonly processExporterRules = new Map<string, [
+    names: prom.process_exporter.ProcessName[],
+    relabel: prom.RelabelConfig[],
+  ]>();
+
+  private async buildProcessExporter(): Promise<void> {
+    const s = this.ctx.defineService("processexporter", "ncabatoff/process-exporter", ["meas"]);
+    compose.annotate(s, "every_host", 1);
+    compose.exposePort(s, 9256);
+    s.volumes.push({
+      type: "bind",
+      source: "/proc",
+      target: "/host/proc",
+    });
+    s.command = [
+      "--procfs=/host/proc",
+      "-config.path=/config.yml",
+    ];
+    s.privileged = true;
+
+    const cfg: prom.process_exporter.Config = {
+      process_names: Array.from(this.processExporterRules.values(), ([names]) => names).flat(1),
+    };
+    await this.ctx.writeFile("process-exporter.yml", cfg, {
+      s,
+      target: "/config.yml",
+    });
+  }
+
+  private configureProcessExporter(): void {
+    const s = this.ctx.c.services.processexporter!;
+    const targets = new Set(Array.from(compose.classifyByHost(this.ctx.c), ({ host }) => {
+      if (host === "") {
+        return `${s.networks.meas!.ipv4_address}:9256`;
+      }
+      return `${host}:9256`;
+    }));
+    this.scrapeJobs.set("processexporter", {
+      job_name: "process-exporter",
+      static_configs: [{
+        targets: Array.from(targets),
+      }],
+      metric_relabel_configs: Array.from( // not relabel_configs, see https://stackoverflow.com/a/70359287
+        this.processExporterRules.values(),
+        ([, relabel]) => relabel,
+      ).flat(1),
+    });
+  }
+
+  private buildPrometheus(services: readonly ComposeService[]): URL {
+    const nets = new Set<string>(["meas"]);
     for (const s of services) {
       const target = new URL(compose.annotate(s, "prometheus_target")!);
       const jobName = target.searchParams.get("job_name") ?? s.container_name;
-      const job = scrapeJobs.get(jobName) ?? {
+      const job = this.scrapeJobs.get(jobName) ?? {
         job_name: jobName,
         metrics_path: target.pathname,
         static_configs: [],
       };
-      scrapeJobs.set(jobName, job);
+      this.scrapeJobs.set(jobName, job);
 
       const labels: Record<string, string> = {};
       for (const kv of target.searchParams.getAll("labels")) {
@@ -65,24 +129,31 @@ class PromBuilder {
         nets.add(net);
       }
     }
-    nets.add("meas");
 
     const s = this.ctx.defineService("prometheus", "prom/prometheus", [...nets]);
     s.command = [
       "--config.file=/etc/prometheus/prometheus.yml",
     ];
 
+    const url = new URL("http://localhost:9090");
+    url.hostname = s.networks.meas!.ipv4_address;
+    return url;
+  }
+
+  private async configurePrometheus(): Promise<void> {
+    const s = this.ctx.c.services.prometheus!;
+
     const cfg: prom.Config = {
-      scrape_configs: [...scrapeJobs.values()],
+      global: {
+        scrape_interval: "15s",
+        evaluation_interval: "60s",
+      },
+      scrape_configs: [...this.scrapeJobs.values()],
     };
     await this.ctx.writeFile("prometheus.yml", cfg, {
       s,
       target: "/etc/prometheus/prometheus.yml",
     });
-
-    const url = new URL("http://localhost:9090");
-    url.hostname = s.networks.meas!.ipv4_address;
-    return url;
   }
 
   private async buildGrafana(promUrl: URL): Promise<void> {
@@ -124,18 +195,60 @@ class PromBuilder {
   }
 }
 
+const ctxBuilder = new DefaultWeakMap<NetDefComposeContext, PromBuilder>((ctx) => new PromBuilder(ctx));
+
 /** Define Prometheus and Grafana containers in the scenario. */
 export async function prometheus(ctx: NetDefComposeContext, opts: YargsInfer<typeof prometheusOptions>): Promise<void> {
-  const b = new PromBuilder(ctx, opts);
-  await b.build();
+  const b = ctxBuilder.get(ctx);
+  await b.build(opts);
+}
+
+/** Finish configuring Prometheus. */
+export async function prometheusFinish(ctx: NetDefComposeContext): Promise<void> {
+  const b = ctxBuilder.get(ctx);
+  await b.finish();
+}
+
+function regexToString(re: RegExp): string {
+  // process-exporter is compiled with go@1.17.3 that does not support "(?<" syntax for named capture group.
+  return re.source.replaceAll("(?<", "(?P<");
+}
+
+/** Set process-exporter process_names and relabel_config rules. */
+export function setProcessExporterRule(
+    ctx: NetDefComposeContext,
+    key: string,
+    names: readonly setProcessExporterRule.ProcessName[],
+    relabel: readonly setProcessExporterRule.RelabelConfig[],
+) {
+  const b = ctxBuilder.get(ctx);
+  b.processExporterRules.set(key, [
+    names.map((rule) => ({
+      ...rule,
+      cmdline: rule.cmdline.map((re) => regexToString(re)),
+    })),
+    relabel.map((rule) => ({
+      ...rule,
+      regex: rule.regex && regexToString(rule.regex),
+    })),
+  ]);
+}
+export namespace setProcessExporterRule {
+  export type ProcessName = OverrideProperties<prom.process_exporter.ProcessName, {
+    cmdline: readonly RegExp[];
+  }>;
+
+  export type RelabelConfig = OverrideProperties<prom.RelabelConfig, {
+    regex?: RegExp;
+  }>;
 }
 
 /**
  * Import a Grafana dashboard definition file.
- * @param file - Dashboard definition filename.
+ * @param filename - Dashboard definition filename.
  */
-export async function importGrafanaDashboard(ctx: NetDefComposeContext, file: string): Promise<void> {
-  let def = await file_io.readText(file);
+export async function importGrafanaDashboard(ctx: NetDefComposeContext, filename: string): Promise<void> {
+  let def = await file_io.readText(filename);
   def = def.replaceAll("${DS_PROMETHEUS}", "Prometheus"); // eslint-disable-line no-template-curly-in-string
-  return ctx.writeFile(path.join("grafana-dashboards", path.basename(file)), def);
+  return ctx.writeFile(path.join("grafana-dashboards", path.basename(filename)), def);
 }

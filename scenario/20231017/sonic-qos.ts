@@ -4,10 +4,10 @@ import * as sonic from "../common/sonic.js";
 const args = Yargs()
   .option(sonic.basicOptions("20231017"))
   .option("port-gnb", {
+    array: true,
     demandOption: true,
     desc: "gNB switchport(s)",
-    string: true,
-    type: "array",
+    type: "string",
   })
   .option("port-upf1", {
     demandOption: true,

@@ -16,6 +16,6 @@ export type YargsOptions = Record<string, YargsOpt>;
 
 export type YargsInfer<T extends YargsOptions> = ReadonlyDeep<InferredOptionTypes<T>>;
 
-export function YargsDefaults<T extends YargsOptions>(opts: T) {
-  return yargs([]).option(opts).parseSync();
+export function YargsDefaults<T extends YargsOptions>(opts: T): YargsInfer<T> {
+  return yargs([]).option(opts).parseSync() as any;
 }

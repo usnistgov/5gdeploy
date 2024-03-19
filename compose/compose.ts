@@ -123,6 +123,7 @@ export function defineService(c: ComposeFile, name: string, image: string): Comp
         https_proxy: "",
       },
       networks: {},
+      ports: [],
     };
     attachServiceValidations(s);
     c.services[name] = s;
@@ -142,7 +143,7 @@ function attachServiceValidations(s: ComposeService): void {
   }
 
   for (const [key, uniq] of [
-    ["cap_add", true], ["devices", true], ["volumes", false],
+    ["cap_add", true], ["devices", true], ["volumes", false], ["ports", false],
   ] as const satisfies ReadonlyArray<[key: ConditionalKeys<ComposeService, unknown[]>, uniq: boolean]>) {
     Object.defineProperty(s, key, {
       enumerable: true,
@@ -288,6 +289,17 @@ export namespace renameNetifs {
      */
     pipeworkWait?: boolean;
   }
+}
+
+/** Expose a container port on the host. */
+export function exposePort(s: ComposeService, port: number, protocol = "tcp"): void {
+  s.ports.push({
+    protocol,
+    target: port,
+    mode: "host",
+    host_ip: "0.0.0.0",
+    published: `${port}`,
+  });
 }
 
 /**

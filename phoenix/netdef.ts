@@ -7,7 +7,7 @@ import sql from "sql-tagged-template-literal";
 import type { Constructor } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { importGrafanaDashboard, NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
+import { importGrafanaDashboard, NetDef, type NetDefComposeContext, NetDefDN, setProcessExporterRule } from "../netdef-compose/mod.js";
 import { networkOptions, phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
 import type { N, PH } from "../types/mod.js";
 import { file_io, findByName, YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
@@ -59,6 +59,7 @@ export const phoenixOptions = {
     type: "number",
   },
   "phoenix-gnb-to-upf-dscp": {
+    array: true,
     coerce(lines: readonly string[]): Array<[upf: string, dscp: number]> {
       assert(Array.isArray(lines));
       return Array.from(lines, (line: string) => {
@@ -79,16 +80,15 @@ export const phoenixOptions = {
     desc: "alter outer IPv4 DSCP for gNB-to-UPF traffic",
     group: "phoenix",
     nargs: 1,
-    string: true,
-    type: "array",
+    type: "string",
   },
   "phoenix-ue-isolated": {
+    array: true,
     default: [""],
     desc: "allocate a reserved CPU core to UEs matching SUPI suffix",
     group: "phoenix",
     nargs: 1,
-    string: true,
-    type: "array",
+    type: "string",
   },
 } as const satisfies YargsOptions;
 type PhoenixOpts = YargsInfer<typeof phoenixOptions>;
@@ -210,11 +210,28 @@ abstract class PhoenixScenarioBuilder {
     await this.sf.save(path.resolve(this.ctx.out, `${this.nfKind}-cfg`), path.resolve(this.ctx.out, `${this.nfKind}-sql`));
 
     if (this.hasPrometheus) {
-      for (const entry of await file_io.fsWalk(this.tplFile("5g/prometheus"), {
-        entryFilter: (entry) => entry.name.endsWith(".json"),
-      })) {
-        await importGrafanaDashboard(this.ctx, entry.path);
-      }
+      await this.updatePrometheus();
+    }
+  }
+
+  private async updatePrometheus(): Promise<void> {
+    setProcessExporterRule(this.ctx, "phoenix",
+      [{
+        comm: ["phoenix"],
+        cmdline: [/-j [\w/]+\/(?<NF>\w+)\.json/],
+        name: "phoenix:{{.Matches.NF}}",
+      }],
+      [{
+        source_labels: ["groupname"],
+        regex: /phoenix:(\w+)/,
+        target_label: "phnf",
+      }],
+    );
+
+    for (const entry of await file_io.fsWalk(this.tplFile("5g/prometheus"), {
+      entryFilter: (entry) => entry.name.endsWith(".json"),
+    })) {
+      await importGrafanaDashboard(this.ctx, entry.path);
     }
   }
 }

@@ -72,17 +72,24 @@ Example:
 --ip-fixed=smf,n4,192.168.4.12
 ```
 
-## Metrics Collections with Prometheus and Grafana
-
-Prometheus and Grafana are included in the Compose file, if one or more containers define their Prometheus targets.
-Prometheus is accessible on its `meas` IP, port 9090.
-Grafana is accessible on its `meas` IP, port 3000; login with admin/grafana.
-Set `--prometheus=false` flag to disable these services.
-
-Currently, Prometheus targets are defined for Open5GCore only.
-Open5GCore proprietary repository `cfg/5g/prometheus` folder has some `.json` dashboards that can be imported to Grafana.
-
 ## Multi-Host Usage
 
 You can deploy a scenario over multiple physical/virtual machines, with a subset of network functions placed on each machine, by specifying `--bridge` and `--place` command line flags.
 See [multi-host deployment](../docs/multi-host.md) for more information.
+
+## Metrics Collection with Prometheus and Grafana
+
+Unless disabled with `--prometheus=false` flag, the generated Compose file supports Prometheus metrics collection and Grafana visualization.
+Run `./compose.sh meas` in the Compose context folder to view access instructions.
+
+Currently, scrape targets include:
+
+* Open5GCore network functions
+* process-exporter on each host machine
+  * gathering stats of Open5GCore processes
+
+When used in a multi-host deployment:
+
+* Keep `prometheus` and `grafana` containers on the primary host.
+* Do not create a bridge for `meas` network.
+* Create bridges for all other networks joined by `prometheus` container.

@@ -11,7 +11,7 @@ import { file_io, Yargs } from "../util/mod.js";
 import { NetDefComposeContext } from "./context.js";
 import { dnOptions, saveDNOptions } from "./dn.js";
 import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
-import { prometheus, prometheusOptions } from "./prometheus.js";
+import { prometheus, prometheusFinish, prometheusOptions } from "./prometheus.js";
 
 type Providers = Record<string, (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>>;
 
@@ -83,7 +83,7 @@ await cpProviders[args.cp]!(ctx, args);
 await ranProviders[args.ran]!(ctx, args);
 await prometheus(ctx, args);
 compose.defineBridge(ctx.c, args);
-await Promise.all(Array.from(
-  compose.place(ctx.c, args),
-  ([filename, body]) => ctx.writeFile(filename, body),
-));
+compose.place(ctx.c, args);
+await prometheusFinish(ctx);
+await ctx.writeFile("compose.yml", ctx.c);
+await ctx.writeFile("compose.sh", compose.makeScript(ctx.c));

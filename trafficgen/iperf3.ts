@@ -19,6 +19,7 @@ const args = Yargs()
     type: "boolean",
   })
   .option("flow", {
+    array: true,
     coerce(lines: readonly string[]): Array<[dn: Minimatch, ue: Minimatch, flags: readonly string[]]> {
       assert(Array.isArray(lines));
       return Array.from(lines, (line) => {
@@ -34,8 +35,7 @@ const args = Yargs()
     demandOption: true,
     desc: "iperf3 flags for PDU sessions",
     nargs: 1,
-    string: true,
-    type: "array",
+    type: "string",
   })
   .parseSync();
 
