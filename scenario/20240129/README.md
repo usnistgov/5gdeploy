@@ -103,7 +103,7 @@ N4_CD=192.168.4.3
   --place="*@$CPUSET_PRIMARY"
 
 # upload to secondary hosts
-../upload.sh ~/compose/20240129 $CTRL_AB $CTRL_CD
+~/compose/20240129/compose.sh upload
 ```
 
 Explanations:
@@ -150,7 +150,7 @@ N4_CD=02:00:00:04:00:03
   --place="*@$CPUSET_PRIMARY"
 
 # upload to secondary hosts
-../upload.sh ~/compose/20240129 $CTRL_AB $CTRL_CD
+~/compose/20240129/compose.sh upload
 ```
 
 Explanations:

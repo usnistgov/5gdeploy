@@ -98,7 +98,7 @@ You need to rerun `load-gtp5g.sh` after every reboot.
 ## Secondary Host
 
 See [multi-host deployment](multi-host.md) page for concepts of multi-host deployment.
-For a multi-host deployment, a *secondary* host requires only:
+For a multi-host deployment, a *secondary* host needs only:
 
 * Docker Engine
 * gtp5g kernel module, if used
@@ -112,7 +112,10 @@ If the command below does not work, re-check these SSH requirements.
 To copy Docker images to *secondary* hosts, run this command on the *primary* host:
 
 ```bash
-cd ~/5gdeploy
-./upload.sh docker 192.168.60.2 192.168.60.3
-# change these IP addresses to the secondary hosts in your setup
+# upload to an explicit list of secondary hosts
+# (change these IP addresses to the secondary hosts in your setup)
+~/5gdeploy/upload.sh docker 192.168.60.2 192.168.60.3
+
+# or, upload to all secondary hosts in a generated scenario
+~/compose/20230601/compose.sh upload docker
 ```

@@ -78,7 +78,7 @@ N4_UPF4=02:00:00:04:00:03
   --place="*@$CPUSET_PRIMARY"
 
 # upload Compose file and config folder to secondary hosts
-../upload.sh ~/compose/20231017 $CTRL_UPF1 $CTRL_UPF4
+~/compose/20231017/compose.sh upload
 
 # start the scenario
 ~/compose/20231017/compose.sh up

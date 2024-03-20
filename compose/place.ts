@@ -141,10 +141,16 @@ const scriptUsage = `Usage:
     Stop the scenario.
   $(./compose.sh at CT) CMD
     Run Docker command CMD on the host machine of container CT.
+  ./compose.sh upload
+    Upload Compose context to secondary hosts.
+  ./compose.sh upload docker
+    Upload Docker images to secondary hosts.
   ./compose.sh create
     Create scenario containers to prepare for traffic capture.
   ./compose.sh ps
     View containers on each host machine.
+  ./compose.sh meas
+    View access instructions for measurements and metrics services.
   ./compose.sh phoenix-register
     Register Open5GCore UEs.
 
@@ -173,6 +179,7 @@ const scriptTail = [
   "elif [[ $ACT == phoenix-register ]]; then",
   `  cd ${path.join(import.meta.dirname, "..")}`,
   "  for UECT in $(docker ps --format='{{.Names}}' | grep '^ue'); do",
+  "    msg Invoking UE registration and PDU session establishment in $UECT",
   "    corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn='*'",
   "  done",
   "elif [[ $ACT == list-pdu ]] || [[ $ACT == iperf3 ]]; then",
@@ -195,9 +202,13 @@ const minimalScript = [
   ...scriptHead,
   "if [[ $ACT == at ]]; then",
   "  echo docker",
-  ...scriptActions.flatMap(([act, cmd]) => [
+  "elif [[ $ACT == upload ]]; then",
+  "  echo ''",
+  ...scriptActions.flatMap(([act, cmd, , msg1, msg2]) => [
     `elif [[ $ACT == ${act} ]]; then`,
+    `  msg ${shlex.quote(msg1)}`,
     `  docker compose ${cmd}`,
+    `  msg ${shlex.quote(msg2)}`,
   ]),
   ...scriptTail,
 ].join("\n");
@@ -212,6 +223,10 @@ function* makeScriptLines(hostServices: readonly classifyByHost.Result[]): Itera
   }
   yield "    *) die Container not found;;";
   yield "  esac";
+
+  yield "elif [[ $ACT == upload ]]; then";
+  yield `  ${path.join(import.meta.dirname, "../upload.sh")} $\{1:-$COMPOSE_CTX} ${
+    hostServices.map(({ host }) => host).join(" ")}`;
 
   for (const [act, cmd, listServiceNames, msg1, msg2] of scriptActions) {
     yield `elif [[ $ACT == ${act} ]]; then`;

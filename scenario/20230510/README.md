@@ -58,7 +58,8 @@ cd ~/5gdeploy/scenario
   --bridge=n2,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2} \
   --bridge=n4,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2} \
   --bridge=n9,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2}
-../upload.sh ~/compose/20230510 $CTRL_EDGE1 $CTRL_EDGE2
+
+~/compose/20230510/compose.sh upload
 ```
 
 Start the scenario:
