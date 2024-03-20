@@ -51,7 +51,7 @@ See [multi-host](../../docs/multi-host.md) for more details.
 
 ## SONiC Switch QoS Setting
 
-This scenario supports downlink and uplink QoS enforcement when the N3 network is on a [SONiC](https://github.com/sonic-net/SONiC) Ethernet switch.
+This scenario supports QoS enforcement when the N3 network is on a [SONiC](https://github.com/sonic-net/SONiC) Ethernet switch, for both downlink and uplink directions.
 
 ![SONiC switch wiring](sonic.svg)
 

@@ -13,21 +13,9 @@ const args = Yargs()
     type: "number",
   })
   .option("sched", sonic.schedOption())
-  .option("w1", {
-    default: 20,
-    desc: "UPF1 traffic weight (1..100)",
-    type: "number",
-  })
-  .option("w140", {
-    default: 60,
-    desc: "UPF140 traffic weight (1..100)",
-    type: "number",
-  })
-  .option("w141", {
-    default: 20,
-    desc: "UPF141 traffic weight (1..100)",
-    type: "number",
-  })
+  .option("w1", sonic.weightOption("UPF1", 20))
+  .option("w140", sonic.weightOption("UPF140", 60))
+  .option("w141", sonic.weightOption("UPF141", 20))
   .check(({ gnb, n3 }) => {
     assert.equal(gnb.length, n3.length, "gNB quantity and N3 quantity must be same");
     return true;

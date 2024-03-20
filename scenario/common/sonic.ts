@@ -30,11 +30,11 @@ export function basicOptions(id: string) {
 }
 
 /** Construct yargs option for SONiC scheduler. */
-export function schedOption(name = "") {
+export function schedOption() {
   return {
-    choices: ["STRICT", "WRR", "DWRR"] as const,
+    choices: ["STRICT", "WRR", "DWRR"],
     default: "STRICT",
-    desc: `${name} scheduler type`.trim(),
+    desc: "scheduler type",
     type: "string",
   } as const satisfies YargsOpt;
 }
@@ -56,6 +56,15 @@ export function swportsOption(name: string) {
     desc: `${name} switchport(s)`,
     nargs: 1,
     type: "string",
+  } as const satisfies YargsOpt;
+}
+
+/** Construct yargs option for traffic class weight. */
+export function weightOption(name: string, dflt: number) {
+  return {
+    default: dflt,
+    desc: `${name} traffic weight (1..100)`,
+    type: "number",
   } as const satisfies YargsOpt;
 }
 
@@ -83,7 +92,9 @@ export class Builder {
    * If the same path is already specified and it's an object, the values are merged.
    */
   public set(path: string, value: unknown): void {
-    const table = path.split("/")[1]!;
+    const pathSegs = path.split("/");
+    assert(pathSegs.length >= 2);
+    const table = pathSegs[1]!;
     this.tables.add(table);
 
     const old = this.objects.get(path);
@@ -156,7 +167,7 @@ export class Builder {
       scheduler: `${prefix}${name}`,
     });
     for (const [queue, weight] of Object.entries(queueWeights)) {
-      assert(Number.isInteger(weight) && weight >= 1 && weight <= 100);
+      assert(Number.isInteger(weight) && weight >= 1 && weight <= 100, "weight out of range");
       this.set(`/SCHEDULER/${prefix}${name}q${queue}`, {
         type,
         weight: type === "STRICT" ? undefined : `${weight}`,
