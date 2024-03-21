@@ -3,6 +3,7 @@ import path from "node:path";
 import assert from "minimalistic-assert";
 import { Minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
+import oblMap from "obliterator/map.js";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 import { collect, flatTransform, map, pipeline } from "streaming-iterables";
@@ -182,7 +183,7 @@ for (const row of table) {
   const index = row[0]! as number;
   counts.get(index)[0] += 1;
 }
-table.push(...Array.from(counts.values(),
+table.push(...oblMap(counts.values(),
   ([cnt, index]) => [index, "*", "*", "COUNT", cnt],
 ));
 await file_io.write("-", file_io.toTable(

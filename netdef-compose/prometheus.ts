@@ -1,10 +1,11 @@
 import path from "node:path";
 
 import DefaultWeakMap from "mnemonist/default-weak-map.js";
+import map from "obliterator/map.js";
 import type { OverrideProperties } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import type { ComposeService, prom } from "../types/mod.js";
+import type { ComposeService, process_exporter, prom } from "../types/mod.js";
 import { file_io, YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import type { NetDefComposeContext } from "./context.js";
 
@@ -54,7 +55,7 @@ class PromBuilder {
   }
 
   public readonly processExporterRules = new Map<string, [
-    names: prom.process_exporter.ProcessName[],
+    names: process_exporter.ProcessName[],
     relabel: prom.RelabelConfig[],
   ]>();
 
@@ -73,7 +74,7 @@ class PromBuilder {
     ];
     s.privileged = true;
 
-    const cfg: prom.process_exporter.Config = {
+    const cfg: process_exporter.Config = {
       process_names: Array.from(this.processExporterRules.values(), ([names]) => names).flat(1),
     };
     await this.ctx.writeFile("process-exporter.yml", cfg, {
@@ -84,12 +85,15 @@ class PromBuilder {
 
   private configureProcessExporter(): void {
     const s = this.ctx.c.services.processexporter!;
-    const targets = new Set(Array.from(compose.classifyByHost(this.ctx.c), ({ host }) => {
-      if (host === "") {
-        return `${s.networks.meas!.ipv4_address}:9256`;
-      }
-      return `${host}:9256`;
-    }));
+    const ctIP = `${s.networks.meas!.ipv4_address}:9256`;
+    const targets = new Set(map(
+      compose.classifyByHost(this.ctx.c),
+      ({ host }) => host === "" ? ctIP : `${host}:9256`,
+    ));
+    if (targets.size === 0) {
+      targets.add(ctIP);
+    }
+
     this.scrapeJobs.set("processexporter", {
       job_name: "process-exporter",
       static_configs: [{
@@ -234,7 +238,7 @@ export function setProcessExporterRule(
   ]);
 }
 export namespace setProcessExporterRule {
-  export type ProcessName = OverrideProperties<prom.process_exporter.ProcessName, {
+  export type ProcessName = OverrideProperties<process_exporter.ProcessName, {
     cmdline: readonly RegExp[];
   }>;
 

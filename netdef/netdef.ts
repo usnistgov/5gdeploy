@@ -1,6 +1,7 @@
 import { AggregateAjvError } from "@segment/ajv-human-errors";
 import Ajv from "ajv";
 import assert from "minimalistic-assert";
+import map from "obliterator/map.js";
 import type { SetRequired } from "type-fest";
 import { arr2hex, randomBytes } from "uint8-util";
 
@@ -38,7 +39,7 @@ export class NetDef {
 
   /** List all unique S-NSSAIs. */
   public get nssai(): N.SNSSAI[] {
-    return [...new Set(Array.from(this.network.dataNetworks, (dn) => dn.snssai))];
+    return [...new Set(map(this.network.dataNetworks, (dn) => dn.snssai))];
   }
 
   /** List all gNBs. */

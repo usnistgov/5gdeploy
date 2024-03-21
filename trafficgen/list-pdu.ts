@@ -1,4 +1,5 @@
 import DefaultMap from "mnemonist/default-map.js";
+import oblMap from "obliterator/map.js";
 import { sortBy } from "sort-by-typescript";
 import { collect, map, pipeline } from "streaming-iterables";
 
@@ -31,7 +32,7 @@ for (const row of table) {
   const dn = row[4]!;
   counts.get(dn)[0] += 1;
 }
-table.push(...Array.from(counts.values(),
+table.push(...oblMap(counts.values(),
   ([cnt, dn]) => ["COUNT", `${cnt}`, "_", "_", dn, "_", "_"],
 ));
 

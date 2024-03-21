@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import DefaultMap from "mnemonist/default-map.js";
+import map from "obliterator/map.js";
 import { sortBy } from "sort-by-typescript";
 import { collect, parallelMap, pipeline } from "streaming-iterables";
 
@@ -65,7 +66,7 @@ for (const row of table) {
   const recv = row.at(-1);
   sums.get(`${dir}|${dn}`)[0] += recv as number;
 }
-table.push(...Array.from(sums.values(),
+table.push(...map(sums.values(),
   ([value, dir, dn]) => [dn, dir, "TOTAL", "*", "_", "_", "_", value],
 ));
 

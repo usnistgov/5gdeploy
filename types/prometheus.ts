@@ -30,16 +30,3 @@ export interface RelabelConfig {
   replacement?: string;
   [k: string]: unknown;
 }
-
-export namespace process_exporter {
-  export interface Config {
-    process_names: ProcessName[];
-  }
-
-  export interface ProcessName {
-    name: string;
-    comm: string[];
-    cmdline: string[];
-    [k: string]: unknown;
-  }
-}

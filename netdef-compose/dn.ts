@@ -1,6 +1,7 @@
 import assert from "minimalistic-assert";
 import DefaultWeakMap from "mnemonist/default-weak-map.js";
 import { Netmask } from "netmask";
+import map from "obliterator/map.js";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
@@ -28,7 +29,7 @@ const upfRouteTableBase = 5000;
 const upfRouteRulePriority = 100;
 
 const ctxHasUniqueDNNs = new DefaultWeakMap<NetDefComposeContext, boolean>(
-  (ctx) => new Set(Array.from(ctx.network.dataNetworks, (dn) => dn.dnn)).size === ctx.network.dataNetworks.length,
+  (ctx) => new Set(map(ctx.network.dataNetworks, (dn) => dn.dnn)).size === ctx.network.dataNetworks.length,
 );
 
 function makeDNServiceName(ctx: NetDefComposeContext, dn: N.DataNetworkID): string {

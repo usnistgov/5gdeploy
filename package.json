@@ -41,6 +41,7 @@
     "mnemonist": "^0.39.8",
     "multimatch": "^7.0.0",
     "netmask": "^2.0.2",
+    "obliterator": "^2.0.4",
     "p-event": "^6.0.1",
     "shlex": "^2.1.2",
     "sort-by-typescript": "^1.2.5",
@@ -50,7 +51,7 @@
     "tslib": "^2.6.2",
     "tsx": "^4.7.1",
     "type-fest": "^4.13.1",
-    "typescript": "~5.4.2",
+    "typescript": "~5.4.3",
     "uint8-util": "^2.2.4",
     "yargs": "^17.7.2"
   },
