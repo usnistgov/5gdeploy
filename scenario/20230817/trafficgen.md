@@ -6,13 +6,7 @@ Unless otherwise noted, the snippets should be invoked in the Compose directory 
 
 ## nmap: ping UEs from Data Networks
 
-Count how many UEs are connected:
-
-```bash
-$(./compose.sh at dn_internet) exec dn_internet nmap -sn 10.1.0.0/24
-$(./compose.sh at dn_vcam) exec dn_vcam nmap -sn 10.140.0.0/24
-$(./compose.sh at dn_vctl) exec dn_vctl nmap -sn 10.141.0.0/24
-```
+See [trafficgen/nmap](../../trafficgen/README.md).
 
 ## iperf3
 

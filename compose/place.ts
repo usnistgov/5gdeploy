@@ -157,9 +157,13 @@ const scriptUsage = `Usage:
 The following are available after UE registration and PDU session establishment:
   ./compose.sh list-pdu
     List PDU sessions.
+  ./compose.sh nmap
+    Run nmap ping scans from Data Network to UEs.
   ./compose.sh iperf3 FLAGS
     Prepare iperf3.sh traffic generation script.
 `;
+
+const codebaseRoot = path.join(import.meta.dirname, "..");
 
 const scriptHead = [
   "#!/bin/bash",
@@ -177,14 +181,13 @@ const scriptTail = [
   "  msg Setup SSH port forwarding to access these services in a browser",
   "  msg \"'null'\" means the relevant service has been disabled",
   "elif [[ $ACT == phoenix-register ]]; then",
-  `  cd ${path.join(import.meta.dirname, "..")}`,
+  `  cd ${codebaseRoot}`,
   "  for UECT in $(docker ps --format='{{.Names}}' | grep '^ue'); do",
   "    msg Invoking UE registration and PDU session establishment in $UECT",
   "    corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn='*'",
   "  done",
-  "elif [[ $ACT == list-pdu ]] || [[ $ACT == iperf3 ]]; then",
-  `  cd ${path.join(import.meta.dirname, "..")}`,
-  "  $(corepack pnpm bin)/tsx trafficgen/$ACT.ts --dir=$COMPOSE_CTX \"$@\"",
+  "elif [[ $ACT == list-pdu ]] || [[ $ACT == iperf3 ]] || [[ $ACT == nmap ]]; then",
+  `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/$ACT.ts --dir=$COMPOSE_CTX "$@"`,
   "else",
   `  echo ${shlex.quote(scriptUsage)}`,
   "  exit 1",

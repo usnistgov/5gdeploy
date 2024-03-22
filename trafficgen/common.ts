@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import { execa } from "execa";
 import type { LinkWithAddressInfo } from "iproute";
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
@@ -67,4 +68,31 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: A
       }
     }),
   );
+}
+
+export const cmdOptions = {
+  cmdout: {
+    desc: "save command line to file",
+    type: "string",
+  },
+} as const satisfies YargsOptions;
+
+export async function cmdOutput(args: YargsInfer<typeof cmdOptions>, lines: Iterable<string>): Promise<void> {
+  const script = [
+    "#!/bin/bash",
+    ...compose.scriptHead,
+    ...lines,
+  ].join("\n");
+
+  if (args.cmdout) {
+    await file_io.write(args.cmdout, script);
+  } else {
+    const result = await execa("bash", ["-c", script], {
+      stdin: "inherit",
+      stdout: "inherit",
+      stderr: "inherit",
+      reject: false,
+    });
+    process.exitCode = result.exitCode;
+  }
 }
