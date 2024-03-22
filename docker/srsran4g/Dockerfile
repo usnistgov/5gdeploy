@@ -13,7 +13,7 @@ ADD https://docs.srsran.com/projects/4g/en/latest/_downloads/4515ae5475fe95ec64b
     /usr/local/share/srsran/5g_sa_E2E/
 COPY --from=build /root/*.deb /root/
 RUN apt-get update \
- && env DEBIAN_FRONTEND=noninteractive apt-get install -qq --no-install-recommends iperf3 iproute2 iptables iputils-ping jq mtr-tiny netcat-openbsd python-is-python3 python3-minimal traceroute /root/*.deb \
+ && env DEBIAN_FRONTEND=noninteractive apt-get install -qq --no-install-recommends iproute2 iptables iputils-ping jq mtr-tiny python-is-python3 python3-minimal /root/*.deb \
  && rm -rf /var/lib/apt/lists/* \
  && srsran_install_configs.sh service
 ADD --chmod=755 ini.py /usr/local/bin/
