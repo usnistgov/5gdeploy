@@ -1,11 +1,25 @@
 import type { N } from "../../types/mod.js";
-import type { YargsInfer, YargsOptions } from "../../util/mod.js";
+import { type YargsInfer, YargsIntRange, type YargsOptions } from "../../util/mod.js";
 import * as ran from "./ran.js";
 
 export const cliOptions = {
-  gnbs: ran.option("gNB", 1, 9),
-  phones: ran.option("phone", 6, 1000, 0),
-  vehicles: ran.option("vehicle", 2, 1000, 0),
+  gnbs: YargsIntRange({
+    desc: "gNB quantity",
+    default: 1,
+    max: 9,
+  }),
+  phones: YargsIntRange({
+    desc: "phone quantity",
+    default: 6,
+    min: 0,
+    max: 1000,
+  }),
+  vehicles: YargsIntRange({
+    desc: "vehicle quantity",
+    default: 2,
+    min: 0,
+    max: 1000,
+  }),
 } as const satisfies YargsOptions;
 
 export type CLIOptions = YargsInfer<typeof cliOptions>;

@@ -1,15 +1,26 @@
 import assert from "minimalistic-assert";
 
 import type { N } from "../../types/mod.js";
-import { decPad, file_io, hexPad, Yargs } from "../../util/mod.js";
-import * as ran from "../common/ran.js";
+import { decPad, file_io, hexPad, Yargs, YargsIntRange } from "../../util/mod.js";
 
 const ALPHABET = "abcdefgh";
 
 const args = Yargs()
-  .option("dn", ran.option("Data Network", 1, 99))
-  .option("upf", ran.option("UPF", 1, ALPHABET.length))
-  .option("gnb", ran.option("gNB", 1, 9))
+  .option("dn", YargsIntRange({
+    desc: "Data Network quantity",
+    default: 1,
+    max: 99,
+  }))
+  .option("upf", YargsIntRange({
+    desc: "UPF quantity",
+    default: 1,
+    max: ALPHABET.length,
+  }))
+  .option("gnb", YargsIntRange({
+    desc: "gNB quantity",
+    default: 1,
+    max: 9,
+  }))
   .option("same-snssai", {
     default: false,
     desc: "make all Data Networks have the same S-NSSAI",

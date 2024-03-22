@@ -22,14 +22,13 @@ const args = Yargs()
   .option("flow", {
     array: true,
     coerce(lines: readonly string[]): Array<[dn: Minimatch, ue: Minimatch, flags: readonly string[]]> {
-      assert(Array.isArray(lines));
       return Array.from(lines, (line) => {
         const tokens = line.split("|");
         assert(tokens.length === 3, `bad --flow ${line}`);
         return [
-          new Minimatch(tokens[0].trim()),
-          new Minimatch(tokens[1].trim()),
-          shlex.split(tokens[2].trim()),
+          new Minimatch(tokens[0]!.trim()),
+          new Minimatch(tokens[1]!.trim()),
+          shlex.split(tokens[2]!.trim()),
         ];
       });
     },

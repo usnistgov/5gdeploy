@@ -7,13 +7,13 @@ import type { YargsInfer, YargsOptions } from "../util/mod.js";
 /** Yargs options definition for IPv4 address allocator. */
 export const ipAllocOptions = {
   "ip-space": {
-    coerce(arg): Netmask {
+    coerce(arg: string): Netmask {
       const subnet = new Netmask(arg);
       assert(subnet.bitmask <= 18, "/18 or larger address space required");
       return subnet;
     },
-    desc: "Compose networks IP address space, /18 or larger",
     default: "172.25.192.0/18",
+    desc: "Compose networks IP address space, /18 or larger",
     type: "string",
   },
   "ip-fixed": {

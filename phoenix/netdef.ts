@@ -61,8 +61,7 @@ export const phoenixOptions = {
   "phoenix-gnb-to-upf-dscp": {
     array: true,
     coerce(lines: readonly string[]): Array<[upf: string, dscp: number]> {
-      assert(Array.isArray(lines));
-      return Array.from(lines, (line: string) => {
+      return Array.from(lines, (line) => {
         const tokens = line.split("=");
         assert(tokens.length === 2, `bad --phoenix-gnb-to-upf-dscp ${line}`);
         const upf = tokens[0]!.trim();

@@ -4,7 +4,7 @@ import assert from "minimalistic-assert";
 import * as shlex from "shlex";
 import type { ArrayValues } from "type-fest";
 
-import { file_io, type YargsInfer, type YargsOpt, type YargsOptions } from "../../util/mod.js";
+import { file_io, type YargsInfer, YargsIntRange, type YargsOpt, type YargsOptions } from "../../util/mod.js";
 
 /** Construct yargs options for SONiC builder basics. */
 export function basicOptions(id: string) {
@@ -61,11 +61,12 @@ export function swportsOption(name: string) {
 
 /** Construct yargs option for traffic class weight. */
 export function weightOption(name: string, dflt: number) {
-  return {
+  return YargsIntRange({
     default: dflt,
-    desc: `${name} traffic weight (1..100)`,
-    type: "number",
-  } as const satisfies YargsOpt;
+    desc: `${name} traffic weight`,
+    min: 1,
+    max: 100,
+  });
 }
 
 type SchedType = ArrayValues<ReturnType<typeof schedOption>["choices"]>;
@@ -167,7 +168,6 @@ export class Builder {
       scheduler: `${prefix}${name}`,
     });
     for (const [queue, weight] of Object.entries(queueWeights)) {
-      assert(Number.isInteger(weight) && weight >= 1 && weight <= 100, "weight out of range");
       this.set(`/SCHEDULER/${prefix}${name}q${queue}`, {
         type,
         weight: type === "STRICT" ? undefined : `${weight}`,
