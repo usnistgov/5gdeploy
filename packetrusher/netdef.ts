@@ -31,7 +31,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
   compose.setCommands(s, [
     "msg Preparing PacketRusher config",
-    ...compose.mergeConfigFile(c, { base: "/config.default.yml", merged: filename }),
+    ...compose.mergeConfigFile(c, { base: "/config.base.yml", merged: filename }),
     "sleep 20",
     "msg Starting PacketRusher",
     `exec /packetrusher --config ${filename} multi-ue -n 1 -d -t --tunnel-vrf=false`,
