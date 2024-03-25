@@ -72,10 +72,9 @@ const updateNf: Record<string, (s: ComposeService, opts: updateService.Options) 
     s.sysctls["net.ipv4.ip_forward"] = 0;
   },
   upf(s) {
-    const nNets = Object.entries(s.networks).length;
-    for (let i = 0; i < nNets; ++i) {
-      s.sysctls[`net.ipv4.conf.eth${i}.accept_local`] = 1;
-      s.sysctls[`net.ipv4.conf.eth${i}.rp_filter`] = 2;
+    for (const netif of ["all", "default"]) {
+      s.sysctls[`net.ipv4.conf.${netif}.accept_local`] = 1;
+      s.sysctls[`net.ipv4.conf.${netif}.rp_filter`] = 2;
     }
     s.devices.push("/dev/net/tun:/dev/net/tun");
   },

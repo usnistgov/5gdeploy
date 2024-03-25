@@ -5,7 +5,7 @@ import { Netmask } from "netmask";
 import * as shlex from "shlex";
 import type { ConditionalKeys } from "type-fest";
 
-import type { ComposeFile, ComposeNetif, ComposeNetwork, ComposeService } from "../types/mod.js";
+import type { ComposeFile, ComposeNetwork, ComposeService } from "../types/mod.js";
 
 /** Derive network function name from container name. */
 export function nameToNf(ct: string): string {
@@ -105,33 +105,29 @@ export namespace defineNetwork {
  * If a service with same name already exists, it is not replaced.
  */
 export function defineService(c: ComposeFile, name: string, image: string): ComposeService {
-  let s = c.services[name];
-  if (s === undefined) {
-    s = {
-      container_name: name,
-      hostname: name,
-      image: image,
-      init: true,
-      cap_add: [],
-      devices: [],
-      sysctls: {},
-      volumes: [],
-      environment: {
-        HTTP_PROXY: "",
-        http_proxy: "",
-        HTTPS_PROXY: "",
-        https_proxy: "",
-      },
-      networks: {},
-      ports: [],
-    };
-    attachServiceValidations(s);
-    c.services[name] = s;
-  }
-  return s;
+  return (c.services[name] ??= createService(name, image));
 }
 
-function attachServiceValidations(s: ComposeService): void {
+function createService(name: string, image: string): ComposeService {
+  const s: ComposeService = {
+    container_name: name,
+    hostname: name,
+    image: image,
+    init: true,
+    cap_add: [],
+    devices: [],
+    sysctls: {},
+    volumes: [],
+    environment: {
+      HTTP_PROXY: "",
+      http_proxy: "",
+      HTTPS_PROXY: "",
+      https_proxy: "",
+    },
+    networks: {},
+    ports: [],
+  };
+
   for (const key of [
     "sysctls", "environment", "networks",
   ] as const satisfies ReadonlyArray<ConditionalKeys<ComposeService, Record<string, unknown>>>) {
@@ -175,6 +171,8 @@ function attachServiceValidations(s: ComposeService): void {
       }
     },
   });
+
+  return s;
 }
 
 /** Get service annotation. */
@@ -216,41 +214,40 @@ export function listByAnnotation(
   });
 }
 
-/** Add a netif to a service. */
-export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string): ComposeNetif {
+/**
+ * Add a netif to a service.
+ * @returns IPv4 address previously assigned to the netif.
+ */
+export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string): string {
   const s = c.services[ct];
   assert(s, `service ${ct} missing`);
   const network = c.networks[net];
   assert(network, `network ${net} missing`);
   const subnet = new Netmask(network.ipam.config[0]?.subnet ?? "255.255.255.255/32");
   assert(subnet.contains(ip), `network ${net} subnet ${subnet} does not contain IP ${ip}`);
-  const netif: ComposeNetif = { ipv4_address: ip };
-  s.networks[net] = netif;
+  s.networks[net] = {
+    ipv4_address: ip,
+  };
   annotate(s, `ip_${net}`, ip);
-  return netif;
+  return ip;
 }
 
-/** Remove a netif from a service. */
+/**
+ * Remove a netif from a service.
+ * @returns IPv4 address previously assigned to the netif.
+ */
 export function disconnectNetif(c: ComposeFile, ct: string, net: string): string {
   const service = c.services[ct];
   assert(service, `service ${ct} missing`);
   const netif = service.networks[net];
   assert(netif, `netif ${ct}:${net} missing`);
   delete service.networks[net]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
-
-  const sysctlPrefix = `net.ipv4.conf.eth${Object.entries(service.networks).length}.`;
-  for (const key of Object.keys(service.sysctls)) {
-    if (key.startsWith(sysctlPrefix)) {
-      delete service.sysctls[key]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
-    }
-  }
-
   return netif.ipv4_address;
 }
 
 /**
  * Generate commands to rename netifs to network names.
- * @param s  - Compose service. NET_ADMIN capability is added.
+ * @param s - Compose service. NET_ADMIN capability is added.
  */
 export function* renameNetifs(s: ComposeService, {
   pipeworkWait = false,
