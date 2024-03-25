@@ -35,6 +35,16 @@ The remaining worker threads are kept in a thread pool to serve traffic arriving
 By default, N3 is in single\_thread mode, while N9 and N6 are in thread\_pool mode (with 3 total worker threads, this effectively means N9 and N6 are sharing two worker threads in the thread pool).
 You can change them via `--phoenix-upf-single-worker-n3|n9|n6` flags.
 
+### XDP Cleanup
+
+If (1) UPF is configured to use XDP data plane implementation (2) physical Ethernet adapter is moved into UPF container (3) UPF terminates abnormally, the XDP may not unload properly.
+To recover from this situation, either reboot the server, or run this command to manually unload all XDP programs:
+
+```bash
+ip -j link | jq -r '.[] | select(.xdp) | .ifname' | xargs --no-run-if-empty -I{} \
+  sudo ip link set {} xdp off
+```
+
 ## RAN Options
 
 `--phoenix-gnb-workers` specifies number of worker threads in each gNB.
