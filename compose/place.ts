@@ -8,7 +8,8 @@ import { sortBy } from "sort-by-typescript";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";
 import type { YargsInfer, YargsOptions } from "../util/mod.js";
-import { annotate, scriptHead as baseScriptHead } from "./compose.js";
+import { annotate } from "./compose.js";
+import { scriptHead as baseScriptHead } from "./snippets.js";
 
 /** Yargs options definition for placing Compose services onto multiple hosts. */
 export const placeOptions = {
@@ -183,10 +184,10 @@ const scriptTail = [
   "elif [[ $ACT == phoenix-register ]]; then",
   `  cd ${codebaseRoot}`,
   "  for UECT in $(docker ps --format='{{.Names}}' | grep '^ue'); do",
-  "    msg Invoking UE registration and PDU session establishment in $UECT",
+  "    msg Invoking Open5GCore UE registration and PDU session establishment in $UECT",
   "    corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn='*'",
   "  done",
-  "elif [[ $ACT == list-pdu ]] || [[ $ACT == iperf3 ]] || [[ $ACT == nmap ]]; then",
+  "elif [[ $ACT == list-pdu ]] || [[ $ACT == nmap ]] || [[ $ACT == iperf3 ]]; then",
   `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/$ACT.ts --dir=$COMPOSE_CTX "$@"`,
   "else",
   `  echo ${shlex.quote(scriptUsage)}`,

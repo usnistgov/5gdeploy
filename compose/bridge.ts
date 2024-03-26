@@ -4,7 +4,8 @@ import { ip2long, Netmask } from "netmask";
 
 import type { ComposeFile } from "../types/mod.js";
 import { hexPad, type YargsInfer, type YargsOptions } from "../util/mod.js";
-import { annotate, defineService, disconnectNetif, setCommands } from "./compose.js";
+import { annotate, defineService, disconnectNetif } from "./compose.js";
+import { setCommands } from "./snippets.js";
 
 export const bridgeDockerImage = "5gdeploy.localhost/bridge";
 
