@@ -78,17 +78,6 @@ export class IPMAP {
     return this.containers_;
   }
 
-  /** Resolve `ct_net_IP` environment variable. */
-  public resolveEnv(env: string): string | undefined {
-    let tokens: string[];
-    if ((tokens = env.toLowerCase().split("_")).length < 3 || tokens.at(-1) !== "ip") {
-      return undefined;
-    }
-    const net = tokens.at(-2)!;
-    const ct = tokens.slice(0, -2).join("_");
-    return this.containers_.get(ct)?.get(net);
-  }
-
   /** Save `ip-map` file. */
   public save(): string {
     const lines: string[] = [];

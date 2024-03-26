@@ -1,8 +1,8 @@
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
 
-export const phoenixdir = "/opt/phoenix";
-export const cfgdir = `${phoenixdir}/cfg/current`;
+const phoenixdir = "/opt/phoenix";
+const cfgdir = `${phoenixdir}/cfg/current`;
 export const phoenixDockerImage = "5gdeploy.localhost/phoenix";
 
 /** Per-network options. */

@@ -86,7 +86,7 @@ export namespace OtherTable {
   }
 }
 
-const routeKeys: ReadonlyArray<keyof OtherTable.Route> = ["table", "metric", "via", "dev"];
+const routeKeys = ["table", "metric", "via", "dev"] as const satisfies ReadonlyArray<keyof OtherTable.Route>;
 
 function routeToCommand(route: OtherTable.Route): string {
   const routeSpec = routeKeys.map((k) => {

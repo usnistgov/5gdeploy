@@ -3,8 +3,6 @@ import path from "node:path";
 
 import * as envfile from "envfile";
 import assert from "minimalistic-assert";
-import type DefaultMap from "mnemonist/default-map.js";
-import type MultiMap from "mnemonist/multi-map.js";
 import type { AnyIterable } from "streaming-iterables";
 import type { Promisable } from "type-fest";
 
@@ -55,12 +53,12 @@ export class ScenarioFolder {
   public other = new OtherTable();
 
   /** Per-container initialization commands. */
-  public get initCommands(): DefaultMap<string, string[]> {
+  public get initCommands() {
     return this.other.commands;
   }
 
   /** Per-container IPv4 routes. */
-  public get routes(): MultiMap<string, OtherTable.Route> {
+  public get routes() {
     return this.other.routes;
   }
 
