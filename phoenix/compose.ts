@@ -1,6 +1,5 @@
 import * as compose from "../compose/mod.js";
-import type { IPMAP } from "../phoenix/mod.js";
-import type { ComposeFile, ComposeService } from "../types/mod.js";
+import type { ComposeService } from "../types/mod.js";
 
 export const phoenixdir = "/opt/phoenix";
 export const cfgdir = `${phoenixdir}/cfg/current`;
@@ -12,32 +11,6 @@ export const networkOptions: Record<string, compose.defineNetwork.Options> = {
   air: { mtu: 1470 },
   n6: { mtu: 1456 },
 };
-
-/** Convert `ip-map` to Compose file. */
-export function convert(ipmap: IPMAP, deleteRAN = false): ComposeFile {
-  const skipNf = ["prometheus"];
-  if (deleteRAN) {
-    skipNf.push("bt", "btup", "gnb", "ue");
-  }
-
-  const c = compose.create();
-  for (const [net, subnet] of ipmap.networks) {
-    compose.defineNetwork(c, net, subnet.toString(), networkOptions[net]);
-  }
-
-  for (const [ct, nets] of ipmap.containers) {
-    if (skipNf.includes(compose.nameToNf(ct))) {
-      continue;
-    }
-    const service = compose.defineService(c, ct, phoenixDockerImage);
-    for (const [net, ip] of nets) {
-      compose.connectNetif(c, ct, net, ip);
-    }
-    updateService(service);
-  }
-
-  return c;
-}
 
 /** Update Composer service properties to match Open5GCore expectation. */
 export function updateService(s: ComposeService, opts: updateService.Options = {}): void {
@@ -84,7 +57,7 @@ const updateNf: Record<string, (s: ComposeService, opts: updateService.Options) 
 };
 
 function updatePhoenix(s: ComposeService, { cfg = "./cfg" }: updateService.Options): void {
-  s.command = ["/entrypoint.sh", s.hostname];
+  s.command = ["/entrypoint.sh", s.container_name];
   s.stdin_open = true;
   s.tty = true;
   s.cap_add.push("NET_ADMIN");

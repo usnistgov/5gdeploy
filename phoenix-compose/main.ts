@@ -3,10 +3,9 @@ import path from "node:path";
 import assert from "minimalistic-assert";
 
 import * as compose from "../compose/mod.js";
-import { ScenarioFolder } from "../phoenix/mod.js";
+import { networkOptions, phoenixDockerImage, ScenarioFolder, updateService } from "../phoenix/mod.js";
 import type { ComposeFile } from "../types/mod.js";
 import { file_io, Yargs } from "../util/mod.js";
-import * as ph_compose from "./compose.js";
 
 const args = Yargs()
   .option("cfg", {
@@ -29,13 +28,31 @@ const args = Yargs()
 const sf = await ScenarioFolder.load(args.cfg);
 await sf.save(path.resolve(args.out, "cfg"), path.resolve(args.out, "sql"));
 
-const composeFile = ph_compose.convert(sf.ipmap, !!args.ran);
-if (args.ran && args.ran !== "false") {
-  const ranCompose = await file_io.readYAML(args.ran) as ComposeFile;
-  assert(ranCompose.services);
-  Object.assign(composeFile.services, ranCompose.services);
+const c = compose.create();
+for (const [net, subnet] of sf.ipmap.networks) {
+  compose.defineNetwork(c, net, subnet.toString(), networkOptions[net]);
 }
 
-compose.defineBridge(composeFile, args);
+const skipNf = ["prometheus"];
+if (args.ran) {
+  skipNf.push("bt", "btup", "gnb", "ue");
+}
+for (const [ct, nets] of sf.ipmap.containers) {
+  if (skipNf.includes(compose.nameToNf(ct))) {
+    continue;
+  }
+  const service = compose.defineService(c, ct, phoenixDockerImage);
+  for (const [net, ip] of nets) {
+    compose.connectNetif(c, ct, net, ip);
+  }
+  updateService(service);
+}
 
-await file_io.write(path.resolve(args.out, "compose.yml"), composeFile);
+if (args.ran && args.ran !== "false") {
+  const ran = await file_io.readYAML(args.ran) as ComposeFile;
+  assert(ran.services);
+  Object.assign(c.services, ran.services);
+}
+
+compose.defineBridge(c, args);
+await file_io.write(path.resolve(args.out, "compose.yml"), c);

@@ -1,11 +1,12 @@
 import path from "node:path";
 
+import stringify from "json-stringify-deterministic";
 import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
 import type { ConditionalKeys } from "type-fest";
 
-import type { ComposeFile, ComposeNetwork, ComposeService } from "../types/mod.js";
+import type { ComposeFile, ComposeNetwork, ComposePort, ComposeService, ComposeVolume } from "../types/mod.js";
 
 /** Derive network function name from container name. */
 export function nameToNf(ct: string): string {
@@ -138,22 +139,40 @@ function createService(name: string, image: string): ComposeService {
     });
   }
 
-  for (const [key, uniq] of [
-    ["cap_add", true], ["devices", true], ["volumes", false], ["ports", false],
-  ] as const satisfies ReadonlyArray<[key: ConditionalKeys<ComposeService, unknown[]>, uniq: boolean]>) {
-    Object.defineProperty(s, key, {
+  for (const [key, uniqBy] of [
+    ["cap_add", (cap: string) => cap],
+    ["devices", (device: string) => device.split(":")[1]!],
+    ["volumes", (vol: ComposeVolume) => vol.target],
+    ["ports", (port: ComposePort) => `${port.target}/${port.protocol}`],
+  ] as ReadonlyArray<[
+      key: ConditionalKeys<ComposeService, unknown[]>,
+      uniqBy: (value: any) => string,
+  ]>) {
+    Object.defineProperty(s, key!, {
       enumerable: true,
       writable: false,
-      value: s[key],
+      value: s[key!],
     });
-    if (uniq) {
-      Object.defineProperty(s[key], "push", {
-        enumerable: false,
-        value: function<T>(this: T[], ...items: T[]): number {
-          return Array.prototype.push.apply(this, items.filter((item) => !this.includes(item)));
-        },
-      });
-    }
+
+    Object.defineProperty(s[key!], "push", {
+      enumerable: false,
+      value: function<T>(this: T[], ...items: T[]): number {
+        const existing = new Map<string, T>();
+        for (const item of this) {
+          existing.set(uniqBy(item), item);
+        }
+        return Array.prototype.push.apply(this, items.filter((item) => {
+          const old = existing.get(uniqBy(item));
+          if (old) {
+            const oldS = stringify(old);
+            const newS = stringify(item);
+            assert(oldS === newS, `${key} item ${newS} conflicts with ${oldS}`);
+            return false;
+          }
+          return true;
+        }));
+      },
+    });
   }
 
   let networkMode: string | undefined;

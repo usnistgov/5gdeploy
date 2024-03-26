@@ -8,9 +8,9 @@ import type { Constructor } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { importGrafanaDashboard, NetDef, type NetDefComposeContext, NetDefDN, setProcessExporterRule } from "../netdef-compose/mod.js";
-import { networkOptions, phoenixDockerImage, updateService } from "../phoenix-compose/compose.js";
 import type { N, PH } from "../types/mod.js";
 import { file_io, findByName, YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { networkOptions, phoenixDockerImage, updateService } from "./compose.js";
 import { ScenarioFolder } from "./folder.js";
 import { IPMAP } from "./ipmap.js";
 import type { NetworkFunction } from "./nf.js";

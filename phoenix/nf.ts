@@ -9,8 +9,7 @@ export class NetworkFunction {
   public static parse(body: string): NetworkFunction {
     const cfg = new NetworkFunction();
     cfg.Phoenix = JSON.parse(body).Phoenix;
-    assert(!!cfg.Phoenix);
-    assert(cfg.Phoenix.Platform);
+    assert(cfg.Phoenix?.Platform);
     assert(Array.isArray(cfg.Phoenix.Module));
     return cfg;
   }
