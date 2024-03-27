@@ -15,18 +15,26 @@ const args = Yargs()
     desc: "Compose context directory",
     type: "string",
   })
+  .option("prefix", {
+    default: "iperf3",
+    desc: "container name prefix",
+    type: "string",
+  })
   .parseSync();
 
-const c = await file_io.readYAML(path.join(args.dir, "compose.iperf3.yml")) as ComposeFile;
+const c = await file_io.readYAML(path.join(args.dir, `compose.${args.prefix}.yml`)) as ComposeFile;
 const table = await pipeline(
-  () => Object.values(c.services).filter((s) => /^iperf3_\d+_c$/.test(s.container_name)),
+  () => Object.values(c.services).filter((s) =>
+    s.container_name.startsWith(`${args.prefix}_`) && s.container_name.endsWith("_c") &&
+    compose.annotate(s, "pduperf_mode") === "iperf3",
+  ),
   parallelMap(16, async (s): Promise<Array<string | number>> => {
-    const port = compose.annotate(s, "iperf3_port")!;
-    const dn = compose.annotate(s, "iperf3_dn")!;
-    const dir = compose.annotate(s, "iperf3_dir")!;
-    const ue = compose.annotate(s, "iperf3_ue")!;
+    const port = compose.annotate(s, "pduperf_port")!;
+    const dn = compose.annotate(s, "pduperf_dn")!;
+    const dir = compose.annotate(s, "pduperf_dir")!;
+    const ue = compose.annotate(s, "pduperf_ue")!;
     try {
-      const report = await file_io.readJSON(path.join(args.dir, `iperf3/${port}_c.json`)) as {
+      const report = await file_io.readJSON(path.join(args.dir, `${args.prefix}/${port}_c.json`)) as {
         end: {
           sum: {
             sender: boolean;
@@ -82,5 +90,5 @@ const tTable = file_io.toTable(
   ["snssai_dnn", "dir", "supi", "port", "send-CPU", "recv-CPU", "send-Mbps", "recv-Mbps"],
   table,
 );
-await file_io.write(path.join(args.dir, "iperf3.tsv"), tTable.tsv);
+await file_io.write(path.join(args.dir, `${args.prefix}.tsv`), tTable.tsv);
 await file_io.write("-", tTable.tui);

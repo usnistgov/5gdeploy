@@ -194,4 +194,4 @@ This is because there should be exactly one UE attached to each gNB that has a P
 
 ### iperf3
 
-See [trafficgen/iperf3](../../trafficgen/iperf3.md).
+See [trafficgen](../../trafficgen/README.md).

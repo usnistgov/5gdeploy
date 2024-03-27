@@ -11,85 +11,88 @@ import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 import * as compose from "../compose/mod.js";
 import { file_io, Yargs } from "../util/mod.js";
 import { ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
+import { type FlowInfo, type FlowSelector, trafficGenerators } from "./pduperf-tg.js";
 
 const args = Yargs()
   .option(ctxOptions)
-  .option("json", {
-    default: true,
-    desc: "want JSON output",
-    type: "boolean",
+  .option("mode", {
+    choices: Object.keys(trafficGenerators),
+    demandOption: true,
+    desc: "traffic generator",
+    type: "string",
+  })
+  .option("prefix", {
+    defaultDescription: "same as mode",
+    desc: "container name prefix",
+    type: "string",
+  })
+  .option("port", {
+    default: 20000,
+    desc: "starting port number",
+    type: "number",
   })
   .option("flow", {
     array: true,
-    coerce(lines: readonly string[]): Array<[dn: Minimatch, ue: Minimatch, flags: readonly string[]]> {
+    coerce(lines: readonly string[]): FlowSelector[] {
       return Array.from(lines, (line) => {
         const tokens = line.split("|");
-        assert(tokens.length === 3, `bad --flow ${line}`);
-        return [
-          new Minimatch(tokens[0]!.trim()),
-          new Minimatch(tokens[1]!.trim()),
-          shlex.split(tokens[2]!.trim()),
-        ];
+        assert([2, 3, 4].includes(tokens.length), `bad --flow ${line}`);
+        return {
+          dnPattern: new Minimatch(tokens[0]!.trim()),
+          uePattern: new Minimatch(tokens[1]!.trim()),
+          cFlags: shlex.split(tokens[2]?.trim() ?? ""),
+          sFlags: shlex.split(tokens[3]?.trim() ?? ""),
+        };
       });
     },
     demandOption: true,
-    desc: "iperf3 flags for PDU sessions",
+    desc: "PDU session selector and traffic generator flags",
     nargs: 1,
     type: "string",
   })
   .parseSync();
 
+const tg = trafficGenerators[args.mode]!;
+args.prefix ??= args.mode;
 const [c, netdef] = await loadCtx(args);
 
 const output = compose.create();
-let nextPort = 20000;
+let nextPort = args.port;
 const table = await pipeline(
   () => gatherPduSessions(c, netdef),
   flatTransform(16, function*(ctx) {
     const { sub: { supi }, dn: { dnn } } = ctx;
-    for (const [index, [dnPattern, uePattern, flags]] of args.flow.entries()) {
+    for (const [index, { dnPattern, uePattern, cFlags, sFlags }] of args.flow.entries()) {
       if (dnPattern.match(dnn) && uePattern.match(supi)) {
-        yield { ...ctx, index, flags };
+        yield { ...ctx, index, cFlags, sFlags };
       }
     }
   }),
   map((ctx) => {
-    const { sub: { supi }, ueService, ueHost, dn: { snssai, dnn }, dnHost, dnService, dnIP, pduIP, index, flags } = ctx;
-    const jsonFlag = args.json ? ["--json"] : [];
+    const { sub: { supi }, ueService, ueHost, dn: { snssai, dnn }, dnHost, dnService, dnIP, pduIP, index, cFlags, sFlags } = ctx;
     const port = nextPort++;
-    const server = compose.defineService(output, `iperf3_${port}_s`, "networkstatic/iperf3");
+    const tgFlow: FlowInfo = { port, dnIP, pduIP, cFlags, sFlags };
+
+    const server = compose.defineService(output, `${args.prefix}_${port}_s`, tg.serverDockerImage);
     compose.annotate(server, "host", dnHost);
     server.cpuset = dnService.cpuset;
     server.network_mode = `service:${dnService.container_name}`;
-    server.command = [
-      "--forceflush",
-      ...jsonFlag,
-      "-B", dnIP,
-      "-p", `${port}`,
-      "-s",
-    ];
+    tg.serverSetup(server, tgFlow);
 
-    const client = compose.defineService(output, `iperf3_${port}_c`, "networkstatic/iperf3");
+    const client = compose.defineService(output, `${args.prefix}_${port}_c`, tg.clientDockerImage);
     compose.annotate(client, "host", ueHost);
     client.cpuset = ueService.cpuset;
     client.network_mode = `service:${ueService.container_name}`;
-    client.command = [
-      "--forceflush",
-      ...jsonFlag,
-      "-B", pduIP,
-      "-p", `${port}`,
-      "--cport", `${port}`,
-      "-c", dnIP,
-      ...flags,
-    ];
+    tg.clientSetup(client, tgFlow);
 
     const dn = `${snssai}_${dnn}`;
-    const dir = flags.includes("-R") ? "DL>" : "<UL";
+    const dir = tg.determineDirection(tgFlow);
     for (const s of [server, client]) {
-      compose.annotate(s, "iperf3_dn", dn);
-      compose.annotate(s, "iperf3_ue", supi);
-      compose.annotate(s, "iperf3_dir", dir);
-      compose.annotate(s, "iperf3_port", port);
+      compose.annotate(s, "pduperf_mode", args.mode);
+      compose.annotate(s, "pduperf_dn", dn);
+      compose.annotate(s, "pduperf_ue", supi);
+      compose.annotate(s, "pduperf_dir", dir);
+      compose.annotate(s, "pduperf_port", port);
     }
 
     return [
@@ -103,74 +106,68 @@ const table = await pipeline(
   collect,
 );
 
-await file_io.write(path.join(args.dir, "compose.iperf3.yml"), output);
+const composeFilename = `compose.${args.prefix}.yml`;
+await file_io.write(path.join(args.dir, composeFilename), output);
 
 function* makeScript(): Iterable<string> {
   yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
   yield "COMPOSE_CTX=$PWD";
+  yield `STATS_DIR=$PWD/${args.prefix}/`;
   yield "ACT=${1:-}"; // eslint-disable-line no-template-curly-in-string
   yield "[[ -z $ACT ]] || shift";
 
   yield "if [[ -z $ACT ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
-    yield `  msg Deleting old iperf3 servers and clients on ${hostDesc}`;
+    yield `  msg Deleting old trafficgen servers and clients on ${hostDesc}`;
     yield `  with_retry ${dockerH} rm -f ${names.join(" ")}`;
   }
-  yield "  rm -rf iperf3/";
+  yield "  rm -rf $STATS_DIR";
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == servers ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, /_s$/)) {
-    yield `  msg Starting iperf3 servers on ${hostDesc}`;
-    yield `  with_retry ${dockerH} compose -f compose.yml -f compose.iperf3.yml up -d ${names.join(" ")}`;
+    yield `  msg Starting trafficgen servers on ${hostDesc}`;
+    yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} up -d ${names.join(" ")}`;
   }
   yield "  sleep 5";
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, /_c$/)) {
-    yield `  msg Starting iperf3 clients on ${hostDesc}`;
-    yield `  with_retry ${dockerH} compose -f compose.yml -f compose.iperf3.yml up -d ${names.join(" ")}`;
+    yield `  msg Starting trafficgen clients on ${hostDesc}`;
+    yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} up -d ${names.join(" ")}`;
   }
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == wait ]]; then";
-  yield "  msg Waiting for iperf3 clients to finish";
+  yield "  msg Waiting for trafficgen clients to finish";
   for (const s of Object.values(output.services).filter((s) => s.container_name.endsWith("_c"))) {
     yield `  ${compose.makeDockerH(s)} wait ${s.container_name}`;
   }
   yield "fi";
 
-  const extname = args.json ? ".json" : ".log";
   yield "if [[ -z $ACT ]] || [[ $ACT == collect ]]; then";
-  yield `  msg Gathering iperf3 statistics to 'iperf3/*${extname}'`;
-  yield "  mkdir -p iperf3/";
+  yield `  msg Gathering trafficgen statistics to $\{STATS_DIR}'*${tg.statsExt}'`;
+  yield "  mkdir -p $STATS_DIR";
   for (const s of Object.values(output.services)) {
     const ct = s.container_name;
-    yield `  ${compose.makeDockerH(s)} logs ${ct} >iperf3/${ct.slice(7)}${extname}`;
+    yield `  ${compose.makeDockerH(s)} logs ${ct} >$\{STATS_DIR}${ct.slice(args.prefix!.length + 1)}${tg.statsExt}`;
   }
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == stop ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
-    yield `  msg Deleting iperf3 servers and clients on ${hostDesc}`;
+    yield `  msg Deleting trafficgen servers and clients on ${hostDesc}`;
     yield `  with_retry ${dockerH} rm -f ${names.join(" ")}`;
   }
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == stats ]]; then";
-  if (args.json) {
-    yield "  msg Gathering iperf3 statistics table to iperf3.tsv";
-    yield `  cd ${path.join(import.meta.dirname, "..")}`;
-    yield "  $(corepack pnpm bin)/tsx trafficgen/iperf3-stats.ts --dir=$COMPOSE_CTX";
-  } else {
-    yield "  msg Showing final results from iperf3 text output";
-    yield "  grep -w receiver iperf3/*_c.log";
-  }
+  yield* tg.statsCommands(args.prefix!);
   yield "fi";
 }
 
-await file_io.write(path.join(args.dir, "iperf3.sh"), [
+await file_io.write(path.join(args.dir, `${args.prefix}.sh`), [
   "#!/bin/bash",
   ...compose.scriptHead,
   ...makeScript(),
