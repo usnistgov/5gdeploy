@@ -189,7 +189,7 @@ const scriptTail = [
   "  done",
   "elif [[ $ACT == list-pdu ]] || [[ $ACT == nmap ]]; then",
   `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/$ACT.ts --dir=$COMPOSE_CTX "$@"`,
-  "elif [[ $ACT == iperf3 ]] || [[ $ACT == iperf3t ]]; then",
+  "elif [[ $ACT == iperf3 ]] || [[ $ACT == iperf3t ]] || [[ $ACT == owamp ]]; then",
   `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/pduperf.ts --mode=$ACT --dir=$COMPOSE_CTX "$@"`,
   "else",
   `  echo ${shlex.quote(scriptUsage)}`,

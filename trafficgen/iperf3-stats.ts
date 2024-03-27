@@ -12,12 +12,10 @@ import { file_io, Yargs } from "../util/mod.js";
 const args = Yargs()
   .option("dir", {
     demandOption: true,
-    desc: "Compose context directory",
     type: "string",
   })
   .option("prefix", {
-    default: "iperf3",
-    desc: "container name prefix",
+    demandOption: true,
     type: "string",
   })
   .parseSync();

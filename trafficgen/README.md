@@ -41,13 +41,13 @@ First, prepare iperf3 flows:
 ./compose.sh iperf3 --flow='* | * | -t 60 -u -b 10M' --flow='* | * | -t 60 -u -b 10M -R'
 ```
 
-This script gathers information about currently connected PDU sessions and prepares an iperf3 flow for each PDU session between UE and Data Network.
-The most important command line flag is `--flow` (repeatable).
+This script gathers information about currently connected PDU sessions and prepares an iperf3 test for each PDU session between UE and Data Network, where the iperf3 server shares a netns with the DN container and the iperf3 client shares a netns with the UE container.
+The `--flow` flag is repeatable.
 Each `--flow` value consists of three parts, separated by `|` character:
 
 1. a minimatch pattern that matches a Data Network Name (DNN)
 2. a minimatch pattern that matches a UE SUPI
-3. a sequence of iperf3 flags (passed to iperf3 client)
+3. a sequence of iperf3 client flags
 
 Each PDU session whose DNN and SUPI match the patterns would have an iperf3 flow with the specified flags.
 Each `--flow` flag is processed separately, so that the same PDU session may match multiple flags and generate multiple iperf3 flows.
@@ -120,7 +120,26 @@ If you want iperf3 text output instead of JSON output, change `./compose.sh iper
 
 ```bash
 ./compose.sh iperf3t --flow='* | * | -t 60 -u -b 10M' --flow='* | * | -t 60 -u -b 10M -R'
-./iperf3.sh
+./iperf3t.sh
 ```
 
 The text outputs of each iperf3 container are saved in `~/compose/20230601/iperf3t` directory, but the script cannot gather overall statistics.
+
+## OWAMP
+
+`./compose.sh owamp` performs throughput measurement using [OWAMP](https://software.internet2.edu/owamp/).
+
+```bash
+./compose.sh owamp --flow='internet | * | -L 3.0 -s 900' --flow='vcam | * | -t' --flow='vctl | * | -f'
+./owamp.sh
+```
+
+This script gathers information about currently connected PDU sessions and prepares an OWAMP test for each PDU session between UE and Data Network, where owampd shares a netns with the DN container and owping shares a netns with the UE container.
+The `--flow` flag is repeatable.
+Each `--flow` value consists of three parts, separated by `|` character:
+
+1. a minimatch pattern that matches a Data Network Name (DNN)
+2. a minimatch pattern that matches a UE SUPI
+3. (optional) a sequence of [owping](https://software.internet2.edu/owamp/owping.man.html) flags
+
+Similar to iperf3, you can specify `--prefix` and `--port` flags to define multiple measurement sets.

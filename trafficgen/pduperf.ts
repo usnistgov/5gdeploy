@@ -70,7 +70,8 @@ const table = await pipeline(
   }),
   map((ctx) => {
     const { sub: { supi }, ueService, ueHost, dn: { snssai, dnn }, dnHost, dnService, dnIP, pduIP, index, cFlags, sFlags } = ctx;
-    const port = nextPort++;
+    const port = nextPort;
+    nextPort += tg.nPorts;
     const tgFlow: FlowInfo = { port, dnIP, pduIP, cFlags, sFlags };
 
     const server = compose.defineService(output, `${args.prefix}_${port}_s`, tg.serverDockerImage);
