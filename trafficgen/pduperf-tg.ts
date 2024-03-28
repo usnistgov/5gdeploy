@@ -132,16 +132,18 @@ const owamp: TrafficGen = {
       }),
       `${dnIP}:${port}`,
     ];
-    s.volumes.push({
-      type: "bind",
-      source: `./${prefix}`,
-      target: "/output",
-    });
+    if (hasOutput) {
+      s.volumes.push({
+        type: "bind",
+        source: `./${prefix}`,
+        target: "/output",
+      });
+    }
   },
   statsExt: ".log",
   *statsCommands() {
     yield "  msg Showing final results from owping text output";
-    yield "  grep -w 'one-way delay' ${STATS_DIR}*_c.log"; // eslint-disable-line no-template-curly-in-string
+    yield "  grep -wE 'one-way (delay|jitter)' ${STATS_DIR}*_c.log"; // eslint-disable-line no-template-curly-in-string
   },
 };
 
