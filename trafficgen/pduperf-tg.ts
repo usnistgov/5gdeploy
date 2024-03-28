@@ -16,6 +16,7 @@ export enum Direction {
 
 /** Traffic generator flow information. */
 export interface TrafficGenFlowContext {
+  prefix: string;
   port: number;
   dnIP: string;
   pduIP: string;
@@ -86,8 +87,8 @@ const iperf3t: typeof iperf3 = {
 
 const owamp: TrafficGen = {
   determineDirection({ cFlags }) {
-    const dl = cFlags.includes("-f");
-    const ul = cFlags.includes("-t");
+    const dl = cFlags.includes("-f") || cFlags.includes("-F");
+    const ul = cFlags.includes("-t") || cFlags.includes("-T");
     if (dl && ul) {
       return Direction.bidir;
     }
@@ -114,16 +115,28 @@ const owamp: TrafficGen = {
     ];
   },
   clientDockerImage: "perfsonar/tools",
-  clientSetup(s, { port, dnIP, pduIP, cFlags }) {
+  clientSetup(s, { prefix, port, dnIP, pduIP, cFlags }) {
+    let hasOutput = false;
     s.command = [
       "owping",
       "-P",
       `${port + 1}-${port + this.nPorts - 1}`,
       "-S",
       pduIP,
-      ...cFlags,
+      ...cFlags.map((flag, i) => {
+        if (i > 0 && /^-[FT]$/.test(cFlags[i - 1]!)) {
+          hasOutput = true;
+          return `/output/${port}${cFlags[i - 1]}.owp`;
+        }
+        return flag;
+      }),
       `${dnIP}:${port}`,
     ];
+    s.volumes.push({
+      type: "bind",
+      source: `./${prefix}`,
+      target: "/output",
+    });
   },
   statsExt: ".log",
   *statsCommands() {

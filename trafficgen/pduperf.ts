@@ -75,7 +75,7 @@ const table = await pipeline(
     const { sub: { supi }, ueService, ueHost, dn: { snssai, dnn }, dnHost, dnService, dnIP, pduIP, index, cFlags, sFlags } = ctx;
     const port = nextPort;
     nextPort += tg.nPorts;
-    const tgFlow: TrafficGenFlowContext = { port, dnIP, pduIP, cFlags, sFlags, dnService, ueService };
+    const tgFlow: TrafficGenFlowContext = { prefix: args.prefix!, port, dnIP, pduIP, cFlags, sFlags, dnService, ueService };
 
     const server = compose.defineService(output, `${args.prefix}_${port}_s`, tg.serverDockerImage);
     compose.annotate(server, "host", dnHost);
@@ -127,6 +127,7 @@ function* makeScript(): Iterable<string> {
   }
   yield "  rm -rf $STATS_DIR";
   yield "fi";
+  yield "mkdir -p $STATS_DIR";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == servers ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, /_s$/)) {
@@ -152,7 +153,6 @@ function* makeScript(): Iterable<string> {
 
   yield "if [[ -z $ACT ]] || [[ $ACT == collect ]]; then";
   yield `  msg Gathering trafficgen statistics to $\{STATS_DIR}'*${tg.statsExt}'`;
-  yield "  mkdir -p $STATS_DIR";
   for (const s of Object.values(output.services)) {
     const ct = s.container_name;
     yield `  ${compose.makeDockerH(s)} logs ${ct} >$\{STATS_DIR}${ct.slice(args.prefix!.length + 1)}${tg.statsExt}`;

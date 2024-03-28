@@ -55,24 +55,20 @@ Each `--flow` flag is processed separately, so that the same PDU session may mat
 The command prints a brief report on the matched PDU sessions and iperf3 flows.
 If there are fewer than expected iperf3 flows, please check that UEs are registered and PDU sessions have been established.
 
-The output of this script includes:
+The output of `./compose.sh iperf3` includes:
 
 * Compose file `compose.iperf3.yml`, which defines necessary iperf3 containers
-* bash script `iperf3.sh`, which runs iperf3 containers and gathers statistics in JSON format
+* bash script `iperf3.sh`, which runs iperf3 containers and saves statistics in `./iperf3` directory
 
-After generation, you can run the iperf3 flows and analyze its results as follows:
+### Subcommands of Generated bash Script
+
+Normally, you can run `iperf3.sh` script without parameter, to execute all the steps:
 
 ```bash
 ./iperf3.sh
 ```
 
-This command runs the pipeline and prints statistics at last.
-These statistics are also saved in `iperf3.tsv`.
-The JSON outputs of each iperf3 container are saved in `~/compose/20230601/iperf3` directory.
-
-### Subcommands of the bash Script
-
-The bash script `iperf3.sh` has these subcommands:
+The script has these steps / subcommands:
 
 ```bash
 # start servers and sleep 5 seconds
@@ -94,8 +90,6 @@ The bash script `iperf3.sh` has these subcommands:
 ./iperf3.sh stats
 ```
 
-If no parameter is specified, the script runs these steps sequentially.
-
 ### Multiple Measurement Sets
 
 To prepare multiple sets of iperf3 measurements, add `--prefix` and `--port` flags.
@@ -114,7 +108,7 @@ For example:
 Measurement sets prepared with distinct prefixes can be controlled independently.
 Starting or stopping one set would not stop other sets or overwrite each other's files.
 
-### Text Output
+### iperf3 Text Output
 
 If you want iperf3 text output instead of JSON output, change `./compose.sh iperf3` to `./compose.sh iperf3t`.
 
@@ -123,7 +117,7 @@ If you want iperf3 text output instead of JSON output, change `./compose.sh iper
 ./iperf3t.sh
 ```
 
-The text outputs of each iperf3 container are saved in `~/compose/20230601/iperf3t` directory, but the script cannot gather overall statistics.
+The text outputs of each iperf3 container are saved in `./iperf3t` directory, but the script cannot gather overall statistics.
 
 ## OWAMP
 
@@ -143,3 +137,18 @@ Each `--flow` value consists of three parts, separated by `|` character:
 3. (optional) a sequence of [owping](https://software.internet2.edu/owamp/owping.man.html) flags
 
 Similar to iperf3, you can specify `--prefix` and `--port` flags to define multiple measurement sets.
+
+### OWAMP Data Files
+
+You can pass flags to owping within the third part of `--flow` flag.
+`-F` and `-T` flags are handled specially: the filename that follows either flag is ignored; instead, the output is set to a file in `~/compose/20230601/owamp` statistics directory.
+These files can be further analyzed with `owstats` command.
+
+```bash
+./compose.sh owamp --port=21000 --flow='internet | *1000 | -F x -T x'
+./owamp.sh
+
+alias owstats='docker run --rm --mount type=bind,source=$(pwd),target=/data,readonly=true -w /data perfsonar/tools owstats'
+owstats -R ./owamp/21000-F.owp
+owstats -R ./owamp/21000-T.owp
+```
