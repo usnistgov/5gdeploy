@@ -1,38 +1,37 @@
 import path from "node:path";
 
 import assert from "minimalistic-assert";
-import { type Minimatch } from "minimatch";
+import type { ReadonlyDeep } from "type-fest";
 
 import type { ComposeService } from "../types/mod.js";
 
 const codebaseRoot = path.join(import.meta.dirname, "..");
 
+/** Traffic direction. */
 export enum Direction {
   dl = "DL>",
   ul = "<UL",
   bidir = "<->",
 }
 
-export interface FlowSelector {
-  dnPattern: Minimatch;
-  uePattern: Minimatch;
-  cFlags: readonly string[];
-  sFlags: readonly string[];
-}
-
-export interface FlowInfo extends Pick<FlowSelector, "cFlags" | "sFlags"> {
+/** Traffic generator flow information. */
+export interface TrafficGenFlowContext {
   port: number;
   dnIP: string;
   pduIP: string;
+  cFlags: readonly string[];
+  sFlags: readonly string[];
+  dnService: ReadonlyDeep<ComposeService>;
+  ueService: ReadonlyDeep<ComposeService>;
 }
 
 export interface TrafficGen {
-  determineDirection: (flow: FlowInfo) => Direction;
+  determineDirection: (flow: TrafficGenFlowContext) => Direction;
   nPorts: number;
   serverDockerImage: string;
-  serverSetup: (s: ComposeService, flow: FlowInfo) => void;
+  serverSetup: (s: ComposeService, flow: TrafficGenFlowContext) => void;
   clientDockerImage: string;
-  clientSetup: (s: ComposeService, flow: FlowInfo) => void;
+  clientSetup: (s: ComposeService, flow: TrafficGenFlowContext) => void;
   statsExt: string;
   statsCommands: (prefix: string) => Iterable<string>;
 }
@@ -87,17 +86,22 @@ const iperf3t: typeof iperf3 = {
 
 const owamp: TrafficGen = {
   determineDirection({ cFlags }) {
-    if (cFlags.includes("-f")) {
+    const dl = cFlags.includes("-f");
+    const ul = cFlags.includes("-t");
+    if (dl && ul) {
+      return Direction.bidir;
+    }
+    if (dl) {
       return Direction.dl;
     }
-    if (cFlags.includes("-t")) {
+    if (ul) {
       return Direction.ul;
     }
     return Direction.bidir;
   },
   nPorts: 5,
   serverDockerImage: "perfsonar/tools",
-  serverSetup(s, { port, dnIP, sFlags }) {
+  serverSetup(s, { port, sFlags }) {
     assert(sFlags.length === 0, "owampd does not accept server flags");
     s.command = [
       "owampd",
@@ -106,7 +110,7 @@ const owamp: TrafficGen = {
       "-P",
       `${port + 1}-${port + this.nPorts - 1}`,
       "-S",
-      `${dnIP}:${port}`,
+      `:${port}`,
     ];
   },
   clientDockerImage: "perfsonar/tools",

@@ -11,7 +11,7 @@ import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 import * as compose from "../compose/mod.js";
 import { file_io, Yargs } from "../util/mod.js";
 import { ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
-import { type FlowInfo, type FlowSelector, trafficGenerators } from "./pduperf-tg.js";
+import { trafficGenerators, type TrafficGenFlowContext } from "./pduperf-tg.js";
 
 const args = Yargs()
   .option(ctxOptions)
@@ -33,7 +33,10 @@ const args = Yargs()
   })
   .option("flow", {
     array: true,
-    coerce(lines: readonly string[]): FlowSelector[] {
+    coerce(lines: readonly string[]): Array<{
+      dnPattern: Minimatch;
+      uePattern: Minimatch;
+    } & Pick<TrafficGenFlowContext, "cFlags" | "sFlags">> {
       return Array.from(lines, (line) => {
         const tokens = line.split("|");
         assert([2, 3, 4].includes(tokens.length), `bad --flow ${line}`);
@@ -72,7 +75,7 @@ const table = await pipeline(
     const { sub: { supi }, ueService, ueHost, dn: { snssai, dnn }, dnHost, dnService, dnIP, pduIP, index, cFlags, sFlags } = ctx;
     const port = nextPort;
     nextPort += tg.nPorts;
-    const tgFlow: FlowInfo = { port, dnIP, pduIP, cFlags, sFlags };
+    const tgFlow: TrafficGenFlowContext = { port, dnIP, pduIP, cFlags, sFlags, dnService, ueService };
 
     const server = compose.defineService(output, `${args.prefix}_${port}_s`, tg.serverDockerImage);
     compose.annotate(server, "host", dnHost);
