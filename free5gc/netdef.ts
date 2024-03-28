@@ -1,6 +1,7 @@
 import assert from "minimalistic-assert";
 import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
+import type { SetRequired } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
@@ -54,7 +55,7 @@ class F5CPBuilder {
   }
 
   private async buildWebClient(): Promise<void> {
-    const serverIP = this.ctx.c.services.webui!.networks.mgmt!.ipv4_address;
+    const serverIP = compose.annotate(this.ctx.c.services.webui!, "ip_mgmt")!;
     const serverPort = 5000;
     const server = `http://${serverIP}:${serverPort}`;
     const { netdef, network } = this.ctx;
@@ -66,9 +67,12 @@ class F5CPBuilder {
       yield "msg Waiting for WebUI to become ready";
       yield `with_retry nc -z ${serverIP} ${serverPort}`;
       yield "sleep 1";
+      yield "msg Requesting WebUI access token";
+      yield `http --ignore-stdin -j -o /login.json POST ${server}/api/login username=admin password=free5gc`;
+      yield "TOKEN=\"$(jq -r .access_token /login.json)\"";
       for (const sub of netdef.listSubscribers({ expandCount: false })) {
         const smData = new DefaultMap<N.SNSSAI, Record<string, W.DnnConfiguration>>(() => ({}));
-        const smPolicy: Record<string, W.SmPolicySnssai> = {};
+        const smPolicy: Record<string, SetRequired<W.SmPolicySnssai, "smPolicyDnnData">> = {};
         for (const { snssai, dnn } of sub.subscribedDN) {
           const dn = netdef.findDN(dnn, snssai);
           assert(dn);
@@ -86,11 +90,10 @@ class F5CPBuilder {
             },
             sessionAmbr: { uplink: "200 Mbps", downlink: "100 Mbps" },
           };
-          smPolicy[key] ??= {
+          (smPolicy[key] ??= {
             snssai: convertSNSSAI(snssai),
             smPolicyDnnData: {},
-          };
-          smPolicy[key]!.smPolicyDnnData![dnn] = { dnn };
+          }).smPolicyDnnData[dnn] = { dnn };
         }
         const j: W.Subscription = {
           plmnID,
@@ -126,14 +129,14 @@ class F5CPBuilder {
           yield `msg Inserting UE ${sub.supi}`;
         }
         const url = `${server}/api/subscriber/imsi-${sub.supi}/${plmnID}/${sub.count}`;
-        yield `echo ${shlex.quote(payload)} | http -j POST ${shlex.quote(url)} Token:admin`;
+        yield `echo ${shlex.quote(payload)} | http -j POST ${shlex.quote(url)} Token:"$TOKEN"`;
         yield "echo";
       }
       yield "msg Idling";
       yield "exec tail -f";
     }
 
-    const s = this.ctx.defineService("webclient", "alpine/httpie", ["mgmt"]);
+    const s = this.ctx.defineService("webclient", "5gdeploy.localhost/free5gc-webclient", ["mgmt"]);
     await this.ctx.writeFile(
       "cp-cfg/webclient.sh",
       Array.from(generateCommands()).join("\n"),

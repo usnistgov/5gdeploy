@@ -247,6 +247,7 @@ export namespace NetDef {
     nci: number;
   }
 
+  /** Information about a gNB. */
   export interface GNB extends Required<N.GNB> {
     nci: string & NCI;
   }
@@ -264,6 +265,27 @@ export namespace NetDef {
     ih: {
       sst: number;
       sd?: string;
+    };
+  }
+
+  /** Split S-NSSAI as sst and sd. */
+  export function splitSNSSAI(snssai: N.SNSSAI): SNSSAI {
+    assert(/^[\da-f]{2}(?:[\da-f]{6})?$/i.test(snssai));
+    if (snssai.length === 2) {
+      const sstInt = Number.parseInt(snssai, 16);
+      return {
+        hex: { sst: snssai },
+        int: { sst: sstInt },
+        ih: { sst: sstInt },
+      };
+    }
+    const sst = snssai.slice(0, 2);
+    const sstInt = Number.parseInt(sst, 16);
+    const sd = snssai.slice(2);
+    return {
+      hex: { sst, sd },
+      int: { sst: sstInt, sd: Number.parseInt(sd, 16) },
+      ih: { sst: sstInt, sd },
     };
   }
 
@@ -301,27 +323,6 @@ export namespace NetDef {
   export interface UPFN6Peer extends N.DataNetwork {
     index: number;
     cost: number;
-  }
-
-  /** Split S-NSSAI as sst and sd. */
-  export function splitSNSSAI(snssai: N.SNSSAI): SNSSAI {
-    assert(/^[\da-f]{2}(?:[\da-f]{6})?$/i.test(snssai));
-    if (snssai.length === 2) {
-      const sstInt = Number.parseInt(snssai, 16);
-      return {
-        hex: { sst: snssai },
-        int: { sst: sstInt },
-        ih: { sst: sstInt },
-      };
-    }
-    const sst = snssai.slice(0, 2);
-    const sstInt = Number.parseInt(sst, 16);
-    const sd = snssai.slice(2);
-    return {
-      hex: { sst, sd },
-      int: { sst: sstInt, sd: Number.parseInt(sd, 16) },
-      ih: { sst: sstInt, sd },
-    };
   }
 
   /** Determine equality of two DataPathNodes. */
