@@ -150,8 +150,8 @@ const scriptUsage = `Usage:
     Create scenario containers to prepare for traffic capture.
   ./compose.sh ps
     View containers on each host machine.
-  ./compose.sh meas
-    View access instructions for measurements and metrics services.
+  ./compose.sh web
+    View access instructions for web applications.
   ./compose.sh phoenix-register
     Register Open5GCore UEs.
 
@@ -176,9 +176,10 @@ const scriptHead = [
 ];
 
 const scriptTail = [
-  "elif [[ $ACT == meas ]]; then",
+  "elif [[ $ACT == web ]]; then",
   "  msg Prometheus is at $(yq '.services.prometheus.annotations[\"5gdeploy.ip_meas\"]' compose.yml):9090",
   "  msg Grafana is at $(yq '.services.grafana.annotations[\"5gdeploy.ip_meas\"]' compose.yml):3000 , login with admin/grafana",
+  "  msg free5GC WebUI is at $(yq '.services.webui.annotations[\"5gdeploy.ip_mgmt\"]' compose.yml):5000 , login with admin/free5gc",
   "  msg Setup SSH port forwarding to access these services in a browser",
   "  msg \"'null'\" means the relevant service has been disabled",
   "elif [[ $ACT == phoenix-register ]]; then",

@@ -25,9 +25,10 @@ class F5CPBuilder {
 
   public async build(): Promise<void> {
     this.buildMongo();
+    await this.buildNRF();
     await this.buildWebUI();
     await this.buildWebClient();
-    await this.buildNRF();
+    await this.buildCHF();
     await this.buildUDR();
     await this.buildUDM();
     await this.buildAUSF();
@@ -43,10 +44,24 @@ class F5CPBuilder {
     this.mongoUrl.hostname = s.networks.db!.ipv4_address;
   }
 
+  private async buildNRF(): Promise<void> {
+    const [s, nrfcfg] = await this.defineService<F5.nrf.Configuration>("nrf", ["db", "cp"]);
+    const c = nrfcfg.configuration;
+    c.DefaultPlmnId = this.plmn;
+    c.MongoDBUrl = this.mongoUrl.toString();
+
+    s.command = [
+      "./nrf",
+      "-c", await this.saveConfig(s, "cp-cfg/nrf.yaml", "nrfcfg.yaml", nrfcfg),
+    ];
+  }
+
   private async buildWebUI(): Promise<void> {
-    const [s, webuicfg] = await this.defineService<F5.webui.Configuration>("webui", ["mgmt", "db"]);
+    const [s, webuicfg] = await this.defineService<F5.webui.Configuration>("webui", ["mgmt", "db", "cp"]);
     const c = webuicfg.configuration;
     c.mongodb.url = this.mongoUrl.toString();
+    c.webServer.ipv4Address = s.networks.mgmt!.ipv4_address;
+    c.billingServer.hostIPv4 = s.networks.cp!.ipv4_address;
 
     s.command = [
       "./webui",
@@ -55,7 +70,7 @@ class F5CPBuilder {
   }
 
   private async buildWebClient(): Promise<void> {
-    const serverIP = compose.annotate(this.ctx.c.services.webui!, "ip_mgmt")!;
+    const serverIP = this.ctx.c.services.webui!.networks.mgmt!.ipv4_address;
     const serverPort = 5000;
     const server = `http://${serverIP}:${serverPort}`;
     const { netdef, network } = this.ctx;
@@ -68,7 +83,7 @@ class F5CPBuilder {
       yield `with_retry nc -z ${serverIP} ${serverPort}`;
       yield "sleep 1";
       yield "msg Requesting WebUI access token";
-      yield `http --ignore-stdin -j -o /login.json POST ${server}/api/login username=admin password=free5gc`;
+      yield `http --ignore-stdin -j POST ${server}/api/login username=admin password=free5gc | tee /login.json | jq .`;
       yield "TOKEN=\"$(jq -r .access_token /login.json)\"";
       for (const sub of netdef.listSubscribers({ expandCount: false })) {
         const smData = new DefaultMap<N.SNSSAI, Record<string, W.DnnConfiguration>>(() => ({}));
@@ -146,15 +161,17 @@ class F5CPBuilder {
     s.command = ["/bin/ash", "/action.sh"];
   }
 
-  private async buildNRF(): Promise<void> {
-    const [s, nrfcfg] = await this.defineService<F5.nrf.Configuration>("nrf", ["db", "cp"]);
-    const c = nrfcfg.configuration;
-    c.DefaultPlmnId = this.plmn;
-    c.MongoDBUrl = this.mongoUrl.toString();
+  private async buildCHF(): Promise<void> {
+    const [s, chfcfg] = await this.defineService<F5.chf.Configuration>("chf", ["db", "cp"]);
+    const c = chfcfg.configuration;
+    c.mongodb.url = this.mongoUrl.toString();
+    c.cgf.hostIPv4 = this.ctx.c.services.webui!.networks.cp!.ipv4_address;
+    c.abmfDiameter.hostIPv4 = s.networks.cp!.ipv4_address;
+    c.rfDiameter.hostIPv4 = s.networks.cp!.ipv4_address;
 
     s.command = [
-      "./nrf",
-      "-c", await this.saveConfig(s, "cp-cfg/nrf.yaml", "nrfcfg.yaml", nrfcfg),
+      "./chf",
+      "-c", await this.saveConfig(s, "cp-cfg/chf.yaml", "chfcfg.yaml", chfcfg),
     ];
   }
 
@@ -212,7 +229,6 @@ class F5CPBuilder {
     for (const [ct, amf] of compose.suggestNames("amf", netdef.amfs)) {
       const [s, amfcfg] = await this.defineService<F5.amf.Configuration>(ct, ["cp", "n2"]);
       const c = amfcfg.configuration;
-      c.amfName = amf.name;
       c.ngapIpList = [s.networks.n2!.ipv4_address];
 
       const [region, set, pointer] = amf.amfi;
@@ -240,19 +256,19 @@ class F5CPBuilder {
 
   private async buildSMFs(): Promise<void> {
     const { network, netdef } = this.ctx;
+    const upi = this.buildSMFupi();
     for (const [ct, smf] of compose.suggestNames("smf", netdef.smfs)) {
       const [s, smfcfg] = await this.defineService<F5.smf.Configuration>(ct, ["cp", "n2", "n4"]);
       const uerouting = await f5_conf.loadTemplate("uerouting");
 
       const c = smfcfg.configuration;
-      c.smfName = smf.name;
       c.pfcp = {
         listenAddr: s.networks.n4!.ipv4_address,
         externalAddr: s.networks.n4!.ipv4_address,
         nodeID: s.networks.n4!.ipv4_address,
       };
       c.plmnList = [this.plmn];
-      c.snssaiInfos = netdef.nssai.map((snssai): F5.smf.SNSSAIInfo => ({
+      c.snssaiInfos = smf.nssai.map((snssai): F5.smf.SNSSAIInfo => ({
         sNssai: convertSNSSAI(snssai),
         dnnInfos: network.dataNetworks
           .filter((dn) => dn.snssai === snssai)
@@ -261,7 +277,7 @@ class F5CPBuilder {
             dns: { ipv4: "1.1.1.1" },
           })),
       }));
-      c.userplaneInformation = this.buildSMFupi();
+      c.userplaneInformation = upi;
       c.nwInstFqdnEncoding = true;
 
       s.command = [
@@ -368,23 +384,32 @@ class F5CPBuilder {
     const s = this.ctx.defineService(ct, await f5_conf.getImage(nf), nets);
     s.stop_signal = "SIGQUIT";
     s.environment.GIN_MODE = "release";
+
     const cfg = await f5_conf.loadTemplate(`${nf}cfg`) as F5.Root<C>;
-    if ((cfg.configuration as unknown as F5.SBI).sbi !== undefined) {
-      this.updateSBI(s, cfg.configuration as unknown as F5.SBI);
+
+    const nameProp = `${nf}Name`;
+    if (Object.hasOwn(cfg.configuration, nameProp)) {
+      (cfg.configuration as any)[nameProp] = ct;
     }
+
+    this.updateSBI(s, cfg.configuration as unknown as F5.SBI);
     return [s, cfg];
   }
 
   private updateSBI(s: ComposeService, c: F5.SBI): void {
-    c.sbi = {
-      scheme: "http",
-      registerIPv4: s.networks.cp!.ipv4_address,
-      bindingIPv4: s.networks.cp!.ipv4_address,
-      port: 8000,
-    };
+    if (c.sbi !== undefined) {
+      c.sbi = {
+        scheme: "http",
+        registerIPv4: s.networks.cp!.ipv4_address,
+        bindingIPv4: s.networks.cp!.ipv4_address,
+        port: 8000,
+      };
+    }
 
     if (c.nrfUri !== undefined) {
-      c.nrfUri = `http://${this.ctx.c.services.nrf!.networks.cp!.ipv4_address}:8000`;
+      const { nrf } = this.ctx.c.services;
+      assert(!!nrf, "NRF is not yet created");
+      c.nrfUri = `http://${nrf.networks.cp!.ipv4_address}:8000`;
     }
   }
 

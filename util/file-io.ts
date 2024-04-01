@@ -99,7 +99,7 @@ export async function write(filename: string | URL, body: unknown): Promise<void
 
   if (!(typeof body === "string" || body instanceof Uint8Array)) {
     if (filename.endsWith(".yaml") || filename.endsWith(".yml")) {
-      body = yaml.dump(body, { forceQuotes: true, sortKeys: true });
+      body = yaml.dump(body, { forceQuotes: true, noRefs: true, sortKeys: true });
     } else {
       body = stringify(body, { space: "  " });
     }

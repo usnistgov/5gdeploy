@@ -80,7 +80,7 @@ See [multi-host deployment](../docs/multi-host.md) for more information.
 ## Metrics Collection with Prometheus and Grafana
 
 Unless disabled with `--prometheus=false` flag, the generated Compose file supports Prometheus metrics collection and Grafana visualization.
-Run `./compose.sh meas` in the Compose context folder to view access instructions.
+Run `./compose.sh web` in the Compose context folder to view access instructions.
 
 Currently, scrape targets include:
 

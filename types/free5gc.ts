@@ -31,10 +31,11 @@ export interface SNSSAI {
 }
 
 export interface SBI {
-  sbi: SBI.Listener;
+  sbi?: SBI.Listener;
   serviceNameList?: string[];
-  nrfUri?: string;
   locality?: string;
+  nrfCertPem?: string;
+  nrfUri?: string;
 }
 export namespace SBI {
   export interface Listener {
@@ -43,20 +44,6 @@ export namespace SBI {
     bindingIPv4: string;
     port?: number;
     tls?: unknown;
-  }
-}
-
-export namespace ausf {
-  export interface Configuration extends SBI {
-    plmnSupportList: PLMNID[];
-  }
-}
-
-export namespace nrf {
-  export interface Configuration extends SBI {
-    MongoDBName: string;
-    MongoDBUrl: string;
-    DefaultPlmnId: PLMNID;
   }
 }
 
@@ -84,6 +71,45 @@ export namespace amf {
   export interface PLMN {
     plmnId: PLMNID;
     snssaiList: SNSSAI[];
+  }
+}
+
+export namespace ausf {
+  export interface Configuration extends SBI {
+    plmnSupportList: PLMNID[];
+  }
+}
+
+export namespace chf {
+  export interface Configuration extends SBI {
+    chfName: string;
+    mongodb: Mongo;
+    cgf: CGF;
+    abmfDiameter: Diameter<3868>;
+    rfDiameter: Diameter<3869>;
+  }
+
+  export interface CGF {
+    hostIPv4: string;
+    port: 2122;
+    listenPort: 2121;
+    tls: unknown;
+    cdrFilePath: unknown;
+  }
+
+  export interface Diameter<Port extends number> {
+    protocol: "tcp";
+    hostIPv4: string;
+    port: Port;
+    tls: unknown;
+  }
+}
+
+export namespace nrf {
+  export interface Configuration extends SBI {
+    MongoDBName: string;
+    MongoDBUrl: string;
+    DefaultPlmnId: PLMNID;
   }
 }
 
@@ -231,8 +257,23 @@ export namespace upf {
 }
 
 export namespace webui {
-  export interface Configuration {
+  export interface Configuration extends SBI {
     mongodb: Mongo;
-    billingServer?: unknown;
+    webServer: WebServer;
+    billingServer: BillingServer;
+  }
+
+  export interface WebServer {
+    scheme: "http";
+    ipv4Address: string;
+    port: 5000;
+  }
+
+  export interface BillingServer {
+    enable: boolean;
+    hostIPv4: string;
+    listenPort: 2122;
+    port: 2121;
+    tls: unknown;
   }
 }
