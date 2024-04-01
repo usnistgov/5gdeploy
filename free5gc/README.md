@@ -8,6 +8,8 @@ This package offers these choices in the **netdef-compose** command:
 
 Before using these choices, it's necessary to run `download.sh` to download configuration templates.
 
+Run `./compose.sh web` in the Compose context folder to view access instructions for the free5GC web console, which includes some real-time information for the core network.
+
 ## gtp5g Kernel Module
 
 free5GC UPF and [PacketRusher](../packetrusher/README.md) depend on [gtp5g kernel module](https://github.com/free5gc/gtp5g).

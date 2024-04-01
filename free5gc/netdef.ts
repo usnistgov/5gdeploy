@@ -11,8 +11,9 @@ import * as f5_conf from "./conf.js";
 import type * as W from "./webconsole-openapi/models/index.js";
 
 function convertSNSSAI(input: string): F5.SNSSAI {
-  const { sst, sd = "FFFFFF" } = NetDef.splitSNSSAI(input).ih;
-  return { sst, sd };
+  const { sst, sd } = NetDef.splitSNSSAI(input).ih;
+  assert(!!sd, "free5GC does not support S-NSSAI without SD value");
+  return { sst, sd: sd.toLowerCase() };
 }
 
 class F5CPBuilder {
