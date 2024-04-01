@@ -24,7 +24,7 @@ upload_sshkey() {
 }
 
 upload_docker() {
-  local IMAGES=$(docker images --format='{{.Repository}}' | grep 5gdeploy.localhost)
+  local IMAGES=$(docker images --format='{{.Repository}}' | grep 5gdeploy.localhost | grep -v '\-base')
   msg Docker images to be uploaded: $IMAGES
   while [[ -n ${1:-} ]]; do
     local H=$1

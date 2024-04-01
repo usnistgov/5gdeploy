@@ -9,5 +9,6 @@ RUN cd / \
 
 FROM alpine:3.19
 RUN apk add --no-cache iproute2 yq
-ADD --chmod=755 https://github.com/jpetazzo/pipework/raw/8a24c61bd731a78f571a9cec80bd2447a5c1cf62/pipework /usr/local/bin/
+ADD --chmod=755 https://github.com/jpetazzo/pipework/raw/12998f32a6abf13ba182dc93615a96c8e27cc5c9/pipework /usr/local/bin/
+RUN sed -i '/^#!/ s|bash|ash|' /usr/local/bin/pipework
 COPY --from=build /PacketRusher/packetrusher /PacketRusher/config.base.yml /
