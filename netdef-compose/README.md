@@ -77,6 +77,21 @@ Example:
 You can deploy a scenario over multiple physical/virtual machines, with a subset of network functions placed on each machine, by specifying `--bridge` and `--place` command line flags.
 See [multi-host deployment](../docs/multi-host.md) for more information.
 
+## QoS and Network Emulation Settings
+
+Outgoing IPv4 packets can be customized, in these select network functions:
+
+* Open5GCore, gNB
+
+`--set-dscp` alters outer IPv4 DSCP field for gNB-to-UPF traffic.
+This may be used in conjunction with SONiC QoS scripts for uplink QoS classification.
+The syntax looks like `--set-dscp='n3,gnb*,upf4,32'`, where each value contains four parts delimited by commas:
+
+1. Network name, which must exist in the topology
+2. Minimatch pattern that matches the source network function container name.
+3. Minimatch pattern that matches the destination network function container name.
+4. DSCP value between 0 and 63 (written as decimal or hexadecimal) or Class Selector (written as `cs0` thru `cs7`)
+
 ## Metrics Collection with Prometheus and Grafana
 
 Unless disabled with `--prometheus=false` flag, the generated Compose file supports Prometheus metrics collection and Grafana visualization.

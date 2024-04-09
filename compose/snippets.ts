@@ -1,9 +1,12 @@
 import path from "node:path";
 
 import assert from "minimalistic-assert";
+import { Minimatch } from "minimatch";
 import * as shlex from "shlex";
 
-import type { ComposeService } from "../types/mod.js";
+import type { ComposeFile, ComposeService } from "../types/mod.js";
+import type { YargsInfer, YargsOptions } from "../util/mod.js";
+import { annotate } from "./compose.js";
 
 /** Shell script heading with common shell functions. */
 export const scriptHead = [
@@ -66,6 +69,74 @@ export namespace renameNetifs {
      */
     pipeworkWait?: boolean;
   }
+}
+
+/**
+ * Generate commands to alter outer IPv4 DSCP.
+ * @param c - Compose file.
+ * @param s - Compose service.
+ * @param opts - Command line options.
+ *
+ * @remarks
+ * This requires `iptables` to be installed in the container.
+ */
+export function* setDSCP(c: ComposeFile, s: ComposeService, opts: setDSCP.Options): Iterable<string> {
+  for (const rule of opts["set-dscp"]) {
+    if (!rule.src.match(s.container_name)) {
+      continue;
+    }
+    const srcIP = annotate(s, `ip_${rule.net}`);
+    assert(!!srcIP, `${s.container_name} does not have ${rule.net} netif`);
+
+    for (const dst of Object.values(c.services)) {
+      if (!rule.dst.match(dst.container_name)) {
+        continue;
+      }
+
+      const dstIP = annotate(dst, `ip_${rule.net}`);
+      assert(!!dstIP, `${dst.container_name} does not have ${rule.net} netif`);
+      yield `iptables -t mangle -A OUTPUT -s ${srcIP} -d ${dstIP} -j DSCP --set-dscp ${rule.dscp}`;
+    }
+  }
+}
+export namespace setDSCP {
+  export interface Rule {
+    net: string;
+    src: Minimatch;
+    dst: Minimatch;
+    dscp: number;
+  }
+
+  /** Yargs options for {@link setDSCP}. */
+  export const options = {
+    "set-dscp": {
+      array: true,
+      coerce(lines: readonly string[]): Rule[] {
+        return Array.from(lines, (line) => {
+          const tokens = line.split(",");
+          assert(tokens.length === 4, `bad --set-dscp ${line}`);
+          let dscp = Number.parseInt(tokens[3]!, 0); // eslint-disable-line radix
+          if (Number.isNaN(dscp) && tokens[3]!.startsWith("cs")) {
+            dscp = Number.parseInt(tokens[3]!.slice(2), 10) << 3;
+          }
+          assert(Number.isInteger(dscp) && dscp >= 0 && dscp < 64,
+            `bad DSCP in --set-dscp ${line}`);
+          return {
+            net: tokens[0]!,
+            src: new Minimatch(tokens[1]!),
+            dst: new Minimatch(tokens[2]!),
+            dscp,
+          };
+        });
+      },
+      default: [],
+      desc: "alter outer IPv4 DSCP",
+      nargs: 1,
+      type: "string",
+    },
+  } satisfies YargsOptions;
+
+  export type Options = YargsInfer<typeof options>;
 }
 
 /**

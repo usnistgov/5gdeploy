@@ -16,6 +16,7 @@ import { IPMAP } from "./ipmap.js";
 import type { NetworkFunction } from "./nf.js";
 
 export const phoenixOptions = {
+  ...compose.setDSCP.options,
   "phoenix-cfg": {
     default: path.resolve(import.meta.dirname, "../../phoenix-repo/phoenix-src/cfg"),
     desc: "path to phoenix-src/cfg",
@@ -58,29 +59,6 @@ export const phoenixOptions = {
     group: "phoenix",
     type: "number",
   },
-  "phoenix-gnb-to-upf-dscp": {
-    array: true,
-    coerce(lines: readonly string[]): Array<[upf: string, dscp: number]> {
-      return Array.from(lines, (line) => {
-        const tokens = line.split("=");
-        assert(tokens.length === 2, `bad --phoenix-gnb-to-upf-dscp ${line}`);
-        const upf = tokens[0]!.trim();
-        assert.equal(compose.nameToNf(upf), "upf", `bad UPF in --phoenix-gnb-to-upf-dscp ${line}`);
-        let dscp = Number.parseInt(tokens[1]!, 0); // eslint-disable-line radix
-        if (Number.isNaN(dscp) && tokens[1]!.startsWith("cs")) {
-          dscp = Number.parseInt(tokens[1]!.slice(2), 10) << 3;
-        }
-        assert(Number.isInteger(dscp) && dscp >= 0 && dscp < 64,
-          `bad DSCP in --phoenix-gnb-to-upf-dscp ${line}`);
-        return [upf, dscp];
-      });
-    },
-    default: [],
-    desc: "alter outer IPv4 DSCP for gNB-to-UPF traffic",
-    group: "phoenix",
-    nargs: 1,
-    type: "string",
-  },
   "phoenix-ue-isolated": {
     array: true,
     default: [""],
@@ -90,7 +68,7 @@ export const phoenixOptions = {
     type: "string",
   },
 } as const satisfies YargsOptions;
-type PhoenixOpts = YargsInfer<typeof phoenixOptions>;
+type PhoenixOpts = YargsInfer<typeof phoenixOptions> & compose.setDSCP.Options;
 const defaultOptions: PhoenixOpts = YargsDefaults(phoenixOptions);
 
 function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext, PhoenixOpts]>): (ctx: NetDefComposeContext, opts?: PhoenixOpts) => Promise<void> {
@@ -645,17 +623,8 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
       });
       this.sf.initCommands.set(ct, [
         "iptables -I OUTPUT -p icmp --icmp-type destination-unreachable -j DROP",
-        ...this.makeGnbDscpCommands(ct),
+        ...compose.setDSCP(this.ctx.c, s, this.opts),
       ]);
-    }
-  }
-
-  private *makeGnbDscpCommands(gnb: string): Iterable<string> {
-    for (const [upf, dscp] of this.opts["phoenix-gnb-to-upf-dscp"]) {
-      const s = this.ctx.c.services[upf];
-      assert(!!s, `UPF ${upf} in --phoenix-gnb-to-upf-dscp does not exist`);
-      yield `iptables -t mangle -A OUTPUT -s ${IPMAP.formatEnv(gnb, "n3", "$")
-      } -d ${IPMAP.formatEnv(upf, "n3", "$")} -j DSCP --set-dscp ${dscp}`;
     }
   }
 

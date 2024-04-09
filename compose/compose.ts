@@ -145,13 +145,13 @@ function createService(name: string, image: string): ComposeService {
       key: ConditionalKeys<ComposeService, unknown[]>,
       uniqBy: (value: any) => string,
   ]>) {
-    Object.defineProperty(s, key!, {
+    Object.defineProperty(s, key, {
       enumerable: true,
       writable: false,
-      value: s[key!],
+      value: s[key],
     });
 
-    Object.defineProperty(s[key!], "push", {
+    Object.defineProperty(s[key], "push", {
       enumerable: false,
       value: function<T>(this: T[], ...items: T[]): number {
         const existing = new Map<string, T>();
