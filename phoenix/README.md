@@ -51,7 +51,8 @@ ip -j link | jq -r '.[] | select(.xdp) | .ifname' | xargs --no-run-if-empty -I{}
 The default is 2 worker threads.
 This also determines how many dedicated CPU cores are requested for the gNB, when used with [CPU isolation](../docs/multi-host.md) feature.
 
-Use [`--set-dscp` flag](../netdef-compose/README.md) to configure QoS for gNB-to-UPF traffic.
+Use [`--set-dscp` flag](../netdef-compose/README.md) to configure DSCP field for gNB-to-UPF traffic.
+This is used in conjunction with SONiC QoS scripts for uplink QoS classification.
 
 `--phoenix-ue-isolated` specifies which UEs shall have a reserved CPU core.
 Open5GCore UE simulator is only involved in registration and PDU session setup.

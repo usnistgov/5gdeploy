@@ -7,7 +7,7 @@ import sql from "sql-tagged-template-literal";
 import type { Constructor } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { importGrafanaDashboard, NetDef, type NetDefComposeContext, NetDefDN, setProcessExporterRule } from "../netdef-compose/mod.js";
+import { applyQoS, importGrafanaDashboard, NetDef, type NetDefComposeContext, NetDefDN, setProcessExporterRule } from "../netdef-compose/mod.js";
 import type { N, PH } from "../types/mod.js";
 import { file_io, findByName, YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { networkOptions, phoenixDockerImage, updateService } from "./compose.js";
@@ -16,7 +16,6 @@ import { IPMAP } from "./ipmap.js";
 import type { NetworkFunction } from "./nf.js";
 
 export const phoenixOptions = {
-  ...compose.setDSCP.options,
   "phoenix-cfg": {
     default: path.resolve(import.meta.dirname, "../../phoenix-repo/phoenix-src/cfg"),
     desc: "path to phoenix-src/cfg",
@@ -68,7 +67,7 @@ export const phoenixOptions = {
     type: "string",
   },
 } as const satisfies YargsOptions;
-type PhoenixOpts = YargsInfer<typeof phoenixOptions> & compose.setDSCP.Options;
+type PhoenixOpts = YargsInfer<typeof phoenixOptions>;
 const defaultOptions: PhoenixOpts = YargsDefaults(phoenixOptions);
 
 function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext, PhoenixOpts]>): (ctx: NetDefComposeContext, opts?: PhoenixOpts) => Promise<void> {
@@ -623,7 +622,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
       });
       this.sf.initCommands.set(ct, [
         "iptables -I OUTPUT -p icmp --icmp-type destination-unreachable -j DROP",
-        ...compose.setDSCP(this.ctx.c, s, this.opts),
+        ...applyQoS(s),
       ]);
     }
   }

@@ -5,13 +5,14 @@ import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { gnbsimRAN } from "../omec/gnbsim.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
-import { type N } from "../types/mod.js";
+import type { N } from "../types/mod.js";
 import { ueransimRAN } from "../ueransim/netdef.js";
 import { file_io, Yargs } from "../util/mod.js";
 import { NetDefComposeContext } from "./context.js";
 import { dnOptions, saveDNOptions } from "./dn.js";
 import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
 import { prometheus, prometheusFinish, prometheusOptions } from "./prometheus.js";
+import { qosOptions, saveQoS } from "./qos.js";
 
 type Providers = Record<string, (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>>;
 
@@ -70,6 +71,7 @@ const args = Yargs()
   .option(ipAllocOptions)
   .option(dnOptions)
   .middleware(saveDNOptions)
+  .option(qosOptions)
   .option(prometheusOptions)
   .option(phoenixOptions)
   .option(oaiOptions)
@@ -82,6 +84,7 @@ await upProviders[args.up]!(ctx, args);
 await cpProviders[args.cp]!(ctx, args);
 await ranProviders[args.ran]!(ctx, args);
 await prometheus(ctx, args);
+await saveQoS(ctx, args);
 compose.defineBridge(ctx.c, args);
 compose.place(ctx.c, args);
 await prometheusFinish(ctx);

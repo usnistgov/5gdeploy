@@ -2,6 +2,7 @@ export { NetDef } from "../netdef/netdef.js";
 export { NetDefComposeContext } from "./context.js";
 export { IPAlloc } from "./ipalloc.js";
 export { importGrafanaDashboard, setProcessExporterRule } from "./prometheus.js";
+export { applyQoS } from "./qos.js";
 
 /** Data Networks helpers for netdef-compose. */
 export * as NetDefDN from "./dn.js";

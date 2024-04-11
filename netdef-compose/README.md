@@ -13,7 +13,7 @@ corepack pnpm netdef-compose --help
 Generate Compose file and config folder with default settings:
 
 ```bash
-corepack pnpm netdef-compose --netdef ~/netdef.json --out ~/compose/example
+corepack pnpm netdef-compose --netdef=$HOME/netdef.json --out=$HOME/compose/example
 ```
 
 ## Choose 5G Implementations
@@ -22,7 +22,7 @@ You can choose Control Plane, User Plane, and Radio Access Network implementatio
 Example command:
 
 ```bash
-corepack pnpm netdef-compose --netdef ~/netdef.json --out ~/compose/example \
+corepack pnpm netdef-compose --netdef=$HOME/netdef.json --out=$HOME/compose/example \
   --cp=free5gc --up=free5gc --ran=ueransim
 ```
 
@@ -83,14 +83,21 @@ Outgoing IPv4 packets can be customized, in these select network functions:
 
 * Open5GCore, gNB
 
-`--set-dscp` alters outer IPv4 DSCP field for gNB-to-UPF traffic.
-This may be used in conjunction with SONiC QoS scripts for uplink QoS classification.
-The syntax looks like `--set-dscp='n3,gnb*,upf4,32'`, where each value contains four parts delimited by commas:
+`--set-dscp` alters outer IPv4 DSCP field for traffic transmitted by a network function.
+The syntax looks like `--set-dscp='n3 | gnb* | upf4 | 32'`, where each value contains four parts delimited by `|` symbol:
 
-1. Network name, which must exist in the topology
+1. Network name, which must exist in the topology and connected to each matched source network function.
 2. Minimatch pattern that matches the source network function container name.
 3. Minimatch pattern that matches the destination network function container name.
-4. DSCP value between 0 and 63 (written as decimal or hexadecimal) or Class Selector (written as `cs0` thru `cs7`)
+4. DSCP value between 0 and 63 (written as decimal or hexadecimal).
+
+`--set-netem` applies sch\_netem parameters for traffic transmitted by a network function.
+The syntax looks like `--set-netem='n3 | gnb* | upf* | delay 10ms'`, where each value contains four parts delimited by `|` symbol:
+
+1. Network name, which must exist in the topology and connected to each matched source network function.
+2. Minimatch pattern that matches the source network function container name.
+3. Minimatch pattern that matches the destination network function container name.
+4. tc-netem command parameters.
 
 ## Metrics Collection with Prometheus and Grafana
 

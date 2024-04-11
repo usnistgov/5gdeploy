@@ -56,7 +56,7 @@ while [[ ${1:-} == +* ]]; do
   shift
 done
 $(corepack pnpm bin)/tsx $D/scenario.ts "${SARGS[@]}" >$OUT/netdef.json
-corepack pnpm -s netdef-compose --netdef=$OUT/netdef.json --out=$OUT $*
+corepack pnpm -s netdef-compose --netdef=$OUT/netdef.json --out=$OUT "$@"
 
 msg Scenario folder is ready, to start the scenario:
 msg ' ' $(readlink -f $OUT)/compose.sh up
