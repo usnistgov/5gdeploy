@@ -556,6 +556,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
       });
 
       this.sf.initCommands.set(ct, [
+        ...applyQoS(s),
         ...(peers.N6IPv4.length > 0 ? [
           "ip tuntap add mode tun user root name n6_tun",
           "ip link set n6_tun up",

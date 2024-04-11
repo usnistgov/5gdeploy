@@ -88,9 +88,9 @@ export async function saveQoS(ctx: NetDefComposeContext, opts: QoSOpts): Promise
 
 function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {
   yield* compose.scriptHead;
-  yield "QOS_HOSTNAME=$(hostname -s)";
-  yield "QOS_HAS_MANGLE=0";
-  yield "QOS_TC_DEVICES=()";
+  yield "HOSTNAME=$(hostname -s)";
+  yield "HAS_MANGLE=0";
+  yield "TC_DEVICES=()";
 
   for (const s of Object.values(c.services)) {
     yield "";
@@ -99,28 +99,22 @@ function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {
       continue;
     }
 
-    yield `if [[ $QOS_HOSTNAME == ${s.container_name} ]]; then`;
+    yield `if [[ $HOSTNAME == ${s.container_name} ]]; then`;
     yield* map(generateScriptForContainer(c, s, opts), (line) => line === "" ? line : `  ${line}`);
     yield "fi";
-
-    yield "";
-    yield "if [[ $QOS_HAS_MANGLE -eq 1 ]]; then";
-    yield "  msg iptables mangle table listing:";
-    yield "  iptables -t mangle -L OUTPUT";
-    yield "fi";
-    yield "for QOS_TC_DEVICE in \"${QOS_TC_DEVICES[@]}\"; do"; // eslint-disable-line no-template-curly-in-string
-    yield "  msg tc filter listing for $QOS_TC_DEVICE";
-    yield "  tc -p filter show dev $QOS_TC_DEVICE";
-    yield "  msg tc qdisc listing for $QOS_TC_DEVICE";
-    yield "  tc -p qdisc show dev $QOS_TC_DEVICE";
-    yield "done";
-    // yield "if [[ ${#QOS_TC_DEVICES[@]} -gt 0 ]]; then";
-    // yield "  msg tc filter listing:";
-    // yield "  printf \"%s\\0\" \"${QOS_TC_DEVICES[@]}\" | xargs -0 -n1 tc -p filter show dev";
-    // yield "  msg tc qdisc listing:";
-    // yield "  printf \"%s\\0\" \"${QOS_TC_DEVICES[@]}\" | xargs -0 -n1 tc -p qdisc show dev";
-    // yield "fi";
   }
+
+  yield "";
+  yield "if [[ $HAS_MANGLE -eq 1 ]]; then";
+  yield "  msg iptables mangle table listing:";
+  yield "  iptables -t mangle -L OUTPUT";
+  yield "fi";
+  yield "for TC_DEVICE in \"${TC_DEVICES[@]}\"; do"; // eslint-disable-line no-template-curly-in-string
+  yield "  msg tc filter listing for $TC_DEVICE";
+  yield "  tc -p filter show dev $TC_DEVICE";
+  yield "  msg tc qdisc listing for $TC_DEVICE";
+  yield "  tc -p qdisc show dev $TC_DEVICE";
+  yield "done";
 }
 
 function* generateScriptForContainer(c: ComposeFile, s: ComposeService, opts: QoSOpts): Iterable<string> {
@@ -134,7 +128,7 @@ function* generateScriptForContainer(c: ComposeFile, s: ComposeService, opts: Qo
     }
   }
   if (hasMangle) {
-    yield "QOS_HAS_MANGLE=1";
+    yield "HAS_MANGLE=1";
   }
 
   const netemDevices = new DefaultMap((netif: string) => {
@@ -167,7 +161,7 @@ function* generateScriptForContainer(c: ComposeFile, s: ComposeService, opts: Qo
       yield `tc qdisc replace dev ${netif} parent 1:${hexPad(minor, 4)
       } handle ${hexPad(0x8000 + minor, 4)}: netem ${param}`;
     }
-    yield `QOS_TC_DEVICES+=(${netif})`;
+    yield `TC_DEVICES+=(${netif})`;
   }
 }
 
