@@ -2,7 +2,7 @@ import { assert } from "node:console";
 
 import { Minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
-import { map } from "obliterator";
+import map from "obliterator/map.js";
 import * as shlex from "shlex";
 import type { ReadonlyDeep } from "type-fest";
 
@@ -73,16 +73,37 @@ const qosVolume: ComposeVolume = {
   read_only: true,
 };
 
+function hasQoSVolume(s: ComposeService): boolean {
+  return s.volumes.some((vol) => vol.source === qosVolume.source);
+}
+
 /**
  * Generate commands to apply QoS rules.
  * @param s - Compose service.
+ * @param shell - Shell program. This should be set to `ash` for alpine based images.
+ *
+ * @remarks
+ * These commands should be included in each container that supports QoS rules.
+ * This requires `iptables` and `tc` to be installed in the container.
  */
 export function* applyQoS(s: ComposeService, shell = "bash"): Iterable<string> {
+  s.cap_add.push("NET_ADMIN");
   s.volumes.push(qosVolume);
   yield `${shell} ${qosVolume.target}`;
 }
 
+/**
+ * Save QoS rules.
+ * @param ctx - Compose context.
+ * @param opts - QoS related options.
+ *
+ * @remarks
+ * This should be called once after all containers that may support QoS rules are defined.
+ */
 export async function saveQoS(ctx: NetDefComposeContext, opts: QoSOpts): Promise<void> {
+  if (!Object.values(ctx.c.services).some((s) => hasQoSVolume(s))) {
+    return;
+  }
   await ctx.writeFile(qosVolume.source, Array.from(generateScript(ctx.c, opts)).join("\n"));
 }
 
@@ -93,12 +114,11 @@ function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {
   yield "TC_DEVICES=()";
 
   for (const s of Object.values(c.services)) {
-    yield "";
-    if (!s.volumes.some((vol) => vol.source === qosVolume.source)) {
-      yield `# ${s.container_name} does not support QoS rules`;
+    if (!hasQoSVolume(s)) {
       continue;
     }
 
+    yield "";
     yield `if [[ $HOSTNAME == ${s.container_name} ]]; then`;
     yield* map(generateScriptForContainer(c, s, opts), (line) => line === "" ? line : `  ${line}`);
     yield "fi";
@@ -122,7 +142,7 @@ function* generateScriptForContainer(c: ComposeFile, s: ComposeService, opts: Qo
   let hasMangle = false;
   for (const rule of listRules(c, s, opts["set-dscp"])) {
     yield `# DSCP rule ${rule.index} ${rule.flag}`;
-    for (const dstIP of rule.dstIPs) {
+    for (const dstIP of rule.dstSubnets) {
       yield `iptables -t mangle -A OUTPUT -s ${rule.srcIP} -d ${dstIP} -j DSCP --set-dscp ${rule.dscp}`;
       hasMangle = true;
     }
@@ -154,7 +174,7 @@ function* generateScriptForContainer(c: ComposeFile, s: ComposeService, opts: Qo
     for (const [param, { minor, rules }] of dev) {
       for (const rule of rules) {
         yield `# netem rule ${rule.index} ${rule.flag}`;
-        for (const dstIP of rule.dstIPs) {
+        for (const dstIP of rule.dstSubnets) {
           yield `tc filter replace dev ${netif} parent 1: protocol ip prio 1 u32 match ip dst ${dstIP} flowid 1:${hexPad(minor, 4)}`;
         }
       }
@@ -168,7 +188,7 @@ function* generateScriptForContainer(c: ComposeFile, s: ComposeService, opts: Qo
 interface RuleInfo {
   index: number;
   srcIP: string;
-  dstIPs: string[];
+  dstSubnets: string[];
 }
 
 function* listRules<R extends ReadonlyDeep<BaseRule>>(
@@ -184,20 +204,26 @@ function* listRules<R extends ReadonlyDeep<BaseRule>>(
     const srcIP = compose.annotate(s, `ip_${rule.net}`);
     assert(!!srcIP, `${s.container_name} does not have ${rule.net} netif`);
 
-    const dstIPs: string[] = [];
-    for (const dst of Object.values(c.services)) {
-      if (!rule.dst.match(dst.container_name)) {
-        continue;
-      }
+    const dstSubnets: string[] = [];
+    if (rule.dst.pattern === "*") {
+      const net = c.networks[rule.net];
+      assert(!!net, `network ${rule.net} does not exist`);
+      dstSubnets.push(`${net!.ipam.config[0]!.subnet}`);
+    } else {
+      for (const dst of Object.values(c.services)) {
+        if (!rule.dst.match(dst.container_name)) {
+          continue;
+        }
 
-      const dstIP = compose.annotate(dst, `ip_${rule.net}`);
-      if (dstIP) {
-        dstIPs.push(dstIP);
+        const dstIP = compose.annotate(dst, `ip_${rule.net}`);
+        if (dstIP) {
+          dstSubnets.push(`${dstIP}/32`);
+        }
       }
     }
 
-    if (dstIPs.length > 0) {
-      yield { ...rule, index, srcIP: srcIP!, dstIPs };
+    if (dstSubnets.length > 0) {
+      yield { ...rule, index, srcIP: srcIP!, dstSubnets };
     }
   }
 }
