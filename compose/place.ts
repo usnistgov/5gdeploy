@@ -148,6 +148,8 @@ const scriptUsage = `Usage:
     Upload Docker images to secondary hosts.
   ./compose.sh create
     Create scenario containers to prepare for traffic capture.
+  ./compose.sh stop
+    Stop and delete the containers, but keep the networks.
   ./compose.sh ps
     View containers on each host machine.
   ./compose.sh web
@@ -203,6 +205,7 @@ const scriptActions = [
   ["up", "up -d", true, "Starting the scenario", "Scenario has started"],
   ["ps", "ps -a", false, "Checking containers", "If any container is 'Exited', please investigate why it failed"],
   ["down", "down --remove-orphans", false, "Stopping the scenario", "Scenario has stopped"],
+  ["stop", "rm -f -s", false, "Stopping scenario containers", "Scenario containers have been deleted"],
 ] as const;
 
 const minimalScript = [
