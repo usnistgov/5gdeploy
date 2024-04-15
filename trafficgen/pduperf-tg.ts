@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import assert from "minimalistic-assert";
+import * as shlex from "shlex";
 import type { ReadonlyDeep } from "type-fest";
 
 import type { ComposeService } from "../types/mod.js";
@@ -85,7 +86,12 @@ const iperf3t: typeof iperf3 = {
   },
 };
 
-const owamp: TrafficGen = {
+const owamp: TrafficGen & {
+  serverBin: string;
+  clientBin: string;
+  outputExt: string;
+  statsGrep: string;
+} = {
   determineDirection({ cFlags }) {
     const dl = cFlags.includes("-f") || cFlags.includes("-F");
     const ul = cFlags.includes("-t") || cFlags.includes("-T");
@@ -102,10 +108,11 @@ const owamp: TrafficGen = {
   },
   nPorts: 5,
   serverDockerImage: "perfsonar/tools",
+  serverBin: "owampd",
   serverSetup(s, { port, sFlags }) {
-    assert(sFlags.length === 0, "owampd does not accept server flags");
+    assert(sFlags.length === 0, `${this.serverBin} does not accept server flags`);
     s.command = [
-      "owampd",
+      this.serverBin,
       "-f",
       "-Z",
       "-P",
@@ -115,10 +122,11 @@ const owamp: TrafficGen = {
     ];
   },
   clientDockerImage: "perfsonar/tools",
+  clientBin: "owping",
   clientSetup(s, { prefix, port, dnIP, pduIP, cFlags }) {
     let hasOutput = false;
     s.command = [
-      "owping",
+      this.clientBin,
       "-P",
       `${port + 1}-${port + this.nPorts - 1}`,
       "-S",
@@ -126,7 +134,7 @@ const owamp: TrafficGen = {
       ...cFlags.map((flag, i) => {
         if (i > 0 && /^-[FT]$/.test(cFlags[i - 1]!)) {
           hasOutput = true;
-          return `/output/${port}${cFlags[i - 1]}.owp`;
+          return `/output/${port}${cFlags[i - 1]}${this.outputExt}`;
         }
         return flag;
       }),
@@ -140,15 +148,29 @@ const owamp: TrafficGen = {
       });
     }
   },
+  outputExt: ".owp",
   statsExt: ".log",
+  statsGrep: "one-way (delay|jitter)",
   *statsCommands() {
-    yield "  msg Showing final results from owping text output";
-    yield "  grep -wE 'one-way (delay|jitter)' ${STATS_DIR}*_c.log"; // eslint-disable-line no-template-curly-in-string
+    yield `  msg Showing final results from ${this.clientBin} text output`;
+    yield `  grep -wE ${shlex.quote(this.statsGrep)} $\{STATS_DIR}*_c.log`;
   },
+};
+
+const twamp: typeof owamp = {
+  ...owamp,
+  determineDirection() {
+    return Direction.ul;
+  },
+  serverBin: "twampd",
+  clientBin: "twping",
+  outputExt: ".twp",
+  statsGrep: "round-trip time|two-way jitter",
 };
 
 export const trafficGenerators: Record<string, TrafficGen> = {
   iperf3,
   iperf3t,
   owamp,
+  twamp,
 };

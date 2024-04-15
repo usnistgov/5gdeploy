@@ -119,30 +119,35 @@ If you want iperf3 text output instead of JSON output, change `./compose.sh iper
 
 The text outputs of each iperf3 container are saved in `./iperf3t` directory, but the script cannot gather overall statistics.
 
-## OWAMP
+## OWAMP and TWAMP
 
-`./compose.sh owamp` performs throughput measurement using [OWAMP](https://software.internet2.edu/owamp/).
+`./compose.sh owamp` performs one-way latency measurement using [OWAMP](https://software.internet2.edu/owamp/).
+`./compose.sh twamp` performs two-way latency measurement using [TWAMP](https://datatracker.ietf.org/doc/html/rfc5357).
 
 ```bash
 ./compose.sh owamp --flow='internet | * | -L 3.0 -s 900' --flow='vcam | * | -t' --flow='vctl | * | -f'
 ./owamp.sh
+
+./compose.sh twamp --flow='internet | * | -L 3.0 -s 900 -v'
+./twamp.sh
 ```
 
-This script gathers information about currently connected PDU sessions and prepares an OWAMP test for each PDU session between UE and Data Network, where owampd shares a netns with the DN container and owping shares a netns with the UE container.
+This script gathers information about currently connected PDU sessions and prepares an OWAMP/TWAMP test for each PDU session between UE and Data Network, where owampd/twampd shares a netns with the DN container and owping/twping shares a netns with the UE container.
 The `--flow` flag is repeatable.
 Each `--flow` value consists of three parts, separated by `|` character:
 
 1. a minimatch pattern that matches a Data Network Name (DNN)
 2. a minimatch pattern that matches a UE SUPI
-3. (optional) a sequence of [owping](https://software.internet2.edu/owamp/owping.man.html) flags
+3. (optional) a sequence of [owping](https://software.internet2.edu/owamp/owping.man.html) or twping flags
 
 Similar to iperf3, you can specify `--prefix` and `--port` flags to define multiple measurement sets.
 
-### OWAMP Data Files
+### Session File
 
-You can pass flags to owping within the third part of `--flow` flag.
-`-F` and `-T` flags are handled specially: the filename that follows either flag is ignored; instead, the output is set to a file in `~/compose/20230601/owamp` statistics directory.
-These files can be further analyzed with `owstats` command.
+You can pass flags to owping/twping within the third part of `--flow` flag.
+`-F` and `-T` flags are handled specially: the filename that follows either flag is ignored; instead, it is set to a file in `~/compose/20230601/owamp` directory.
+
+OWAMP session files can be further analyzed with `owstats` command.
 
 ```bash
 ./compose.sh owamp --port=21000 --flow='internet | *1000 | -F x -T x'
@@ -152,3 +157,6 @@ alias owstats='docker run --rm --mount type=bind,source=$(pwd),target=/data,read
 owstats -R ./owamp/21000-F.owp
 owstats -R ./owamp/21000-T.owp
 ```
+
+There isn't a tool to analyze TWAMP session files.
+To see the raw output, it's advised to pass either `-R` or `-v` flag to twping.
