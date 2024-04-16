@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
-TAG=${1:-v0.8.6}
+TAG=${1:-v0.8.8}
 
 msg() {
   echo -ne "\e[35m[5gdeploy] \e[94m"
