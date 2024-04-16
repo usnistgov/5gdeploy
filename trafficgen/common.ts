@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { execa } from "execa";
 import type { LinkWithAddressInfo } from "iproute";
+import yaml from "js-yaml";
 import assert from "minimalistic-assert";
 import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
@@ -9,7 +10,8 @@ import { flatTransform, pipeline, transform } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
-import type { ComposeFile, ComposeService, N } from "../types/mod.js";
+import type { ComposeFile, ComposeService, N, UERANSIM } from "../types/mod.js";
+import { ueransimDockerImage } from "../ueransim/netdef.js";
 import { dockerode, file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
 
 export const ctxOptions = {
@@ -45,23 +47,32 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: I
     },
     transform(16, async ([ueService, subs]) => {
       const ueHost = compose.annotate(ueService, "host") ?? "";
-      const ct = dockerode.getContainer(ueService.container_name, ueHost);
-      const ipAddrs = await dockerode.execCommand(ct, ["ip", "-j", "addr", "show"]);
+      const ueCt = dockerode.getContainer(ueService.container_name, ueHost);
+      const ipAddrs = await dockerode.execCommand(ueCt, ["ip", "-j", "addr", "show"]);
       const ueIPs = JSON.parse(ipAddrs.stdout) as LinkWithAddressInfo[];
-      return { subs, ueService, ueHost, ueIPs };
+      return { subs, ueService, ueHost, ueCt, ueIPs };
     }),
-    flatTransform(16, function*({ subs, ueService, ueHost, ueIPs }) {
-      for (const sub of subs) {
-        yield { sub, ueService, ueHost, ueIPs };
-      }
+    flatTransform(16, async function*({ subs, ueService, ueHost, ueCt, ueIPs }) {
+      yield* await Promise.all(Array.from(subs, async (sub) => {
+        let uePDUs: UERANSIM.PSList | undefined;
+        if (ueService.image === ueransimDockerImage) {
+          const psList = await dockerode.execCommand(ueCt, ["./nr-cli", `imsi-${sub.supi}`, "-e", "ps-list"]);
+          uePDUs = yaml.load(psList.stdout) as UERANSIM.PSList;
+        }
+        return { sub, ueService, ueHost, ueIPs, uePDUs };
+      }));
     }),
-    flatTransform(16, function*({ sub, ueService, ueHost, ueIPs }) {
+    flatTransform(16, function*({ sub, ueService, ueHost, ueIPs, uePDUs }) {
       for (const dnID of sub.subscribedDN) {
         const dn = netdef.findDN(dnID);
         if (!dn?.subnet) {
           continue;
         }
-        const dnSubnet = new Netmask(dn.subnet);
+        const pduIP = findPduIP(dn, ueIPs, uePDUs);
+        if (!pduIP) {
+          continue;
+        }
+        assert(dn);
 
         const dnService = compose.listByAnnotation(c, "dn", `${dn.snssai}_${dn.dnn}`)[0];
         assert(dnService, `DN container for ${dn.dnn} not found`);
@@ -69,17 +80,34 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: I
         const dnIP = compose.annotate(dnService, "ip_n6");
         assert(dnIP !== undefined);
 
-        const pduIP = ueIPs.flatMap((link) => {
-          const addr = link.addr_info.find((addr) => addr.family === "inet" && dnSubnet.contains(addr.local));
-          return addr ?? [];
-        })[0];
-        if (!pduIP) {
-          continue;
-        }
-        yield { sub, ueService, ueHost, dn, dnService, dnHost, dnIP, pduIP: pduIP.local };
+        yield { sub, ueService, ueHost, dn, dnService, dnHost, dnIP, pduIP };
       }
     }),
   );
+}
+
+function findPduIP(
+    dn: N.DataNetwork,
+    ipAddr: readonly LinkWithAddressInfo[],
+    psList: UERANSIM.PSList | undefined,
+): string | undefined {
+  if (psList) {
+    for (const ps of Object.values(psList)) {
+      if (ps.apn === dn.dnn) {
+        return ps.address;
+      }
+    }
+  }
+
+  const dnSubnet = new Netmask(dn.subnet!);
+  for (const link of ipAddr) {
+    const addr = link.addr_info.find((addr) => addr.family === "inet" && dnSubnet.contains(addr.local));
+    if (addr) {
+      return addr.local;
+    }
+  }
+
+  return undefined;
 }
 
 export const cmdOptions = {

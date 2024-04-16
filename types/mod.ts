@@ -28,4 +28,7 @@ export * as prom from "./prometheus.js";
 /** PacketRusher related types. */
 export * as prush from "./packetrusher.js";
 
+/** UERANSIM related types. */
+export * as UERANSIM from "./ueransim.js";
+
 export * from "./compose.js";

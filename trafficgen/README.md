@@ -8,7 +8,8 @@ They can be invoked in a Compose context directory (e.g. `~/compose/20230601`), 
 
 `./compose.sh list-pdu` command prints a TSV document that lists all established PDU sessions.
 The information is gathered by executing `ip addr show` in each UE container, and then matching the interface IP addresses against UE subnets defined for Data Networks.
-If a UE container runs multiple UEs (e.g. UERANSIM), the report would be imprecise because this command cannot identify which UE owns each IP address.
+For UERANSIM, the `ps-list` command output is also taken into consideration to distinguish which UE owns each IP address.
+If a UE container runs multiple UEs (other than UERANSIM), the report would be imprecise because this command cannot identify which UE owns each IP address.
 
 ## nmap
 
