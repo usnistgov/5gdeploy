@@ -41,7 +41,8 @@ export interface TrafficGen {
 const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
   jsonFlag: ["--json"],
   determineDirection({ cFlags }) {
-    return cFlags.includes("-R") ? Direction.dl : Direction.ul;
+    return cFlags.includes("--bidir") ? Direction.bidir :
+      cFlags.includes("-R") ? Direction.dl : Direction.ul;
   },
   nPorts: 1,
   serverDockerImage: "networkstatic/iperf3",
@@ -62,7 +63,7 @@ const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
       ...this.jsonFlag,
       "-B", pduIP,
       "-p", `${port}`,
-      "--cport", `${port}`,
+      ...(cFlags.includes("--bidir") ? [] : ["--cport", `${port}`]),
       "-c", dnIP,
       ...cFlags,
     ];
