@@ -1,10 +1,12 @@
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 
+export const ueransimDockerImage = "5gdeploy.localhost/ueransim";
+
 /** Build RAN functions using UERANSIM. */
 export async function ueransimRAN(ctx: NetDefComposeContext): Promise<void> {
   for (const [ct, gnb] of compose.suggestNames("gnb", ctx.netdef.gnbs)) {
-    const s = ctx.defineService(ct, "5gdeploy.localhost/ueransim", ["air", "n2", "n3"]);
+    const s = ctx.defineService(ct, ueransimDockerImage, ["air", "n2", "n3"]);
     compose.setCommands(s, [
       ...compose.renameNetifs(s, { pipeworkWait: true }),
       "/entrypoint.sh gnb",

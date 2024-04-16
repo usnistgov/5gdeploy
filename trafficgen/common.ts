@@ -3,12 +3,13 @@ import path from "node:path";
 import { execa } from "execa";
 import type { LinkWithAddressInfo } from "iproute";
 import assert from "minimalistic-assert";
+import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
-import { type AnyIterable, flatTransform, pipeline, transform } from "streaming-iterables";
+import { flatTransform, pipeline, transform } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
-import type { ComposeFile, N } from "../types/mod.js";
+import type { ComposeFile, ComposeService, N } from "../types/mod.js";
 import { dockerode, file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
 
 export const ctxOptions = {
@@ -31,17 +32,28 @@ export async function loadCtx(args: YargsInfer<typeof ctxOptions>): Promise<[c: 
   return [c, netdef];
 }
 
-export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: AnyIterable<NetDef.Subscriber> = netdef.listSubscribers()) {
+export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: Iterable<NetDef.Subscriber> = netdef.listSubscribers()) {
   return pipeline(
-    () => subscribers,
-    transform(16, async (sub) => {
-      const ueService = compose.listByAnnotation(c, "ue_supi", (value) => value.split(",").includes(sub.supi))[0];
-      assert(ueService, `UE container for ${sub.supi} not found`);
+    () => {
+      const serviceSubcribers = new DefaultMap<ComposeService, NetDef.Subscriber[]>(() => []);
+      for (const sub of subscribers) {
+        const ueService = compose.listByAnnotation(c, "ue_supi", (value) => value.split(",").includes(sub.supi))[0];
+        assert(ueService, `UE container for ${sub.supi} not found`);
+        serviceSubcribers.get(ueService).push(sub);
+      }
+      return serviceSubcribers;
+    },
+    transform(16, async ([ueService, subs]) => {
       const ueHost = compose.annotate(ueService, "host") ?? "";
       const ct = dockerode.getContainer(ueService.container_name, ueHost);
       const ipAddrs = await dockerode.execCommand(ct, ["ip", "-j", "addr", "show"]);
       const ueIPs = JSON.parse(ipAddrs.stdout) as LinkWithAddressInfo[];
-      return { sub, ueService, ueHost, ueIPs };
+      return { subs, ueService, ueHost, ueIPs };
+    }),
+    flatTransform(16, function*({ subs, ueService, ueHost, ueIPs }) {
+      for (const sub of subs) {
+        yield { sub, ueService, ueHost, ueIPs };
+      }
     }),
     flatTransform(16, function*({ sub, ueService, ueHost, ueIPs }) {
       for (const dnID of sub.subscribedDN) {
