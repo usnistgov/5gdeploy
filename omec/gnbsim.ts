@@ -10,6 +10,7 @@ import { hexPad } from "../util/mod.js";
 export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
   for (const [ct, gnb] of compose.suggestNames("gnb", ctx.netdef.gnbs)) {
     const s = ctx.defineService(ct, "5gdeploy.localhost/gnbsim", ["mgmt", "n2", "n3"]);
+    s.stop_signal = "SIGQUIT";
     const c = makeConfigUpdate(ctx, s, gnb);
     await ctx.writeFile(`ran-cfg/${ct}.yaml`, c, { s, target: "/config.update.yaml" });
     compose.setCommands(s, [

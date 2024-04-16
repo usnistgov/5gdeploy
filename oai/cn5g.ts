@@ -90,6 +90,7 @@ class CPBuilder extends CN5GBuilder {
     this.updateConfigDNNs();
     this.updateConfigAMF();
     this.updateConfigSMF();
+    delete this.c.nfs.upf;
     delete this.c.upf;
     await this.ctx.writeFile(configPath, this.c);
   }
@@ -203,11 +204,18 @@ class UPBuilder extends CN5GBuilder {
     this.c = await oai_conf.loadCN5G();
     // rely on hosts entry because UP is created before CP so that NRF and SMF IPs are unknown
     this.c.nfs.nrf!.host = "nrf.br-cp"; // assuming only one NRF
+    this.c.upf!.remote_n6_gw = "127.0.0.1";
     this.c.upf!.smfs = this.netdef.smfs.map((smf): CN5G.upf.SMF => ({ host: `${smf.name}.br-n4` }));
+    this.c.nfs.smf!.host = this.c.upf!.smfs[0]!.host;
 
     this.updateConfigDNNs();
     this.c.upf!.support_features.enable_bpf_datapath = opts["oai-upf-bpf"];
     this.c.upf!.support_features.enable_snat = false;
+    for (const nf of Object.keys(this.c.nfs) as CN5G.NFName[]) {
+      if (!["nrf", "smf", "upf"].includes(nf)) {
+        delete this.c.nfs[nf]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+      }
+    }
     delete this.c.amf;
     delete this.c.smf;
 
