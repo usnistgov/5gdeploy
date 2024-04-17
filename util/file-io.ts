@@ -8,6 +8,7 @@ import { stringify as csv } from "csv-stringify/sync";
 import getStdin from "get-stdin";
 import yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
+import * as jsonc from "jsonc-parser";
 import DefaultMap from "mnemonist/default-map.js";
 import type { Promisable } from "type-fest";
 
@@ -43,11 +44,16 @@ export namespace readText {
 }
 
 /**
- * Read file as UTF-8 text and parse as JSON.
+ * Read file as UTF-8 text and parse as JSON or JSON with comments.
  * @param filename - Filename, "-" for stdin.
  */
 export async function readJSON(filename: string, opts: readText.Options = {}): Promise<unknown> {
-  return JSON.parse(await readText(filename, opts));
+  const errors: jsonc.ParseError[] = [];
+  const value = jsonc.parse(await readText(filename, opts), errors);
+  if (errors.length > 0) {
+    throw new Error(`JSONC parse errors: ${JSON.stringify(errors)}`);
+  }
+  return value;
 }
 
 /**

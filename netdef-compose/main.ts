@@ -2,7 +2,7 @@ import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc/netdef.js";
 import { NetDef } from "../netdef/netdef.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
-import { gnbsimRAN } from "../omec/gnbsim.js";
+import { bessUP, gnbsimRAN } from "../omec/mod.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import type { N } from "../types/mod.js";
@@ -23,6 +23,7 @@ const cpProviders: Providers = {
 };
 
 const upProviders: Providers = {
+  bess: bessUP,
   free5gc: f5UP,
   oai: oaiUP,
   "oai-vpp": oaiUPvpp,

@@ -11,7 +11,7 @@ import type { OAIOpts } from "./options.js";
 export async function oaiUPvpp(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
   NetDefDN.defineDNServices(ctx);
   const { mcc, mnc } = NetDef.splitPLMN(ctx.network.plmn);
-  await ctx.writeFile("oai-upf-vpp.sh", file_io.write.copyFrom(path.join(import.meta.dirname, "upf-vpp.sh")));
+  const vppScript = await ctx.writeFile("oai-upf-vpp.sh", file_io.write.copyFrom(path.join(import.meta.dirname, "upf-vpp.sh")));
 
   for (const [ct, upf] of compose.suggestNames("upf", ctx.network.upfs)) {
     const peers = ctx.netdef.gatherUPFPeers(upf);
@@ -23,12 +23,7 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, opts: OAIOpts): Promis
     compose.annotate(s, "cpus", opts["oai-upf-workers"]);
     s.privileged = true;
     s.command = ["/bin/bash", "/upf-vpp.sh"];
-    s.volumes.push({
-      type: "bind",
-      source: "./oai-upf-vpp.sh",
-      target: "/upf-vpp.sh",
-      read_only: true,
-    });
+    vppScript.mountInto({ s, target: "/upf-vpp.sh" });
     Object.assign(s.environment, {
       NAME: ct,
       MCC: mcc,

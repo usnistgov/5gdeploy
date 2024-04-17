@@ -6,6 +6,7 @@
 /free5gc/webconsole-openapi
 /oai/conf_files
 /oai/docker-compose
+/omec/upf
 /pnpm-lock.yaml
 /types/*.schema.json
 node_modules

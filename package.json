@@ -36,6 +36,7 @@
     "jayson": "^4.1.0",
     "js-yaml": "^4.1.0",
     "json-stringify-deterministic": "^1.0.12",
+    "jsonc-parser": "^3.2.1",
     "minimalistic-assert": "^1.0.1",
     "minimatch": "^9.0.4",
     "mnemonist": "^0.39.8",

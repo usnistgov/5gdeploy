@@ -254,5 +254,5 @@ export namespace setProcessExporterRule {
 export async function importGrafanaDashboard(ctx: NetDefComposeContext, filename: string): Promise<void> {
   let def = await file_io.readText(filename);
   def = def.replaceAll("${DS_PROMETHEUS}", "Prometheus"); // eslint-disable-line no-template-curly-in-string
-  return ctx.writeFile(path.join("grafana-dashboards", path.basename(filename)), def);
+  await ctx.writeFile(path.join("grafana-dashboards", path.basename(filename)), def);
 }

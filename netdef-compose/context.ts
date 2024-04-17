@@ -83,26 +83,39 @@ export class NetDefComposeContext {
    */
   public async writeFile(
       filename: string, body: unknown,
-      { s, target }: NetDefComposeContext.WriteFileOptions = {},
-  ): Promise<void> {
-    if (s && target) {
-      s.volumes.push({
-        type: "bind",
-        source: path.join(".", filename),
-        target,
-        read_only: true,
-      });
+      mountAsVolume?: NetDefComposeContext.FileVolumeOptions,
+  ): Promise<NetDefComposeContext.WriteFileResult> {
+    await file_io.write(path.resolve(this.out, filename), body);
+
+    const result: NetDefComposeContext.WriteFileResult = {
+      mountInto({ s, target }) {
+        s.volumes.push({
+          type: "bind",
+          source: path.join(".", filename),
+          target,
+          read_only: true,
+        });
+      },
+    };
+
+    if (mountAsVolume) {
+      result.mountInto(mountAsVolume);
     }
 
-    await file_io.write(path.resolve(this.out, filename), body);
+    return result;
   }
 }
 export namespace NetDefComposeContext {
-  /** {@link NetDefComposeContext.writeFile} options. */
-  export interface WriteFileOptions {
-    /** If specified, add a bind mount to the container. */
-    s?: ComposeService;
+  /** Options to mount file as volume. */
+  export interface FileVolumeOptions {
+    /** Add a bind mount to the container. */
+    s: ComposeService;
     /** Target of the bind mount within the container filesystem. */
-    target?: string;
+    target: string;
+  }
+
+  /** {@link NetDefComposeContext.writeFile} result. */
+  export interface WriteFileResult {
+    mountInto: (opts: FileVolumeOptions) => void;
   }
 }
