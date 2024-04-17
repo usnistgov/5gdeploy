@@ -1,5 +1,4 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { execa } from "execa";
 import yaml from "js-yaml";
@@ -7,9 +6,9 @@ import yaml from "js-yaml";
 import type { CN5G } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 
-export const templatePath = fileURLToPath(new URL("conf_files", import.meta.url));
-export const cn5gPath = fileURLToPath(new URL("docker-compose", import.meta.url));
-export const convertCommand = fileURLToPath(new URL("convert.py", import.meta.url));
+export const templatePath = path.join(import.meta.dirname, "conf_files");
+export const cn5gPath = path.join(import.meta.dirname, "docker-compose");
+export const convertCommand = path.join(import.meta.dirname, "libconf_convert.py");
 
 /** Retrieve OAI git repository tag name. */
 export async function getTag(): Promise<string> {

@@ -32,7 +32,6 @@ If you installed 5gdeploy with `NOPHOENIX=1` environ (Open5GCore disabled), you 
 Due to incompatibilities in 5G implementations, not every combinations will work.
 These combinations are verified to be compatible:
 
-* `--cp=free5gc --up=free5gc --ran=gnbsim`
 * `--cp=free5gc --up=free5gc --ran=ueransim`
 * `--cp=oai --up=oai --ran=gnbsim`
 * `--cp=oai --up=oai --ran=oai`
@@ -97,7 +96,7 @@ The syntax looks like `--set-netem='n3 | gnb* | upf* | delay 10ms'`, where each 
 1. Network name, which must exist in the topology and connected to each matched source network function.
 2. Minimatch pattern that matches the source network function container name.
 3. Minimatch pattern that matches the destination network function container name.
-4. tc-netem command parameters.
+4. [tc-netem](https://man7.org/linux/man-pages/man8/tc-netem.8.html) command parameters.
 
 ## Metrics Collection with Prometheus and Grafana
 

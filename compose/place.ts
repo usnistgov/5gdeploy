@@ -124,7 +124,7 @@ class AssignCpuset {
 }
 
 /** Make `docker` command with optional `-H` flag. */
-export function makeDockerH(host?: string | ComposeService): string {
+export function makeDockerH(host: string | ComposeService | undefined): string {
   if (typeof (host as ComposeService | undefined)?.container_name === "string") {
     host = annotate(host as ComposeService, "host");
   }
@@ -200,13 +200,13 @@ const scriptTail = [
   "fi",
 ];
 
-const scriptActions = [
+const scriptActions: ReadonlyArray<[act: string, cmd: string, listServiceNames: boolean, msg1: string, msg2: string]> = [
   ["create", "create", true, "Creating scenario containers", "Scenario containers have been created, ready for traffic capture"],
   ["up", "up -d", true, "Starting the scenario", "Scenario has started"],
   ["ps", "ps -a", false, "Checking containers", "If any container is 'Exited', please investigate why it failed"],
   ["down", "down --remove-orphans", false, "Stopping the scenario", "Scenario has stopped"],
   ["stop", "rm -f -s", false, "Stopping scenario containers", "Scenario containers have been deleted"],
-] as const;
+];
 
 const minimalScript = [
   ...scriptHead,

@@ -69,11 +69,11 @@ if [[ -f other ]]; then
   ' other
 fi
 
-msg ip addr listing:
+msg Listing IP addresses
 ip addr
-msg ip rule listing:
+msg Listing IP routing policy rules
 ip rule list
-msg ip route listing:
+msg Listing IP routes
 ip route list table all type unicast
 
 if [[ -f env.sh ]]; then

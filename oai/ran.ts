@@ -88,8 +88,10 @@ async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscri
   };
   if (sub.requestedDN.length > 0) {
     const { snssai, dnn } = sub.requestedDN[0]!;
+    const { sst, sd } = NetDef.splitSNSSAI(snssai).int;
+    c.uicc0.nssai_sst = sst;
+    c.uicc0.nssai_sd = sd;
     c.uicc0.dnn = dnn;
-    ({ sst: c.uicc0.nssai_sst, sd: c.uicc0.nssai_sd } = NetDef.splitSNSSAI(snssai).int);
   }
 
   c.rfsimulator = {

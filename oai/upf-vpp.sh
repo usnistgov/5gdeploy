@@ -7,8 +7,11 @@ msg() {
   echo -e "\e[0m"
 }
 
+msg Listing IP addresses
+ip addr
+
 msg Editing etc/init.conf
-N4_IP=$(ip -o addr | awk '$2~"^n4" { split($4,a,"/"); print a[1] }')
+N4_IP=$(ip -o -4 addr | awk '$2~"^n4" { split($4,a,"/"); print a[1] }')
 sed -i "/node-id/ s|.*|upf node-id ip4 $N4_IP|" etc/init.conf
 cat etc/init.conf
 
@@ -23,6 +26,7 @@ file.truncate()
 json.dump(profile, file, indent=2, sort_keys=True)
 EOT
 cat etc/upf_profile.json
+echo
 
 msg Editing etc/startup_debug.conf
 CORE_COUNT=$(awk '$1=="Cpus_allowed_list:" { print $2 }' /proc/1/status | awk -vRS=',' -vFS='-' '
@@ -40,8 +44,8 @@ sed -i \
   etc/startup_debug.conf
 cat etc/startup_debug.conf
 
-msg Flushing IP addresses
-ip -o addr | awk '$2~"^(n4|n6|n3|n9)" { print "ip addr flush dev " $2 }' | tee /dev/stderr | sh
+msg Flushing IPv4 addresses
+ip -o -4 addr | awk '$2~"^(n4|n6|n3|n9)" { print "ip -4 addr flush dev " $2 }' | tee /dev/stderr | sh
 
 msg Invoking run.sh
 exec /openair-upf/run.sh

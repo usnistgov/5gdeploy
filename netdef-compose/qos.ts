@@ -126,13 +126,13 @@ function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {
 
   yield "";
   yield "if [[ $HAS_MANGLE -eq 1 ]]; then";
-  yield "  msg iptables mangle table listing:";
+  yield "  msg Listing iptables mangle table";
   yield "  iptables -t mangle -L OUTPUT";
   yield "fi";
   yield "for TC_DEVICE in \"${TC_DEVICES[@]}\"; do"; // eslint-disable-line no-template-curly-in-string
-  yield "  msg tc filter listing for $TC_DEVICE";
+  yield "  msg Listing tc filters on $TC_DEVICE";
   yield "  tc -p filter show dev $TC_DEVICE";
-  yield "  msg tc qdisc listing for $TC_DEVICE";
+  yield "  msg Listing tc queueing disciplines on $TC_DEVICE";
   yield "  tc -p qdisc show dev $TC_DEVICE";
   yield "done";
 }

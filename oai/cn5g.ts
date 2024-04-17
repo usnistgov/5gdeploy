@@ -8,7 +8,7 @@ import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/m
 import type { CN5G, ComposeService } from "../types/mod.js";
 import { file_io, hexPad } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
-import { type OAIOpts } from "./options.js";
+import type { OAIOpts } from "./options.js";
 
 abstract class CN5GBuilder {
   constructor(protected readonly ctx: NetDefComposeContext) {}

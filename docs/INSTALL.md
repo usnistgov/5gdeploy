@@ -11,7 +11,7 @@ To setup a single-host deployment or the *primary* host of a multi-host deployme
 * APT packages:
   * `httpie jq`: used in bash scripts
   * `wireshark-common`: for capturing traffic traces with `dumpcap` in scenarios
-  * `python3-libconf`: used by `oai/convert.py`
+  * `python3-libconf`: used by `oai/libconf_convert.py`
 * Snap packages:
   * `yq`: used in bash scripts
 
@@ -79,7 +79,6 @@ cd ~/5gdeploy
 ## Load gtp5g Kernel Module
 
 Both free5GC UPF and PacketRusher require the [gtp5g](https://github.com/free5gc/gtp5g) kernel module.
-This kernel module is compatible with Linux kernel 5.15, but incompatible with 6.x kernel.
 
 Install the compiler:
 

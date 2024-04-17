@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import fsWalkLib from "@nodelib/fs.walk";
@@ -14,10 +13,6 @@ import type { Promisable } from "type-fest";
 
 export const fsWalk = promisify(fsWalkLib.walk);
 
-function toFilename(filename: string | URL): string {
-  return typeof filename === "string" ? filename : fileURLToPath(filename);
-}
-
 function doReadText(filename: string): Promise<string> {
   return filename === "-" ? getStdin() : fs.readFile(filename, "utf8");
 }
@@ -30,8 +25,7 @@ const readOnce = new DefaultMap<string, Promise<string>>(
  * Read file as UTF-8 text.
  * @param filename - Filename, "-" for stdin.
  */
-export function readText(filename: string | URL, { once = false }: readText.Options = {}): Promise<string> {
-  filename = toFilename(filename);
+export function readText(filename: string, { once = false }: readText.Options = {}): Promise<string> {
   if (once) {
     return readOnce.get(filename);
   }
@@ -52,7 +46,7 @@ export namespace readText {
  * Read file as UTF-8 text and parse as JSON.
  * @param filename - Filename, "-" for stdin.
  */
-export async function readJSON(filename: string | URL, opts: readText.Options = {}): Promise<unknown> {
+export async function readJSON(filename: string, opts: readText.Options = {}): Promise<unknown> {
   return JSON.parse(await readText(filename, opts));
 }
 
@@ -60,9 +54,9 @@ export async function readJSON(filename: string | URL, opts: readText.Options = 
  * Read file as UTF-8 text and parse as YAML.
  * @param filename - Filename, "-" for stdin.
  */
-export async function readYAML(filename: string | URL, opts: readYAML.Options = {}): Promise<unknown> {
+export async function readYAML(filename: string, opts: readYAML.Options = {}): Promise<unknown> {
   return yaml.load(await readText(filename, opts), {
-    filename: toFilename(filename),
+    filename,
     schema: opts.schema,
   });
 }
@@ -86,8 +80,7 @@ export namespace readYAML {
  * Parent directories are created automatically.
  * File is set to executable when filename ends with ".sh".
  */
-export async function write(filename: string | URL, body: unknown): Promise<void> {
-  filename = toFilename(filename);
+export async function write(filename: string, body: unknown): Promise<void> {
   while (typeof (body as Partial<write.Saver>).save === "function") {
     body = await (body as write.Saver).save();
   }
