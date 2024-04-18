@@ -12,7 +12,7 @@
     "shfmt": "git ls-files -- '*.sh' | xargs docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@8.15.7+sha256.50783dd0fa303852de2dd1557cd4b9f07cb5b018154a6e76d0f40635d6cee019",
+  "packageManager": "pnpm@9.0.5+sha256.61bd66913b52012107ec25a6ee4d6a161021ab99e04f6acee3aa50d0e34b4af9",
   "dependencies": {
     "@nodelib/fs.walk": "^2.0.0",
     "@segment/ajv-human-errors": "^2.12.0",
@@ -48,16 +48,16 @@
     "sort-by-typescript": "^1.2.5",
     "sql-tagged-template-literal": "^1.2.0",
     "streaming-iterables": "^8.0.1",
-    "ts-json-schema-generator": "^2.0.1",
+    "ts-json-schema-generator": "^2.1.0",
     "tslib": "^2.6.2",
     "tsx": "^4.7.2",
-    "type-fest": "^4.15.0",
+    "type-fest": "^4.16.0",
     "typescript": "~5.4.5",
     "uint8-util": "^2.2.4",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@yoursunny/xo-config": "0.57.2"
+    "@yoursunny/xo-config": "0.58.0"
   },
   "engines": {
     "node": "^20.11.0"
