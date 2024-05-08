@@ -81,6 +81,8 @@ See [multi-host deployment](../docs/multi-host.md) for more information.
 QoS rules can be applied to IPv4 packets transmitted by these network functions:
 
 * Open5GCore: gNB, UPF
+* UERANSIM: gNB
+* PacketRusher: gNB
 
 `--set-dscp` alters outer IPv4 DSCP field for traffic transmitted by a network function.
 The syntax looks like `--set-dscp='n3 | gnb* | upf4 | 32'`, where each value contains four parts delimited by `|` symbol:

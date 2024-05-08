@@ -111,7 +111,7 @@ function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {
   yield* compose.scriptHead;
   yield "HOSTNAME=$(hostname -s)";
   yield "HAS_MANGLE=0";
-  yield "TC_DEVICES=()";
+  yield "TC_DEVICES=''";
 
   for (const s of Object.values(c.services)) {
     if (!hasQoSVolume(s)) {
@@ -129,7 +129,7 @@ function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {
   yield "  msg Listing iptables mangle table";
   yield "  iptables -t mangle -L OUTPUT";
   yield "fi";
-  yield "for TC_DEVICE in \"${TC_DEVICES[@]}\"; do"; // eslint-disable-line no-template-curly-in-string
+  yield "for TC_DEVICE in $TC_DEVICES; do";
   yield "  msg Listing tc filters on $TC_DEVICE";
   yield "  tc -p filter show dev $TC_DEVICE";
   yield "  msg Listing tc queueing disciplines on $TC_DEVICE";
@@ -181,7 +181,7 @@ function* generateScriptForContainer(c: ComposeFile, s: ComposeService, opts: Qo
       yield `tc qdisc replace dev ${netif} parent 1:${hexPad(minor, 4)
       } handle ${hexPad(0x8000 + minor, 4)}: netem ${param}`;
     }
-    yield `TC_DEVICES+=(${netif})`;
+    yield `TC_DEVICES="$TC_DEVICES ${netif}"`;
   }
 }
 

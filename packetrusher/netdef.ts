@@ -2,7 +2,7 @@ import assert from "minimalistic-assert";
 import type { PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { applyQoS, NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { prush } from "../types/mod.js";
 import { hexPad } from "../util/mod.js";
 
@@ -31,6 +31,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
   compose.setCommands(s, [
     ...compose.renameNetifs(s, { pipeworkWait: true }),
+    ...applyQoS(s, "ash"),
     "msg Preparing PacketRusher config",
     ...compose.mergeConfigFile(c, { base: "/config.base.yml", merged: filename }),
     "sleep 20",
@@ -44,9 +45,10 @@ function makeConfigUpdate(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDe
   const s = ctx.c.services[gnb.name]!;
 
   const c: PartialDeep<prush.Root> = {};
-  c.amfif = {
-    ip: ctx.gatherIPs("amf", "n2")[0]!,
-  };
+  c.amfif = Array.from(
+    ctx.gatherIPs("amf", "n2"),
+    (ip) => ({ ip, port: 38412 }),
+  );
   c.gnodeb = {
     controlif: { ip: s.networks.n2!.ipv4_address },
     dataif: { ip: s.networks.n3!.ipv4_address },

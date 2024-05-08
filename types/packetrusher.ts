@@ -1,7 +1,7 @@
 export interface Root {
   gnodeb: GNB;
   ue: UE;
-  amfif: If<38412>;
+  amfif: Array<If<38412>>;
   logs: {
     level: 0 | 1 | 2 | 3 | 4 | 5 | 6; // logrus level
   };
