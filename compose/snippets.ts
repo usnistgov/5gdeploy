@@ -91,7 +91,7 @@ export function* mergeConfigFile(cfg: unknown, { base, update, merged }: mergeCo
   } else {
     yield `echo ${shlex.quote(JSON.stringify(cfg))} >${update}`;
   }
-  yield `yq ${fmt} -P '. *= load("${update}")' ${base} | tee ${merged}`;
+  yield `yq ${fmt} -P '. *= load("${update}") | ... comments=""' ${base} | tee ${merged}`;
 }
 export namespace mergeConfigFile {
   export interface Options {
