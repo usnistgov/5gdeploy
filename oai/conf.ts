@@ -2,24 +2,22 @@ import path from "node:path";
 
 import { execa } from "execa";
 import yaml from "js-yaml";
+import stringify from "json-stringify-deterministic";
 
 import type { CN5G } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 
-export const templatePath = path.join(import.meta.dirname, "conf_files");
-export const cn5gPath = path.join(import.meta.dirname, "docker-compose");
+export const composePath = path.join(import.meta.dirname, "docker-compose");
 export const convertCommand = path.join(import.meta.dirname, "libconf_convert.py");
 
-/** Retrieve OAI git repository tag name. */
-export async function getTag(): Promise<string> {
-  return (await file_io.readText(path.resolve(templatePath, "TAG"), { once: true })).trim();
-}
-
 /** Load OAI config from libconfig template file. */
-export async function loadLibconf<T extends {}>(tpl: string): Promise<T & { save: () => Promise<string> }> {
-  const subprocess = await execa("python3", [convertCommand, "conf2json", `${tpl}.conf`], {
-    cwd: templatePath,
-    stdin: "ignore",
+export async function loadLibconf<T extends {}>(filename: string): Promise<T & { save: () => Promise<string> }> {
+  let body = await file_io.readText(filename);
+  body = body.replaceAll(/=\s*0+(\d+)\b/g, "= $1");
+
+  const subprocess = await execa("python3", [convertCommand, "conf2json", path.basename(filename)], {
+    cwd: path.dirname(filename),
+    input: body,
     stdout: "pipe",
     stderr: "inherit",
   });
@@ -35,7 +33,7 @@ export async function loadLibconf<T extends {}>(tpl: string): Promise<T & { save
 /** Save OAI config `this` to libconfig string. */
 async function saveLibconf(this: unknown): Promise<string> {
   const subprocess = await execa("python3", [convertCommand, "json2conf"], {
-    input: JSON.stringify(this),
+    input: stringify(this),
     stdout: "pipe",
     stderr: "inherit",
   });
@@ -44,7 +42,7 @@ async function saveLibconf(this: unknown): Promise<string> {
 
 /** Load OAI CN5G config.yaml file. */
 export async function loadCN5G(): Promise<CN5G.Config> {
-  const c = await file_io.readYAML(path.resolve(cn5gPath, "conf/basic_nrf_config.yaml"), {
+  const c = await file_io.readYAML(path.resolve(composePath, "conf/basic_nrf_config.yaml"), {
     schema: yaml.FAILSAFE_SCHEMA,
   });
   return JSON.parse(JSON.stringify(c, (key, value) => {

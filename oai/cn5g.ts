@@ -111,7 +111,7 @@ class CPBuilder extends CN5GBuilder {
         `GRANT SELECT,INSERT,UPDATE,DELETE ON ${dbc.database_name}.*
         TO ${dbc.user}@'%' IDENTIFIED BY '${dbc.password}'`,
       ],
-      await file_io.readText(path.resolve(oai_conf.cn5gPath, "database/oai_db2.sql")),
+      await file_io.readText(path.resolve(oai_conf.composePath, "database/oai_db2.sql")),
       this.populateSQL(),
     ));
   }

@@ -65,11 +65,7 @@ def recover_la(parent: dict[str, T.Any] | None, key: str, value: T.Any) -> T.Any
 
 
 if sys.argv[1] == 'conf2json':
-    filename = sys.argv[2]
-    with open(filename, 'r') as f:
-        body = f.read()
-    body = body.replace("mnc = 01;", "mnc = 1;")
-    c = libconf.loads(body, filename)
+    c = libconf.load(sys.stdin, sys.argv[2])
     c = tag_la(None, '', c)
     json.dump(c, sys.stdout, indent=2, sort_keys=True)
 elif sys.argv[1] == 'json2conf':

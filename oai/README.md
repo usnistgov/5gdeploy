@@ -29,6 +29,10 @@ These should be used together with CPU isolation via `--place` flag.
 `--oai-upf-bpf=true` selects BPF datapath in CN5G UPF.
 The default is using the userspace implementation.
 
+`--oai-gnb-conf` specifies template config file for gNB.
+`--oai-ue-conf` specifies template config file for UE.
+It's advised to use absolute paths for these options.
+
 ## UPF-VPP status
 
 Here are some commands to show status of UPF-VPP:

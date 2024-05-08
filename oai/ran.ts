@@ -4,25 +4,26 @@ import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { OAI } from "../types/mod.js";
 import * as oai_conf from "./conf.js";
+import type { OAIOpts } from "./options.js";
 
 /** Build RAN functions using OpenAirInterface5G. */
-export async function oaiRAN(ctx: NetDefComposeContext): Promise<void> {
+export async function oaiRAN(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
   for (const [ct, gnb] of compose.suggestNames("gnb", ctx.netdef.gnbs)) {
-    await makeGNB(ctx, ct, gnb);
+    await makeGNB(ctx, opts, ct, gnb);
   }
 
   for (const [ct, subscriber] of compose.suggestUENames(ctx.netdef.listSubscribers())) {
-    await makeUE(ctx, ct, subscriber);
+    await makeUE(ctx, opts, ct, subscriber);
   }
 }
 
-/** Define gNB container and generate configuration */
-async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: NetDef.GNB): Promise<void> {
-  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${await oai_conf.getTag()}`, ["air", "n2", "n3"]);
+/** Define gNB container and generate configuration. */
+async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb: NetDef.GNB): Promise<void> {
+  const s = ctx.defineService(ct, "oaisoftwarealliance/oai-gnb:develop", ["air", "n2", "n3"]);
   compose.annotate(s, "cpus", 1);
   s.privileged = true;
 
-  const c = await oai_conf.loadLibconf<OAI.gnb.Config>("gnb.sa.band78.106prb.rfsim");
+  const c = await oai_conf.loadLibconf<OAI.gnb.Config>(opts["oai-gnb-conf"]);
   c.Active_gNBs = [gnb.name];
 
   assert(c.gNBs.length === 1);
@@ -40,7 +41,7 @@ async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: NetDef.GNB): 
     "snssaiList:dtype": "l",
   }];
 
-  g0.amf_ip_address = ctx.gatherIPs("amf", "n2").slice(0, 1).map((ip): OAI.gnb.AMF => ({
+  g0.amf_ip_address = ctx.gatherIPs("amf", "n2").map((ip): OAI.gnb.AMF => ({
     ipv4: ip,
     ipv6: "100::",
     active: "yes",
@@ -54,6 +55,10 @@ async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: NetDef.GNB): 
     GNB_PORT_FOR_S1U: 2152,
   };
 
+  c.rfsimulator = {
+    serveraddr: "server",
+  };
+
   c.log_config = {
     global_log_level: "info",
     ngap_log_level: "debug",
@@ -65,19 +70,20 @@ async function makeGNB(ctx: NetDefComposeContext, ct: string, gnb: NetDef.GNB): 
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
     "sleep 10",
+    "msg Starting OpenAirInterface5G gNB",
     "exec /opt/oai-gnb/bin/entrypoint.sh /opt/oai-gnb/bin/nr-softmodem -O /opt/oai-gnb/etc/gnb.conf" +
     " --sa -E --rfsim",
   ]);
 }
 
 /** Define UE container and generate configuration. */
-async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscriber): Promise<void> {
-  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-nr-ue:${await oai_conf.getTag()}`, ["air"]);
+async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub: NetDef.Subscriber): Promise<void> {
+  const s = ctx.defineService(ct, "oaisoftwarealliance/oai-nr-ue:develop", ["air"]);
   compose.annotate(s, "cpus", 1);
   compose.annotate(s, "ue_supi", sub.supi);
   s.privileged = true;
 
-  const c = await oai_conf.loadLibconf<OAI.ue.Config>("nrue.uicc");
+  const c = await oai_conf.loadLibconf<OAI.ue.Config>(opts["oai-ue-conf"]);
   c.uicc0 = {
     imsi: sub.supi,
     nmc_size: NetDef.splitPLMN(ctx.network.plmn).mnc.length,
@@ -109,6 +115,7 @@ async function makeUE(ctx: NetDefComposeContext, ct: string, sub: NetDef.Subscri
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
     "sleep 20",
+    "msg Starting OpenAirInterface5G UE simulator",
     "exec /opt/oai-nr-ue/bin/entrypoint.sh /opt/oai-nr-ue/bin/nr-uesoftmodem -O /opt/oai-nr-ue/etc/nr-ue.conf" +
     " -E --sa --rfsim -r 106 --numerology 1 -C 3619200000",
   ]);
