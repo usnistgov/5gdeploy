@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 
 import fsWalkLib from "@nodelib/fs.walk";
 import asTable from "as-table";
-import { stringify as csv } from "csv-stringify/sync";
+import { stringify as csvStringify } from "csv/sync";
 import getStdin from "get-stdin";
 import yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
@@ -144,7 +144,7 @@ export function toTable(
 ): toTable.Result {
   return {
     get tsv() {
-      return csv(table as any[], {
+      return csvStringify(table as any[], {
         delimiter: "\t",
         header: true,
         columns: columns as string[],

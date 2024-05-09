@@ -8,5 +8,6 @@
 /oai/docker-compose
 /omec/upf
 /pnpm-lock.yaml
+/sims.tsv
 /types/*.schema.json
 node_modules

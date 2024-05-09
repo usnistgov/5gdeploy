@@ -10,7 +10,7 @@ There are three slices and three Data Networks:
 * sst=141, sd=0x000000, dnn=vctl: remote driving control stream, `10.141.0.0/16`.
   * `+sst4` command line flag changes to sst=4.
 
-Each slice is served by a dedicated UPF.
+Each Data Network is served by a dedicated UPF.
 All control plane network functions are shared.
 
 There are 6 phones and 2 vehicles, sharing 1 gNB.

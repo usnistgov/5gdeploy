@@ -1,3 +1,5 @@
+import type { ArrayValues, Simplify } from "type-fest";
+
 import type { N } from "../../types/mod.js";
 import { type YargsInfer, YargsIntRange, type YargsOptions } from "../../util/mod.js";
 import * as ran from "./ran.js";
@@ -24,20 +26,16 @@ export const cliOptions = {
 
 export type CLIOptions = YargsInfer<typeof cliOptions>;
 
-export interface ScenarioOptions {
-  internetSNSSAI: N.SNSSAI;
-  internetUPF: string;
-  vcamSNSSAI: N.SNSSAI;
-  vcamUPF: string;
-  vctlSNSSAI: N.SNSSAI;
-  vctlUPF: string;
-}
-
 const dnDef = [
   { dnn: "internet", subnet: "10.1.0.0/16" },
   { dnn: "vcam", subnet: "10.140.0.0/16" },
   { dnn: "vctl", subnet: "10.141.0.0/16" },
 ] as const satisfies ReadonlyArray<Pick<N.DataNetwork, "dnn" | "subnet">>;
+
+export type ScenarioOptions = Simplify<
+Record<`${ArrayValues<typeof dnDef>["dnn"]}SNSSAI`, N.SNSSAI> &
+Record<`${ArrayValues<typeof dnDef>["dnn"]}UPF`, string>
+>;
 
 /** Build a network with phones and vehicles. */
 export function buildNetwork(c: CLIOptions, s: ScenarioOptions): N.Network {

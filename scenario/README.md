@@ -21,12 +21,13 @@ You should replace it with a concrete scenario identifier before running a sampl
 
 ## Generating a Compose Context
 
-Generating a Compose context from a scenario consists of two steps:
+Generating a Compose context from a scenario consists of these steps:
 
 1. The scenario script (`scenario.ts`) prints a [NetDef](../netdef) JSON document that defines all aspects of the 5G network.
-2. [netdef-compose](../netdef-compose) command converts the NetDef JSON document to a Compose context.
+2. If `5gdeploy/sims.tsv` file exists, the SIM cards in the NetDef are [replaced](../replace-sims) with those in the spreadsheet.
+3. [netdef-compose](../netdef-compose) command converts the NetDef JSON document to a Compose context.
 
-In most cases, you can use the [`generate.sh`](generate.sh) script to execute both steps successively.
+In most cases, you can use the [`generate.sh`](generate.sh) script to execute these steps successively.
 It writes the output Compose context in `~/compose/20230601`, after deleting any prior contents in the output directory.
 You can find the NetDef JSON document in `netdef.json` within that folder.
 

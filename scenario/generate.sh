@@ -49,13 +49,24 @@ if [[ -f $OUT/compose.yml ]]; then
   rm -rf $OUT/*
 fi
 
-msg Generating scenario via netdef
+msg Generating scenario netdef
 SARGS=()
 while [[ ${1:-} == +* ]]; do
   SARGS+=("${1/#+/--}")
   shift
 done
-$(corepack pnpm bin)/tsx $D/scenario.ts "${SARGS[@]}" >$OUT/netdef.json
-corepack pnpm -s netdef-compose --netdef=$OUT/netdef.json --out=$OUT "$@"
+NETDEF=$(readlink -f $OUT/netdef.json)
+$(corepack pnpm bin)/tsx $D/scenario.ts "${SARGS[@]}" >$NETDEF
+
+SIMS=$(readlink -f ../sims.tsv)
+if [[ -f $SIMS ]]; then
+  msg Replacing SIMs using $SIMS
+  $(corepack pnpm bin)/tsx ../replace-sims/main.ts --netdef=$NETDEF --sims=$SIMS
+else
+  msg Not replacing SIMs: $SIMS does not exist
+fi
+
+msg Generating scenario folder from netdef
+corepack pnpm -s netdef-compose --netdef=$NETDEF --out=$OUT "$@"
 
 msg Scenario folder is ready at $(readlink -f $OUT)
