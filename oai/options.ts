@@ -17,6 +17,12 @@ export const oaiOptions = {
     group: "oai",
     type: "boolean",
   },
+  "oai-ran-tag": {
+    default: "develop",
+    desc: "OpenAirInterface5G Docker image tag",
+    group: "oai",
+    type: "string",
+  },
   "oai-gnb-conf": {
     default: path.join(oai_conf.composePath, "ran-conf/gnb.conf"),
     desc: "OpenAirInterface5G gNB config file",
