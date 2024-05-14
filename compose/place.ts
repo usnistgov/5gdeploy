@@ -162,7 +162,7 @@ The following are available after UE registration and PDU session establishment:
     List PDU sessions.
   ./compose.sh nmap
     Run nmap ping scans from Data Network to UEs.
-  ./compose.sh iperf3|iperf3|owamp|twamp FLAGS
+  ./compose.sh iperf3|iperf3|owamp|twamp|netperf FLAGS
     Prepare traffic generators.
 `;
 
@@ -192,7 +192,7 @@ const scriptTail = [
   "  done",
   "elif [[ $ACT == list-pdu ]] || [[ $ACT == nmap ]]; then",
   `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/$ACT.ts --dir=$COMPOSE_CTX "$@"`,
-  "elif [[ $ACT == iperf3 ]] || [[ $ACT == iperf3t ]] || [[ $ACT == owamp ]] || [[ $ACT == twamp ]]; then",
+  "elif [[ $ACT == iperf3 ]] || [[ $ACT == iperf3t ]] || [[ $ACT == owamp ]] || [[ $ACT == twamp ]] || [[ $ACT == netperf ]]; then",
   `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/pduperf.ts --mode=$ACT --dir=$COMPOSE_CTX "$@"`,
   "else",
   `  echo ${shlex.quote(scriptUsage)}`,

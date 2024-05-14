@@ -161,7 +161,7 @@ const owamp: TrafficGen & {
 const twamp: typeof owamp = {
   ...owamp,
   determineDirection() {
-    return Direction.ul;
+    return Direction.bidir;
   },
   serverBin: "twampd",
   clientBin: "twping",
@@ -169,9 +169,41 @@ const twamp: typeof owamp = {
   statsGrep: "round-trip time|two-way jitter",
 };
 
+const netperf: TrafficGen = {
+  determineDirection() {
+    return Direction.bidir;
+  },
+  nPorts: 2,
+  serverDockerImage: "alectolytic/netperf",
+  serverSetup(s, { port, dnIP, sFlags }) {
+    s.command = [
+      "netserver",
+      "-D",
+      "-L", `${dnIP},inet`,
+      "-p", `${port}`,
+      ...sFlags,
+    ];
+  },
+  clientDockerImage: "alectolytic/netperf",
+  clientSetup(s, { port, dnIP, pduIP, cFlags }) {
+    s.command = [
+      "netperf",
+      "-H", `${dnIP},inet`,
+      "-L", `${pduIP},inet`,
+      "-p", `${port},${port + 1}`,
+      ...cFlags,
+    ];
+  },
+  statsExt: ".log",
+  *statsCommands() {
+    yield "  :";
+  },
+};
+
 export const trafficGenerators: Record<string, TrafficGen> = {
   iperf3,
   iperf3t,
   owamp,
   twamp,
+  netperf,
 };

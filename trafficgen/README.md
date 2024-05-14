@@ -161,3 +161,23 @@ owstats -R ./owamp/21000-T.owp
 
 There isn't a tool to analyze TWAMP session files.
 To see the raw output, it's advised to pass either `-R` or `-v` flag to twping.
+
+## Netperf
+
+`./compose.sh netperf` performs a benchmark with [netperf](https://hewlettpackard.github.io/netperf/doc/netperf.html).
+
+```bash
+./compose.sh netperf --flow='internet | * | -t OMNI -j -- -T UDP -d send -o all'
+./netperf.sh
+```
+
+This script gathers information about currently connected PDU sessions and prepares a Netperf test for each PDU session between UE and Data Network, where netserver shares a netns with the DN container and netperf shares a netns with the UE container.
+The `--flow` flag is repeatable.
+Each `--flow` value consists of three parts, separated by `|` character:
+
+1. a minimatch pattern that matches a Data Network Name (DNN)
+2. a minimatch pattern that matches a UE SUPI
+3. a sequence of netperf flags
+4. (optional) a sequence of netserver flags
+
+Similar to iperf3, you can specify `--prefix` and `--port` flags to define multiple measurement sets.
