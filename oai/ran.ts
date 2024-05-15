@@ -1,8 +1,9 @@
 import assert from "minimalistic-assert";
+import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { OAI } from "../types/mod.js";
+import type { ComposeService, OAI } from "../types/mod.js";
 import * as oai_conf from "./conf.js";
 import type { OAIOpts } from "./options.js";
 
@@ -66,14 +67,39 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
     phy_log_level: "warn",
   };
 
+  const softmodemArgs = [
+    "-O", "/opt/oai-gnb/etc/gnb.conf",
+    "--sa",
+  ];
+
+  if (opts["oai-gnb-usrp"]) {
+    enableUSRP(opts["oai-gnb-usrp"], s, softmodemArgs);
+  } else {
+    softmodemArgs.push("-E", "--rfsim");
+  }
+
   await ctx.writeFile(`ran-cfg/${ct}.conf`, c, { s, target: "/opt/oai-gnb/etc/gnb.conf" });
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
     "sleep 10",
     "msg Starting OpenAirInterface5G gNB",
-    "exec /opt/oai-gnb/bin/entrypoint.sh /opt/oai-gnb/bin/nr-softmodem -O /opt/oai-gnb/etc/gnb.conf" +
-    " --sa -E --rfsim",
+    `exec /opt/oai-gnb/bin/entrypoint.sh /opt/oai-gnb/bin/nr-softmodem ${shlex.join(softmodemArgs)}`,
   ]);
+}
+
+function enableUSRP(usrp: OAIOpts["oai-gnb-usrp"], s: ComposeService, softmodemArgs: string[]): void {
+  assert(usrp === "b2xx", `USRP ${usrp} is not supported`);
+  softmodemArgs.push("-E", "--continuous-tx");
+  s.volumes.push({
+    type: "bind",
+    source: "/dev",
+    target: "/dev",
+  }, {
+    type: "bind",
+    source: "/usr/local/share/uhd/images",
+    target: "/usr/local/share/uhd/images",
+    read_only: true,
+  });
 }
 
 /** Define UE container and generate configuration. */

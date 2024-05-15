@@ -33,6 +33,19 @@ The default is using the userspace implementation.
 `--oai-ue-conf` specifies template config file for UE.
 It's advised to use absolute paths for these options.
 
+## USRP hardware
+
+`--oai-gnb-usrp=b2xx` enables USRP B2xx hardware in the gNB.
+This should be used together with `--oai-gnb-conf` to import a config file with radio parameters.
+
+USRP firmware is mounted from `/usr/local/share/uhd/images` on the host machine.
+Run this command to download the firmware:
+
+```bash
+docker run --rm --entrypoint='' -e PYTHONUNBUFFERED=1 -v /usr/local/share/uhd/images:/usr/local/share/uhd/images \
+  oaisoftwarealliance/oai-gnb:develop /opt/oai-gnb/bin/uhd_images_downloader.py
+```
+
 ## UPF-VPP status
 
 Here are some commands to show status of UPF-VPP:

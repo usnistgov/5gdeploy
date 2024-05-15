@@ -30,6 +30,12 @@ export const oaiOptions = {
     normalize: true,
     type: "string",
   },
+  "oai-gnb-usrp": {
+    choices: ["b2xx"],
+    desc: "use USRP hardware in OpenAirInterface5G gNB",
+    group: "oai",
+    type: "string",
+  },
   "oai-ue-conf": {
     default: path.join(oai_conf.composePath, "ran-conf/nr-ue.conf"),
     desc: "OpenAirInterface5G UE config file",
