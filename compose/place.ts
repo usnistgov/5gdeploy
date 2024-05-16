@@ -6,6 +6,7 @@ import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 
+import { trafficGenerators } from "../trafficgen/pduperf-tg.js";
 import type { ComposeFile, ComposeService } from "../types/mod.js";
 import type { YargsInfer, YargsOptions } from "../util/mod.js";
 import { annotate } from "./compose.js";
@@ -135,6 +136,9 @@ export function makeDockerH(host: string | ComposeService | undefined): string {
   return `docker -H ssh://${host}`;
 }
 
+const trafficGeneratorSubcommands = Object.keys(trafficGenerators);
+trafficGeneratorSubcommands.sort((a, b) => a.localeCompare(b));
+
 const scriptUsage = `Usage:
   ./compose.sh up
     Start the scenario.
@@ -162,7 +166,7 @@ The following are available after UE registration and PDU session establishment:
     List PDU sessions.
   ./compose.sh nmap
     Run nmap ping scans from Data Network to UEs.
-  ./compose.sh iperf3|iperf3|owamp|twamp|netperf|sockperf FLAGS
+  ./compose.sh ${trafficGeneratorSubcommands.join("|")} FLAGS
     Prepare traffic generators.
 `;
 
@@ -192,7 +196,7 @@ const scriptTail = [
   "  done",
   "elif [[ $ACT == list-pdu ]] || [[ $ACT == nmap ]]; then",
   `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/$ACT.ts --dir=$COMPOSE_CTX "$@"`,
-  "elif [[ $ACT == iperf3 ]] || [[ $ACT == iperf3t ]] || [[ $ACT == owamp ]] || [[ $ACT == twamp ]] || [[ $ACT == netperf ]] || [[ $ACT == sockperf ]]; then",
+  `elif ${trafficGeneratorSubcommands.map((tg) => `[[ $ACT == ${tg} ]]`).join(" || ")}; then`,
   `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/pduperf.ts --mode=$ACT --dir=$COMPOSE_CTX "$@"`,
   "else",
   `  echo ${shlex.quote(scriptUsage)}`,
@@ -201,11 +205,11 @@ const scriptTail = [
 ];
 
 const scriptActions: ReadonlyArray<[act: string, cmd: string, listServiceNames: boolean, msg1: string, msg2: string]> = [
-  ["create", "create", true, "Creating scenario containers", "Scenario containers have been created, ready for traffic capture"],
-  ["up", "up -d", true, "Starting the scenario", "Scenario has started"],
+  ["create", "compose create", true, "Creating scenario containers", "Scenario containers have been created, ready for traffic capture"],
+  ["up", "compose up -d", true, "Starting the scenario", "Scenario has started"],
   ["ps", "ps -a", false, "Checking containers", "If any container is 'Exited', please investigate why it failed"],
-  ["down", "down --remove-orphans", false, "Stopping the scenario", "Scenario has stopped"],
-  ["stop", "rm -f -s", false, "Stopping scenario containers", "Scenario containers have been deleted"],
+  ["down", "compose down --remove-orphans", false, "Stopping the scenario", "Scenario has stopped"],
+  ["stop", "compose rm -f -s", false, "Stopping scenario containers", "Scenario containers have been deleted"],
 ];
 
 const minimalScript = [
@@ -217,7 +221,7 @@ const minimalScript = [
   ...scriptActions.flatMap(([act, cmd, , msg1, msg2]) => [
     `elif [[ $ACT == ${act} ]]; then`,
     `  msg ${shlex.quote(msg1)}`,
-    `  docker compose ${cmd}`,
+    `  docker ${cmd}`,
     `  msg ${shlex.quote(msg2)}`,
   ]),
   ...scriptTail,

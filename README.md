@@ -10,7 +10,8 @@ Breaking changes and force pushes may happen frequently.
 Places of interest:
 
 * [installation guide](docs/INSTALL.md)
-* [multi-host deployment](docs/multi-host.md)
 * [netdef](netdef): JSON document that defines the structure of a 5G network
 * [netdef-compose](netdef-compose): CLI command to generate Compose context from NetDef
+* [multi-host deployment](docs/multi-host.md)
+* [traffic generators](docs/trafficgen.md)
 * [scenario](scenario): concrete scenarios
