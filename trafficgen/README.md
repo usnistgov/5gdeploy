@@ -181,3 +181,23 @@ Each `--flow` value consists of three parts, separated by `|` character:
 4. (optional) a sequence of netserver flags
 
 Similar to iperf3, you can specify `--prefix` and `--port` flags to define multiple measurement sets.
+
+## Sockperf
+
+`./compose.sh sockperf` performs a benchmark with [sockperf](https://docs.nvidia.com/networking/display/xliov118/appendix+sockperf+%E2%80%93+udp/tcp+latency+and+throughput+benchmarking+tool).
+
+```bash
+./compose.sh sockperf --flow='internet | * | under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --reply-every 1 --mps 1000 | -g'
+./sockperf.sh
+```
+
+This script gathers information about currently connected PDU sessions and prepares a sockperf test for each PDU session between UE and Data Network, where sockperf server shares a netns with the DN container and sockperf client shares a netns with the UE container.
+The `--flow` flag is repeatable.
+Each `--flow` value consists of three parts, separated by `|` character:
+
+1. a minimatch pattern that matches a Data Network Name (DNN)
+2. a minimatch pattern that matches a UE SUPI
+3. sockperf client command name, followed by flags
+4. (optional) a sequence of sockperf flags
+
+Similar to iperf3, you can specify `--prefix` and `--port` flags to define multiple measurement sets.

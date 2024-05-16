@@ -38,6 +38,27 @@ export interface TrafficGen {
   statsCommands: (prefix: string) => Iterable<string>;
 }
 
+function rewriteOutputFlag(s: ComposeService, prefix: string, port: number, flags: readonly string[], re: RegExp, ext: string): string[] {
+  let hasOutput = false;
+  const rFlags = flags.map((flag, i) => {
+    const m = flags[i - 1]?.match(re);
+    if (!m) {
+      return flag;
+    }
+    hasOutput = true;
+    return `/output/${port}-${m[1]}${ext}`;
+  });
+
+  if (hasOutput) {
+    s.volumes.push({
+      type: "bind",
+      source: `./${prefix}`,
+      target: "/output",
+    });
+  }
+  return rFlags;
+}
+
 const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
   jsonFlag: ["--json"],
   determineDirection({ cFlags }) {
@@ -116,38 +137,21 @@ const owamp: TrafficGen & {
       this.serverBin,
       "-f",
       "-Z",
-      "-P",
-      `${port + 1}-${port + this.nPorts - 1}`,
-      "-S",
-      `:${port}`,
+      "-P", `${port + 1}-${port + this.nPorts - 1}`,
+      "-S", `:${port}`,
     ];
   },
   clientDockerImage: "perfsonar/tools",
   clientBin: "owping",
   clientSetup(s, { prefix, port, dnIP, pduIP, cFlags }) {
-    let hasOutput = false;
+    cFlags = rewriteOutputFlag(s, prefix, port, cFlags, /^-([FT])$/, this.outputExt);
     s.command = [
       this.clientBin,
-      "-P",
-      `${port + 1}-${port + this.nPorts - 1}`,
-      "-S",
-      pduIP,
-      ...cFlags.map((flag, i) => {
-        if (i > 0 && /^-[FT]$/.test(cFlags[i - 1]!)) {
-          hasOutput = true;
-          return `/output/${port}${cFlags[i - 1]}${this.outputExt}`;
-        }
-        return flag;
-      }),
+      "-P", `${port + 1}-${port + this.nPorts - 1}`,
+      "-S", pduIP,
+      ...cFlags,
       `${dnIP}:${port}`,
     ];
-    if (hasOutput) {
-      s.volumes.push({
-        type: "bind",
-        source: `./${prefix}`,
-        target: "/output",
-      });
-    }
   },
   outputExt: ".owp",
   statsExt: ".log",
@@ -200,10 +204,42 @@ const netperf: TrafficGen = {
   },
 };
 
+const sockperf: TrafficGen = {
+  determineDirection() {
+    return Direction.bidir;
+  },
+  nPorts: 1,
+  serverDockerImage: "pazaan/sockperf",
+  serverSetup(s, { port, dnIP, sFlags }) {
+    s.command = [
+      "server",
+      "-i", dnIP,
+      "-p", `${port}`,
+      ...sFlags,
+    ];
+  },
+  clientDockerImage: "pazaan/sockperf",
+  clientSetup(s, { prefix, port, dnIP, pduIP, cFlags }) {
+    cFlags = rewriteOutputFlag(s, prefix, port, cFlags, /^--(full-log)$/, ".csv");
+    s.command = [
+      ...cFlags,
+      "-i", dnIP,
+      "-p", `${port}`,
+      "--client_ip", pduIP,
+      "--client_port", `${port}`,
+    ];
+  },
+  statsExt: ".log",
+  *statsCommands() {
+    yield "  :";
+  },
+};
+
 export const trafficGenerators: Record<string, TrafficGen> = {
   iperf3,
   iperf3t,
   owamp,
   twamp,
   netperf,
+  sockperf,
 };
