@@ -13,6 +13,9 @@ export async function oaiRAN(ctx: NetDefComposeContext, opts: OAIOpts): Promise<
     await makeGNB(ctx, opts, ct, gnb);
   }
 
+  if (opts["oai-gnb-usrp"]) {
+    return;
+  }
   for (const [ct, subscriber] of compose.suggestUENames(ctx.netdef.listSubscribers())) {
     await makeUE(ctx, opts, ct, subscriber);
   }
@@ -20,7 +23,11 @@ export async function oaiRAN(ctx: NetDefComposeContext, opts: OAIOpts): Promise<
 
 /** Define gNB container and generate configuration. */
 async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb: NetDef.GNB): Promise<void> {
-  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${opts["oai-ran-tag"]}`, ["air", "n2", "n3"]);
+  const nets = ["air", "n2", "n3"];
+  if (opts["oai-gnb-usrp"]) {
+    nets.shift();
+  }
+  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${opts["oai-ran-tag"]}`, nets);
   compose.annotate(s, "cpus", 1);
   s.privileged = true;
 
@@ -63,8 +70,6 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
   c.log_config = {
     global_log_level: "info",
     ngap_log_level: "debug",
-    nr_mac_log_level: "warn",
-    phy_log_level: "warn",
   };
 
   const softmodemArgs = [
@@ -132,9 +137,6 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
 
   c.log_config = {
     global_log_level: "info",
-    ngap_log_level: "debug",
-    nr_phy_log_level: "error",
-    phy_log_level: "warn",
   };
 
   await ctx.writeFile(`ran-cfg/${ct}.conf`, c, { s, target: "/opt/oai-nr-ue/etc/nr-ue.conf" });

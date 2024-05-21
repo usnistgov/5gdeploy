@@ -3,9 +3,8 @@
 Package **oai** generates OpenAirInterface and CN5G configurations.
 This package offers these choices in the **netdef-compose** command:
 
-* `--ran=oai`: OAI RAN simulator
-  * runs in RFSimulator mode, very slow
-  * gNB can only connect to the first AMF
+* `--ran=oai`: [OpenAirInterface5G](https://gitlab.eurecom.fr/oai/openairinterface5g)
+  * runs in either RFSimulator mode (very slow) or with USRP hardware (gNB only)
   * UE can only establish one PDU session
 * `--cp=oai`: [CN5G control plane](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed)
   * does not support Ethernet bridge

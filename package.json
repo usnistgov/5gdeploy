@@ -12,7 +12,7 @@
     "shfmt": "git ls-files -- '*.sh' | xargs docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@9.1.1+sha256.9551e803dcb7a1839fdf5416153a844060c7bce013218ce823410532504ac10b",
+  "packageManager": "pnpm@9.1.2+sha512.127dc83b9ea10c32be65d22a8efb4a65fb952e8fefbdfded39bdc3c97efc32d31b48b00420df2c1187ace28c921c902f0cb5a134a4d032b8b5295cbfa2c681e2",
   "dependencies": {
     "@nodelib/fs.walk": "^2.0.0",
     "@segment/ajv-human-errors": "^2.12.0",
@@ -50,7 +50,7 @@
     "streaming-iterables": "^8.0.1",
     "ts-json-schema-generator": "^2.1.1",
     "tslib": "^2.6.2",
-    "tsx": "^4.10.3",
+    "tsx": "^4.10.5",
     "type-fest": "^4.18.2",
     "typescript": "~5.4.5",
     "uint8-util": "^2.2.5",
