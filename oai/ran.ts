@@ -28,7 +28,7 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
     nets.shift();
   }
   const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${opts["oai-ran-tag"]}`, nets);
-  compose.annotate(s, "cpus", 1);
+  compose.annotate(s, "cpus", 4);
   s.privileged = true;
 
   const c = await oai_conf.loadLibconf<OAI.gnb.Config>(opts["oai-gnb-conf"]);
