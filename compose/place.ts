@@ -246,7 +246,7 @@ function* makeScriptLines(hostServices: readonly classifyByHost.Result[]): Itera
     yield `elif [[ $ACT == ${act} ]]; then`;
     for (const { hostDesc, dockerH, names } of hostServices) {
       yield `  msg ${shlex.quote(`${msg1} on ${hostDesc}`)}`;
-      yield `  ${dockerH} compose ${cmd}${listServiceNames ? ` ${names.join(" ")}` : ""}`;
+      yield `  ${dockerH} ${cmd}${listServiceNames ? ` ${names.join(" ")}` : ""}`;
     }
     yield `  msg ${shlex.quote(msg2)}`;
   }
