@@ -3,6 +3,12 @@ export interface RFSimulator {
   [k: string]: unknown;
 }
 
+export interface TelnetServer {
+  listenaddr: string;
+  listenport: number;
+  [k: string]: unknown;
+}
+
 export type LogLevel = "trace" | "debug" | "info" | "warn" | "error";
 
 export interface LogConfig {
@@ -32,6 +38,7 @@ export namespace gnb {
     Active_gNBs: string[];
     gNBs: GNB[];
     rfsimulator: RFSimulator;
+    telnetsrv?: TelnetServer;
     log_config?: LogConfig;
     [k: string]: unknown;
   }
@@ -80,6 +87,7 @@ export namespace ue {
   export interface Config {
     uicc0: UICC;
     rfsimulator?: RFSimulator;
+    telnetsrv?: TelnetServer;
     log_config?: LogConfig;
   }
 

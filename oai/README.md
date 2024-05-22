@@ -32,6 +32,17 @@ The default is using the userspace implementation.
 `--oai-ue-conf` specifies template config file for UE.
 It's advised to use absolute paths for these options.
 
+## RAN telnet
+
+Both gNB and UE have telnet server listening on `mgmt` network port 9090.
+To access the telnet server:
+
+```bash
+CT=gnb0
+IP=$(yq ".services.$CT.annotations[\"5gdeploy.ip_mgmt\"]" compose.yml)
+docker run -it --rm --network host str0ke/telnet $IP 9090
+```
+
 ## USRP hardware
 
 `--oai-gnb-usrp=b2xx` enables USRP B2xx hardware in the gNB.

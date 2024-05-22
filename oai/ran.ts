@@ -23,7 +23,7 @@ export async function oaiRAN(ctx: NetDefComposeContext, opts: OAIOpts): Promise<
 
 /** Define gNB container and generate configuration. */
 async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb: NetDef.GNB): Promise<void> {
-  const nets = ["air", "n2", "n3"];
+  const nets = ["air", "mgmt", "n2", "n3"];
   if (opts["oai-gnb-usrp"]) {
     nets.shift();
   }
@@ -67,6 +67,11 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
     serveraddr: "server",
   };
 
+  c.telnetsrv = {
+    listenaddr: s.networks.mgmt!.ipv4_address,
+    listenport: 9090,
+  };
+
   c.log_config = {
     global_log_level: "info",
     ngap_log_level: "debug",
@@ -75,6 +80,7 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
   const softmodemArgs = [
     "-O", "/opt/oai-gnb/etc/gnb.conf",
     "--sa",
+    "--telnetsrv",
   ];
 
   if (opts["oai-gnb-usrp"]) {
@@ -97,8 +103,8 @@ function enableUSRP(usrp: OAIOpts["oai-gnb-usrp"], s: ComposeService, softmodemA
   softmodemArgs.push("-E", "--continuous-tx");
   s.volumes.push({
     type: "bind",
-    source: "/dev",
-    target: "/dev",
+    source: "/dev/bus/usb",
+    target: "/dev/bus/usb",
   }, {
     type: "bind",
     source: "/usr/local/share/uhd/images",
@@ -109,7 +115,7 @@ function enableUSRP(usrp: OAIOpts["oai-gnb-usrp"], s: ComposeService, softmodemA
 
 /** Define UE container and generate configuration. */
 async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub: NetDef.Subscriber): Promise<void> {
-  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-nr-ue:${opts["oai-ran-tag"]}`, ["air"]);
+  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-nr-ue:${opts["oai-ran-tag"]}`, ["mgmt", "air"]);
   compose.annotate(s, "cpus", 1);
   compose.annotate(s, "ue_supi", sub.supi);
   s.privileged = true;
@@ -135,6 +141,11 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
     serveraddr: ctx.gatherIPs(sub.gnbs, "air")[0]!,
   };
 
+  c.telnetsrv = {
+    listenaddr: s.networks.mgmt!.ipv4_address,
+    listenport: 9090,
+  };
+
   c.log_config = {
     global_log_level: "info",
   };
@@ -145,6 +156,6 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
     "sleep 20",
     "msg Starting OpenAirInterface5G UE simulator",
     "exec /opt/oai-nr-ue/bin/entrypoint.sh /opt/oai-nr-ue/bin/nr-uesoftmodem -O /opt/oai-nr-ue/etc/nr-ue.conf" +
-    " -E --sa --rfsim -r 106 --numerology 1 -C 3619200000",
+    " -E --sa --telnetsrv --rfsim -r 106 --numerology 1 -C 3619200000",
   ]);
 }
