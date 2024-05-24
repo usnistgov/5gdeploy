@@ -9,13 +9,7 @@ import { hexPad } from "../util/mod.js";
 /** Build RAN functions using PacketRusher. */
 export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> {
   assert(ctx.network.gnbIdLength === 24, "only support 24-bit gNB ID");
-  const gnbs = new Map<string, NetDef.GNB>(ctx.netdef.gnbs.map((gnb) => [gnb.name, gnb]));
-  for (const sub of ctx.netdef.listSubscribers()) {
-    assert(sub.gnbs.length === 1, "each UE can only connect to 1 gNB");
-    const gnb = gnbs.get(sub.gnbs[0]!);
-    gnbs.delete(sub.gnbs[0]!);
-    assert(gnb !== undefined, "each gNB can only serve 1 UE");
-
+  for (const [gnb, sub] of NetDef.pairGnbUe(ctx.netdef)) {
     defineGnbUe(ctx, gnb, sub);
   }
 }

@@ -5,6 +5,7 @@ import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { bessUP, gnbsimRAN } from "../omec/mod.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
+import { srsRAN } from "../srsran/netdef.js";
 import type { N } from "../types/mod.js";
 import { ueransimRAN } from "../ueransim/netdef.js";
 import { file_io, Yargs } from "../util/mod.js";
@@ -35,6 +36,7 @@ const ranProviders: Providers = {
   oai: oaiRAN,
   packetrusher: packetrusherRAN,
   phoenix: phoenixRAN,
+  srsran: srsRAN,
   ueransim: ueransimRAN,
 };
 

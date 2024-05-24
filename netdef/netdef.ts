@@ -343,4 +343,20 @@ export namespace NetDef {
     }
     return { cost: 1, ...link };
   }
+
+  /** Ensure 1-1 mapping between gNB and UE, to satisfy restriction of RAN simulators. */
+  export function* pairGnbUe(netdef: NetDef): Iterable<[gnb: GNB, sub: Subscriber]> {
+    const gnbs = new Map<string, GNB>();
+    for (const gnb of netdef.gnbs) {
+      gnbs.set(gnb.name, gnb);
+    }
+
+    for (const sub of netdef.listSubscribers()) {
+      assert(sub.gnbs.length === 1, `${sub.supi} must connect to exactly one gNB`);
+      const gnb = gnbs.get(sub.gnbs[0]!);
+      gnbs.delete(sub.gnbs[0]!);
+      assert(gnb !== undefined, `${sub.gnbs[0]} must serve exactly one UE`);
+      yield [gnb, sub];
+    }
+  }
 }
