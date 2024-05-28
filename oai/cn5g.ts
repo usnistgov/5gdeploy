@@ -1,7 +1,7 @@
 import path from "node:path";
 
-import assert from "minimalistic-assert";
 import sql from "sql-tagged-template-literal";
+import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
@@ -226,7 +226,7 @@ class UPBuilder extends CN5GBuilder {
       s.devices.push("/dev/net/tun:/dev/net/tun");
 
       const peers = this.netdef.gatherUPFPeers(upf);
-      assert.equal(peers.N9.length, 0, "N9 not supported");
+      assert(peers.N9.length === 0, "N9 not supported");
       compose.setCommands(s, [
         ...NetDefDN.makeUPFRoutes(this.ctx, peers),
         ...this.makeExecCommands("upf"),

@@ -3,9 +3,9 @@ import { stripVTControlCharacters } from "node:util";
 
 import Dockerode from "dockerode";
 import jayson from "jayson/promise/index.js";
-import assert from "minimalistic-assert";
 import { ip2long } from "netmask";
 import { pEvent } from "p-event";
+import assert from "tiny-invariant";
 
 const noColor = (process.env.NO_COLOR ?? "") !== "";
 

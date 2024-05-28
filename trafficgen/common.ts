@@ -3,10 +3,10 @@ import path from "node:path";
 import { execa } from "execa";
 import type { LinkWithAddressInfo } from "iproute";
 import yaml from "js-yaml";
-import assert from "minimalistic-assert";
 import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
 import { flatTransform, pipeline, transform } from "streaming-iterables";
+import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";

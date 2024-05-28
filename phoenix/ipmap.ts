@@ -1,6 +1,6 @@
-import assert from "minimalistic-assert";
 import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
+import assert from "tiny-invariant";
 
 import type { ComposeFile } from "../types/mod.js";
 

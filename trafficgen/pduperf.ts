@@ -1,12 +1,12 @@
 import path from "node:path";
 
-import assert from "minimalistic-assert";
 import { Minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
 import oblMap from "obliterator/map.js";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 import { collect, flatTransform, map, pipeline } from "streaming-iterables";
+import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import { file_io, Yargs } from "../util/mod.js";

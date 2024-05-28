@@ -1,6 +1,6 @@
-import assert from "minimalistic-assert";
 import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
+import assert from "tiny-invariant";
 import type { SetRequired } from "type-fest";
 
 import * as compose from "../compose/mod.js";

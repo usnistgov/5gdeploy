@@ -1,10 +1,10 @@
 import path from "node:path";
 
-import assert from "minimalistic-assert";
 import { minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
+import assert from "tiny-invariant";
 
 import { trafficGenerators } from "../trafficgen/pduperf-tg.js";
 import type { ComposeFile, ComposeService } from "../types/mod.js";

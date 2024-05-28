@@ -1,4 +1,4 @@
-import assert from "minimalistic-assert";
+import assert from "tiny-invariant";
 import type { OptionalKeysOf, PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";

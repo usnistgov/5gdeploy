@@ -1,8 +1,8 @@
-import assert from "minimalistic-assert";
 import DefaultWeakMap from "mnemonist/default-weak-map.js";
 import { Netmask } from "netmask";
 import map from "obliterator/map.js";
 import * as shlex from "shlex";
+import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";

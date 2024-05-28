@@ -1,9 +1,9 @@
 import path from "node:path";
 import { PassThrough } from "node:stream";
 
-import assert from "minimalistic-assert";
 import multimatch from "multimatch";
 import { collect, consume } from "streaming-iterables";
+import assert from "tiny-invariant";
 import type { CommandModule } from "yargs";
 
 import { PhoenixUE } from "../types/mod.js";

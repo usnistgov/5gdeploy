@@ -1,4 +1,4 @@
-import assert from "minimalistic-assert";
+import assert from "tiny-invariant";
 
 import type { N } from "../../types/mod.js";
 import { decPad } from "../../util/mod.js";

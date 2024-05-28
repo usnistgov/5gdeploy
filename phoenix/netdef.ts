@@ -1,9 +1,9 @@
 import path from "node:path";
 
-import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
 import { sortBy } from "sort-by-typescript";
 import sql from "sql-tagged-template-literal";
+import assert from "tiny-invariant";
 import type { Constructor } from "type-fest";
 
 import * as compose from "../compose/mod.js";

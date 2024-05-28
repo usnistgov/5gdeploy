@@ -1,7 +1,7 @@
 import { AggregateAjvError } from "@segment/ajv-human-errors";
 import Ajv from "ajv";
-import assert from "minimalistic-assert";
 import map from "obliterator/map.js";
+import assert from "tiny-invariant";
 import type { SetRequired } from "type-fest";
 import { arr2hex, randomBytes } from "uint8-util";
 

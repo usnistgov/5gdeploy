@@ -1,7 +1,7 @@
 import type { Operation } from "fast-json-patch";
 import stringify from "json-stringify-deterministic";
-import assert from "minimalistic-assert";
 import * as shlex from "shlex";
+import assert from "tiny-invariant";
 import type { ArrayValues } from "type-fest";
 
 import { file_io, type YargsInfer, YargsIntRange, type YargsOpt, type YargsOptions } from "../../util/mod.js";

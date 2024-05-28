@@ -1,6 +1,6 @@
 import stringify from "json-stringify-deterministic";
-import assert from "minimalistic-assert";
 import { Netmask } from "netmask";
+import assert from "tiny-invariant";
 import type { ConditionalKeys } from "type-fest";
 
 import type { ComposeFile, ComposeNetwork, ComposePort, ComposeService, ComposeVolume } from "../types/mod.js";

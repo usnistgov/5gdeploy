@@ -1,6 +1,6 @@
-import assert from "minimalistic-assert";
 import BiMap from "mnemonist/bi-map.js";
 import { ip2long, long2ip, Netmask } from "netmask";
+import assert from "tiny-invariant";
 
 import type { YargsInfer, YargsOptions } from "../util/mod.js";
 

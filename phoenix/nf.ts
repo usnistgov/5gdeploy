@@ -1,5 +1,5 @@
 import stringify from "json-stringify-deterministic";
-import assert from "minimalistic-assert";
+import assert from "tiny-invariant";
 
 import type { PH } from "../types/mod.js";
 

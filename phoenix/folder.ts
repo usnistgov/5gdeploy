@@ -2,8 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import * as envfile from "envfile";
-import assert from "minimalistic-assert";
 import type { AnyIterable } from "streaming-iterables";
+import assert from "tiny-invariant";
 import type { Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";

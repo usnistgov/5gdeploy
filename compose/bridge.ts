@@ -1,6 +1,6 @@
-import assert from "minimalistic-assert";
 import { minimatch } from "minimatch";
 import { ip2long, Netmask } from "netmask";
+import assert from "tiny-invariant";
 
 import type { ComposeFile } from "../types/mod.js";
 import { hexPad, type YargsInfer, type YargsOptions } from "../util/mod.js";

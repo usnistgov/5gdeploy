@@ -1,7 +1,7 @@
 import path from "node:path";
 
-import assert from "minimalistic-assert";
 import * as shlex from "shlex";
+import assert from "tiny-invariant";
 
 import type { ComposeService } from "../types/mod.js";
 

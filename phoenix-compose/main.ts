@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import assert from "minimalistic-assert";
+import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import { networkOptions, phoenixDockerImage, ScenarioFolder, updateService } from "../phoenix/mod.js";

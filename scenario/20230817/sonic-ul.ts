@@ -1,4 +1,4 @@
-import assert from "minimalistic-assert";
+import assert from "tiny-invariant";
 
 import { Yargs } from "../../util/mod.js";
 import * as sonic from "../common/sonic.js";
@@ -17,7 +17,7 @@ const args = Yargs()
   .option("w140", sonic.weightOption("UPF140", 60))
   .option("w141", sonic.weightOption("UPF141", 20))
   .check(({ gnb, n3 }) => {
-    assert.equal(gnb.length, n3.length, "gNB quantity and N3 quantity must be same");
+    assert(gnb.length === n3.length, "gNB quantity and N3 quantity must be same");
     return true;
   })
   .parseSync();
