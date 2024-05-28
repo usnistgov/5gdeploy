@@ -1,11 +1,17 @@
 FROM golang:1.22-alpine3.19 AS build
+SHELL ["/bin/ash", "-c"]
 ADD https://github.com/HewlettPackard/PacketRusher/archive/578563bb2f32925a5178c8f5c17d5ba723c7dd48.zip /PacketRusher.zip
-RUN cd / \
- && unzip -n PacketRusher.zip \
- && mv PacketRusher-* PacketRusher \
- && cd /PacketRusher \
- && env CGO_ENABLED=0 go build cmd/packetrusher.go \
- && cp config/config.yml config.base.yml
+
+RUN <<EOF
+  set -euxo pipefail
+  cd /
+  unzip -n PacketRusher.zip
+  mv PacketRusher-* PacketRusher
+  cd /PacketRusher
+  env CGO_ENABLED=0 go build cmd/packetrusher.go
+  cp config/config.yml config.base.yml
+EOF
+
 
 FROM alpine:3.19
 RUN apk add --no-cache iproute2 iptables yq
