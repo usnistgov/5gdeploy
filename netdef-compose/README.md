@@ -44,6 +44,7 @@ These combinations are verified to be compatible:
 * `--cp=phoenix --up=free5gc --ran=ueransim`
 * `--cp=phoenix --up=phoenix --ran=packetrusher`
 * `--cp=phoenix --up=phoenix --ran=phoenix`
+* `--cp=phoenix --up=phoenix --ran=srsran`
 * `--cp=phoenix --up=phoenix --ran=ueransim`
 
 ## IP Address Assignment

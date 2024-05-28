@@ -5,7 +5,11 @@ export namespace gnb {
     ran_node_name?: string;
     slicing?: Slice[];
     amf: AMF;
-    ru_sdr: RUSDR;
+    cu_cp?: CUCP;
+    cu_up?: CUUP;
+    du?: DU;
+    ru_ofh?: RUOFH;
+    ru_sdr?: RUSDR;
     cell_cfg: Cell;
     cells?: Array<Partial<Cell>>;
     log?: Log;
@@ -24,6 +28,17 @@ export namespace gnb {
     n3_bind_addr?: string;
     [k: string]: unknown;
   }
+
+  export interface CUCP {
+    inactivity_timer?: number;
+    [k: string]: unknown;
+  }
+
+  export type CUUP = Record<string, unknown>;
+
+  export type DU = Record<string, unknown>;
+
+  export type RUOFH = Record<string, unknown>;
 
   export interface RUSDR {
     srate: string;

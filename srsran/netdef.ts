@@ -41,6 +41,10 @@ class SRSBuilder {
         n2_bind_addr: s.networks.n2!.ipv4_address,
         n3_bind_addr: s.networks.n3!.ipv4_address,
       },
+      cu_cp: {
+        // https://github.com/srsran/srsRAN_Project/discussions/527#discussioncomment-8980792
+        inactivity_timer: 7200,
+      },
       ru_sdr: {
         srate,
         device_driver: "zmq",
@@ -78,7 +82,7 @@ class SRSBuilder {
     compose.setCommands(s, [
       ...compose.renameNetifs(s),
       "sleep 10",
-      "/opt/srsRAN_Project/target/bin/gnb -c /gnb.yml",
+      "exec /opt/srsRAN_Project/target/bin/gnb -c /gnb.yml",
     ]);
   }
 
@@ -89,9 +93,7 @@ class SRSBuilder {
       ...compose.renameNetifs(s),
       "sleep 20",
       "msg Starting srsRAN 4G UE in 5G SA mode",
-      "/entrypoint.sh ue || true",
-      "msg srsRAN 4G UE has exited",
-      "cat ue.conf",
+      "exec /entrypoint.sh ue",
     ]);
     Object.assign(s.environment, {
       GTP_BIND_ADDR: "no-gtp",
