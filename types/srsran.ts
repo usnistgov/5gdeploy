@@ -9,7 +9,7 @@ export namespace gnb {
     cu_up?: CUUP;
     du?: DU;
     ru_ofh?: RUOFH;
-    ru_sdr?: RUSDR;
+    ru_sdr: RUSDR;
     cell_cfg: Cell;
     cells?: Array<Partial<Cell>>;
     log?: Log;
@@ -41,7 +41,7 @@ export namespace gnb {
   export type RUOFH = Record<string, unknown>;
 
   export interface RUSDR {
-    srate: string;
+    srate: number;
     device_driver: "uhd" | "zmq";
     device_args?: string;
     tx_gain: number;

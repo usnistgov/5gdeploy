@@ -5,7 +5,7 @@ import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { bessUP, gnbsimRAN } from "../omec/mod.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
-import { srsRAN } from "../srsran/netdef.js";
+import { srsOptions, srsRAN } from "../srsran/mod.js";
 import type { N } from "../types/mod.js";
 import { ueransimRAN } from "../ueransim/netdef.js";
 import { file_io, Yargs } from "../util/mod.js";
@@ -71,13 +71,14 @@ const args = Yargs()
   })
   .option(compose.bridgeOptions)
   .option(compose.placeOptions)
-  .option(ipAllocOptions)
   .option(dnOptions)
-  .middleware(saveDNOptions)
-  .option(qosOptions)
-  .option(prometheusOptions)
-  .option(phoenixOptions)
+  .option(ipAllocOptions)
   .option(oaiOptions)
+  .option(phoenixOptions)
+  .option(prometheusOptions)
+  .option(qosOptions)
+  .option(srsOptions)
+  .middleware(saveDNOptions)
   .parseSync();
 
 const netdef = new NetDef(await file_io.readJSON(args.netdef) as N.Network);
