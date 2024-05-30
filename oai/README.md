@@ -5,13 +5,14 @@ This package offers these choices in the **netdef-compose** command:
 
 * `--ran=oai`: [OpenAirInterface5G](https://gitlab.eurecom.fr/oai/openairinterface5g)
   * runs in either RFSimulator mode (very slow) or with USRP hardware (gNB only)
+  * gNB supports Ethernet bridge only if `--oai-ran-tag` is unset
   * UE can only establish one PDU session
 * `--cp=oai`: [CN5G control plane](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed)
   * does not support Ethernet bridge
   * requires exactly one AMF and exactly one SMF
 * `--up=oai`: [CN5G UPF](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-upf)
-  * does not support Ethernet bridge
   * does not support N9 interface
+  * supports Ethernet bridge only if `--oai-cn5g-tag` is unset
 * `--up=oai-vpp`: [UPF using a VPP implementation](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-upf-vpp)
   * does not support Ethernet bridge
   * does not support N9 interface

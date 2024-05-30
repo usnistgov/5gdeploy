@@ -30,13 +30,15 @@ build_phoenix() {
   docker build -t 5gdeploy.localhost/phoenix docker/phoenix
 }
 
-build_free5gc_upf() {
-  if ! [[ -f free5gc/images.txt ]]; then
-    bash free5gc/download.sh
+add_pipework() {
+  local DOWNLOAD=$1
+  local COMPOSEFILE=$2
+
+  if ! [[ -f $COMPOSEFILE ]]; then
+    bash $DOWNLOAD
   fi
-  docker build $PULL -t 5gdeploy.localhost/free5gc-upf \
-    --build-arg BASE=$(grep '^free5gc/upf:' free5gc/images.txt) \
-    docker/free5gc-upf
+  local BASE=$(CT=$3 yq '.services[strenv(CT)].image' $COMPOSEFILE)
+  docker build $PULL -t 5gdeploy.localhost/$D --build-arg BASE=$BASE docker/add-pipework
 }
 
 case $D in
@@ -44,7 +46,13 @@ case $D in
     build_phoenix
     ;;
   free5gc-upf)
-    build_free5gc_upf
+    add_pipework free5gc/download.sh free5gc/free5gc-compose/docker-compose.yaml free5gc-upf
+    ;;
+  oai-upf)
+    add_pipework oai/download.sh oai/docker-compose/docker-compose-basic-nrf.yaml oai-upf
+    ;;
+  oai-gnb)
+    add_pipework oai/download.sh oai/docker-compose/docker-compose-slicing-ransim.yaml oai-gnb
     ;;
   *)
     build_image $D
