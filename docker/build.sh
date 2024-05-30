@@ -31,28 +31,35 @@ build_phoenix() {
 }
 
 add_pipework() {
+  local BASE=$1
+  docker build $PULL -t 5gdeploy.localhost/$D --build-arg BASE=$BASE docker/add-pipework
+}
+
+add_pipework_compose() {
   local DOWNLOAD=$1
   local COMPOSEFILE=$2
 
   if ! [[ -f $COMPOSEFILE ]]; then
     bash $DOWNLOAD
   fi
-  local BASE=$(CT=$3 yq '.services[strenv(CT)].image' $COMPOSEFILE)
-  docker build $PULL -t 5gdeploy.localhost/$D --build-arg BASE=$BASE docker/add-pipework
+  add_pipework $(CT=$3 yq '.services[strenv(CT)].image' $COMPOSEFILE)
 }
 
 case $D in
+  free5gc-upf)
+    add_pipework_compose free5gc/download.sh free5gc/free5gc-compose/docker-compose.yaml free5gc-upf
+    ;;
+  oai-gnb)
+    add_pipework_compose oai/download.sh oai/docker-compose/docker-compose-slicing-ransim.yaml oai-gnb
+    ;;
+  oai-upf)
+    add_pipework_compose oai/download.sh oai/docker-compose/docker-compose-basic-nrf.yaml oai-upf
+    ;;
   phoenix)
     build_phoenix
     ;;
-  free5gc-upf)
-    add_pipework free5gc/download.sh free5gc/free5gc-compose/docker-compose.yaml free5gc-upf
-    ;;
-  oai-upf)
-    add_pipework oai/download.sh oai/docker-compose/docker-compose-basic-nrf.yaml oai-upf
-    ;;
-  oai-gnb)
-    add_pipework oai/download.sh oai/docker-compose/docker-compose-slicing-ransim.yaml oai-gnb
+  srsgnb)
+    add_pipework gradiant/srsran-5g:24_04
     ;;
   *)
     build_image $D
