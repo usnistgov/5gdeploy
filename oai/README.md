@@ -32,6 +32,10 @@ The default is using the userspace implementation.
 `--oai-ue-conf` specifies template config file for UE.
 It's advised to use absolute paths for these options.
 
+`--oai-cn5g-tag` specifies Docker image tag for core network functions.
+`--oai-ran-tag` specifies Docker image tag for RAN functions.
+The default is gathered from oai-cn5g-fed repository checkout.
+
 ## RAN telnet
 
 Both gNB and UE have telnet server listening on `mgmt` network port 9090.

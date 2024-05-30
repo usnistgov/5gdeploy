@@ -11,11 +11,15 @@ import * as oai_conf from "./conf.js";
 import type { OAIOpts } from "./options.js";
 
 abstract class CN5GBuilder {
-  constructor(protected readonly ctx: NetDefComposeContext) {}
+  constructor(
+      protected readonly ctx: NetDefComposeContext,
+      protected readonly opts: OAIOpts,
+  ) {}
+
   protected get netdef() { return this.ctx.netdef; }
   protected c!: CN5G.Config;
 
-  protected defineService(ct: string, nf: string, c: CN5G.NF, db: boolean, configPath: string): ComposeService {
+  protected async defineService(ct: string, nf: string, c: CN5G.NF, db: boolean, configPath: string): Promise<ComposeService> {
     const nets: string[] = [];
     if (db) {
       nets.push("db");
@@ -46,7 +50,8 @@ abstract class CN5GBuilder {
       // XXX incompatible with Ethernet bridge
     }
 
-    const s = this.ctx.defineService(ct, `oaisoftwarealliance/oai-${nf}`, nets);
+    const image = await oai_conf.getTaggedImageName(this.opts, nf);
+    const s = this.ctx.defineService(ct, image, nets);
     s.stop_signal = "SIGQUIT";
     s.cap_add.push("NET_ADMIN");
     s.volumes.push({
@@ -84,7 +89,7 @@ class CPBuilder extends CN5GBuilder {
     await this.buildSQL();
     const configPath = "cp-cfg/config.yaml";
     for (const [nf, c] of Object.entries(this.c.nfs).filter(([nf]) => nf !== "upf")) {
-      this.defineService(nf, nf, c, true, configPath);
+      await this.defineService(nf, nf, c, true, configPath);
     }
 
     this.updateConfigDNNs();
@@ -198,7 +203,7 @@ class CPBuilder extends CN5GBuilder {
 }
 
 class UPBuilder extends CN5GBuilder {
-  public async build(opts: OAIOpts): Promise<void> {
+  public async build(): Promise<void> {
     NetDefDN.defineDNServices(this.ctx);
 
     this.c = await oai_conf.loadCN5G();
@@ -209,7 +214,7 @@ class UPBuilder extends CN5GBuilder {
     this.c.nfs.smf!.host = this.c.upf!.smfs[0]!.host;
 
     this.updateConfigDNNs();
-    this.c.upf!.support_features.enable_bpf_datapath = opts["oai-upf-bpf"];
+    this.c.upf!.support_features.enable_bpf_datapath = this.opts["oai-upf-bpf"];
     this.c.upf!.support_features.enable_snat = false;
     for (const nf of Object.keys(this.c.nfs) as CN5G.NFName[]) {
       if (!["nrf", "smf", "upf"].includes(nf)) {
@@ -221,8 +226,8 @@ class UPBuilder extends CN5GBuilder {
 
     for (const [ct, upf] of compose.suggestNames("upf", this.ctx.network.upfs)) {
       const configPath = `up-cfg/${ct}.yaml`;
-      const s = this.defineService(ct, "upf", this.c.nfs.upf!, false, configPath);
-      compose.annotate(s, "cpus", opts["oai-upf-workers"]);
+      const s = await this.defineService(ct, "upf", this.c.nfs.upf!, false, configPath);
+      compose.annotate(s, "cpus", this.opts["oai-upf-workers"]);
       s.devices.push("/dev/net/tun:/dev/net/tun");
 
       const peers = this.netdef.gatherUPFPeers(upf);
@@ -256,13 +261,13 @@ class UPBuilder extends CN5GBuilder {
 }
 
 /** Build CP functions using OAI-CN5G. */
-export async function oaiCP(ctx: NetDefComposeContext): Promise<void> {
-  const b = new CPBuilder(ctx);
+export async function oaiCP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
+  const b = new CPBuilder(ctx, opts);
   await b.build();
 }
 
 /** Build UP functions using oai-cn5g-upf as UPF. */
 export async function oaiUP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
-  const b = new UPBuilder(ctx);
-  await b.build(opts);
+  const b = new UPBuilder(ctx, opts);
+  await b.build();
 }

@@ -27,7 +27,7 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
   if (opts["oai-gnb-usrp"]) {
     nets.shift();
   }
-  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-gnb:${opts["oai-ran-tag"]}`, nets);
+  const s = ctx.defineService(ct, await oai_conf.getTaggedImageName(opts, "gnb"), nets);
   compose.annotate(s, "cpus", 4);
   s.privileged = true;
 
@@ -115,7 +115,7 @@ function enableUSRP(usrp: OAIOpts["oai-gnb-usrp"], s: ComposeService, softmodemA
 
 /** Define UE container and generate configuration. */
 async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub: NetDef.Subscriber): Promise<void> {
-  const s = ctx.defineService(ct, `oaisoftwarealliance/oai-nr-ue:${opts["oai-ran-tag"]}`, ["mgmt", "air"]);
+  const s = ctx.defineService(ct, await oai_conf.getTaggedImageName(opts, "ue"), ["mgmt", "air"]);
   compose.annotate(s, "cpus", 1);
   compose.annotate(s, "ue_supi", sub.supi);
   s.privileged = true;

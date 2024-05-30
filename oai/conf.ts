@@ -4,11 +4,44 @@ import { execa } from "execa";
 import yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
 
-import type { CN5G } from "../types/mod.js";
+import type { CN5G, ComposeFile } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
+import type { OAIOpts } from "./options.js";
 
 export const composePath = path.join(import.meta.dirname, "docker-compose");
 export const convertCommand = path.join(import.meta.dirname, "libconf_convert.py");
+
+/** Determine Docker image name with version tag. */
+export async function getTaggedImageName(opts: OAIOpts, nf: string): Promise<string> {
+  let tagOpt = opts["oai-cn5g-tag"];
+  let filename = "docker-compose-slicing-basic-nrf.yaml";
+  let image = `oaisoftwarealliance/oai-${nf}`;
+  let dfltTag = "latest";
+  switch (nf) {
+    case "ue": {
+      image = "oaisoftwarealliance/oai-nr-ue";
+    }
+    // fallthrough
+    case "gnb": {
+      tagOpt = opts["oai-ran-tag"];
+      filename = "docker-compose-slicing-ransim.yaml";
+      dfltTag = "develop";
+      break;
+    }
+  }
+
+  if (tagOpt) {
+    return `${image}:${tagOpt}`;
+  }
+
+  const c = await file_io.readYAML(path.resolve(composePath, filename)) as ComposeFile;
+  for (const s of Object.values(c.services)) {
+    if (s.image.startsWith(`${image}:`)) {
+      return s.image;
+    }
+  }
+  return `${image}:${dfltTag}`;
+}
 
 /** Load OAI config from libconfig template file. */
 export async function loadLibconf<T extends {}>(filename: string): Promise<T & { save: () => Promise<string> }> {

@@ -5,6 +5,12 @@ import * as oai_conf from "./conf.js";
 
 /** Yargs options definition for OAI. */
 export const oaiOptions = {
+  "oai-cn5g-tag": {
+    defaultDescription: "gather from docker-compose-slicing-basic-nrf.yaml",
+    desc: "OAI-CN5G Docker image tag",
+    group: "oai",
+    type: "string",
+  },
   "oai-upf-workers": {
     default: 2,
     desc: "number of worker threads in OAI-CN5G-UPF or OAI-UPF-VPP",
@@ -18,7 +24,7 @@ export const oaiOptions = {
     type: "boolean",
   },
   "oai-ran-tag": {
-    default: "develop",
+    defaultDescription: "gather from docker-compose-slicing-ransim.yaml",
     desc: "OpenAirInterface5G Docker image tag",
     group: "oai",
     type: "string",
