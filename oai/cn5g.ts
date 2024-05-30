@@ -10,6 +10,8 @@ import { file_io, hexPad } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
 import type { OAIOpts } from "./options.js";
 
+const iproute2Available = new Set(["upf"]); // images known to have iproute2 package
+
 abstract class CN5GBuilder {
   constructor(
       protected readonly ctx: NetDefComposeContext,
@@ -20,55 +22,50 @@ abstract class CN5GBuilder {
   protected c!: CN5G.Config;
 
   protected async defineService(ct: string, nf: string, c: CN5G.NF, db: boolean, configPath: string): Promise<ComposeService> {
-    const nets: string[] = [];
+    const nets: Array<[net: string, intf: CN5G.NF.Interface | undefined]> = [];
     if (db) {
-      nets.push("db");
+      nets.push(["db", undefined]);
     }
     for (const key of Object.keys(c)) {
       if (key === "sbi") {
-        nets.push("cp");
+        nets.push(["cp", c.sbi]);
       } else if (/^n\d+$/.test(key)) {
-        nets.push(key);
+        nets.push([key, c[key as `n${number}`]]);
       }
     }
-    nets.sort((a, b) => a.localeCompare(b));
-    for (const [i, net] of nets.entries()) {
-      switch (net) {
-        case "cp": {
-          c.sbi.interface_name = `eth${i}`;
-          break;
-        }
-        case "db": {
-          break;
-        }
-        default: {
-          assert(/^n\d+$/.test(net));
-          c[net as `n${number}`]!.interface_name = `eth${i}`;
-          break;
-        }
+    nets.sort(([a], [b]) => a.localeCompare(b));
+    for (const [i, [net, intf]] of nets.entries()) {
+      if (intf) {
+        intf.interface_name = iproute2Available.has(nf) ? net : `eth${i}`;
       }
-      // XXX incompatible with Ethernet bridge
+      // XXX ethI is incompatible with Ethernet bridge
     }
 
     const image = await oai_conf.getTaggedImageName(this.opts, nf);
-    const s = this.ctx.defineService(ct, image, nets);
+    const s = this.ctx.defineService(ct, image, Array.from(nets, ([net]) => net));
     s.stop_signal = "SIGQUIT";
     s.cap_add.push("NET_ADMIN");
     s.volumes.push({
       type: "bind",
       source: `./${configPath}`,
       target: `/openair-${nf}/etc/config.yaml`,
+      read_only: true,
     });
 
     c.host = s.networks.cp!.ipv4_address;
 
-    compose.setCommands(s, this.makeExecCommands(nf));
+    compose.setCommands(s, this.makeExecCommands(s, nf));
     return s;
   }
 
-  protected *makeExecCommands(nf: string): Iterable<string> {
-    yield "msg Listing IP addresses";
-    yield "ip addr list up || /usr/sbin/ifconfig || true";
+  protected *makeExecCommands(s: ComposeService, nf: string, insert: Iterable<string> = []): Iterable<string> {
+    if (iproute2Available.has(nf)) {
+      yield* compose.renameNetifs(s);
+    } else {
+      yield "msg Listing IP addresses";
+      yield "ip addr list up || /usr/sbin/ifconfig || true";
+    }
+    yield* insert;
     yield `msg Starting oai_${nf}`;
     yield `exec ./bin/oai_${nf} -c ./etc/config.yaml -o`;
   }
@@ -113,8 +110,8 @@ class CPBuilder extends CN5GBuilder {
       [ // sql`` template literal is only meant for escaping values and cannot be used on database names
         `CREATE DATABASE ${dbc.database_name}`,
         `USE ${dbc.database_name}`,
-        `GRANT SELECT,INSERT,UPDATE,DELETE ON ${dbc.database_name}.*
-        TO ${dbc.user}@'%' IDENTIFIED BY '${dbc.password}'`,
+        `GRANT SELECT,INSERT,UPDATE,DELETE ON ${dbc.database_name}.* TO ${
+          dbc.user}@'%' IDENTIFIED BY '${dbc.password}'`,
       ],
       await file_io.readText(path.resolve(oai_conf.composePath, "database/oai_db2.sql")),
       this.populateSQL(),
@@ -232,10 +229,7 @@ class UPBuilder extends CN5GBuilder {
 
       const peers = this.netdef.gatherUPFPeers(upf);
       assert(peers.N9.length === 0, "N9 not supported");
-      compose.setCommands(s, [
-        ...NetDefDN.makeUPFRoutes(this.ctx, peers),
-        ...this.makeExecCommands("upf"),
-      ]);
+      compose.setCommands(s, this.makeExecCommands(s, "upf", NetDefDN.makeUPFRoutes(this.ctx, peers)));
 
       this.updateConfigUPF(peers);
       await this.ctx.writeFile(configPath, this.c);
