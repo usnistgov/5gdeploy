@@ -2,18 +2,17 @@ import path from "node:path";
 
 import yaml from "js-yaml";
 
+import * as compose from "../compose/mod.js";
 import { file_io } from "../util/mod.js";
 
-/** Retrieve free5GC Docker image name. */
-export async function getImage(nf: string): Promise<string> {
-  const prefix = `free5gc/${nf.toLowerCase()}:`;
-  const images = (await file_io.readText(path.join(import.meta.dirname, "images.txt"), { once: true })).split("\n");
-  for (const image of images) {
-    if (image.startsWith(prefix)) {
-      return image;
-    }
+/** Determine OAI Docker image name with version tag. */
+export async function getTaggedImageName(nf: string): Promise<string> {
+  const image = `free5gc/${nf.toLowerCase()}`;
+  const tagged = await compose.getTaggedImageName(path.resolve(import.meta.dirname, "free5gc-compose/docker-compose.yaml"), image);
+  if (!tagged) {
+    throw new Error(`no image found for ${nf}`);
   }
-  throw new Error(`no image found for ${nf}`);
+  return tagged;
 }
 
 /** Load free5GC YAML config. */

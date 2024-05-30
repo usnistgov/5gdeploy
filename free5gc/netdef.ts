@@ -382,7 +382,7 @@ class F5CPBuilder {
 
   private async defineService<C extends {}>(ct: string, nets: readonly string[]): Promise<[s: ComposeService, cfg: F5.Root<C>]> {
     const nf = compose.nameToNf(ct);
-    const s = this.ctx.defineService(ct, await f5_conf.getImage(nf), nets);
+    const s = this.ctx.defineService(ct, await f5_conf.getTaggedImageName(nf), nets);
     s.stop_signal = "SIGQUIT";
     s.environment.GIN_MODE = "release";
 
