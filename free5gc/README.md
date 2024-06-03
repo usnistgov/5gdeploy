@@ -13,12 +13,8 @@ Run `./compose.sh web` in the Compose context folder to view access instructions
 ## gtp5g Kernel Module
 
 free5GC UPF and [PacketRusher](../packetrusher/README.md) depend on [gtp5g kernel module](https://github.com/free5gc/gtp5g).
-To compile and load the kernel module:
-
-```bash
-cd ~/5gdeploy
-./free5gc/load-gtp5g.sh
-```
+The Compose file has a **gtp5g** service that compiles and loads this kernel module.
+It requires the host system to have kernel headers, provided by APT package `linux-headers-generic` or `linux-headers-lowlatency`.
 
 If a network function terminates abnormally, gtp5g kernel objects may not release properly.
 To recover from this situation, either reboot the server, or run this command to manually unload and re-load the kernel module:
@@ -27,5 +23,3 @@ To recover from this situation, either reboot the server, or run this command to
 sudo rmmod gtp5g
 sudo modprobe gtp5g
 ```
-
-In a multi-host deployment, if a free5GC UPF or PacketRusher simulator is deployed on a secondary host, this kernel module needs to be installed on that host.

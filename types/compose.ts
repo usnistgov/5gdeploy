@@ -37,6 +37,7 @@ export interface ComposeService {
   readonly networks: Record<string, ComposeNetif>;
   readonly ports: ComposePort[];
   cpuset?: string;
+  depends_on: Record<string, ComposeDependency>;
 }
 
 /** Compose service bind volume. */
@@ -59,4 +60,9 @@ export interface ComposePort {
   mode: "host";
   host_ip?: string;
   published: `${number}`;
+}
+
+/** Compose service dependency. */
+export interface ComposeDependency {
+  condition: "service_started" | "service_healthy" | "service_completed_successfully";
 }

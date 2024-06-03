@@ -8,6 +8,7 @@ import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/m
 import type { ComposeService, F5, N } from "../types/mod.js";
 import { hexPad } from "../util/mod.js";
 import * as f5_conf from "./conf.js";
+import { dependOnGtp5g } from "./gtp5g.js";
 import type * as W from "./webconsole-openapi/models/index.js";
 
 function convertSNSSAI(input: string): F5.SNSSAI {
@@ -441,8 +442,10 @@ export async function f5UP(ctx: NetDefComposeContext): Promise<void> {
     compose.setCommands(s, [
       ...compose.renameNetifs(s, { pipeworkWait: true }),
       ...NetDefDN.makeUPFRoutes(ctx, peers),
+      "msg Starting free5GC UPF",
       "exec ./upf -c ./config/upfcfg.yaml",
     ]);
+    dependOnGtp5g(s, ctx.c);
 
     const c = await f5_conf.loadTemplate("upfcfg") as F5.upf.Root;
     c.pfcp.addr = s.networks.n4!.ipv4_address;

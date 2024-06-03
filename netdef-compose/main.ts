@@ -1,5 +1,5 @@
 import * as compose from "../compose/mod.js";
-import { f5CP, f5UP } from "../free5gc/netdef.js";
+import { f5CP, f5UP } from "../free5gc/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { bessUP, gnbsimRAN } from "../omec/mod.js";

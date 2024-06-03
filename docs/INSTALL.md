@@ -12,6 +12,7 @@ To setup a single-host deployment or the *primary* host of a multi-host deployme
   * `httpie jq`: used in bash scripts
   * `wireshark-common`: for capturing traffic traces with `dumpcap` in scenarios
   * `python3-libconf`: used by `oai/libconf_convert.py`
+  * `linux-generic` or `linux-lowlatency`: kernel headers for building gtp5g kernel module
 * Snap packages:
   * `yq`: used in bash scripts
 
@@ -76,32 +77,14 @@ cd ~/5gdeploy
 # change 'ueransim' to the image that you want to rebuild
 ```
 
-## Load gtp5g Kernel Module
-
-Both free5GC UPF and PacketRusher require the [gtp5g](https://github.com/free5gc/gtp5g) kernel module.
-
-Install the compiler:
-
-```bash
-sudo DEBIAN_FRONTEND=noninteractive apt install -y build-essential
-```
-
-Compile and load the kernel module:
-
-```bash
-~/5gdeploy/free5gc/load-gtp5g.sh
-```
-
-You need to rerun `load-gtp5g.sh` after every reboot.
-
 ## Secondary Host
 
 See [multi-host deployment](multi-host.md) page for concepts of multi-host deployment.
 For a multi-host deployment, a *secondary* host needs only:
 
 * Docker Engine
-* gtp5g kernel module, if used
 * Docker images copied from *primary* hosts (see below)
+* kernel headers, if gtp5g is used
 
 The *primary* host should have SSH config and `id_ed25519` key to access each *secondary* host.
 The SSH user on each *secondary* host should be added to the `docker` group.

@@ -5,10 +5,12 @@ import yaml from "js-yaml";
 import * as compose from "../compose/mod.js";
 import { file_io } from "../util/mod.js";
 
-/** Determine OAI Docker image name with version tag. */
+/** Determine free5GC Docker image name with version tag. */
 export async function getTaggedImageName(nf: string): Promise<string> {
-  const image = `free5gc/${nf.toLowerCase()}`;
-  const tagged = await compose.getTaggedImageName(path.resolve(import.meta.dirname, "free5gc-compose/docker-compose.yaml"), image);
+  const tagged = await compose.getTaggedImageName(
+    path.join(import.meta.dirname, "free5gc-compose/docker-compose.yaml"),
+    `free5gc/${nf.toLowerCase()}`,
+  );
   if (!tagged) {
     throw new Error(`no image found for ${nf}`);
   }

@@ -1,10 +1,7 @@
 /.vscode
 /docker/ns3http/ns3http
 /free5gc/free5gc-compose
-/free5gc/gtp5g
-/free5gc/images.txt
 /free5gc/webconsole-openapi
-/oai/conf_files
 /oai/docker-compose
 /omec/upf
 /pnpm-lock.yaml

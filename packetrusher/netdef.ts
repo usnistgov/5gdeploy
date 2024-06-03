@@ -2,6 +2,7 @@ import assert from "tiny-invariant";
 import type { PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
+import { dependOnGtp5g } from "../free5gc/mod.js";
 import { applyQoS, NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { prush } from "../types/mod.js";
 import { hexPad } from "../util/mod.js";
@@ -20,6 +21,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
   s.devices.push("/dev/net/tun:/dev/net/tun");
   compose.annotate(s, "cpus", 1);
   compose.annotate(s, "ue_supi", sub.supi);
+  dependOnGtp5g(s, ctx.c);
 
   const c = makeConfigUpdate(ctx, gnb, sub);
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
