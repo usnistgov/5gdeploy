@@ -22,11 +22,15 @@ export function open(host?: string | Dockerode): Dockerode {
   const opts: Dockerode.DockerOptions = {};
   if (host) {
     opts.protocol = "ssh";
-    opts.username = os.userInfo().username;
-    opts.host = host;
     opts.sshOptions = {
       privateKey: (privateKey ??= fs.readFileSync(path.join(os.homedir(), ".ssh/id_ed25519"))),
     };
+    if (host.includes("@")) {
+      [opts.username, opts.host] = host.split("@");
+    } else {
+      opts.username = os.userInfo().username;
+      opts.host = host;
+    }
   }
   return new Dockerode(opts);
 }

@@ -41,7 +41,10 @@ upload_folder() {
     msg Uploading $D to $H
     docker run -it --rm --network host \
       -v ~/.ssh/id_ed25519:/sshkey:ro -v $D:/source:ro rclone/rclone \
-      sync /source :sftp:$D -P --transfers=2 --sftp-host=$H --sftp-user=$USER --sftp-key-file=/sshkey
+      sync /source :sftp:$D -P --transfers=2 $(echo $H | awk -vFS=@ '
+        NF==1 { print "--sftp-host=" $1 " --sftp-user=" ENVIRON["USER"] }
+        NF==2 { print "--sftp-host=" $2 " --sftp-user=" $1 }
+      ') --sftp-key-file=/sshkey
   done
 }
 

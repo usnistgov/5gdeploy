@@ -49,7 +49,7 @@ await cmdOutput(args, (function*() {
     const dnService = c.services[`dn_${dnn}`]!;
     const dnIP = compose.annotate(dnService, "ip_n6")!;
     yield `msg Scanning ${target} in ${dnn}, expect ${count} hosts up`;
-    yield `${compose.makeDockerH(dnService)} run --rm --network container:${dnService.container_name
-    } networkstatic/nmap -S ${dnIP} -n -sn ${target}`;
+    yield `${compose.makeDockerH(dnService)} run --name nmap_${dnn} --rm --network container:${
+      dnService.container_name} networkstatic/nmap -S ${dnIP} -n -sn ${target}`;
   }
 })());

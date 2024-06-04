@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { minimatch } from "minimatch";
+import { Minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
@@ -11,12 +11,46 @@ import type { ComposeFile, ComposeService } from "../types/mod.js";
 import { scriptHead as baseScriptHead, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate } from "./compose.js";
 
+interface PlaceRule {
+  pattern: Minimatch;
+  host: string;
+  cpuset?: string;
+}
+
 /** Yargs options definition for placing Compose services onto multiple hosts. */
 export const placeOptions = {
   place: {
     array: true,
+    coerce(lines: readonly string[]): PlaceRule[] {
+      return Array.from(lines, (line) => {
+        const m = /^([^@]+)@([^@()]*)(?:\((\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)\))?$/.exec(line);
+        assert(m, `--place=${line} invalid`);
+        const [, pattern, host, cpuset] = m as string[] as [string, string, string, string | undefined];
+        return {
+          pattern: new Minimatch(pattern),
+          host,
+          cpuset,
+        };
+      });
+    },
     default: [],
     desc: "place containers on host and set CPU isolation",
+    nargs: 1,
+    type: "string",
+  },
+  sshuser: {
+    array: true,
+    coerce(lines: readonly string[]): Record<string, string> {
+      const m: Record<string, string> = {};
+      for (const line of lines) {
+        const tokens = line.split("=");
+        assert(tokens.length === 2, `--sshuser=${line} invalid`);
+        const [host, user] = tokens as [string, string];
+        m[host] = `${user}@${host}`;
+      }
+      return m;
+    },
+    desc: "change SSH username",
     nargs: 1,
     type: "string",
   },
@@ -31,33 +65,23 @@ export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): vo
     return;
   }
 
-  const services = new Map<string, ComposeService>(Object.entries(c.services));
-  for (const line of opts.place) {
-    const m = /^([^@]+)@([^@()]*)(?:\((\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)\))?$/.exec(line);
-    if (!m) {
-      throw new Error(`--place=${line} invalid`);
-    }
-    const [, pattern, host, cpuset] = m as string[] as [string, string, string, string | undefined];
+  const services = new Map<string, ComposeService>(
+    Object.entries(c.services).filter(([, s]) => !annotate(s, "every_host")),
+  );
+  for (let { pattern, host, cpuset } of opts.place) {
+    host = opts.sshuser?.[host] ?? host;
     const assignCpuset = cpuset ? new AssignCpuset(cpuset) : undefined;
-
     for (const [ct, s] of services) {
-      if (annotate(s, "every_host")) {
-        //
-      } else if (minimatch(ct, pattern)) {
+      if (pattern.match(ct)) {
         services.delete(ct);
         annotate(s, "host", host);
-      } else {
-        continue;
+        assignCpuset?.prepare(s);
       }
-      assignCpuset?.prepare(s);
     }
-
     assignCpuset?.update();
   }
   for (const s of services.values()) {
-    if (!annotate(s, "every_host")) {
-      annotate(s, "host", "");
-    }
+    annotate(s, "host", "");
   }
 }
 
@@ -86,10 +110,6 @@ class AssignCpuset {
   private wantDedicated = 0;
 
   public prepare(s: ComposeService): void {
-    if (annotate(s, "every_host")) {
-      return;
-    }
-
     this.services.set(s.container_name, s);
     const wanted = Number.parseInt(annotate(s, "cpus") ?? "0", 10);
     if (wanted === 0) {
