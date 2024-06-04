@@ -20,4 +20,4 @@ docker exec ue0 ip route add default dev tun_srsue
 Only `.ru_sdr` and `.cell_cfg` sections are considered; other sections are ignored.
 This allows creating a physical gNB with USRP hardware.
 
-See [OAI](../oai/README.md) for how to download USRP firmware.
+srsGNB container has a copy of USRP firmware, so that firmware download is unnecesary.
