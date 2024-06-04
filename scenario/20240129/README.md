@@ -101,9 +101,6 @@ N4_CD=192.168.4.3
   --place="+(upf|dn)_[ab]*@$CTRL_AB$CPUSET_AB" \
   --place="+(upf|dn)_[cd]*@$CTRL_CD$CPUSET_CD" \
   --place="*@$CPUSET_PRIMARY"
-
-# upload to secondary hosts
-~/compose/20240129/compose.sh upload
 ```
 
 Explanations:
@@ -148,9 +145,6 @@ N4_CD=02:00:00:04:00:03
   --place="+(upf|dn)_[ab]*@$CTRL_AB$CPUSET_AB" \
   --place="+(upf|dn)_[cd]*@$CTRL_CD$CPUSET_CD" \
   --place="*@$CPUSET_PRIMARY"
-
-# upload to secondary hosts
-~/compose/20240129/compose.sh upload
 ```
 
 Explanations:

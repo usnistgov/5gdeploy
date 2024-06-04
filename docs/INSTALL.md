@@ -83,7 +83,6 @@ See [multi-host deployment](multi-host.md) page for concepts of multi-host deplo
 For a multi-host deployment, a *secondary* host needs only:
 
 * Docker Engine
-* Docker images copied from *primary* hosts (see below)
 * kernel headers, if gtp5g is used
 
 The *primary* host should have SSH config and `id_ed25519` key to access each *secondary* host.
@@ -91,13 +90,18 @@ The SSH user on each *secondary* host should be added to the `docker` group.
 The SSH host key of each *secondary* host should be added to the `known_hosts` file on the *primary* host.
 If the command below does not work, re-check these SSH requirements.
 
-To copy Docker images to *secondary* hosts, run this command on the *primary* host:
+When using [generate.sh](../scenario/generate.sh), the Compose folder and relevant Docker images are automatically uploaded to secondary hosts.
+Otherwise, they can be manually uploaded:
 
 ```bash
-# upload to an explicit list of secondary hosts
+# upload the Compose folder
+# (change these IP addresses to the secondary hosts in your setup)
+~/5gdeploy/upload.sh ~/compose/20230601 192.168.60.2 192.168.60.3
+
+# upload Docker images
 # (change these IP addresses to the secondary hosts in your setup)
 ~/5gdeploy/upload.sh docker 192.168.60.2 192.168.60.3
 
-# or, upload to all secondary hosts in a generated scenario
-~/compose/20230601/compose.sh upload docker
+# or, upload from within a generated scenario
+~/compose/20230601/compose.sh upload
 ```

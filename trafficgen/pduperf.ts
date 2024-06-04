@@ -9,7 +9,7 @@ import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
-import { file_io, Yargs } from "../util/mod.js";
+import { file_io, scriptHead, Yargs } from "../util/mod.js";
 import { ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import { trafficGenerators, type TrafficGenFlowContext } from "./pduperf-tg.js";
 
@@ -173,7 +173,7 @@ function* makeScript(): Iterable<string> {
 
 await file_io.write(path.join(args.dir, `${args.prefix}.sh`), [
   "#!/bin/bash",
-  ...compose.scriptHead,
+  ...scriptHead,
   ...makeScript(),
 ].join("\n"));
 

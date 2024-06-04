@@ -1,22 +1,63 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { PassThrough } from "node:stream";
 import { setTimeout as delay } from "node:timers/promises";
 
 import Dockerode from "dockerode";
 import { collect } from "streaming-iterables";
 
+let privateKey: Buffer | undefined;
+
 /**
- * Create handle to a Docker container.
- * @param ct - Container name.
- * @param host - Docker host name, empty means localhost.
- * @returns Dockerode container handle.
+ * Create handle to Docker Engine.
+ * @param host - Docker host name (empty means localhost) or existing handle.
+ * @returns Dockerode handle.
  */
-export function getContainer(ct: string, host?: string): Dockerode.Container {
+export function open(host?: string | Dockerode): Dockerode {
+  if (host instanceof Dockerode) {
+    return host;
+  }
+
   const opts: Dockerode.DockerOptions = {};
   if (host) {
     opts.protocol = "ssh";
+    opts.username = os.userInfo().username;
     opts.host = host;
+    opts.sshOptions = {
+      privateKey: (privateKey ??= fs.readFileSync(path.join(os.homedir(), ".ssh/id_ed25519"))),
+    };
   }
-  return new Dockerode(opts).getContainer(ct);
+  return new Dockerode(opts);
+}
+
+/**
+ * List Docker images.
+ * @param pattern - Image reference glob pattern.
+ * @param host - Docker host name (empty means localhost) or existing handle.
+ * @returns Mapping from image name to ID.
+ */
+export async function listImages(pattern: string, host?: string | Dockerode): Promise<Map<string, string>> {
+  const m = new Map<string, string>();
+  for (const image of await open(host).listImages({ filters: { reference: [pattern] } })) {
+    for (const tag of image.RepoTags ?? []) {
+      m.set(tag, image.Id);
+      if (tag.endsWith(":latest")) {
+        m.set(tag.slice(0, -7), image.Id);
+      }
+    }
+  }
+  return m;
+}
+
+/**
+ * Create handle to a Docker container.
+ * @param ct - Container name.
+ * @param host - Docker host name (empty means localhost) or existing handle.
+ * @returns Dockerode container handle.
+ */
+export function getContainer(ct: string, host?: string | Dockerode): Dockerode.Container {
+  return open(host).getContainer(ct);
 }
 
 /**

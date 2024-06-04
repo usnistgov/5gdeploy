@@ -69,16 +69,13 @@ N4_SMF=02:00:00:04:00:01
 N4_UPF1=02:00:00:04:00:02
 N4_UPF4=02:00:00:04:00:03
 
-# generate Compose file
+# generate Compose context
 ./generate.sh 20231017 \
   --bridge=n3,eth,gnb0=$N3_GNB0,upf1=$N3_UPF1,upf4=$N3_UPF4 \
   --bridge=n4,eth,smf=$N4_SMF,upf1=$N4_UPF1,upf4=$N4_UPF4 \
   --place="+(upf1|dn_internet)@$CTRL_UPF1$CPUSET_UPF1" \
   --place="+(upf4|dn_v*)@$CTRL_UPF4$CPUSET_UPF4" \
   --place="*@$CPUSET_PRIMARY"
-
-# upload Compose file and config folder to secondary hosts
-~/compose/20231017/compose.sh upload
 
 # start the scenario
 ~/compose/20231017/compose.sh up

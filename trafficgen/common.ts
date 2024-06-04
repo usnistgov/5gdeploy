@@ -1,6 +1,5 @@
 import path from "node:path";
 
-import { execa } from "execa";
 import type { LinkWithAddressInfo } from "iproute";
 import yaml from "js-yaml";
 import DefaultMap from "mnemonist/default-map.js";
@@ -18,11 +17,13 @@ export const ctxOptions = {
   dir: {
     demandOption: true,
     desc: "Compose context directory",
+    normalize: true,
     type: "string",
   },
   netdef: {
     defaultDescription: "(--dir)/netdef.json",
     desc: "NetDef filename",
+    normalize: true,
     type: "string",
   },
 } as const satisfies YargsOptions;
@@ -108,31 +109,4 @@ function findPduIP(
   }
 
   return undefined;
-}
-
-export const cmdOptions = {
-  cmdout: {
-    desc: "save command line to file",
-    type: "string",
-  },
-} as const satisfies YargsOptions;
-
-export async function cmdOutput(args: YargsInfer<typeof cmdOptions>, lines: Iterable<string>): Promise<void> {
-  const script = [
-    "#!/bin/bash",
-    ...compose.scriptHead,
-    ...lines,
-  ].join("\n");
-
-  if (args.cmdout) {
-    await file_io.write(args.cmdout, script);
-  } else {
-    const result = await execa("bash", ["-c", script], {
-      stdin: "inherit",
-      stdout: "inherit",
-      stderr: "inherit",
-      reject: false,
-    });
-    process.exitCode = result.exitCode;
-  }
 }

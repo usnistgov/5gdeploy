@@ -2,8 +2,8 @@ import { Minimatch } from "minimatch";
 import { Netmask } from "netmask";
 
 import * as compose from "../compose/mod.js";
-import { Yargs, YargsIntRange } from "../util/mod.js";
-import { cmdOptions, cmdOutput, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
+import { cmdOptions, cmdOutput, Yargs, YargsIntRange } from "../util/mod.js";
+import { ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 
 const args = Yargs()
   .option(ctxOptions)

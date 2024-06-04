@@ -8,9 +8,8 @@ import assert from "tiny-invariant";
 
 import { trafficGenerators } from "../trafficgen/pduperf-tg.js";
 import type { ComposeFile, ComposeService } from "../types/mod.js";
-import type { YargsInfer, YargsOptions } from "../util/mod.js";
+import { scriptHead as baseScriptHead, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate } from "./compose.js";
-import { scriptHead as baseScriptHead } from "./snippets.js";
 
 /** Yargs options definition for placing Compose services onto multiple hosts. */
 export const placeOptions = {
@@ -147,9 +146,7 @@ const scriptUsage = `Usage:
   $(./compose.sh at CT) CMD
     Run Docker command CMD on the host machine of container CT.
   ./compose.sh upload
-    Upload Compose context to secondary hosts.
-  ./compose.sh upload docker
-    Upload Docker images to secondary hosts.
+    Upload Compose context and Docker images to secondary hosts.
   ./compose.sh create
     Create scenario containers to prepare for traffic capture.
   ./compose.sh stop
@@ -217,7 +214,7 @@ const minimalScript = [
   "if [[ $ACT == at ]]; then",
   "  echo docker",
   "elif [[ $ACT == upload ]]; then",
-  "  echo ''",
+  "  true",
   ...scriptActions.flatMap(([act, cmd, , msg1, msg2]) => [
     `elif [[ $ACT == ${act} ]]; then`,
     `  msg ${shlex.quote(msg1)}`,
@@ -239,7 +236,8 @@ function* makeScriptLines(hostServices: readonly classifyByHost.Result[]): Itera
   yield "  esac";
 
   yield "elif [[ $ACT == upload ]]; then";
-  yield `  ${path.join(import.meta.dirname, "../upload.sh")} $\{1:-$COMPOSE_CTX} ${
+  yield `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/compose/upload.ts --dir=$COMPOSE_CTX`;
+  yield `  ${path.join(import.meta.dirname, "../upload.sh")} $COMPOSE_CTX ${
     hostServices.map(({ host }) => host).join(" ")}`;
 
   for (const [act, cmd, listServiceNames, msg1, msg2] of scriptActions) {

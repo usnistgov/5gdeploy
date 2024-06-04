@@ -69,4 +69,7 @@ fi
 msg Generating scenario folder from netdef
 corepack pnpm -s netdef-compose --netdef=$NETDEF --out=$OUT "$@"
 
+msg Uploading scenario folder to secondary hosts
+$OUT/compose.sh upload
+
 msg Scenario folder is ready at $(readlink -f $OUT)

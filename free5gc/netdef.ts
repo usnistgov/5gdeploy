@@ -6,7 +6,7 @@ import type { SetRequired } from "type-fest";
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
 import type { ComposeService, F5, N } from "../types/mod.js";
-import { hexPad } from "../util/mod.js";
+import { hexPad, scriptHead } from "../util/mod.js";
 import * as f5_conf from "./conf.js";
 import { dependOnGtp5g } from "./gtp5g.js";
 import type * as W from "./webconsole-openapi/models/index.js";
@@ -80,7 +80,7 @@ class F5CPBuilder {
 
     const webconsole = await import("./webconsole-openapi/models/index.js");
     function* generateCommands() {
-      yield* compose.scriptHead;
+      yield* scriptHead;
       yield "msg Waiting for WebUI to become ready";
       yield `with_retry nc -z ${serverIP} ${serverPort}`;
       yield "sleep 1";

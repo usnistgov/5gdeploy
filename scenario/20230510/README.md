@@ -50,7 +50,7 @@ EXP_EDGE2=192.168.60.12
 
 ## Start and Stop Scenario
 
-Generate Compose file and upload to *edge* hosts:
+Generate Compose context:
 
 ```bash
 cd ~/5gdeploy/scenario
@@ -58,8 +58,6 @@ cd ~/5gdeploy/scenario
   --bridge=n2,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2} \
   --bridge=n4,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2} \
   --bridge=n9,vx,${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2}
-
-~/compose/20230510/compose.sh upload
 ```
 
 Start the scenario:

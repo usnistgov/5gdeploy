@@ -8,7 +8,7 @@ import type { ReadonlyDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeFile, ComposeService, ComposeVolume } from "../types/compose";
-import { hexPad, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { hexPad, scriptHead, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import type { NetDefComposeContext } from "./context.js";
 
 interface BaseRule {
@@ -108,7 +108,7 @@ export async function saveQoS(ctx: NetDefComposeContext, opts: QoSOpts): Promise
 }
 
 function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {
-  yield* compose.scriptHead;
+  yield* scriptHead;
   yield "HOSTNAME=$(hostname -s)";
   yield "HAS_MANGLE=0";
   yield "TC_DEVICES=''";
