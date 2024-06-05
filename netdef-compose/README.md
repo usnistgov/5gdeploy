@@ -117,3 +117,5 @@ When used in a multi-host deployment:
 * Keep `prometheus` and `grafana` containers on the primary host.
 * Do not create a bridge for `meas` network.
 * Create bridges for all other networks joined by `prometheus` container.
+* Currently process-exporter is expected to be exposed on port 9256 of each host IP.
+  If the same IP has multiple hosts (e.g. virtual machines with different SSH ports) or the process-exporter port isn't exposed, this scrape target will not work.

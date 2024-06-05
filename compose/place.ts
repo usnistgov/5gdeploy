@@ -51,7 +51,7 @@ export const placeOptions = {
       }
       return map;
     },
-    desc: "change SSH username",
+    desc: "change SSH username and port number",
     nargs: 1,
     type: "string",
   },

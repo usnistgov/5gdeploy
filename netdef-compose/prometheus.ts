@@ -85,13 +85,13 @@ class PromBuilder {
 
   private configureProcessExporter(): void {
     const s = this.ctx.c.services.processexporter!;
-    const ctIP = `${s.networks.meas!.ipv4_address}:9256`;
+    const ctTarget = `${s.networks.meas!.ipv4_address}:9256`;
     const targets = new Set(map(
       compose.classifyByHost(this.ctx.c),
-      ({ host }) => host === "" ? ctIP : `${host}:9256`,
+      ({ host }) => host === "" ? ctTarget : `${new URL(`ssh://${host}`).hostname}:9256`,
     ));
     if (targets.size === 0) {
-      targets.add(ctIP);
+      targets.add(ctTarget);
     }
 
     this.scrapeJobs.set("processexporter", {
