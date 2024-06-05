@@ -38,17 +38,18 @@ export const placeOptions = {
     nargs: 1,
     type: "string",
   },
-  sshuser: {
+  "ssh-uri": {
     array: true,
     coerce(lines: readonly string[]): Record<string, string> {
-      const m: Record<string, string> = {};
+      const map: Record<string, string> = {};
       for (const line of lines) {
-        const tokens = line.split("=");
-        assert(tokens.length === 2, `--sshuser=${line} invalid`);
-        const [host, user] = tokens as [string, string];
-        m[host] = `${user}@${host}`;
+        const m = /^([^=\s]+)\s*=\s*([^@\s]+@)?([^@:]+)?(:\d+)?$/.exec(line);
+        assert(m, `--ssh-uri=${line} invalid`);
+        const [, host, user = "", hostname = host, port = ""] =
+          m as string[] as [string, string, string | undefined, string | undefined, string | undefined];
+        map[host] = `${user}${hostname}${port}`;
       }
-      return m;
+      return map;
     },
     desc: "change SSH username",
     nargs: 1,
@@ -69,7 +70,7 @@ export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): vo
     Object.entries(c.services).filter(([, s]) => !annotate(s, "every_host")),
   );
   for (let { pattern, host, cpuset } of opts.place) {
-    host = opts.sshuser?.[host] ?? host;
+    host = opts["ssh-uri"]?.[host] ?? host;
     const assignCpuset = cpuset ? new AssignCpuset(cpuset) : undefined;
     for (const [ct, s] of services) {
       if (pattern.match(ct)) {

@@ -167,6 +167,7 @@ export function defineBridge(c: ComposeFile, opts: YargsInfer<typeof bridgeOptio
 
   const s = defineService(c, "bridge", bridgeDockerImage);
   annotate(s, "every_host", 1);
+  s.stop_signal = "SIGINT";
   s.network_mode = "host";
   s.cap_add.push("NET_ADMIN");
   if (modes.has("eth")) {

@@ -25,12 +25,10 @@ export function open(host?: string | Dockerode): Dockerode {
     opts.sshOptions = {
       privateKey: (privateKey ??= fs.readFileSync(path.join(os.homedir(), ".ssh/id_ed25519"))),
     };
-    if (host.includes("@")) {
-      [opts.username, opts.host] = host.split("@");
-    } else {
-      opts.username = os.userInfo().username;
-      opts.host = host;
-    }
+    const u = new URL(`ssh://${host}`);
+    opts.username = u.username || os.userInfo().username;
+    opts.host = u.hostname;
+    opts.port = u.port || undefined;
   }
   return new Dockerode(opts);
 }
