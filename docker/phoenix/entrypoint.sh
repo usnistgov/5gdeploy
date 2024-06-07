@@ -22,10 +22,12 @@ awk -vCT=$CT 'NF==4 && $1==CT { print $2, $3 }' ip-map | while read IFNAME IP; d
   else
     msg Waiting for $IFNAME to appear
     pipework --wait -i $IFNAME
+    PIPEWORK_WAITED=1
   fi
   msg Disabling TX checksum offload on $IFNAME
   ethtool --offload $IFNAME tx off || msg Cannot disable TX checksum on $IFNAME, outgoing packets may carry bad checksum and get dropped
 done
+sleep ${PIPEWORK_WAITED:-0}
 
 msg Creating dummy network interfaces for /32 allocations
 awk -vCT=$CT '

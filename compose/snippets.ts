@@ -33,6 +33,7 @@ export function* renameNetifs(s: ComposeService, {
     if (pipeworkWait) {
       yield `  msg Waiting for netif ${net} to appear`;
       yield `  pipework --wait -i ${net}`;
+      yield "  PIPEWORK_WAITED=1";
     } else {
       yield `  die Missing netif ${net}`;
     }
@@ -44,6 +45,7 @@ export function* renameNetifs(s: ComposeService, {
   }
 
   yield "unset IFNAME";
+  yield "sleep ${PIPEWORK_WAITED:-0}"; // eslint-disable-line no-template-curly-in-string
   yield "msg Listing IP addresses";
   yield "ip addr list up";
   yield "msg Finished renaming netifs";
