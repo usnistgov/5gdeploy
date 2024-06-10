@@ -208,6 +208,8 @@ export namespace pfcp {
   export interface Associations {
     Acceptor: Acceptor[];
     Peer: Acceptor[];
+    heartbeat_interval: number;
+    max_heartbeat_retries: number;
     [k: string]: unknown;
   }
 

@@ -398,6 +398,8 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
             port: 8805,
             bind: IPMAP.formatEnv(upf.name, "n4"),
           }));
+          config.Associations.heartbeat_interval = 5;
+          config.Associations.max_heartbeat_retries = 2;
         },
       );
     }
