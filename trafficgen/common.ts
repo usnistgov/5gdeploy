@@ -35,6 +35,21 @@ export async function loadCtx(args: YargsInfer<typeof ctxOptions>): Promise<[c: 
   return [c, netdef];
 }
 
+export const tableOutputOptions = {
+  out: {
+    defaultDescription: "aligned table on the console",
+    desc: "TSV output filename (-.tsv for TSV output on the console)",
+    type: "string",
+  },
+} as const satisfies YargsOptions;
+
+export function tableOutput(args: YargsInfer<typeof tableOutputOptions>, table: file_io.toTable.Result): Promise<void> {
+  if (!args.out) {
+    return file_io.write("-", table.tui);
+  }
+  return file_io.write(args.out, table.tsv);
+}
+
 export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: Iterable<NetDef.Subscriber> = netdef.listSubscribers()) {
   return pipeline(
     () => {
@@ -49,8 +64,8 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: I
     transform(16, async ([ueService, subs]) => {
       const ueHost = compose.annotate(ueService, "host") ?? "";
       const ueCt = dockerode.getContainer(ueService.container_name, ueHost);
-      const ipAddrs = await dockerode.execCommand(ueCt, ["ip", "-j", "addr", "show"]);
-      const ueIPs = JSON.parse(ipAddrs.stdout) as LinkWithAddressInfo[];
+      const exec = await dockerode.execCommand(ueCt, ["ip", "-j", "addr", "show"]);
+      const ueIPs = JSON.parse(exec.stdout) as LinkWithAddressInfo[];
       return { subs, ueService, ueHost, ueCt, ueIPs };
     }),
     flatTransform(16, async function*({ subs, ueService, ueHost, ueCt, ueIPs }) {

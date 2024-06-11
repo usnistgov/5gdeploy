@@ -4,10 +4,11 @@ import { sortBy } from "sort-by-typescript";
 import { collect, map, pipeline } from "streaming-iterables";
 
 import { file_io, Yargs } from "../util/mod.js";
-import { ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
+import { ctxOptions, gatherPduSessions, loadCtx, tableOutput, tableOutputOptions } from "./common.js";
 
 const args = Yargs()
   .option(ctxOptions)
+  .option(tableOutputOptions)
   .parseSync();
 
 const [c, netdef] = await loadCtx(args);
@@ -36,7 +37,7 @@ table.push(...oblMap(counts.values(),
   ([cnt, dn]) => ["COUNT", `${cnt}`, "_", "_", dn, "_", "_"],
 ));
 
-await file_io.write("-", file_io.toTable(
+await tableOutput(args, file_io.toTable(
   ["supi", "ueCt", "ueHost", "pduIP", "snssai_dnn", "dnHost", "dnIP"],
   table,
-).tui);
+));

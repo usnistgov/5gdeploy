@@ -156,8 +156,9 @@ export function makeDockerH(host: string | ComposeService | undefined): string {
   return `docker -H ssh://${host}`;
 }
 
-const trafficGeneratorSubcommands = Object.keys(trafficGenerators);
-trafficGeneratorSubcommands.sort((a, b) => a.localeCompare(b));
+const trafficgenScripts = ["linkstat", "list-pdu", "nmap"];
+const pduperfSubcommands = Object.keys(trafficGenerators);
+pduperfSubcommands.sort((a, b) => a.localeCompare(b));
 
 const scriptUsage = `Usage:
   ./compose.sh up
@@ -178,13 +179,15 @@ const scriptUsage = `Usage:
     View access instructions for web applications.
   ./compose.sh phoenix-register
     Register Open5GCore UEs.
+  ./compose.sh linkstat
+    Gather netif counters.
 
 The following are available after UE registration and PDU session establishment:
   ./compose.sh list-pdu
     List PDU sessions.
   ./compose.sh nmap
     Run nmap ping scans from Data Network to UEs.
-  ./compose.sh ${trafficGeneratorSubcommands.join("|")} FLAGS
+  ./compose.sh ${pduperfSubcommands.join("|")} FLAGS
     Prepare traffic generators.
 `;
 
@@ -212,9 +215,9 @@ const scriptTail = [
   "    msg Invoking Open5GCore UE registration and PDU session establishment in $UECT",
   "    corepack pnpm -s phoenix-rpc --host=$UECT ue-register --dnn='*'",
   "  done",
-  "elif [[ $ACT == list-pdu ]] || [[ $ACT == nmap ]]; then",
+  `elif ${trafficgenScripts.map((tg) => `[[ $ACT == ${tg} ]]`).join(" || ")}; then`,
   `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/$ACT.ts --dir=$COMPOSE_CTX "$@"`,
-  `elif ${trafficGeneratorSubcommands.map((tg) => `[[ $ACT == ${tg} ]]`).join(" || ")}; then`,
+  `elif ${pduperfSubcommands.map((tg) => `[[ $ACT == ${tg} ]]`).join(" || ")}; then`,
   `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/pduperf.ts --mode=$ACT --dir=$COMPOSE_CTX "$@"`,
   "else",
   `  echo ${shlex.quote(scriptUsage)}`,
