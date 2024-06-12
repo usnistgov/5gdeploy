@@ -84,10 +84,11 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: I
         if (!dn?.subnet) {
           continue;
         }
-        const pduIP = findPduIP(dn, ueIPs, uePDUs);
-        if (!pduIP) {
+        const pduSess = findPduIP(dn, ueIPs, uePDUs);
+        if (!pduSess) {
           continue;
         }
+        const [pduIP, pduNetif] = pduSess;
         assert(dn);
 
         const dnService = compose.listByAnnotation(c, "dn", `${dn.snssai}_${dn.dnn}`)[0];
@@ -96,7 +97,7 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: I
         const dnIP = compose.annotate(dnService, "ip_n6");
         assert(dnIP !== undefined);
 
-        yield { sub, ueService, ueHost, dn, dnService, dnHost, dnIP, pduIP };
+        yield { sub, ueService, ueHost, dn, dnService, dnHost, dnIP, pduIP, pduNetif };
       }
     }),
   );
@@ -106,22 +107,29 @@ function findPduIP(
     dn: N.DataNetwork,
     ipAddr: readonly LinkWithAddressInfo[],
     psList: UERANSIM.PSList | undefined,
-): string | undefined {
+): [ip: string, netif: string] | undefined {
+  let ueSubnet = new Netmask(dn.subnet!);
   if (psList) {
     for (const ps of Object.values(psList)) {
       if (ps.apn === dn.dnn) {
-        return ps.address;
+        ueSubnet = new Netmask(`${ps.address}/32`);
       }
     }
   }
 
-  const dnSubnet = new Netmask(dn.subnet!);
   for (const link of ipAddr) {
-    const addr = link.addr_info.find((addr) => addr.family === "inet" && dnSubnet.contains(addr.local));
+    const addr = link.addr_info.find((addr) => addr.family === "inet" && ueSubnet.contains(addr.local));
     if (addr) {
-      return addr.local;
+      return [addr.local, link.ifname];
     }
   }
 
   return undefined;
+}
+
+/** Copy host and cpuset, join network namespace. */
+export function copyPlacementNetns(target: ComposeService, source: ComposeService): void {
+  compose.annotate(target, "host", compose.annotate(source, "host") ?? "");
+  target.cpuset = source.cpuset;
+  target.network_mode = `service:${source.container_name}`;
 }

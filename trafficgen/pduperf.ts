@@ -10,7 +10,7 @@ import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import { file_io, scriptHead, Yargs } from "../util/mod.js";
-import { ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
+import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import { trafficGenerators, type TrafficGenFlowContext } from "./pduperf-tg.js";
 
 const args = Yargs()
@@ -72,21 +72,17 @@ const table = await pipeline(
     }
   }),
   map((ctx) => {
-    const { sub: { supi }, ueService, ueHost, dn: { snssai, dnn }, dnHost, dnService, dnIP, pduIP, index, cFlags, sFlags } = ctx;
+    const { sub: { supi }, ueService, dn: { snssai, dnn }, dnService, dnIP, pduIP, index, cFlags, sFlags } = ctx;
     const port = nextPort;
     nextPort += tg.nPorts;
     const tgFlow: TrafficGenFlowContext = { prefix: args.prefix!, port, dnIP, pduIP, cFlags, sFlags, dnService, ueService };
 
     const server = compose.defineService(output, `${args.prefix}_${port}_s`, tg.serverDockerImage);
-    compose.annotate(server, "host", dnHost);
-    server.cpuset = dnService.cpuset;
-    server.network_mode = `service:${dnService.container_name}`;
+    copyPlacementNetns(server, dnService);
     tg.serverSetup(server, tgFlow);
 
     const client = compose.defineService(output, `${args.prefix}_${port}_c`, tg.clientDockerImage);
-    compose.annotate(client, "host", ueHost);
-    client.cpuset = ueService.cpuset;
-    client.network_mode = `service:${ueService.container_name}`;
+    copyPlacementNetns(client, ueService);
     tg.clientSetup(client, tgFlow);
 
     const dn = `${snssai}_${dnn}`;
@@ -130,7 +126,7 @@ function* makeScript(): Iterable<string> {
   yield "mkdir -p $STATS_DIR";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == servers ]]; then";
-  for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, /_s$/)) {
+  for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_s"))) {
     yield `  msg Starting trafficgen servers on ${hostDesc}`;
     yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} up -d ${names.join(" ")}`;
   }
@@ -138,7 +134,7 @@ function* makeScript(): Iterable<string> {
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
-  for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, /_c$/)) {
+  for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_c"))) {
     yield `  msg Starting trafficgen clients on ${hostDesc}`;
     yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} up -d ${names.join(" ")}`;
   }

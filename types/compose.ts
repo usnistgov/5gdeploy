@@ -37,6 +37,7 @@ export interface ComposeService {
   readonly networks: Record<string, ComposeNetif>;
   readonly ports: ComposePort[];
   cpuset?: string;
+  healthcheck?: ComposeHealthCheck;
   depends_on: Record<string, ComposeDependency>;
 }
 
@@ -60,6 +61,16 @@ export interface ComposePort {
   mode: "host";
   host_ip?: string;
   published: `${number}`;
+}
+
+/** Compose service healthcheck directive. */
+export interface ComposeHealthCheck {
+  test: ["CMD", ...string[]] | ["CMD-SHELL", string];
+  interval?: string;
+  timeout?: string;
+  retries?: number;
+  start_period?: string;
+  start_interval?: string;
 }
 
 /** Compose service dependency. */

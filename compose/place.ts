@@ -156,7 +156,7 @@ export function makeDockerH(host: string | ComposeService | undefined): string {
   return `docker -H ssh://${host}`;
 }
 
-const trafficgenScripts = ["linkstat", "list-pdu", "nmap"];
+const trafficgenScripts = ["linkstat", "list-pdu", "nmap", "nfd"];
 const pduperfSubcommands = Object.keys(trafficGenerators);
 pduperfSubcommands.sort((a, b) => a.localeCompare(b));
 
@@ -187,6 +187,8 @@ The following are available after UE registration and PDU session establishment:
     List PDU sessions.
   ./compose.sh nmap
     Run nmap ping scans from Data Network to UEs.
+  ./compose.sh nfd --dnn=DNN
+    Deploy NDN Forwarding Daemon (NFD) between Data Network and UEs.
   ./compose.sh ${pduperfSubcommands.join("|")} FLAGS
     Prepare traffic generators.
 `;
@@ -291,11 +293,14 @@ export function makeScript(c: ComposeFile): string {
  * @param c - Compose file.
  * @param filter - Filter for container names.
  */
-export function* classifyByHost(c: ComposeFile, filter = /^.*$/): Iterable<classifyByHost.Result> {
+export function* classifyByHost(
+    c: ComposeFile,
+    filter: (ct: string) => boolean = () => true,
+): Iterable<classifyByHost.Result> {
   const everyHostServices: ComposeService[] = [];
   const byHost = new DefaultMap<string, ComposeService[]>(() => []);
   for (const s of Object.values(c.services)) {
-    if (!filter.test(s.container_name)) {
+    if (!filter(s.container_name)) {
       continue;
     }
 
@@ -304,10 +309,8 @@ export function* classifyByHost(c: ComposeFile, filter = /^.*$/): Iterable<class
       continue;
     }
 
-    const host = annotate(s, "host");
-    if (host !== undefined) {
-      byHost.get(host).push(s);
-    }
+    const host = annotate(s, "host") ?? "";
+    byHost.get(host).push(s);
   }
 
   for (const [host, hostServices] of byHost) {

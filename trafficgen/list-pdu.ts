@@ -20,6 +20,7 @@ const table = await pipeline(
     ctx.ueService.container_name,
     ctx.ueHost || "PRIMARY",
     ctx.pduIP,
+    ctx.pduNetif,
     `${ctx.dn.snssai}_${ctx.dn.dnn}`,
     ctx.dnHost || "PRIMARY",
     ctx.dnIP,
@@ -34,10 +35,10 @@ for (const row of table) {
   counts.get(dn)[0] += 1;
 }
 table.push(...oblMap(counts.values(),
-  ([cnt, dn]) => ["COUNT", `${cnt}`, "_", "_", dn, "_", "_"],
+  ([cnt, dn]) => ["COUNT", `${cnt}`, "_", "_", "_", dn, "_", "_"],
 ));
 
 await tableOutput(args, file_io.toTable(
-  ["supi", "ueCt", "ueHost", "pduIP", "snssai_dnn", "dnHost", "dnIP"],
+  ["supi", "ueCt", "ueHost", "pduIP", "pduNetif", "snssai_dnn", "dnHost", "dnIP"],
   table,
 ));
