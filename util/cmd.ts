@@ -18,15 +18,21 @@ export const cmdOptions = {
   },
 } as const satisfies YargsOptions;
 
-export async function cmdOutput(args: YargsInfer<typeof cmdOptions>, lines: Iterable<string>): Promise<void> {
+/**
+ * Execute a bash script or write the commands to an output file.
+ * @param args - Filename or result of {@link cmdOptions}.
+ * @param lines - Script command lines.
+ */
+export async function cmdOutput(args: string | YargsInfer<typeof cmdOptions>, lines: Iterable<string>): Promise<void> {
   const script = [
     "#!/bin/bash",
     ...scriptHead,
     ...lines,
   ].join("\n");
 
-  if (args.cmdout) {
-    await file_io.write(args.cmdout, script);
+  const filename = typeof args === "string" ? args : args.cmdout;
+  if (filename) {
+    await file_io.write(filename, script);
   } else {
     const result = await execa("bash", ["-c", script], {
       stdin: "inherit",

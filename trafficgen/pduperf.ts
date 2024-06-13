@@ -9,7 +9,8 @@ import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
-import { file_io, scriptHead, Yargs } from "../util/mod.js";
+import type { ComposeService } from "../types/compose.js";
+import { cmdOutput, file_io, Yargs } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import { trafficGenerators, type TrafficGenFlowContext } from "./pduperf-tg.js";
 
@@ -71,23 +72,50 @@ const table = await pipeline(
       }
     }
   }),
-  map((ctx) => {
-    const { sub: { supi }, ueService, dn: { snssai, dnn }, dnService, dnIP, pduIP, index, cFlags, sFlags } = ctx;
+  map(({
+    sub: { supi },
+    ueService,
+    dn: { snssai, dnn },
+    dnService,
+    dnIP,
+    pduIP,
+    index,
+    cFlags,
+    sFlags,
+  }) => {
     const port = nextPort;
     nextPort += tg.nPorts;
-    const tgFlow: TrafficGenFlowContext = { prefix: args.prefix!, port, dnIP, pduIP, cFlags, sFlags, dnService, ueService };
+    const tgFlow: TrafficGenFlowContext = {
+      c,
+      output,
+      prefix: args.prefix!,
+      port,
+      dnIP,
+      pduIP,
+      cFlags,
+      sFlags,
+      dnService,
+      ueService,
+    };
+    const dn = `${snssai}_${dnn}`;
+    const dir = tg.determineDirection(tgFlow);
 
-    const server = compose.defineService(output, `${args.prefix}_${port}_s`, tg.serverDockerImage);
-    copyPlacementNetns(server, dnService);
-    tg.serverSetup(server, tgFlow);
+    const services: ComposeService[] = [];
+
+    const serverName = tg.serverPerDN ? `${args.prefix}_${dn}_s` : `${args.prefix}_${port}_s`;
+    if (!output.services[serverName]) {
+      const server = compose.defineService(output, serverName, tg.serverDockerImage);
+      copyPlacementNetns(server, dnService);
+      tg.serverSetup(server, tgFlow);
+      services.push(server);
+    }
 
     const client = compose.defineService(output, `${args.prefix}_${port}_c`, tg.clientDockerImage);
     copyPlacementNetns(client, ueService);
     tg.clientSetup(client, tgFlow);
+    services.push(client);
 
-    const dn = `${snssai}_${dnn}`;
-    const dir = tg.determineDirection(tgFlow);
-    for (const s of [server, client]) {
+    for (const s of services) {
       compose.annotate(s, "pduperf_mode", args.mode);
       compose.annotate(s, "pduperf_dn", dn);
       compose.annotate(s, "pduperf_ue", supi);
@@ -95,13 +123,7 @@ const table = await pipeline(
       compose.annotate(s, "pduperf_port", port);
     }
 
-    return [
-      index,
-      dn,
-      dir,
-      supi,
-      port,
-    ];
+    return [index, dn, dir, supi, port];
   }),
   collect,
 );
@@ -109,7 +131,7 @@ const table = await pipeline(
 const composeFilename = `compose.${args.prefix}.yml`;
 await file_io.write(path.join(args.dir, composeFilename), output);
 
-function* makeScript(): Iterable<string> {
+await cmdOutput(path.join(args.dir, `${args.prefix}.sh`), (function*() {
   yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
   yield "COMPOSE_CTX=$PWD";
   yield `STATS_DIR=$PWD/${args.prefix}/`;
@@ -118,7 +140,7 @@ function* makeScript(): Iterable<string> {
 
   yield "if [[ -z $ACT ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
-    yield `  msg Deleting old trafficgen servers and clients on ${hostDesc}`;
+    yield `  msg Deleting old ${args.mode} servers and clients on ${hostDesc}`;
     yield `  with_retry ${dockerH} rm -f ${names.join(" ")}`;
   }
   yield "  rm -rf $STATS_DIR";
@@ -127,7 +149,7 @@ function* makeScript(): Iterable<string> {
 
   yield "if [[ -z $ACT ]] || [[ $ACT == servers ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_s"))) {
-    yield `  msg Starting trafficgen servers on ${hostDesc}`;
+    yield `  msg Starting ${args.mode} servers on ${hostDesc}`;
     yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} up -d ${names.join(" ")}`;
   }
   yield "  sleep 5";
@@ -135,20 +157,20 @@ function* makeScript(): Iterable<string> {
 
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_c"))) {
-    yield `  msg Starting trafficgen clients on ${hostDesc}`;
+    yield `  msg Starting ${args.mode} clients on ${hostDesc}`;
     yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} up -d ${names.join(" ")}`;
   }
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == wait ]]; then";
-  yield "  msg Waiting for trafficgen clients to finish";
+  yield `  msg Waiting for ${args.mode} clients to finish`;
   for (const s of Object.values(output.services).filter((s) => s.container_name.endsWith("_c"))) {
     yield `  ${compose.makeDockerH(s)} wait ${s.container_name}`;
   }
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == collect ]]; then";
-  yield `  msg Gathering trafficgen statistics to $\{STATS_DIR}'*${tg.statsExt}'`;
+  yield `  msg Gathering ${args.mode} statistics to $\{STATS_DIR}'*${tg.statsExt}'`;
   for (const s of Object.values(output.services)) {
     const ct = s.container_name;
     yield `  ${compose.makeDockerH(s)} logs ${ct} >$\{STATS_DIR}${ct.slice(args.prefix!.length + 1)}${tg.statsExt}`;
@@ -157,21 +179,21 @@ function* makeScript(): Iterable<string> {
 
   yield "if [[ -z $ACT ]] || [[ $ACT == stop ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
-    yield `  msg Deleting trafficgen servers and clients on ${hostDesc}`;
+    yield `  msg Deleting ${args.mode} servers and clients on ${hostDesc}`;
     yield `  with_retry ${dockerH} rm -f ${names.join(" ")}`;
   }
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == stats ]]; then";
-  yield* tg.statsCommands(args.prefix!);
+  if (tg.statsCommands) {
+    yield "  cd $STATS_DIR";
+    yield* oblMap(tg.statsCommands(args.prefix!), (line) => `  ${line}`);
+    yield "  cd $COMPOSE_CTX";
+  } else {
+    yield "  msg Statistics analysis is not supported";
+  }
   yield "fi";
-}
-
-await file_io.write(path.join(args.dir, `${args.prefix}.sh`), [
-  "#!/bin/bash",
-  ...scriptHead,
-  ...makeScript(),
-].join("\n"));
+})());
 
 table.sort(sortBy("0", "1", "2", "3"));
 const counts = new DefaultMap<number, [cnt: number, index: number]>((index: number) => [0, index]);

@@ -4,7 +4,7 @@ import * as shlex from "shlex";
 import assert from "tiny-invariant";
 import type { ReadonlyDeep } from "type-fest";
 
-import type { ComposeService } from "../types/mod.js";
+import type { ComposeFile, ComposeService } from "../types/mod.js";
 
 const codebaseRoot = path.join(import.meta.dirname, "..");
 
@@ -17,6 +17,8 @@ export enum Direction {
 
 /** Traffic generator flow information. */
 export interface TrafficGenFlowContext {
+  c: ComposeFile;
+  output: ComposeFile;
   prefix: string;
   port: number;
   dnIP: string;
@@ -31,11 +33,12 @@ export interface TrafficGen {
   determineDirection: (flow: TrafficGenFlowContext) => Direction;
   nPorts: number;
   serverDockerImage: string;
+  serverPerDN?: boolean;
   serverSetup: (s: ComposeService, flow: TrafficGenFlowContext) => void;
   clientDockerImage: string;
   clientSetup: (s: ComposeService, flow: TrafficGenFlowContext) => void;
   statsExt: string;
-  statsCommands: (prefix: string) => Iterable<string>;
+  statsCommands?: (prefix: string) => Iterable<string>;
 }
 
 function rewriteOutputFlag(s: ComposeService, prefix: string, port: number, flags: readonly string[], re: RegExp, ext: string): string[] {
@@ -91,9 +94,9 @@ const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
   },
   statsExt: ".json",
   *statsCommands(prefix) {
-    yield `  msg Gathering iperf3 statistics table to ${prefix}.tsv`;
-    yield `  cd ${path.join(import.meta.dirname, "..")}`;
-    yield `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/iperf3-stats.ts ` +
+    yield `msg Gathering iperf3 statistics table to ${prefix}.tsv`;
+    yield `cd ${path.join(import.meta.dirname, "..")}`;
+    yield `$(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/iperf3-stats.ts ` +
       `--dir=$COMPOSE_CTX --prefix=${prefix}`;
   },
 };
@@ -103,8 +106,8 @@ const iperf3t: typeof iperf3 = {
   jsonFlag: [],
   statsExt: ".log",
   *statsCommands() {
-    yield "  msg Showing final results from iperf3 text output";
-    yield "  grep -w receiver ${STATS_DIR}*_c.log"; // eslint-disable-line no-template-curly-in-string
+    yield "msg Showing final results from iperf3 text output";
+    yield "grep -w receiver *_c.log";
   },
 };
 
@@ -157,8 +160,8 @@ const owamp: TrafficGen & {
   statsExt: ".log",
   statsGrep: "one-way (delay|jitter)",
   *statsCommands() {
-    yield `  msg Showing final results from ${this.clientBin} text output`;
-    yield `  grep -wE ${shlex.quote(this.statsGrep)} $\{STATS_DIR}*_c.log`;
+    yield `msg Showing final results from ${this.clientBin} text output`;
+    yield `grep -wE ${shlex.quote(this.statsGrep)} *_c.log`;
   },
 };
 
@@ -199,9 +202,6 @@ const netperf: TrafficGen = {
     ];
   },
   statsExt: ".log",
-  *statsCommands() {
-    yield "  :";
-  },
 };
 
 const sockperf: TrafficGen = {
@@ -230,8 +230,36 @@ const sockperf: TrafficGen = {
     ];
   },
   statsExt: ".log",
+};
+
+const ndnping: TrafficGen = {
+  determineDirection() {
+    return Direction.dl;
+  },
+  nPorts: 1,
+  serverDockerImage: "ghcr.io/named-data/ndn-tools",
+  serverPerDN: true,
+  serverSetup(s, { prefix, sFlags }) {
+    s.environment.NDN_CLIENT_TRANSPORT = "tcp://127.0.0.1";
+    s.command = [
+      "ndnpingserver",
+      ...sFlags,
+      `/${prefix}`,
+    ];
+  },
+  clientDockerImage: "ghcr.io/named-data/ndn-tools",
+  clientSetup(s, { prefix, cFlags }) {
+    s.environment.NDN_CLIENT_TRANSPORT = "tcp://127.0.0.1";
+    s.command = [
+      "ndnping",
+      ...cFlags,
+      `/${prefix}`,
+    ];
+  },
+  statsExt: ".log",
   *statsCommands() {
-    yield "  :";
+    yield "msg Showing final results from ndnping text output";
+    yield "grep -wE 'packets transmitted|rtt min' *_c.log";
   },
 };
 
@@ -242,4 +270,5 @@ export const trafficGenerators: Record<string, TrafficGen> = {
   twamp,
   netperf,
   sockperf,
+  ndnping,
 };
