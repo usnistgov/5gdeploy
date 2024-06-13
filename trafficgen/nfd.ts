@@ -22,6 +22,11 @@ const args = Yargs()
     desc: "Data Network Name (minimatch pattern)",
     type: "string",
   })
+  .option("mtu", {
+    default: 1200,
+    desc: "UDP face MTU",
+    type: "number",
+  })
   .parseSync();
 
 const [c, netdef] = await loadCtx(args);
@@ -45,16 +50,21 @@ await pipeline(
     copyPlacementNetns(client, ueService);
     client.healthcheck = {
       test: ["CMD-SHELL", `echo ${shlex.quote([
-        `face create udp4://${dnIP} persistency permanent`,
+        `face create udp4://${dnIP} persistency permanent mtu ${args.mtu}`,
         `route add / udp4://${dnIP}`,
       ].join("\n"))} | nfdc --batch -`],
-      start_period: "30s",
+      interval: "60s",
+      start_period: "60s",
       start_interval: "5s",
     };
     routeCommands.set(ueService.container_name, { dnIP, pduNetif });
 
     if (!nfdDN.has(dnn)) {
       const server = compose.defineService(output, dnService.container_name.replace(/^dn/, "nfd"), nfdDockerImage);
+      compose.setCommands(server, [
+        `sed -i '/unicast_mtu/ s/8800/${args.mtu}/' /config/nfd.conf`,
+        "nfd --config /config/nfd.conf",
+      ]);
       copyPlacementNetns(server, dnService);
       nfdDN.set(dnn, { server });
       server.healthcheck = {

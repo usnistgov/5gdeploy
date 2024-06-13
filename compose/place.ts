@@ -228,8 +228,8 @@ const scriptTail = [
 ];
 
 const scriptActions: ReadonlyArray<[act: string, cmd: string, listServiceNames: boolean, msg1: string, msg2: string]> = [
-  ["create", "compose create", true, "Creating scenario containers", "Scenario containers have been created, ready for traffic capture"],
-  ["up", "compose up -d", true, "Starting the scenario", "Scenario has started"],
+  ["create", "compose create --remove-orphans", true, "Creating scenario containers", "Scenario containers have been created, ready for traffic capture"],
+  ["up", "compose up -d --remove-orphans", true, "Starting the scenario", "Scenario has started"],
   ["ps", "ps -a", false, "Checking containers", "If any container is 'Exited' with non-zero code, please investigate why it failed"],
   ["down", "compose down --remove-orphans", false, "Stopping the scenario", "Scenario has stopped"],
   ["stop", "compose rm -f -s", false, "Stopping scenario containers", "Scenario containers have been deleted"],
