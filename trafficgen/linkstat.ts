@@ -5,7 +5,7 @@ import { collect, filter, flatMap, flatTransform, map, pipeline } from "streamin
 import type { SetOptional } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { type ComposeService } from "../types/mod.js";
+import type { ComposeService } from "../types/mod.js";
 import { dockerode, file_io, Yargs } from "../util/mod.js";
 import { ctxOptions, loadCtx, tableOutput, tableOutputOptions } from "./common.js";
 
@@ -41,7 +41,7 @@ const table = await pipeline(
   flatTransform(16, async function*(s) {
     try {
       const ct = dockerode.getContainer(s.container_name, compose.annotate(s, "host"));
-      const exec = await dockerode.execCommand(ct, ["ip", "-j", "-s", "link"]);
+      const exec = await dockerode.execCommand(ct, ["ip", "-j", "-s", "link", "show"]);
       const links = JSON.parse(exec.stdout) as LinkInfo64[];
       yield { ct: s.container_name, links };
     } catch {}

@@ -6,16 +6,20 @@ They can be invoked in a Compose context directory (e.g. `~/compose/20230601`), 
 ## Gather netif counters
 
 `./compose.sh linkstat` command prints a table or writes a TSV document that lists network interface counters.
+The information is gathered by executing `ip -s link show` in each container.
+If a container lacks the iproute2 package, it is silently skipped.
+
 By default, the output is an aligned textual table.
 You can set `--out=FILENAME` flag to write to a TSV output file.
 You can set `--out=-.tsv` flag to print the TSV document to the console.
 
-The table includes network interfaces within each container (across all hosts, in case of a multi-host deployment).
+The table shows network interfaces within each container (across all hosts, in case of a multi-host deployment).
 Each row has container name, network interface name, RX packet counter, and TX packet counter.
-You can specify `--net=PATTERN` flag with a minimatch pattern, to choose which network interfaces should be included.
-For example, `--net=n[369]` selects n3, n6, and n9 interfaces, which carry user traffic among gNB, UPF, and Data Network.
+By default, the table only includes the networks defined in the Compose file.
+You can specify `--net=PATTERN` flag with a minimatch pattern to change which network interfaces are included; for example, `--net=n[369]` selects n3, n6, and n9 interfaces.
+To show all network interfaces (including "lo" and PDU sessions), use `--net=ALL` flag.
 
-Each packet counter is an accumulative value since the insertion of the network interface.
+Each packet counter is an accumulative value since the network interface was added.
 Typically, you should run this command once before starting traffic generators, and again after stopping traffic generators, and then calculate the difference between the two counter readings on the same network interface.
 Depending on the scenario topology and traffic flows you executed, it may be possible to determine whether the traffic flows were sent over the expected network interfaces, and whether packet loss has occurred either within a network function or on the network links between two network functions.
 

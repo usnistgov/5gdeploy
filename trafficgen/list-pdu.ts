@@ -27,15 +27,15 @@ const table = await pipeline(
   ]),
   collect,
 );
-table.sort(sortBy("4", "0"));
+table.sort(sortBy("5", "0"));
 
-const counts = new DefaultMap<string, [cnt: number, dn: string]>((dn: string) => [0, dn]);
+const counts = new DefaultMap<string, [number]>(() => [0]);
 for (const row of table) {
-  const dn = row[4]!;
+  const dn = row[5]!;
   counts.get(dn)[0] += 1;
 }
-table.push(...oblMap(counts.values(),
-  ([cnt, dn]) => ["COUNT", `${cnt}`, "_", "_", "_", dn, "_", "_"],
+table.push(...oblMap(counts.entries(),
+  ([dn, [cnt]]) => ["COUNT", `${cnt}`, "_", "_", "_", dn, "_", "_"],
 ));
 
 await tableOutput(args, file_io.toTable(
