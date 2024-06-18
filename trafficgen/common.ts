@@ -2,9 +2,8 @@ import path from "node:path";
 
 import type { LinkWithAddressInfo } from "iproute";
 import yaml from "js-yaml";
-import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
-import { flatTransform, pipeline, transform } from "streaming-iterables";
+import { flatTransform, pipeline } from "streaming-iterables";
 import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
@@ -13,6 +12,7 @@ import type { ComposeFile, ComposeService, N, UERANSIM } from "../types/mod.js";
 import { ueransimDockerImage } from "../ueransim/netdef.js";
 import { dockerode, file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
 
+/** Yargs options `--dir` and `--netdef`. */
 export const ctxOptions = {
   dir: {
     demandOption: true,
@@ -28,6 +28,11 @@ export const ctxOptions = {
   },
 } as const satisfies YargsOptions;
 
+/**
+ * Load Compose context and NetDef.
+ * @param args - Parsed {@link ctxOptions}.
+ * @returns - Compose context and NetDef.
+ */
 export async function loadCtx(args: YargsInfer<typeof ctxOptions>): Promise<[c: ComposeFile, netdef: NetDef]> {
   const c = await file_io.readYAML(path.join(args.dir, "compose.yml")) as ComposeFile;
   const netdef = new NetDef(await file_io.readJSON(args.netdef ?? path.join(args.dir, "netdef.json")) as N.Network);
@@ -35,6 +40,7 @@ export async function loadCtx(args: YargsInfer<typeof ctxOptions>): Promise<[c: 
   return [c, netdef];
 }
 
+/** Yargs options `--out` for tabular output. */
 export const tableOutputOptions = {
   out: {
     defaultDescription: "aligned table on the console",
@@ -43,6 +49,11 @@ export const tableOutputOptions = {
   },
 } as const satisfies YargsOptions;
 
+/**
+ * Print a table or write to TSV file.
+ * @param args - Parsed {@link tableOutputOptions}.
+ * @param table - Table prepared by {@link file_io.toTable}.
+ */
 export function tableOutput(args: YargsInfer<typeof tableOutputOptions>, table: file_io.toTable.Result): Promise<void> {
   if (!args.out) {
     return file_io.write("-", table.tui);
@@ -50,23 +61,27 @@ export function tableOutput(args: YargsInfer<typeof tableOutputOptions>, table: 
   return file_io.write(args.out, table.tsv);
 }
 
-export function gatherPduSessions(c: ComposeFile, netdef: NetDef, subscribers: Iterable<NetDef.Subscriber> = netdef.listSubscribers()) {
+export function gatherPduSessions(c: ComposeFile, netdef: NetDef) {
+  const subscribers = new Map<string, NetDef.Subscriber>();
+  for (const sub of netdef.listSubscribers()) {
+    subscribers.set(sub.supi, sub);
+  }
+
   return pipeline(
-    () => {
-      const serviceSubcribers = new DefaultMap<ComposeService, NetDef.Subscriber[]>(() => []);
-      for (const sub of subscribers) {
-        const ueService = compose.listByAnnotation(c, "ue_supi", (value) => value.split(",").includes(sub.supi))[0];
-        assert(ueService, `UE container for ${sub.supi} not found`);
-        serviceSubcribers.get(ueService).push(sub);
-      }
-      return serviceSubcribers;
-    },
-    transform(16, async ([ueService, subs]) => {
+    () => compose.listByAnnotation(c, "ue_supi", () => true),
+    flatTransform(16, async function*(ueService) {
+      const subs = Array.from(
+        compose.annotate(ueService, "ue_supi")!.split(","),
+        (supi) => subscribers.get(supi)!,
+      );
+
       const ueHost = compose.annotate(ueService, "host") ?? "";
       const ueCt = dockerode.getContainer(ueService.container_name, ueHost);
-      const exec = await dockerode.execCommand(ueCt, ["ip", "-j", "addr", "show"]);
-      const ueIPs = JSON.parse(exec.stdout) as LinkWithAddressInfo[];
-      return { subs, ueService, ueHost, ueCt, ueIPs };
+      try {
+        const exec = await dockerode.execCommand(ueCt, ["ip", "-j", "addr", "show"]);
+        const ueIPs = JSON.parse(exec.stdout) as LinkWithAddressInfo[];
+        yield { subs, ueService, ueHost, ueCt, ueIPs };
+      } catch {}
     }),
     flatTransform(16, async function*({ subs, ueService, ueHost, ueCt, ueIPs }) {
       yield* await Promise.all(Array.from(subs, async (sub) => {
@@ -111,7 +126,7 @@ function findPduIP(
   let ueSubnet = new Netmask(dn.subnet!);
   if (psList) {
     for (const ps of Object.values(psList)) {
-      if (ps.apn === dn.dnn) {
+      if (ps.apn === dn.dnn && !!ps.address) {
         ueSubnet = new Netmask(`${ps.address}/32`);
       }
     }
@@ -127,7 +142,7 @@ function findPduIP(
   return undefined;
 }
 
-/** Copy host and cpuset, join network namespace. */
+/** Copy host, cpuset, join network namespace. */
 export function copyPlacementNetns(target: ComposeService, source: ComposeService): void {
   compose.annotate(target, "host", compose.annotate(source, "host") ?? "");
   target.cpuset = source.cpuset;
