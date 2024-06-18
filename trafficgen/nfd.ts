@@ -1,8 +1,9 @@
 import path from "node:path";
 
-import { Minimatch } from "minimatch";
+import { Netmask } from "netmask";
 import * as shlex from "shlex";
 import { consume, filter, map, pipeline } from "streaming-iterables";
+import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/compose.js";
@@ -15,11 +16,8 @@ const args = Yargs()
   .option(ctxOptions)
   .option(cmdOptions)
   .option("dnn", {
-    coerce(arg: string) {
-      return new Minimatch(arg);
-    },
     demandOption: true,
-    desc: "Data Network Name (minimatch pattern)",
+    desc: "Data Network Name",
     type: "string",
   })
   .option("mtu", {
@@ -27,52 +25,67 @@ const args = Yargs()
     desc: "UDP face MTU",
     type: "number",
   })
+  .option("server", {
+    coerce(arg: string) {
+      return new Netmask(`${arg}/32`);
+    },
+    defaultDescription: "launch NFD instance in DN netns",
+    desc: "DN side NFD IPv4 address",
+    type: "string",
+  })
   .parseSync();
 
 const [c, netdef] = await loadCtx(args);
 
+const dn = netdef.findDN(args.dnn);
+assert(dn !== undefined, `Data Network ${args.dnn} not found`);
+assert(dn.type === "IPv4", `Data Network ${args.dnn} is not IPv4`);
+
 const output = compose.create();
-const nfdDN = new Map<string, {
-  server: ComposeService;
-}>();
-const routeCommands = new Map<string, {
-  dnIP: string;
-  pduNetif: string;
-}>();
+let server: ComposeService | undefined;
+const routeCommands = new Map<string, [dst: Netmask, dev: string]>();
+
+function defineServer(dnService: ComposeService): ComposeService {
+  const s = compose.defineService(output, dnService.container_name.replace(/^dn/, "nfd"), nfdDockerImage);
+  compose.setCommands(s, [
+    `sed -i '/unicast_mtu/ s/8800/${args.mtu}/' /config/nfd.conf`,
+    "nfd --config /config/nfd.conf",
+  ]);
+  copyPlacementNetns(s, dnService);
+  s.healthcheck = {
+    test: ["CMD", "nfdc", "status", "show"],
+    start_period: "30s",
+    start_interval: "5s",
+  };
+  return s;
+}
 
 await pipeline(
   () => gatherPduSessions(c, netdef),
-  filter(({ dn: { dnn } }) => args.dnn.match(dnn)),
+  filter(({ dn: { dnn } }) => dnn === dn.dnn),
   map((ctx) => {
-    const { ueService, dn: { dnn }, dnService, dnIP, pduNetif } = ctx;
+    const { ueService, dnService, dnIP, pduNetif } = ctx;
+
+    let remote: Netmask;
+    if (args.server) {
+      remote = args.server;
+    } else {
+      remote = new Netmask(`${dnIP}/32`);
+      server ??= defineServer(dnService);
+    }
 
     const client = compose.defineService(output, ueService.container_name.replace(/^ue/, "nfd"), nfdDockerImage);
     copyPlacementNetns(client, ueService);
     client.healthcheck = {
       test: ["CMD-SHELL", `echo ${shlex.quote([
-        `face create udp4://${dnIP} persistency permanent mtu ${args.mtu}`,
-        `route add / udp4://${dnIP}`,
+        `face create udp4://${remote.base} persistency permanent mtu ${args.mtu}`,
+        `route add / udp4://${remote.base}`,
       ].join("\n"))} | nfdc --batch -`],
       interval: "60s",
       start_period: "60s",
       start_interval: "5s",
     };
-    routeCommands.set(ueService.container_name, { dnIP, pduNetif });
-
-    if (!nfdDN.has(dnn)) {
-      const server = compose.defineService(output, dnService.container_name.replace(/^dn/, "nfd"), nfdDockerImage);
-      compose.setCommands(server, [
-        `sed -i '/unicast_mtu/ s/8800/${args.mtu}/' /config/nfd.conf`,
-        "nfd --config /config/nfd.conf",
-      ]);
-      copyPlacementNetns(server, dnService);
-      nfdDN.set(dnn, { server });
-      server.healthcheck = {
-        test: ["CMD", "nfdc", "status", "show"],
-        start_period: "30s",
-        start_interval: "5s",
-      };
-    }
+    routeCommands.set(ueService.container_name, [remote, pduNetif]);
   }),
   consume,
 );
@@ -85,8 +98,8 @@ await cmdOutput(args, (function*() {
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(c, (ct) => routeCommands.has(ct))) {
     yield `msg Setting IP routes on ${hostDesc}`;
     for (const ct of names) {
-      const { dnIP, pduNetif } = routeCommands.get(ct)!;
-      yield `${dockerH} exec ${ct} ip route replace ${dnIP}/32 dev ${pduNetif}`;
+      const [dst, dev] = routeCommands.get(ct)!;
+      yield `${dockerH} exec ${ct} ip route replace ${dst} dev ${dev}`;
     }
   }
 
