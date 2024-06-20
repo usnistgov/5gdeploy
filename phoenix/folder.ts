@@ -7,15 +7,12 @@ import type { Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { file_io } from "../util/mod.js";
-import { IPMAP } from "./ipmap.js";
 import { NetworkFunction } from "./nf.js";
 import { OtherTable } from "./other.js";
 
 /** ph_init scenario folder. */
 export class ScenarioFolder {
   private files = new Map<string, FileAction>();
-  /** IP address assignments in `ip-map`. */
-  public ipmap = new IPMAP();
   /** Per-container initialization commands and routes. */
   public other = new OtherTable();
 
@@ -87,7 +84,6 @@ export class ScenarioFolder {
       const dstPath = dst.startsWith("sql/") ? path.resolve(sql, dst.slice(4)) : path.resolve(cfg, dst);
       await file_io.write(dstPath, fa);
     }
-    await file_io.write(path.resolve(cfg, "ip-map"), this.ipmap);
     await file_io.write(path.resolve(cfg, "other"), this.other);
   }
 }

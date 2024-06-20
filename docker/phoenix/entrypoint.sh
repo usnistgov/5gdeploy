@@ -12,26 +12,6 @@ msg \$phoenixdir is $phoenixdir
 msg \$cfgdir is $cfgdir
 cd $cfgdir
 
-msg Preparing network interfaces
-awk -vCT=$CT 'NF==4 && $1==CT { print $2, $3 }' ip-map | while read IFNAME IP; do
-  IFOLDNAME=$(ip -j addr show to $IP | jq -r '.[].ifname')
-  if [[ -n $IFOLDNAME ]]; then
-    msg Renaming $IFOLDNAME to $IFNAME
-    ip link set dev $IFOLDNAME down
-    ip link set dev $IFOLDNAME up name $IFNAME
-  else
-    msg Waiting for $IFNAME to appear
-    pipework --wait -i $IFNAME
-    PIPEWORK_WAITED=1
-  fi
-  msg Disabling TX checksum offload on $IFNAME
-  ethtool --offload $IFNAME tx off || msg Cannot disable TX checksum on $IFNAME, outgoing packets may carry bad checksum and get dropped
-done
-sleep ${PIPEWORK_WAITED:-0}
-
-msg Deleting IPv4 default route if exists
-ip route del default || true
-
 if [[ -f other ]]; then
   msg Processing \$cfgdir/other script
   awk -vCT=$CT '
@@ -51,8 +31,6 @@ if [[ -f other ]]; then
   ' other
 fi
 
-msg Listing IP addresses
-ip addr
 msg Listing IP routing policy rules
 ip rule list
 msg Listing IP routes

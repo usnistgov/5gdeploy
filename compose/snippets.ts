@@ -24,6 +24,7 @@ export function setCommands(service: ComposeService, commands: Iterable<string>,
  */
 export function* renameNetifs(s: ComposeService, {
   pipeworkWait = false,
+  disableTxOffload = false,
 }: renameNetifs.Options = {}): Iterable<string> {
   s.cap_add.push("NET_ADMIN");
 
@@ -42,6 +43,11 @@ export function* renameNetifs(s: ComposeService, {
     yield "  ip link set dev $IFNAME down";
     yield `  ip link set dev $IFNAME up name ${net}`;
     yield "fi";
+
+    if (disableTxOffload) {
+      yield `  msg Disabling TX checksum offload on ${net}`;
+      yield `  ethtool --offload ${net} tx off || msg Cannot disable offload on ${net}, outgoing packets may get dropped`;
+    }
   }
 
   yield "unset IFNAME";
@@ -60,6 +66,16 @@ export namespace renameNetifs {
      * Setting to true requires `pipework` to be installed in the container.
      */
     pipeworkWait?: boolean;
+
+    /**
+     * Whether to disable netif TX offload with ethtool.
+     * @defaultValue false
+     *
+     * @remarks
+     * Setting to true requires `ethtool` to be installed in the container. If ethtool is missing
+     * or TX offload cannot be disabled, a warning is logged but it's not a fatal error.
+     */
+    disableTxOffload?: boolean;
   }
 }
 

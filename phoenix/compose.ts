@@ -57,7 +57,10 @@ const updateNf: Record<string, (s: ComposeService, opts: updateService.Options) 
 };
 
 function updatePhoenix(s: ComposeService, { cfg = "./cfg" }: updateService.Options): void {
-  s.command = ["/entrypoint.sh", s.container_name];
+  compose.setCommands(s, [
+    ...compose.renameNetifs(s, { pipeworkWait: true, disableTxOffload: true }),
+    `/entrypoint.sh ${s.container_name}`,
+  ]);
   s.stdin_open = true;
   s.tty = true;
   s.cap_add.push("NET_ADMIN");

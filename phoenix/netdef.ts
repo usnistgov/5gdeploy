@@ -12,7 +12,6 @@ import type { N, PH } from "../types/mod.js";
 import { file_io, findByName, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { networkOptions, phoenixDockerImage, updateService } from "./compose.js";
 import { ScenarioFolder } from "./folder.js";
-import { IPMAP } from "./ipmap.js";
 import type { NetworkFunction } from "./nf.js";
 
 export const phoenixOptions = {
@@ -118,7 +117,6 @@ abstract class PhoenixScenarioBuilder {
       const s = this.ctx.defineService(ct, phoenixDockerImage, nets);
       const ctFile = `${ct}.json`;
       this.sf.createFrom(ctFile, tplFile);
-      // this.sf.edit(ctFile, (body) => body.replaceAll(`%${tplCt.toUpperCase()}_`, `%${ct.toUpperCase()}_`));
       this.sf.edit(ctFile, (body) => body.replaceAll(/"%([A-Z\d]+)_([A-Z\d]+)_IP"/g, (m, mCt: string, mNet: string) => {
         void m;
         mCt = mCt.toLowerCase();
@@ -189,7 +187,6 @@ abstract class PhoenixScenarioBuilder {
   }
 
   public async save(): Promise<void> {
-    this.sf.ipmap = IPMAP.fromCompose(this.ctx.c);
     for (const service of Object.values(this.ctx.c.services)) {
       if (!this.nfFilter.includes(compose.nameToNf(service.container_name))) {
         continue;
