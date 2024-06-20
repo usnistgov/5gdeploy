@@ -12,7 +12,7 @@ export const networkOptions: Record<string, compose.defineNetwork.Options> = {
   n6: { mtu: 1456 },
 };
 
-/** Update Composer service properties to match Open5GCore expectation. */
+/** Update Compose service properties to match Open5GCore expectation. */
 export function updateService(s: ComposeService, opts: updateService.Options = {}): void {
   const nf = compose.nameToNf(s.container_name);
   updateNf[nf]?.(s, opts);

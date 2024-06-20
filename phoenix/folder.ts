@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import * as envfile from "envfile";
+import * as shlex from "shlex";
 import type { AnyIterable } from "streaming-iterables";
 import assert from "tiny-invariant";
 import type { Promisable } from "type-fest";
@@ -14,41 +14,11 @@ import { OtherTable } from "./other.js";
 
 /** ph_init scenario folder. */
 export class ScenarioFolder {
-  /**
-   * Load from directory.
-   * @param dir - `phoenix-src/cfg/*` subfolder.
-   */
-  public static async load(dir: string): Promise<ScenarioFolder> {
-    const sf = new ScenarioFolder();
-    sf.env = parseEnv(await file_io.readText(path.resolve(dir, "env.sh")));
-    sf.ipmap = IPMAP.parse(await file_io.readText(path.resolve(dir, "ip-map")), sf.env);
-    sf.other = OtherTable.parse(await file_io.readText(path.resolve(dir, "other")));
-
-    const walk = await file_io.fsWalk(dir, {
-      entryFilter(entry) {
-        if (!entry.dirent.isFile()) {
-          return false;
-        }
-        if (entry.path.includes("/sql/")) {
-          return entry.name.endsWith(".sql");
-        }
-        return !["env.sh", "ip-map", "other"].includes(entry.name) && !entry.name.endsWith("-root");
-      },
-      deepFilter({ name }) {
-        return name !== "prometheus";
-      },
-    });
-    for (const entry of walk) {
-      sf.createFrom(path.relative(dir, entry.path), entry.path);
-    }
-    return sf;
-  }
-
   private files = new Map<string, FileAction>();
   /** Environment variables in `env.sh`. */
   public env = new Map<string, string>();
   /** IP address assignments in `ip-map`. */
-  public ipmap = IPMAP.parse("");
+  public ipmap = new IPMAP();
   /** Per-container initialization commands and routes. */
   public other = new OtherTable();
 
@@ -150,18 +120,6 @@ class FileAction implements file_io.write.Saver {
   }
 }
 
-function parseEnv(body: string): Map<string, string> {
-  const env = new Map<string, string>();
-  for (const [k, v] of Object.entries(envfile.parse(body))) {
-    env.set(k.replace(/^export\s+/, ""), v.replace(/\s*#.*$/, ""));
-  }
-  return env;
-}
-
 function saveEnv(env: Map<string, string>): string {
-  const obj: envfile.Input = {};
-  for (const [k, v] of env) {
-    obj[`export ${k}`] = v;
-  }
-  return envfile.stringify(obj);
+  return Array.from(env, ([k, v]) => `export ${k}=${shlex.quote(v)}\n`).join("");
 }

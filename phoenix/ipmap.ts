@@ -1,4 +1,3 @@
-import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
 import assert from "tiny-invariant";
 
@@ -6,33 +5,6 @@ import type { ComposeFile } from "../types/mod.js";
 
 /** Content of ph_init `ip-map` file. */
 export class IPMAP {
-  /**
-   * Parse `ip-map` file.
-   * @param body - `ip-map` file content.
-   * @param rejectEnv - If specified, it will be populated with rejected records
-   * as `ct_net_IP=ip` environs.
-   */
-  public static parse(body: string, rejectEnv?: Map<string, string>): IPMAP {
-    const networks = new Map<string, Netmask>();
-    const containers = new DefaultMap<string, Map<string, string>>(() => new Map());
-    for (let line of body.split("\n")) {
-      line = line.trim();
-      let tokens: [string, string, string, string];
-      if (line.startsWith("#") || (tokens = line.split(/\s+/) as any).length !== 4) {
-        continue;
-      }
-      const [ct, net, ip, cidrS] = tokens;
-      const cidr = Number.parseInt(cidrS, 10);
-      if (ip === "0.0.0.0" || !(cidr >= 8 && cidr < 32)) {
-        rejectEnv?.set(`${ct.toUpperCase()}_${net.toUpperCase()}_IP`, ip);
-        continue;
-      }
-      networks.set(net, new Netmask(ip, cidr));
-      containers.get(ct).set(net, ip);
-    }
-    return new IPMAP(networks, new Map(containers));
-  }
-
   /** Convert from Compose file. */
   public static fromCompose(c: ComposeFile): IPMAP {
     const networks = new Map<string, Netmask>();
@@ -51,9 +23,9 @@ export class IPMAP {
     return new IPMAP(networks, containers);
   }
 
-  private constructor(
-      private readonly networks_: Map<string, Netmask>,
-      private readonly containers_: Map<string, Map<string, string>>,
+  constructor(
+      private readonly networks_ = new Map<string, Netmask>(),
+      private readonly containers_ = new Map<string, Map<string, string>>(),
   ) {}
 
   /**

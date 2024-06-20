@@ -26,7 +26,6 @@
     "as-table": "^1.0.55",
     "csv": "^6.3.9",
     "dockerode": "^4.0.2",
-    "envfile": "^7.1.0",
     "execa": "^9.2.0",
     "fast-json-patch": "^3.1.1",
     "get-stdin": "^9.0.0",
