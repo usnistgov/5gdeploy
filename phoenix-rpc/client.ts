@@ -1,11 +1,13 @@
 import udp from "node:dgram";
 import { stripVTControlCharacters } from "node:util";
 
-import Dockerode from "dockerode";
+import type Dockerode from "dockerode";
 import jayson from "jayson/promise/index.js";
 import { ip2long } from "netmask";
 import { pEvent } from "p-event";
 import assert from "tiny-invariant";
+
+import { dockerode } from "../util/mod.js";
 
 const noColor = (process.env.NO_COLOR ?? "") !== "";
 
@@ -109,7 +111,7 @@ export async function createClients(
 
   if (!ip) {
     const [ct, net = "mgmt"] = host.split(":");
-    dockerContainer = new Dockerode().getContainer(ct!);
+    dockerContainer = dockerode.getContainer(ct!);
     const info = await dockerContainer.inspect();
     const network = info.NetworkSettings.Networks[`br-${net}`];
     assert(network, `no br-${net} IP address`);

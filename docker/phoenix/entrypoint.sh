@@ -8,12 +8,8 @@ msg() {
   echo -e "\e[0m"
 }
 
-msg \$phoenixdir is $phoenixdir
-msg \$cfgdir is $cfgdir
-cd $cfgdir
-
 if [[ -f other ]]; then
-  msg Processing \$cfgdir/other script
+  msg Processing other script
   awk -vCT=$CT '
     $2!=CT { next }
     { cmd = "" }
@@ -62,5 +58,5 @@ for NFDB in nssf:database smf:Database udm:Database udr:Database; do
 done
 
 msg Starting phoenix process with $CT.json
-export XDP_GTP=$phoenixdir/dist/lib/objects-Debug/xdp_program_files/xdp_gtp.c.o
-exec $phoenixdir/dist/phoenix.sh -j $cfgdir/$CT.json -p $phoenixdir/dist/lib
+export XDP_GTP=/opt/phoenix/dist/lib/objects-Debug/xdp_program_files/xdp_gtp.c.o
+exec /opt/phoenix/dist/phoenix.sh -j $CT.json -p /opt/phoenix/dist/lib

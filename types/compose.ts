@@ -22,6 +22,7 @@ export interface ComposeService {
   image: string;
   entrypoint?: string[];
   command?: string[];
+  working_dir?: string;
   init?: boolean;
   stdin_open?: boolean;
   tty?: boolean;

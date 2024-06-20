@@ -1,4 +1,3 @@
-export * from "./compose.js";
 export * from "./folder.js";
 export * from "./netdef.js";
 export * from "./nf.js";

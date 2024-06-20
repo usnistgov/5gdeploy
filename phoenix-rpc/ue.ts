@@ -1,12 +1,9 @@
-import path from "node:path";
-import { PassThrough } from "node:stream";
-
 import multimatch from "multimatch";
-import { collect, consume } from "streaming-iterables";
 import assert from "tiny-invariant";
 import type { CommandModule } from "yargs";
 
 import { PhoenixUE } from "../types/mod.js";
+import { dockerode } from "../util/mod.js";
 import { clientJ, dockerContainer } from "./client.js";
 import { print, waitUntil } from "./util.js";
 
@@ -37,35 +34,12 @@ export const ueRegister: CommandModule<{ host: string }, { dnn: string[] }> = {
   async handler({ host, dnn }) {
     if (dnn.some((dn) => /[?*]/.test(dn))) {
       assert(dockerContainer, "--dnn can have patterns only if --host refers to a Docker container");
-      const exec = await dockerContainer.exec({
-        Cmd: [
-          "jq",
-          ".Phoenix.Module[] | select(.binaryFile|endswith(\"ue_5g_nas_only.so\")) | .config.dn_list | map(.dnn)",
-          path.join("/opt/phoenix/cfg/current", `${host}.json`),
-        ],
-        AttachStdout: true,
-        AttachStderr: true,
-      });
-      const stream = await exec.start({});
-      const stdout = new PassThrough();
-      const stderr = new PassThrough();
-      dockerContainer.modem.demuxStream(stream, stdout, stderr);
-      const [output] = await Promise.all([
-        collect(stdout),
-        consume(stderr),
-        (async () => {
-          await waitUntil(
-            () => exec.inspect({}),
-            (status) => !status.Running,
-            () => Promise.resolve(),
-            { silent: true },
-          );
-          stdout.end();
-          stderr.end();
-        })(),
+      const exec = await dockerode.execCommand(dockerContainer, [
+        "jq",
+        ".Phoenix.Module[] | select(.binaryFile|endswith(\"ue_5g_nas_only.so\")) | .config.dn_list | map(.dnn)",
+        `${host}.json`,
       ]);
-
-      const configured: readonly string[] = JSON.parse(Buffer.concat(output).toString("utf8"));
+      const configured: readonly string[] = JSON.parse(exec.stdout);
       dnn = multimatch(configured, dnn);
       print({ configured, selected: dnn });
     }

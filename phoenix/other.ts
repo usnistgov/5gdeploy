@@ -1,7 +1,6 @@
 import DefaultMap from "mnemonist/default-map.js";
 import MultiMap from "mnemonist/multi-map.js";
 import type { Netmask } from "netmask";
-import map from "obliterator/map.js";
 
 /** Content of ph_init `other` file. */
 export class OtherTable {
@@ -10,11 +9,6 @@ export class OtherTable {
 
   /** Per-container IPv4 routes. */
   public readonly routes = new MultiMap<string, OtherTable.Route>();
-
-  /** List commands in specific container. */
-  public listCommands(ct: string): string[] {
-    return [...(this.commands.peek(ct) ?? []), ...map(this.routes.get(ct) ?? [], (route) => routeToCommand(route))];
-  }
 
   /** Save `other` file. */
   public save(): string {
