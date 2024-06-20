@@ -7,6 +7,7 @@ export interface Module<T extends {} = any> {
   name: string;
   version: number;
   binaryFile: string;
+  ignore?: boolean;
   config: T;
 }
 
@@ -15,12 +16,20 @@ export interface ModuleConfigMap {
   command: command.Config;
   gnb: gnb.Config;
   httpd: httpd.Config;
+  json_rpc: {};
   monitoring: monitoring.Config;
   nrf_client: nrf_client.Config;
   pfcp: pfcp.Config;
+  remote_command: {};
+  rest_api: {};
   sdn_routing_topology: sdn_routing_topology.Config;
   smf: smf.Config;
   ue_5g_nas_only: ue_5g_nas_only.Config;
+}
+
+export interface PLMNID {
+  mcc: string;
+  mnc: string;
 }
 
 export interface SNSSAI {
@@ -44,17 +53,13 @@ export namespace amf {
     [k: string]: unknown;
   }
 
-  export interface GUAMI {
-    mcc: "%MCC";
-    mnc: "%MNC";
+  export interface GUAMI extends PLMNID {
     regionId: number;
     amfSetId: number;
     amfPointer: number;
   }
 
-  export interface TrackingArea {
-    mcc: "%MCC";
-    mnc: "%MNC";
+  export interface TrackingArea extends PLMNID {
     taiList: TAI[];
   }
 
@@ -71,6 +76,7 @@ export namespace amf {
 export namespace command {
   export interface Config {
     Acceptor: Acceptor[];
+    DisablePrompt: boolean;
     GreetingText: string;
     [k: string]: unknown;
   }
@@ -83,7 +89,7 @@ export namespace command {
 }
 
 export namespace gnb {
-  export interface Config {
+  export interface Config extends PLMNID {
     ngap_c_addr: string; // gNB N2 IP
     ngap_u_addr: string; // gNB N3 IP
     gnb_RAN_addr: string; // gNB air IP
@@ -92,8 +98,6 @@ export namespace gnb {
     amf_list: AMF[];
     gnb_id: number; // gNB ID
     cell_id: number; // NCI
-    mcc: "%MCC";
-    mnc: "%MNC";
     tac: number;
     slice?: SNSSAI;
     slice2?: SNSSAI;
@@ -142,6 +146,7 @@ export namespace nrf_client {
   export interface Profile {
     nfType: string;
     nfInstanceId: string;
+    plmnList: PLMNID[];
     sNssais: SNSSAI[];
     [k: string]: unknown;
   }
@@ -260,7 +265,7 @@ export namespace sdn_routing_topology {
 }
 
 export namespace smf {
-  export interface Config {
+  export interface Config extends PLMNID {
     Database: Database;
     id: string;
     mtu: 1456;
@@ -300,9 +305,9 @@ export namespace ue_5g_nas_only {
   }
 
   export interface Cell {
+    mcc: number;
+    mnc: number;
     cell_id: number; // NCI
-    mcc: "%MCC";
-    mnc: "%MNC";
     gnb_cp_addr: string; // gNB air IP
     gnb_up_addr: string; // gNB air IP
     gnb_port: 10000;

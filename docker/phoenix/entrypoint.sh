@@ -78,10 +78,6 @@ ip rule list
 msg Listing IP routes
 ip route list table all type unicast
 
-if [[ -f env.sh ]]; then
-  msg Processing env.sh
-  . env.sh
-fi
 if [[ -f $CT.sh ]]; then
   msg Processing $CT.sh
   . $CT.sh

@@ -9,7 +9,7 @@ import type { Constructor } from "type-fest";
 import * as compose from "../compose/mod.js";
 import { applyQoS, importGrafanaDashboard, NetDef, type NetDefComposeContext, NetDefDN, setProcessExporterRule } from "../netdef-compose/mod.js";
 import type { N, PH } from "../types/mod.js";
-import { file_io, findByName, YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { file_io, findByName, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { networkOptions, phoenixDockerImage, updateService } from "./compose.js";
 import { ScenarioFolder } from "./folder.js";
 import { IPMAP } from "./ipmap.js";
@@ -68,10 +68,9 @@ export const phoenixOptions = {
   },
 } as const satisfies YargsOptions;
 type PhoenixOpts = YargsInfer<typeof phoenixOptions>;
-const defaultOptions: PhoenixOpts = YargsDefaults(phoenixOptions);
 
-function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext, PhoenixOpts]>): (ctx: NetDefComposeContext, opts?: PhoenixOpts) => Promise<void> {
-  return async (ctx, opts = defaultOptions): Promise<void> => {
+function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext, PhoenixOpts]>): (ctx: NetDefComposeContext, opts: PhoenixOpts) => Promise<void> {
+  return async (ctx, opts): Promise<void> => {
     const b = new cls(ctx, opts);
     b.build();
     await b.save();
@@ -81,6 +80,7 @@ function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeCont
 abstract class PhoenixScenarioBuilder {
   protected abstract nfKind: string;
   protected abstract nfFilter: readonly string[];
+  protected readonly plmn: PH.PLMNID;
   private hasPrometheus = false;
 
   constructor(
@@ -91,12 +91,8 @@ abstract class PhoenixScenarioBuilder {
       this.ctx.defineNetwork(net, opts);
     }
 
-    const { mcc, mnc } = NetDef.splitPLMN(this.network.plmn);
-    assert(mnc.length === 2, "Open5GCore only supports 2-digit MNC");
-    this.sf.env.set("MCC", mcc);
-    this.sf.env.set("MNC", mnc);
-    this.sf.env.set("COMMAND_DISABLED", "0");
-    this.sf.env.set("DISABLE_REMOTE_COMMAND", "0");
+    this.plmn = NetDef.splitPLMN(this.network.plmn);
+    assert(this.plmn.mnc.length === 2, "Open5GCore only supports 2-digit MNC");
   }
 
   public readonly sf = new ScenarioFolder();
@@ -126,13 +122,22 @@ abstract class PhoenixScenarioBuilder {
       this.sf.editNetworkFunction(ct, (c) => {
         c.Phoenix.Module.sort(sortBy("binaryFile"));
 
+        for (const binaryName of ["httpd", "json_rpc", "remote_command", "rest_api"] as const) {
+          const module = c.getModule(binaryName, true);
+          if (module) {
+            delete module.ignore;
+          }
+        }
+
         const command = c.getModule("command", true);
         if (command) {
+          command.config.DisablePrompt = false;
           command.config.GreetingText = `${ct.toUpperCase()}>`;
         }
 
         const nrfClient = c.getModule("nrf_client", true);
         if (nrfClient) {
+          nrfClient.config.nf_profile.plmnList = [this.plmn];
           nrfClient.config.nf_profile.nfInstanceId = globalThis.crypto.randomUUID();
         }
 
@@ -321,15 +326,13 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
           config.id = ct;
           const [regionId, amfSetId, amfPointer] = amf.amfi;
           config.guami = {
-            mcc: "%MCC",
-            mnc: "%MNC",
+            ...this.plmn,
             regionId,
             amfSetId,
             amfPointer,
           };
           config.trackingArea = [{
-            mcc: "%MCC",
-            mnc: "%MNC",
+            ...this.plmn,
             taiList: [
               { tac: this.netdef.tac },
             ],
@@ -368,6 +371,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         (c) => setNrfClientSlices(c, smf.nssai),
         (c) => {
           const { config } = c.getModule("smf");
+          Object.assign(config, this.plmn);
           config.Database.database = db;
           config.id = ct;
           config.mtu = 1456;
@@ -601,14 +605,13 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
       compose.annotate(s, "cpus", nWorkers);
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("gnb");
+        Object.assign(config, this.plmn);
         delete config.amf_addr;
         delete config.amf_port;
         config.amf_list = this.netdef.amfs.map((amf): PH.gnb.AMF => ({
           ngc_addr: IPMAP.formatEnv(amf.name, "n2"),
           ngc_sctp_port: 38412,
         }));
-        config.mcc = "%MCC";
-        config.mnc = "%MNC";
         config.gnb_id = gnb.nci.gnb;
         config.cell_id = gnb.nci.nci;
         config.tac = this.netdef.tac;
@@ -662,9 +665,9 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
           const gnb = findByName(name, this.netdef.gnbs);
           assert(!!gnb);
           return {
+            mcc: Number.parseInt(this.plmn.mcc, 10),
+            mnc: Number.parseInt(this.plmn.mnc, 10),
             cell_id: gnb.nci.nci,
-            mcc: "%MCC",
-            mnc: "%MNC",
             gnb_cp_addr: ip,
             gnb_up_addr: ip,
             gnb_port: 10000,

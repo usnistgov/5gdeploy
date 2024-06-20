@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import * as shlex from "shlex";
 import type { AnyIterable } from "streaming-iterables";
 import assert from "tiny-invariant";
 import type { Promisable } from "type-fest";
@@ -15,8 +14,6 @@ import { OtherTable } from "./other.js";
 /** ph_init scenario folder. */
 export class ScenarioFolder {
   private files = new Map<string, FileAction>();
-  /** Environment variables in `env.sh`. */
-  public env = new Map<string, string>();
   /** IP address assignments in `ip-map`. */
   public ipmap = new IPMAP();
   /** Per-container initialization commands and routes. */
@@ -90,7 +87,6 @@ export class ScenarioFolder {
       const dstPath = dst.startsWith("sql/") ? path.resolve(sql, dst.slice(4)) : path.resolve(cfg, dst);
       await file_io.write(dstPath, fa);
     }
-    await file_io.write(path.resolve(cfg, "env.sh"), saveEnv(this.env));
     await file_io.write(path.resolve(cfg, "ip-map"), this.ipmap);
     await file_io.write(path.resolve(cfg, "other"), this.other);
   }
@@ -118,8 +114,4 @@ class FileAction implements file_io.write.Saver {
     }
     return body;
   }
-}
-
-function saveEnv(env: Map<string, string>): string {
-  return Array.from(env, ([k, v]) => `export ${k}=${shlex.quote(v)}\n`).join("");
 }
