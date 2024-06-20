@@ -62,9 +62,3 @@ export class IPMAP {
     return lines.join("");
   }
 }
-export namespace IPMAP {
-  /** Format `ct_net_IP` environment variable name. */
-  export function formatEnv(ct: string, net: string, prefix = "%"): string {
-    return `${prefix}${ct.toUpperCase()}_${net.toUpperCase()}_IP`;
-  }
-}

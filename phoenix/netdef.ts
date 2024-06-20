@@ -118,7 +118,16 @@ abstract class PhoenixScenarioBuilder {
       const s = this.ctx.defineService(ct, phoenixDockerImage, nets);
       const ctFile = `${ct}.json`;
       this.sf.createFrom(ctFile, tplFile);
-      this.sf.edit(ctFile, (body) => body.replaceAll(`%${tplCt.toUpperCase()}_`, `%${ct.toUpperCase()}_`));
+      // this.sf.edit(ctFile, (body) => body.replaceAll(`%${tplCt.toUpperCase()}_`, `%${ct.toUpperCase()}_`));
+      this.sf.edit(ctFile, (body) => body.replaceAll(/"%([A-Z\d]+)_([A-Z\d]+)_IP"/g, (m, mCt: string, mNet: string) => {
+        void m;
+        mCt = mCt.toLowerCase();
+        if (mCt === tplCt) {
+          mCt = ct;
+        }
+        mNet = mNet.toLowerCase();
+        return JSON.stringify(this.ctx.c.services[mCt]?.networks[mNet]?.ipv4_address ?? "unresolved-ip-address");
+      }));
       this.sf.editNetworkFunction(ct, (c) => {
         c.Phoenix.Module.sort(sortBy("binaryFile"));
 
@@ -397,10 +406,10 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         },
         (c) => {
           const { config } = c.getModule("pfcp");
-          config.Associations.Peer = network.upfs.map((upf): PH.pfcp.Acceptor => ({
+          config.Associations.Peer = Array.from(this.ctx.gatherIPs("upf", "n4"), (ip) => ({
             type: "udp",
             port: 8805,
-            bind: IPMAP.formatEnv(upf.name, "n4"),
+            bind: ip,
           }));
           config.Associations.heartbeat_interval = 5;
           config.Associations.max_heartbeat_retries = 2;
@@ -445,18 +454,19 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
           ip: "255.255.255.255",
         };
       }
+      case "UPF": {
+        const upf = this.ctx.c.services[node as string]!;
+        return {
+          type: "UPF",
+          id: upf.networks.n4!.ipv4_address,
+          ip: upf.networks[{
+            DNN: "n6",
+            gNodeB: "n3",
+            UPF: "n9",
+          }[peerType]]!.ipv4_address,
+        };
+      }
     }
-
-    const upf = findByName(node as string, this.network.upfs)!;
-    return {
-      type: "UPF",
-      id: IPMAP.formatEnv(upf.name, "n4"),
-      ip: IPMAP.formatEnv(upf.name, {
-        DNN: "n6",
-        gNodeB: "n3",
-        UPF: "n9",
-      }[peerType]),
-    };
   }
 }
 /** Build CP functions using Open5GCore. */
@@ -509,7 +519,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
           config.DataPlane.interfaces.push({
             type: "n3_n9",
             name: "n3",
-            bind_ip: IPMAP.formatEnv(ct, "n3"),
+            bind_ip: s.networks.n3!.ipv4_address,
             mode: getInterfaceMode("n3"),
           });
           config.DataPlane.xdp.interfaces.push({
@@ -521,7 +531,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
           config.DataPlane.interfaces.push({
             type: "n3_n9",
             name: "n9",
-            bind_ip: IPMAP.formatEnv(ct, "n9"),
+            bind_ip: s.networks.n9!.ipv4_address,
             mode: getInterfaceMode("n9"),
           });
           config.DataPlane.xdp.interfaces.push({
@@ -533,7 +543,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
           config.DataPlane.interfaces.push({
             type: "n6_l3",
             name: "n6_tun",
-            bind_ip: IPMAP.formatEnv(ct, "n6"),
+            bind_ip: s.networks.n6!.ipv4_address,
             mode: getInterfaceMode("n6"),
           });
           config.DataPlane.xdp.interfaces.push({
@@ -608,8 +618,8 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
         Object.assign(config, this.plmn);
         delete config.amf_addr;
         delete config.amf_port;
-        config.amf_list = this.netdef.amfs.map((amf): PH.gnb.AMF => ({
-          ngc_addr: IPMAP.formatEnv(amf.name, "n2"),
+        config.amf_list = Array.from(this.ctx.gatherIPs("amf", "n2"), (ip) => ({
+          ngc_addr: ip,
           ngc_sctp_port: 38412,
         }));
         config.gnb_id = gnb.nci.gnb;
@@ -635,6 +645,8 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 
   private buildUEs(): void {
     const { "phoenix-ue-isolated": isolated } = this.opts;
+    const mcc = Number.parseInt(this.plmn.mcc, 10);
+    const mnc = Number.parseInt(this.plmn.mnc, 10);
     for (const [ct, sub] of this.createNetworkFunction("5g/ue1.json", ["air"], this.ctx.netdef.listSubscribers())) {
       const s = this.ctx.c.services[ct]!;
       compose.annotate(s, "cpus", isolated.some((suffix) => sub.supi.endsWith(suffix)) ? 1 : 0);
@@ -660,16 +672,16 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
         });
         config.DefaultNetwork.dnn = config.dn_list[0]?.dnn ?? "default";
 
-        config.Cell = sub.gnbs.map((name): PH.ue_5g_nas_only.Cell => {
-          const ip = IPMAP.formatEnv(name, "air");
-          const gnb = findByName(name, this.netdef.gnbs);
+        config.Cell = sub.gnbs.map((gnbName): PH.ue_5g_nas_only.Cell => {
+          const gnb = findByName(gnbName, this.netdef.gnbs);
+          const gnbService = this.ctx.c.services[gnbName]!;
           assert(!!gnb);
           return {
-            mcc: Number.parseInt(this.plmn.mcc, 10),
-            mnc: Number.parseInt(this.plmn.mnc, 10),
+            mcc,
+            mnc,
             cell_id: gnb.nci.nci,
-            gnb_cp_addr: ip,
-            gnb_up_addr: ip,
+            gnb_cp_addr: gnbService.networks.air!.ipv4_address,
+            gnb_up_addr: gnbService.networks.air!.ipv4_address,
             gnb_port: 10000,
           };
         });

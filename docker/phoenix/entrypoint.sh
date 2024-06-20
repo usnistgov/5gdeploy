@@ -29,28 +29,8 @@ awk -vCT=$CT 'NF==4 && $1==CT { print $2, $3 }' ip-map | while read IFNAME IP; d
 done
 sleep ${PIPEWORK_WAITED:-0}
 
-msg Creating dummy network interfaces for /32 allocations
-awk -vCT=$CT '
-  $0!~/^#/ && NF==4 && $1==CT && $4==32 {
-    cmd = "ip link add " $2 " type dummy && ip link set " $2 " up && ip addr add " $3 "/" $4 " dev " $2
-    print "# " cmd
-    system(cmd)
-  }
-' ip-map
-
-msg Processing ip-export
-$phoenixdir/tools/ph_init/ip-export.sh <ip-map >/run/phoenix-ip-export.sh
-. /run/phoenix-ip-export.sh
-
-if [[ $CT == hostnat ]]; then
-  HOSTNAT_MGMT_GW=$(sed 's/\.[0-9]*$/.1/' <<<$HOSTNAT_MGMT_IP)
-  msg Setting IPv4 default route to $HOSTNAT_MGMT_GW and enabling SNAT to $HOSTNAT_MGMT_IP
-  ip route replace default via $HOSTNAT_MGMT_GW
-  iptables -t nat -I POSTROUTING -o mgmt -j SNAT --to $HOSTNAT_MGMT_IP
-else
-  msg Deleting IPv4 default route if exists
-  ip route del default || true
-fi
+msg Deleting IPv4 default route if exists
+ip route del default || true
 
 if [[ -f other ]]; then
   msg Processing \$cfgdir/other script
