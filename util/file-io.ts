@@ -98,7 +98,11 @@ export async function write(filename: string, body: unknown): Promise<void> {
 
   if (!(typeof body === "string" || body instanceof Uint8Array)) {
     if (filename.endsWith(".yaml") || filename.endsWith(".yml")) {
-      body = yaml.dump(body, { forceQuotes: true, noRefs: true, sortKeys: true });
+      const yamlOpts: yaml.DumpOptions = { lineWidth: -1, noRefs: true, sortKeys: true };
+      if (!filename.includes("compose.")) {
+        yamlOpts.forceQuotes = true;
+      }
+      body = yaml.dump(body, yamlOpts);
     } else {
       body = stringify(body, { space: "  " });
     }
