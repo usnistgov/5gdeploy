@@ -4,6 +4,7 @@ import assert from "tiny-invariant";
 import type { ConditionalKeys } from "type-fest";
 
 import type { ComposeFile, ComposeNetwork, ComposePort, ComposeService, ComposeVolume } from "../types/mod.js";
+import { hexPad } from "../util/string.js";
 
 /** Derive network function name from container name. */
 export function nameToNf(ct: string): string {
@@ -231,6 +232,10 @@ export function listByAnnotation(
   });
 }
 
+function deriveMacAddress(ipLong: number): string {
+  return `52:DE:${hexPad((ipLong >> 24) & 0xFF, 2)}:${hexPad((ipLong >> 16) & 0xFF, 2)}:${hexPad((ipLong >> 8) & 0xFF, 2)}:${hexPad((ipLong >> 0) & 0xFF, 2)}`;
+}
+
 /**
  * Add a netif to a service.
  * @returns IPv4 address previously assigned to the netif.
@@ -241,9 +246,11 @@ export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string
   const network = c.networks[net];
   assert(network, `network ${net} missing`);
   const subnet = new Netmask(network.ipam.config[0]?.subnet ?? "255.255.255.255/32");
-  assert(subnet.contains(ip), `network ${net} subnet ${subnet} does not contain IP ${ip}`);
+  const addr = new Netmask(`${ip}/32`);
+  assert(subnet.contains(addr), `network ${net} subnet ${subnet} does not contain IP ${ip}`);
   s.networks[net] = {
-    ipv4_address: ip,
+    mac_address: deriveMacAddress(addr.netLong),
+    ipv4_address: addr.base,
   };
   annotate(s, `ip_${net}`, ip);
   return ip;

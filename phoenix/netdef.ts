@@ -478,7 +478,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
 
       const peers = this.netdef.gatherUPFPeers(upf);
       assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
-      assert(peers.N6IPv6.length === 0, "UPF does not supports IPv6 DN");
+      assert(peers.N6IPv6.length === 0, "UPF does not support IPv6 DN");
 
       this.sf.editNetworkFunction(ct, (c) => {
         const { config } = c.getModule("pfcp");

@@ -51,6 +51,7 @@ export interface ComposeVolume {
 
 /** Compose service network interface. */
 export interface ComposeNetif {
+  mac_address: string;
   ipv4_address: string;
 }
 
