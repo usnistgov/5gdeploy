@@ -45,8 +45,8 @@ export function* renameNetifs(s: ComposeService, {
     yield "fi";
 
     if (disableTxOffload) {
-      yield `  msg Disabling TX checksum offload on ${net}`;
-      yield `  ethtool --offload ${net} tx off || msg Cannot disable offload on ${net}, outgoing packets may get dropped`;
+      yield `msg Disabling TX checksum offload on ${net}`;
+      yield `ethtool --offload ${net} tx off || msg Cannot disable offload on ${net}, outgoing packets may get dropped`;
     }
   }
 

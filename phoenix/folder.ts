@@ -8,39 +8,14 @@ import type { Promisable } from "type-fest";
 import * as compose from "../compose/mod.js";
 import { file_io } from "../util/mod.js";
 import { NetworkFunction } from "./nf.js";
-import { OtherTable } from "./other.js";
 
 /** ph_init scenario folder. */
 export class ScenarioFolder {
   private files = new Map<string, FileAction>();
-  /** Per-container initialization commands and routes. */
-  public other = new OtherTable();
-
-  /** Per-container initialization commands. */
-  public get initCommands() {
-    return this.other.commands;
-  }
-
-  /** Per-container IPv4 routes. */
-  public get routes() {
-    return this.other.routes;
-  }
-
-  /** Report whether a file exists. */
-  public has(file: string): boolean {
-    return this.files.has(file);
-  }
 
   /** Create a file from an external file. */
   public createFrom(dst: string, src: string): void {
     this.files.set(dst, new FileAction(src));
-  }
-
-  /** Duplicate a file without pending edits. */
-  public copy(dst: string, src: string): void {
-    const fa = this.files.get(src);
-    assert(fa, "source file not found");
-    this.files.set(dst, new FileAction(fa.readFromFile, fa.initialContent));
   }
 
   /** Edit a file. */
@@ -48,11 +23,6 @@ export class ScenarioFolder {
     const fa = this.files.get(file);
     assert(fa, "file not found");
     fa.edits.push(f);
-  }
-
-  /** Delete a file. */
-  public delete(file: string): void {
-    this.files.delete(file);
   }
 
   /** Edit a network function JSON file. */
@@ -84,7 +54,6 @@ export class ScenarioFolder {
       const dstPath = dst.startsWith("sql/") ? path.resolve(sql, dst.slice(4)) : path.resolve(cfg, dst);
       await file_io.write(dstPath, fa);
     }
-    await file_io.write(path.resolve(cfg, "other"), this.other);
   }
 }
 export namespace ScenarioFolder {

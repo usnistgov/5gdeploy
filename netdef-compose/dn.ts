@@ -97,31 +97,18 @@ export function setDNCommands(ctx: NetDefComposeContext): void {
  * @remarks
  * This shall be called after {@link defineDNServices} and before {@link setDNCommands}.
  */
-export function* makeUPFRoutes(ctx: NetDefComposeContext, peers: NetDef.UPFPeers, { msg = true }: makeUPFRoutes.Options = {}): Iterable<string> {
+export function* makeUPFRoutes(ctx: NetDefComposeContext, peers: NetDef.UPFPeers): Iterable<string> {
   for (const dn of peers.N6IPv4) {
     const dnService = ctx.c.services[makeDNServiceName(ctx, dn)];
     const dest = new Netmask(dn.subnet!);
     const table = upfRouteTableBase + dn.index;
-    if (msg) {
-      yield `msg Adding routes for ${shlex.quote(`${dn.snssai}:${dn.dnn}`)} toward DN in table ${table}`;
-    }
+    yield `msg Adding routes for ${shlex.quote(`${dn.snssai}:${dn.dnn}`)} toward DN in table ${table}`;
     yield `ip rule add from ${dest} priority ${upfRouteRulePriority} table ${table}`;
     yield `ip route add default via ${dnService!.networks.n6!.ipv4_address} table ${table} metric ${dn.cost}`;
   }
 
-  if (msg) {
-    yield "msg Listing IP rules";
-    yield "ip rule list";
-    yield "msg Listing IP routes";
-    yield "ip route list table all type unicast";
-  }
-}
-export namespace makeUPFRoutes {
-  export interface Options {
-    /**
-     * Whether to print informational messages.
-     * @defaultValue true
-     */
-    msg?: boolean;
-  }
+  yield "msg Listing IP rules";
+  yield "ip rule list";
+  yield "msg Listing IP routes";
+  yield "ip route list table all type unicast";
 }

@@ -8,39 +8,6 @@ msg() {
   echo -e "\e[0m"
 }
 
-if [[ -f other ]]; then
-  msg Processing other script
-  awk -vCT=$CT '
-    $2!=CT { next }
-    { cmd = "" }
-    $1=="r" { cmd = "ip route add " $3 " via " $4 }
-    $1=="c" && $3!="sysctl" {
-      cmd = ""
-      for (i=3; i<=NF; ++i) {
-        cmd = cmd $i " "
-      }
-    }
-    cmd!="" {
-      print "# " cmd
-      system(cmd)
-    }
-  ' other
-fi
-
-msg Listing IP routing policy rules
-ip rule list
-msg Listing IP routes
-ip route list table all type unicast
-
-if [[ -f $CT.sh ]]; then
-  msg Processing $CT.sh
-  . $CT.sh
-fi
-if ! [[ -f $CT.json ]]; then
-  msg Idling
-  exec tail -f
-fi
-
 for NFDB in nssf:database smf:Database udm:Database udr:Database; do
   NF=${NFDB%:*}
   if [[ $CT != ${NF}* ]]; then

@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
 import consume from "obliterator/consume.js";
 import { sortBy } from "sort-by-typescript";
@@ -100,6 +101,7 @@ abstract class PhoenixScenarioBuilder {
   public readonly sf = new ScenarioFolder();
   protected get netdef() { return this.ctx.netdef; }
   protected get network() { return this.ctx.network; }
+  protected readonly initCommands = new DefaultMap<string, string[]>(() => []);
 
   public abstract build(): void;
 
@@ -142,10 +144,6 @@ abstract class PhoenixScenarioBuilder {
       target: cfgdir,
       read_only: true,
     });
-    compose.setCommands(s, [
-      ...compose.renameNetifs(s, { pipeworkWait: true, disableTxOffload: true }),
-      `/entrypoint.sh ${s.container_name}`,
-    ]);
 
     const ctFile = `${ct}.json`;
     this.sf.createFrom(ctFile, tplFile);
@@ -224,9 +222,16 @@ abstract class PhoenixScenarioBuilder {
   }
 
   public async save(): Promise<void> {
-    for (const service of Object.values(this.ctx.c.services)) {
-      if (!this.nfFilter.includes(compose.nameToNf(service.container_name))) {
+    for (const s of Object.values(this.ctx.c.services)) {
+      if (!this.nfFilter.includes(compose.nameToNf(s.container_name))) {
         continue;
+      }
+      if (s.image === phoenixDockerImage) {
+        compose.setCommands(s, [
+          ...compose.renameNetifs(s, { pipeworkWait: true, disableTxOffload: true }),
+          ...this.initCommands.peek(s.container_name) ?? [],
+          `/entrypoint.sh ${s.container_name}`,
+        ]);
       }
     }
 
@@ -375,7 +380,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
               { tac: this.netdef.tac },
             ],
           }];
-          config.hacks.enable_reroute_nas = this.sf.has("nssf.json");
+          config.hacks.enable_reroute_nas = !!this.ctx.c.services.nssf;
         },
       );
     }
@@ -604,24 +609,21 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         config.hacks.qfi = 1;
       });
 
-      this.sf.initCommands.set(ct, [
+      this.initCommands.get(ct).push(
         ...applyQoS(s),
         ...(peers.N6IPv4.length > 0 ? [
           "ip tuntap add mode tun user root name n6_tun",
           "ip link set n6_tun up",
         ] : []),
+        ...Array.from(peers.N6IPv4, ({ subnet }) => `ip route add ${subnet} dev n6_tun`),
         ...(peers.N6Ethernet.length > 0 ? [
           "ip link add name br-eth type bridge",
           "ip link set br-eth up",
           "ip tuntap add mode tap user root name n6_tap",
           "ip link set n6_tap up master br-eth",
         ] : []),
-        ...NetDefDN.makeUPFRoutes(this.ctx, peers, { msg: false }),
-      ]);
-
-      for (const { subnet } of peers.N6IPv4) {
-        this.sf.routes.set(ct, { dest: new Netmask(subnet!), dev: "n6_tun" });
-      }
+        ...NetDefDN.makeUPFRoutes(this.ctx, peers),
+      );
     }
   }
 }
@@ -669,10 +671,10 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 
         config.forwarding_worker = nWorkers;
       });
-      this.sf.initCommands.set(ct, [
+      this.initCommands.get(ct).push(
         "iptables -I OUTPUT -p icmp --icmp-type destination-unreachable -j DROP",
         ...applyQoS(s),
-      ]);
+      );
     }
   }
 
