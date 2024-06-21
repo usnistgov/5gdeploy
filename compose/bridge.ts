@@ -3,8 +3,8 @@ import { ip2long, Netmask } from "netmask";
 import assert from "tiny-invariant";
 
 import type { ComposeFile } from "../types/mod.js";
-import { hexPad, type YargsInfer, type YargsOptions } from "../util/mod.js";
-import { annotate, defineService, disconnectNetif } from "./compose.js";
+import type { YargsInfer, YargsOptions } from "../util/mod.js";
+import { annotate, defineService, disconnectNetif, ip2mac } from "./compose.js";
 import { setCommands } from "./snippets.js";
 
 export const bridgeDockerImage = "5gdeploy.localhost/bridge";
@@ -110,7 +110,7 @@ function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]):
         break;
       }
       case "@": {
-        const macaddr = `52:00${hexPad(ip2long(ip), 8).replaceAll(/([\da-f]{2})/gi, ":$1").toLowerCase()}`;
+        const macaddr = ip2mac(ip2long(ip));
         yield `      msg Using MACVLAN ${macaddr} on ${hostif}${vlanDesc} as ${ct}:${net}`;
         yield `      pipework mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${macaddr} ${vlanFlag}`;
         break;

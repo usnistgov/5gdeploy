@@ -232,8 +232,9 @@ export function listByAnnotation(
   });
 }
 
-function deriveMacAddress(ipLong: number): string {
-  return `52:DE:${hexPad((ipLong >> 24) & 0xFF, 2)}:${hexPad((ipLong >> 16) & 0xFF, 2)}:${hexPad((ipLong >> 8) & 0xFF, 2)}:${hexPad((ipLong >> 0) & 0xFF, 2)}`;
+/** Derive MAC address from IPv4 address. */
+export function ip2mac(ipLong: number): string {
+  return `52:de${hexPad(ipLong, 8).replaceAll(/([\da-f]{2})/gi, ":$1").toLowerCase()}`;
 }
 
 /**
@@ -249,7 +250,7 @@ export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string
   const addr = new Netmask(`${ip}/32`);
   assert(subnet.contains(addr), `network ${net} subnet ${subnet} does not contain IP ${ip}`);
   s.networks[net] = {
-    mac_address: deriveMacAddress(addr.netLong),
+    mac_address: ip2mac(addr.netLong),
     ipv4_address: addr.base,
   };
   annotate(s, `ip_${net}`, ip);
