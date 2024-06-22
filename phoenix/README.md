@@ -2,7 +2,6 @@
 
 Package **phoenix** reads and writes Open5GCore configuration files.
 
-* `other.ts`: interpret ph\_init `other` file
 * `nf.ts`: edit network function JSON
 * `folder.ts`: copy scenario folder with edits
 * `netdef.ts`: apply a [network definition](../netdef) to a scenario folder

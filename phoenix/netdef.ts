@@ -1,19 +1,17 @@
 import path from "node:path";
 
-import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
-import consume from "obliterator/consume.js";
 import { sortBy } from "sort-by-typescript";
 import sql from "sql-tagged-template-literal";
+import type { AnyIterable } from "streaming-iterables";
 import assert from "tiny-invariant";
-import type { Constructor } from "type-fest";
+import type { Constructor, Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { applyQoS, importGrafanaDashboard, NetDef, type NetDefComposeContext, NetDefDN, setProcessExporterRule } from "../netdef-compose/mod.js";
 import type { ComposeService, N, PH } from "../types/mod.js";
 import { file_io, findByName, type YargsInfer, type YargsOptions } from "../util/mod.js";
-import { ScenarioFolder } from "./folder.js";
-import type { NetworkFunction } from "./nf.js";
+import { NetworkFunction } from "./nf.js";
 
 const phoenixDockerImage = "5gdeploy.localhost/phoenix";
 const cfgdir = "/opt/phoenix/cfg/5gdeploy";
@@ -75,7 +73,7 @@ type PhoenixOpts = YargsInfer<typeof phoenixOptions>;
 function makeBuilder(cls: Constructor<PhoenixScenarioBuilder, [NetDefComposeContext, PhoenixOpts]>): (ctx: NetDefComposeContext, opts: PhoenixOpts) => Promise<void> {
   return async (ctx, opts): Promise<void> => {
     const b = new cls(ctx, opts);
-    b.build();
+    await b.build();
     await b.save();
   };
 }
@@ -98,105 +96,117 @@ abstract class PhoenixScenarioBuilder {
     assert(this.plmn.mnc.length === 2, "Open5GCore only supports 2-digit MNC");
   }
 
-  public readonly sf = new ScenarioFolder();
   protected get netdef() { return this.ctx.netdef; }
   protected get network() { return this.ctx.network; }
-  protected readonly initCommands = new DefaultMap<string, string[]>(() => []);
+  private readonly initCommands = new Map<string, readonly string[]>();
 
-  public abstract build(): void;
+  public abstract build(): Promisable<void>;
 
-  protected tplFile(relPath: string): string {
+  private tplFile(relPath: string): string {
     return path.resolve(this.opts["phoenix-cfg"], relPath);
   }
 
-  protected *createNetworkFunctions<T>(
+  protected async *createNetworkFunctions<T>(
       tpl: `${string}.json`,
       nets: readonly string[],
       list?: readonly T[],
-  ): IterableIterator<[ct: string, item: T, s: ComposeService]> {
-    nets = ["mgmt", ...nets];
-
+  ): AsyncIterable<[item: T, {
+        ct: string;
+        s: ComposeService;
+        saveNF: (...acts: ReadonlyArray<(nf: NetworkFunction) => Promisable<void>>) => Promise<void>;
+        setInit: (...commands: readonly string[]) => void;
+      }]> {
     const tplCt = path.basename(tpl, ".json");
     const nf = compose.nameToNf(tplCt);
-    const tplFile = this.tplFile(tpl);
     list ??= [{ name: nf } as any];
 
     for (const [ct, item] of nf === "ue" ?
       compose.suggestUENames(list as ReadonlyArray<T & { supi: string }>) :
       compose.suggestNames(nf, list)
     ) {
-      const s = this.createNetworkFunction(ct, nets, tplCt, tplFile);
-      yield [ct, item, s];
+      const s = this.ctx.defineService(ct, phoenixDockerImage, ["mgmt", ...nets]);
+      s.working_dir = cfgdir;
+      s.stdin_open = true;
+      s.tty = true;
+      s.cap_add.push("NET_ADMIN");
+      s.sysctls["net.ipv4.ip_forward"] = 1;
+      s.sysctls["net.ipv6.conf.all.disable_ipv6"] = 1;
+      s.volumes.push({
+        type: "bind",
+        source: `./${this.nfKind}-cfg`,
+        target: cfgdir,
+        read_only: true,
+      });
+
+      yield [item, {
+        ct,
+        s,
+        saveNF: async (...acts) => {
+          const nf = await this.prepareNetworkFunction(tpl, s);
+          for (const act of acts) {
+            await act(nf);
+          }
+          await this.ctx.writeFile(`${this.nfKind}-cfg/${ct}.json`, nf);
+        },
+        setInit: (...commands) => {
+          this.initCommands.set(ct, commands);
+        },
+      }];
     }
   }
 
-  private createNetworkFunction(ct: string, nets: readonly string[], tplCt: string, tplFile: string): ComposeService {
-    const s = this.ctx.defineService(ct, phoenixDockerImage, nets);
-    s.working_dir = cfgdir;
-    s.stdin_open = true;
-    s.tty = true;
-    s.cap_add.push("NET_ADMIN");
-    s.sysctls["net.ipv4.ip_forward"] = 1;
-    s.sysctls["net.ipv6.conf.all.disable_ipv6"] = 1;
-    s.volumes.push({
-      type: "bind",
-      source: `./${this.nfKind}-cfg`,
-      target: cfgdir,
-      read_only: true,
-    });
-
-    const ctFile = `${ct}.json`;
-    this.sf.createFrom(ctFile, tplFile);
-
-    this.sf.edit(ctFile, (body) => body.replaceAll(/"%([A-Z\d]+)_([A-Z\d]+)_IP"/g, (m, mCt: string, mNet: string) => {
+  private async prepareNetworkFunction(tpl: string, s: ComposeService): Promise<NetworkFunction> {
+    const ct = s.container_name;
+    const tplCt = path.basename(tpl, ".json");
+    let body = await file_io.readText(this.tplFile(tpl), { once: true });
+    body = body.replaceAll(/"%([A-Z\d]+)_([A-Z\d]+)_IP"/g, (m, mCt: string, mNet: string) => {
       void m;
       mCt = mCt.toLowerCase();
       const service = mCt === tplCt ? s : this.ctx.c.services[mCt];
       mNet = mNet.toLowerCase();
       return JSON.stringify(service?.networks[mNet]?.ipv4_address ?? "unresolved-ip-address");
-    }));
-
-    this.sf.editNetworkFunction(ct, (c) => {
-      c.Phoenix.Module.sort(sortBy("binaryFile"));
-
-      for (const binaryName of ["httpd", "json_rpc", "remote_command", "rest_api"] as const) {
-        const module = c.getModule(binaryName, true);
-        if (module) {
-          delete module.ignore;
-        }
-      }
-
-      const command = c.getModule("command", true);
-      if (command) {
-        command.config.DisablePrompt = false;
-        command.config.GreetingText = `${ct.toUpperCase()}>`;
-      }
-
-      const nrfClient = c.getModule("nrf_client", true);
-      if (nrfClient) {
-        nrfClient.config.nf_profile.plmnList = [this.plmn];
-        nrfClient.config.nf_profile.nfInstanceId = globalThis.crypto.randomUUID();
-      }
-
-      const monitoring = c.getModule("monitoring", true);
-      if (monitoring) {
-        this.hasPrometheus = true;
-        const mgmt = s.networks.mgmt!.ipv4_address;
-        monitoring.config.Prometheus = {
-          listener: mgmt,
-          port: 9888,
-          enabled: 1,
-        };
-
-        const target = new URL("http://localhost:9888/metrics");
-        target.hostname = mgmt;
-        target.searchParams.set("job_name", "phoenix");
-        target.searchParams.append("labels", `phnf=${s.container_name}`);
-        compose.annotate(s, "prometheus_target", target.toString());
-      }
     });
 
-    return s;
+    const nf = NetworkFunction.parse(body);
+    nf.Phoenix.Module.sort(sortBy("binaryFile"));
+
+    for (const binaryName of ["httpd", "json_rpc", "remote_command", "rest_api"] as const) {
+      const module = nf.getModule(binaryName, true);
+      if (module) {
+        delete module.ignore;
+      }
+    }
+
+    const command = nf.getModule("command", true);
+    if (command) {
+      command.config.DisablePrompt = false;
+      command.config.GreetingText = `${ct.toUpperCase()}>`;
+    }
+
+    const nrfClient = nf.getModule("nrf_client", true);
+    if (nrfClient) {
+      nrfClient.config.nf_profile.plmnList = [this.plmn];
+      nrfClient.config.nf_profile.nfInstanceId = globalThis.crypto.randomUUID();
+    }
+
+    const monitoring = nf.getModule("monitoring", true);
+    if (monitoring) {
+      this.hasPrometheus = true;
+      const mgmt = s.networks.mgmt!.ipv4_address;
+      monitoring.config.Prometheus = {
+        listener: mgmt,
+        port: 9888,
+        enabled: 1,
+      };
+
+      const target = new URL("http://localhost:9888/metrics");
+      target.hostname = mgmt;
+      target.searchParams.set("job_name", "phoenix");
+      target.searchParams.append("labels", `phnf=${s.container_name}`);
+      compose.annotate(s, "prometheus_target", target.toString());
+    }
+
+    return nf;
   }
 
   protected buildSQL(): void {
@@ -204,21 +214,14 @@ abstract class PhoenixScenarioBuilder {
     compose.mysql.init(s, `./${this.nfKind}-sql`);
   }
 
-  protected createDatabase(tpl: `${string}.sql`, db?: string): string {
-    const tplName = path.basename(tpl, ".sql");
-    db ??= tplName;
-    const dbFile = `sql/${db}.sql`;
-    this.sf.createFrom(dbFile, this.tplFile(tpl));
-    if (db !== tplName) {
-      this.sf.edit(dbFile, (body) => {
-        body = body.replace(/^create database .*;$/im, `CREATE OR REPLACE DATABASE ${db};`);
-        body = body.replaceAll(/^create database .*;$/gim, "");
-        body = body.replaceAll(/^use .*;$/gim, `USE ${db};`);
-        body = body.replaceAll(/^grant ([a-z,]*) on \w+\.\* to (.*);$/gim, `GRANT $1 ON ${db}.* TO $2;`);
-        return body;
-      });
-    }
-    return db;
+  protected async createDatabase(tpl: `${string}.sql`, dbName: string, append: () => AnyIterable<string>): Promise<void> {
+    let body = await file_io.readText(this.tplFile(tpl), { once: true });
+    body = body.replace(/^create database .*;$/im, `CREATE OR REPLACE DATABASE ${dbName};`);
+    body = body.replaceAll(/^create database .*;$/gim, "");
+    body = body.replaceAll(/^use .*;$/gim, `USE ${dbName};`);
+    body = body.replaceAll(/^grant ([a-z,]*) on \w+\.\* to (.*);$/gim, `GRANT $1 ON ${dbName}.* TO $2;`);
+    body = await compose.mysql.join(body, append());
+    await this.ctx.writeFile(`${this.nfKind}-sql/${dbName}.sql`, body);
   }
 
   public async save(): Promise<void> {
@@ -229,13 +232,11 @@ abstract class PhoenixScenarioBuilder {
       if (s.image === phoenixDockerImage) {
         compose.setCommands(s, [
           ...compose.renameNetifs(s, { pipeworkWait: true, disableTxOffload: true }),
-          ...this.initCommands.peek(s.container_name) ?? [],
+          ...this.initCommands.get(s.container_name) ?? [],
           `/entrypoint.sh ${s.container_name}`,
         ]);
       }
     }
-
-    await this.sf.save(path.resolve(this.ctx.out, `${this.nfKind}-cfg`), path.resolve(this.ctx.out, `${this.nfKind}-sql`));
 
     if (this.hasPrometheus) {
       await this.updatePrometheus();
@@ -268,24 +269,25 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "cp";
   protected override nfFilter = ["sql", "nrf", "udm", "ausf", "nssf", "amf", "smf"];
 
-  public build(): void {
+  public async build(): Promise<void> {
     this.buildSQL();
-    this.buildNRF();
-    this.buildUDM();
-    this.buildAUSF();
-    this.buildNSSF();
-    this.buildAMFs();
-    this.buildSMFs();
+    await this.buildNRF();
+    await this.buildUDM();
+    await this.buildAUSF();
+    await this.buildNSSF();
+    await this.buildAMFs();
+    await this.buildSMFs();
   }
 
-  private buildNRF(): void {
-    consume(this.createNetworkFunctions("5g/nrf.json", ["cp"]));
+  private async buildNRF(): Promise<void> {
+    for await (const [, { saveNF }] of this.createNetworkFunctions("5g/nrf.json", ["cp"])) {
+      await saveNF();
+    }
   }
 
-  private buildUDM(): void {
+  private async buildUDM(): Promise<void> {
     const { netdef } = this;
-    const db = this.createDatabase("5g/sql/udm_db.sql");
-    this.sf.appendSQL(db, function*() {
+    await this.createDatabase("5g/sql/udm_db.sql", "udm_db", function*() {
       yield "DELETE FROM gpsi_supi_association";
       yield "DELETE FROM supi";
       yield "DELETE FROM gpsi";
@@ -324,14 +326,18 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       }
     });
 
-    consume(this.createNetworkFunctions("5g/udm.json", ["db", "cp"]));
+    for await (const [, { saveNF }] of this.createNetworkFunctions("5g/udm.json", ["db", "cp"])) {
+      await saveNF();
+    }
   }
 
-  private buildAUSF(): void {
-    consume(this.createNetworkFunctions("5g/ausf.json", ["cp"]));
+  private async buildAUSF(): Promise<void> {
+    for await (const [, { saveNF }] of this.createNetworkFunctions("5g/ausf.json", ["cp"])) {
+      await saveNF();
+    }
   }
 
-  private buildNSSF(): void {
+  private async buildNSSF(): Promise<void> {
     const { amfs } = this.netdef;
     const amfNSSAIs = new Set<string>();
     for (const amf of amfs) {
@@ -342,8 +348,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       return;
     }
 
-    const db = this.createDatabase("5g_nssf/sql/nssf_db.sql");
-    this.sf.appendSQL(db, function*() {
+    await this.createDatabase("5g_nssf/sql/nssf_db.sql", "nssf_db", function*() {
       yield "DELETE FROM snssai_nsi_mapping";
       yield "DELETE FROM nsi";
       yield "DELETE FROM snssai";
@@ -357,15 +362,17 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       }
     });
 
-    consume(this.createNetworkFunctions("5g_nssf/nssf.json", ["db", "cp"]));
+    for await (const [, { saveNF }] of this.createNetworkFunctions("5g_nssf/nssf.json", ["db", "cp"])) {
+      await saveNF();
+    }
   }
 
-  private buildAMFs(): void {
-    for (const [ct, amf] of this.createNetworkFunctions("5g/amf.json", ["cp", "n2"], this.ctx.netdef.amfs)) {
-      this.sf.editNetworkFunction(ct,
-        (c) => setNrfClientSlices(c, amf.nssai),
-        (c) => {
-          const { config } = c.getModule("amf");
+  private async buildAMFs(): Promise<void> {
+    for await (const [amf, { ct, saveNF }] of this.createNetworkFunctions("5g/amf.json", ["cp", "n2"], this.ctx.netdef.amfs)) {
+      await saveNF(
+        (nf) => setNrfClientSlices(nf, amf.nssai),
+        (nf) => {
+          const { config } = nf.getModule("amf");
           config.id = ct;
           const [regionId, amfSetId, amfPointer] = amf.amfi;
           config.guami = {
@@ -386,13 +393,12 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     }
   }
 
-  private buildSMFs(): void {
+  private async buildSMFs(): Promise<void> {
     const { network, netdef: { smfs, dataPathLinks } } = this;
     let nextTeid = 0x10000000;
     const eachTeid = Math.floor(0xE0000000 / smfs.length);
-    for (const [ct, smf] of this.createNetworkFunctions("5g/smf.json", ["db", "cp", "n4"], smfs)) {
-      const db = this.createDatabase("5g/sql/smf_db.sql", ct);
-      this.sf.appendSQL(db, function*() {
+    for await (const [smf, { ct, saveNF }] of this.createNetworkFunctions("5g/smf.json", ["db", "cp", "n4"], smfs)) {
+      await this.createDatabase("5g/sql/smf_db.sql", ct, function*() {
         yield "DELETE FROM dn_dns";
         yield "DELETE FROM dn_info";
         yield "DELETE FROM dn_ipv4_allocations";
@@ -410,18 +416,18 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
 
       const startTeid = nextTeid;
       nextTeid += eachTeid;
-      this.sf.editNetworkFunction(ct,
-        (c) => setNrfClientSlices(c, smf.nssai),
-        (c) => {
-          const { config } = c.getModule("smf");
+      await saveNF(
+        (nf) => setNrfClientSlices(nf, smf.nssai),
+        (nf) => {
+          const { config } = nf.getModule("smf");
           Object.assign(config, this.plmn);
-          config.Database.database = db;
+          config.Database.database = ct;
           config.id = ct;
           config.mtu = 1456;
           config.startTeid = startTeid;
         },
-        (c) => {
-          const { config } = c.getModule("sdn_routing_topology");
+        (nf) => {
+          const { config } = nf.getModule("sdn_routing_topology");
           config.Topology.Link = dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
             const typeA = this.determineDataPathNodeType(nodeA);
             const typeB = this.determineDataPathNodeType(nodeB);
@@ -438,8 +444,8 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
             };
           });
         },
-        (c) => {
-          const { config } = c.getModule("pfcp");
+        (nf) => {
+          const { config } = nf.getModule("pfcp");
           config.Associations.Peer = Array.from(this.ctx.gatherIPs("upf", "n4"), (ip) => ({
             type: "udp",
             port: 8805,
@@ -510,17 +516,17 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "up";
   protected override nfFilter = ["upf", "dn", "igw", "hostnat"];
 
-  public build(): void {
+  public async build(): Promise<void> {
     NetDefDN.defineDNServices(this.ctx);
-    this.buildUPFs();
+    await this.buildUPFs();
     NetDefDN.setDNCommands(this.ctx);
   }
 
-  private buildUPFs(): void {
+  private async buildUPFs(): Promise<void> {
     const nWorkers = this.opts["phoenix-upf-workers"];
     assert(nWorkers <= 8, "pfcp.so allows up to 8 threads");
 
-    for (const [ct, upf, s] of this.createNetworkFunctions("5g/upf1.json", ["n3", "n4", "n6", "n9"], this.ctx.network.upfs)) {
+    for await (const [upf, { s, saveNF, setInit }] of this.createNetworkFunctions("5g/upf1.json", ["n3", "n4", "n6", "n9"], this.ctx.network.upfs)) {
       compose.annotate(s, "cpus", nWorkers);
       for (const netif of ["all", "default"]) {
         s.sysctls[`net.ipv4.conf.${netif}.accept_local`] = 1;
@@ -532,8 +538,8 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
       assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
       assert(peers.N6IPv6.length === 0, "UPF does not support IPv6 DN");
 
-      this.sf.editNetworkFunction(ct, (c) => {
-        const { config } = c.getModule("pfcp");
+      await saveNF((nf) => {
+        const { config } = nf.getModule("pfcp");
         assert(config.mode === "UP");
         assert(config.data_plane_mode === "integrated");
         assert(config.DataPlane.xdp);
@@ -609,7 +615,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         config.hacks.qfi = 1;
       });
 
-      this.initCommands.get(ct).push(
+      setInit(
         ...applyQoS(s),
         ...(peers.N6IPv4.length > 0 ? [
           "ip tuntap add mode tun user root name n6_tun",
@@ -634,22 +640,22 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "ran";
   protected override nfFilter = ["gnb", "ue"];
 
-  public build(): void {
-    this.buildGNBs();
-    this.buildUEs();
+  public async build(): Promise<void> {
+    await this.buildGNBs();
+    await this.buildUEs();
   }
 
-  private buildGNBs(): void {
+  private async buildGNBs(): Promise<void> {
     const sliceKeys = ["slice", "slice2"] as const;
     const slices = this.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
     assert(slices.length <= sliceKeys.length, `gNB allows up to ${sliceKeys.length} slices`);
     const nWorkers = this.opts["phoenix-gnb-workers"];
 
-    for (const [ct, gnb, s] of this.createNetworkFunctions("5g/gnb1.json", ["air", "n2", "n3"], this.ctx.netdef.gnbs)) {
+    for await (const [gnb, { s, saveNF, setInit }] of this.createNetworkFunctions("5g/gnb1.json", ["air", "n2", "n3"], this.ctx.netdef.gnbs)) {
       s.sysctls["net.ipv4.ip_forward"] = 0;
       compose.annotate(s, "cpus", nWorkers);
-      this.sf.editNetworkFunction(ct, (c) => {
-        const { config } = c.getModule("gnb");
+      await saveNF((nf) => {
+        const { config } = nf.getModule("gnb");
         Object.assign(config, this.plmn);
         delete config.amf_addr;
         delete config.amf_port;
@@ -671,22 +677,23 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 
         config.forwarding_worker = nWorkers;
       });
-      this.initCommands.get(ct).push(
+
+      setInit(
         "iptables -I OUTPUT -p icmp --icmp-type destination-unreachable -j DROP",
         ...applyQoS(s),
       );
     }
   }
 
-  private buildUEs(): void {
+  private async buildUEs(): Promise<void> {
     const { "phoenix-ue-isolated": isolated } = this.opts;
     const mcc = Number.parseInt(this.plmn.mcc, 10);
     const mnc = Number.parseInt(this.plmn.mnc, 10);
-    for (const [ct, sub, s] of this.createNetworkFunctions("5g/ue1.json", ["air"], this.ctx.netdef.listSubscribers())) {
+    for await (const [sub, { s, saveNF }] of this.createNetworkFunctions("5g/ue1.json", ["air"], this.ctx.netdef.listSubscribers())) {
       compose.annotate(s, "cpus", isolated.some((suffix) => sub.supi.endsWith(suffix)) ? 1 : 0);
       compose.annotate(s, "ue_supi", sub.supi);
-      this.sf.editNetworkFunction(ct, (c) => {
-        const { config } = c.getModule("ue_5g_nas_only");
+      await saveNF((nf) => {
+        const { config } = nf.getModule("ue_5g_nas_only");
         config.usim = {
           supi: sub.supi,
           k: sub.k,
