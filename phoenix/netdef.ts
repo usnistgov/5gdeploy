@@ -8,7 +8,7 @@ import assert from "tiny-invariant";
 import type { Constructor, Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { applyQoS, importGrafanaDashboard, NetDef, type NetDefComposeContext, NetDefDN, setProcessExporterRule } from "../netdef-compose/mod.js";
+import { applyQoS, importGrafanaDashboard, makeUPFRoutes, NetDef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
 import type { ComposeService, N, PH } from "../types/mod.js";
 import { file_io, findByName, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { NetworkFunction } from "./nf.js";
@@ -517,9 +517,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
   protected override nfFilter = ["upf", "dn", "igw", "hostnat"];
 
   public async build(): Promise<void> {
-    NetDefDN.defineDNServices(this.ctx);
     await this.buildUPFs();
-    NetDefDN.setDNCommands(this.ctx);
   }
 
   private async buildUPFs(): Promise<void> {
@@ -628,7 +626,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
           "ip tuntap add mode tap user root name n6_tap",
           "ip link set n6_tap up master br-eth",
         ] : []),
-        ...NetDefDN.makeUPFRoutes(this.ctx, peers),
+        ...makeUPFRoutes(this.ctx, peers),
       );
     }
   }

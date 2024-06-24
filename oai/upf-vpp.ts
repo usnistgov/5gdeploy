@@ -3,13 +3,12 @@ import path from "node:path";
 import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
-import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
+import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import { file_io } from "../util/mod.js";
 import type { OAIOpts } from "./options.js";
 
 /** Build UP functions using oai-upf-vpp as UPF. */
 export async function oaiUPvpp(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
-  NetDefDN.defineDNServices(ctx);
   const { mcc, mnc } = NetDef.splitPLMN(ctx.network.plmn);
   const vppScript = await ctx.writeFile("oai-upf-vpp.sh", file_io.write.copyFrom(path.join(import.meta.dirname, "upf-vpp.sh")));
 
@@ -49,6 +48,4 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, opts: OAIOpts): Promis
       DNN: dn.dnn,
     });
   }
-
-  NetDefDN.setDNCommands(ctx);
 }

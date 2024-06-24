@@ -11,20 +11,20 @@ import { ueransimRAN } from "../ueransim/netdef.js";
 import { file_io, Yargs } from "../util/mod.js";
 import { makeScript } from "./compose-sh.js";
 import { NetDefComposeContext } from "./context.js";
-import { dnOptions, saveDNOptions } from "./dn.js";
+import { defineDNServices, dnOptions, setDNCommands } from "./dn.js";
 import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
 import { prometheus, prometheusFinish, prometheusOptions } from "./prometheus.js";
 import { qosOptions, saveQoS } from "./qos.js";
 
-type Providers = Record<string, (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>>;
+type Provider = (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>;
 
-const cpProviders: Providers = {
+const cpProviders: Record<string, Provider> = {
   free5gc: f5CP,
   oai: oaiCP,
   phoenix: phoenixCP,
 };
 
-const upProviders: Providers = {
+const upProviders: Record<string, Provider> = {
   bess: bessUP,
   free5gc: f5UP,
   oai: oaiUP,
@@ -32,7 +32,7 @@ const upProviders: Providers = {
   phoenix: phoenixUP,
 };
 
-const ranProviders: Providers = {
+const ranProviders: Record<string, Provider> = {
   gnbsim: gnbsimRAN,
   oai: oaiRAN,
   packetrusher: packetrusherRAN,
@@ -79,13 +79,14 @@ const args = Yargs()
   .option(prometheusOptions)
   .option(qosOptions)
   .option(srsOptions)
-  .middleware(saveDNOptions)
   .parseSync();
 
 const netdef = new NetDef(await file_io.readJSON(args.netdef) as N.Network);
 netdef.validate();
 const ctx = new NetDefComposeContext(netdef, args.out, new IPAlloc(args));
+defineDNServices(ctx, args);
 await upProviders[args.up]!(ctx, args);
+setDNCommands(ctx);
 await cpProviders[args.cp]!(ctx, args);
 await ranProviders[args.ran]!(ctx, args);
 await saveQoS(ctx, args);

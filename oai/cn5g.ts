@@ -4,7 +4,7 @@ import sql from "sql-tagged-template-literal";
 import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
-import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
+import { makeUPFRoutes, NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { CN5G, ComposeService } from "../types/mod.js";
 import { file_io, hexPad } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
@@ -201,8 +201,6 @@ class CPBuilder extends CN5GBuilder {
 
 class UPBuilder extends CN5GBuilder {
   public async build(): Promise<void> {
-    NetDefDN.defineDNServices(this.ctx);
-
     this.c = await oai_conf.loadCN5G();
     // rely on hosts entry because UP is created before CP so that NRF and SMF IPs are unknown
     this.c.nfs.nrf!.host = "nrf.br-cp"; // assuming only one NRF
@@ -229,13 +227,11 @@ class UPBuilder extends CN5GBuilder {
 
       const peers = this.netdef.gatherUPFPeers(upf);
       assert(peers.N9.length === 0, "N9 not supported");
-      compose.setCommands(s, this.makeExecCommands(s, "upf", NetDefDN.makeUPFRoutes(this.ctx, peers)));
+      compose.setCommands(s, this.makeExecCommands(s, "upf", makeUPFRoutes(this.ctx, peers)));
 
       this.updateConfigUPF(peers);
       await this.ctx.writeFile(configPath, this.c);
     }
-
-    NetDefDN.setDNCommands(this.ctx);
   }
 
   private updateConfigUPF(peers: NetDef.UPFPeers): void {

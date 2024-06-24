@@ -4,7 +4,7 @@ import assert from "tiny-invariant";
 import type { SetRequired } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { NetDef, type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
+import { makeUPFRoutes, NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, F5, N } from "../types/mod.js";
 import { hexPad, scriptHead } from "../util/mod.js";
 import * as f5_conf from "./conf.js";
@@ -429,8 +429,6 @@ export async function f5CP(ctx: NetDefComposeContext): Promise<void> {
 
 /** Build UP functions using free5GC as UPF. */
 export async function f5UP(ctx: NetDefComposeContext): Promise<void> {
-  NetDefDN.defineDNServices(ctx);
-
   const dnnList: F5.upf.DN[] = ctx.network.dataNetworks.filter((dn) => dn.type === "IPv4").map((dn) => ({
     dnn: dn.dnn,
     cidr: dn.subnet!,
@@ -441,7 +439,7 @@ export async function f5UP(ctx: NetDefComposeContext): Promise<void> {
     const peers = ctx.netdef.gatherUPFPeers(upf);
     compose.setCommands(s, [
       ...compose.renameNetifs(s, { pipeworkWait: true }),
-      ...NetDefDN.makeUPFRoutes(ctx, peers),
+      ...makeUPFRoutes(ctx, peers),
       "msg Starting free5GC UPF",
       "exec ./upf -c ./config/upfcfg.yaml",
     ]);
@@ -460,6 +458,4 @@ export async function f5UP(ctx: NetDefComposeContext): Promise<void> {
 
     await ctx.writeFile(`up-cfg/${ct}.yaml`, c, { s, target: "/free5gc/config/upfcfg.yaml" });
   }
-
-  NetDefDN.setDNCommands(ctx);
 }

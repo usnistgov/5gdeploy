@@ -7,7 +7,7 @@ import assert from "tiny-invariant";
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import type { N } from "../types/mod.js";
-import { YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import type { YargsInfer, YargsOptions } from "../util/mod.js";
 import type { NetDefComposeContext } from "./context.js";
 
 /** Yargs options definition for Data Networks. */
@@ -19,10 +19,6 @@ export const dnOptions = {
   },
 } as const satisfies YargsOptions;
 type DNOpts = YargsInfer<typeof dnOptions>;
-let savedOpts: DNOpts = YargsDefaults(dnOptions);
-export function saveDNOptions(opts: DNOpts): void {
-  savedOpts = opts;
-}
 
 const dnDockerImage = "5gdeploy.localhost/dn";
 const upfRouteTableBase = 5000;
@@ -45,8 +41,8 @@ function makeDNServiceName(ctx: NetDefComposeContext, dn: N.DataNetworkID): stri
  * @remarks
  * This shall be called before creating UPFs.
  */
-export function defineDNServices(ctx: NetDefComposeContext): void {
-  const { "dn-workers": nWorkers } = savedOpts;
+export function defineDNServices(ctx: NetDefComposeContext, opts: DNOpts): void {
+  const { "dn-workers": nWorkers } = opts;
   for (const dn of ctx.network.dataNetworks) {
     if (dn.type !== "IPv4") {
       continue;

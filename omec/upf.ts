@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import * as compose from "../compose/mod.js";
-import { type NetDefComposeContext, NetDefDN } from "../netdef-compose/mod.js";
+import type { NetDefComposeContext } from "../netdef-compose/mod.js";
 import { file_io } from "../util/mod.js";
 
 class UPBuilder {
@@ -12,11 +12,9 @@ class UPBuilder {
   public async build(): Promise<void> {
     this.version = (await file_io.readText(path.join(import.meta.dirname, "upf/VERSION"))).trim();
 
-    NetDefDN.defineDNServices(this.ctx);
     for (const [ct] of compose.suggestNames("upf", this.ctx.network.upfs)) {
       await this.buildUPF(ct);
     }
-    NetDefDN.setDNCommands(this.ctx);
   }
 
   private async buildUPF(ct: string): Promise<void> {
