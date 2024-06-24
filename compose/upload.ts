@@ -17,11 +17,7 @@ const c = await file_io.readYAML(path.join(args.dir, "compose.yml")) as ComposeF
 const localImages = await dockerode.listImages("5gdeploy.localhost/*");
 const cmds: string[] = [];
 
-for (const hostServices of compose.classifyByHost(c)) {
-  if (!hostServices.host) {
-    continue;
-  }
-
+for (const hostServices of compose.classifyByHost(c).filter(({ host }) => !!host)) {
   const remoteImages = await dockerode.listImages("5gdeploy.localhost/*", hostServices.host);
   const pushImages = new Set<string>();
   for (const { image } of hostServices.services) {

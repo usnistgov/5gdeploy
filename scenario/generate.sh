@@ -43,7 +43,7 @@ OUT=../../compose/$D
 mkdir -p $OUT
 OUT=$(readlink -f $OUT)
 
-if [[ -f $OUT/compose.yml ]]; then
+if [[ -x $OUT/compose.sh ]]; then
   msg Deleting existing scenario
   $OUT/compose.sh down || true
   rm -rf $OUT/*
@@ -72,4 +72,4 @@ corepack pnpm -s netdef-compose --netdef=$NETDEF --out=$OUT "$@"
 msg Uploading scenario folder to secondary hosts
 $OUT/compose.sh upload
 
-msg Scenario folder is ready at $(readlink -f $OUT)
+msg Scenario folder is ready at $OUT
