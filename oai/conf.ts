@@ -73,6 +73,7 @@ async function saveLibconf(this: unknown): Promise<string> {
 /** Load OAI CN5G config.yaml file. */
 export async function loadCN5G(): Promise<CN5G.Config> {
   const c = await file_io.readYAML(path.resolve(composePath, "conf/basic_nrf_config.yaml"), {
+    once: true,
     schema: yaml.FAILSAFE_SCHEMA,
   });
   return JSON.parse(JSON.stringify(c, (key, value) => {

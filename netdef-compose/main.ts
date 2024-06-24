@@ -1,3 +1,7 @@
+import assert from "node:assert";
+
+import { Minimatch } from "minimatch";
+
 import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc/mod.js";
 import { NetDef } from "../netdef/netdef.js";
@@ -17,6 +21,7 @@ import { prometheus, prometheusFinish, prometheusOptions } from "./prometheus.js
 import { qosOptions, saveQoS } from "./qos.js";
 
 type Provider = (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>;
+type UpProvider = (ctx: NetDefComposeContext, upf: N.UPF, opts: typeof args) => Promise<void>;
 
 const cpProviders: Record<string, Provider> = {
   free5gc: f5CP,
@@ -24,7 +29,7 @@ const cpProviders: Record<string, Provider> = {
   phoenix: phoenixCP,
 };
 
-const upProviders: Record<string, Provider> = {
+const upProviders: Record<string, UpProvider> = {
   bess: bessUP,
   free5gc: f5UP,
   oai: oaiUP,
@@ -53,21 +58,32 @@ const args = Yargs()
     type: "string",
   })
   .option("cp", {
-    desc: "Control Plane provider",
-    default: "phoenix",
     choices: Object.keys(cpProviders),
+    default: "phoenix",
+    desc: "Control Plane provider",
     type: "string",
   })
   .option("up", {
+    array: true,
+    coerce(lines: readonly string[]): Array<[pattern: Minimatch | undefined, provider: keyof UpProvider]> {
+      const choices = Object.keys(upProviders);
+      return Array.from(lines, (line) => {
+        const tokens = line.split("=");
+        assert(tokens.length <= 2 && choices.includes(tokens.at(-1)!), `bad --up=${line}`);
+        if (tokens.length === 1) {
+          return [undefined, tokens[0]! as keyof UpProvider];
+        }
+        return [new Minimatch(tokens[0]!), tokens[1]! as keyof UpProvider];
+      });
+    },
+    default: [[undefined, "phoenix"]],
     desc: "User Plane provider",
-    default: "phoenix",
-    choices: Object.keys(upProviders),
     type: "string",
   })
   .option("ran", {
-    desc: "Radio Access Network provider",
-    default: "phoenix",
     choices: Object.keys(ranProviders),
+    default: "phoenix",
+    desc: "Radio Access Network provider",
     type: "string",
   })
   .option(compose.bridgeOptions)
@@ -85,7 +101,11 @@ const netdef = new NetDef(await file_io.readJSON(args.netdef) as N.Network);
 netdef.validate();
 const ctx = new NetDefComposeContext(netdef, args.out, new IPAlloc(args));
 defineDNServices(ctx, args);
-await upProviders[args.up]!(ctx, args);
+for (const upf of ctx.network.upfs) {
+  const up = args.up.find(([pattern]) => pattern === undefined || pattern.match(upf.name));
+  assert(up, `User Plane provider not found for ${upf.name}`);
+  await upProviders[up[1]]!(ctx, upf, args);
+}
 setDNCommands(ctx);
 await cpProviders[args.cp]!(ctx, args);
 await ranProviders[args.ran]!(ctx, args);

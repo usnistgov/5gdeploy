@@ -5,7 +5,7 @@ import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import { makeUPFRoutes, NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { CN5G, ComposeService } from "../types/mod.js";
+import type { CN5G, ComposeService, N } from "../types/mod.js";
 import { file_io, hexPad } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
 import type { OAIOpts } from "./options.js";
@@ -199,9 +199,31 @@ class CPBuilder extends CN5GBuilder {
   }
 }
 
+/** Build CP functions using OAI-CN5G. */
+export async function oaiCP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
+  const b = new CPBuilder(ctx, opts);
+  await b.build();
+}
+
 class UPBuilder extends CN5GBuilder {
-  public async build(): Promise<void> {
+  public async build(upf: N.UPF): Promise<void> {
     this.c = await oai_conf.loadCN5G();
+
+    const ct = upf.name;
+    const configPath = `up-cfg/${ct}.yaml`;
+    const s = await this.defineService(ct, "upf", this.c.nfs.upf!, false, configPath);
+    compose.annotate(s, "cpus", this.opts["oai-upf-workers"]);
+    s.devices.push("/dev/net/tun:/dev/net/tun");
+
+    const peers = this.netdef.gatherUPFPeers(upf);
+    assert(peers.N9.length === 0, "N9 not supported");
+    compose.setCommands(s, this.makeExecCommands(s, "upf", makeUPFRoutes(this.ctx, peers)));
+
+    this.updateConfigUPF(peers);
+    await this.ctx.writeFile(configPath, this.c);
+  }
+
+  private updateConfigUPF(peers: NetDef.UPFPeers): void {
     // rely on hosts entry because UP is created before CP so that NRF and SMF IPs are unknown
     this.c.nfs.nrf!.host = "nrf.br-cp"; // assuming only one NRF
     this.c.upf!.remote_n6_gw = "127.0.0.1";
@@ -219,22 +241,6 @@ class UPBuilder extends CN5GBuilder {
     delete this.c.amf;
     delete this.c.smf;
 
-    for (const [ct, upf] of compose.suggestNames("upf", this.ctx.network.upfs)) {
-      const configPath = `up-cfg/${ct}.yaml`;
-      const s = await this.defineService(ct, "upf", this.c.nfs.upf!, false, configPath);
-      compose.annotate(s, "cpus", this.opts["oai-upf-workers"]);
-      s.devices.push("/dev/net/tun:/dev/net/tun");
-
-      const peers = this.netdef.gatherUPFPeers(upf);
-      assert(peers.N9.length === 0, "N9 not supported");
-      compose.setCommands(s, this.makeExecCommands(s, "upf", makeUPFRoutes(this.ctx, peers)));
-
-      this.updateConfigUPF(peers);
-      await this.ctx.writeFile(configPath, this.c);
-    }
-  }
-
-  private updateConfigUPF(peers: NetDef.UPFPeers): void {
     const { sNssaiUpfInfoList } = this.c.upf!.upf_info;
     sNssaiUpfInfoList.splice(0, Infinity);
     for (const snssai of this.netdef.nssai) {
@@ -250,14 +256,8 @@ class UPBuilder extends CN5GBuilder {
   }
 }
 
-/** Build CP functions using OAI-CN5G. */
-export async function oaiCP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
-  const b = new CPBuilder(ctx, opts);
-  await b.build();
-}
-
-/** Build UP functions using oai-cn5g-upf as UPF. */
-export async function oaiUP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
+/** Build oai-cn5g-upf. */
+export async function oaiUP(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIOpts): Promise<void> {
   const b = new UPBuilder(ctx, opts);
-  await b.build();
+  await b.build(upf);
 }

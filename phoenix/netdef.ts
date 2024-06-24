@@ -4,7 +4,6 @@ import { Netmask } from "netmask";
 import sql from "sql-tagged-template-literal";
 import type { AnyIterable } from "streaming-iterables";
 import assert from "tiny-invariant";
-import type { Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { applyQoS, importGrafanaDashboard, makeUPFRoutes, NetDef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
@@ -96,8 +95,6 @@ abstract class PhoenixScenarioBuilder {
   protected get network() { return this.ctx.network; }
   private readonly unsaved = new Map<string, PhoenixServiceContext>();
 
-  public abstract build(): Promisable<void>;
-
   private tplFile(relPath: string): string {
     return path.resolve(this.opts["phoenix-cfg"], relPath);
   }
@@ -168,7 +165,7 @@ abstract class PhoenixScenarioBuilder {
     return nf;
   }
 
-  protected buildSQL(): void {
+  public buildSQL(): void {
     const s = this.ctx.defineService("sql", compose.mysql.image, ["db"]);
     compose.mysql.init(s, `./${this.nfKind}-sql`);
   }
@@ -183,7 +180,7 @@ abstract class PhoenixScenarioBuilder {
     await this.ctx.writeFile(`${this.nfKind}-sql/${dbName}.sql`, body);
   }
 
-  protected async finish(): Promise<void> {
+  public async finish(): Promise<void> {
     for (const [ct, { s, nf, initCommands }] of this.unsaved) {
       await this.ctx.writeFile(`${this.nfKind}-cfg/${ct}.json`, nf, {
         s, target: path.join(cfgdir, `${ct}.json`),
@@ -226,22 +223,11 @@ abstract class PhoenixScenarioBuilder {
 class PhoenixCPBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "cp";
 
-  public async build(): Promise<void> {
-    this.buildSQL();
-    await this.buildNRF();
-    await this.buildUDM();
-    await this.buildAUSF();
-    await this.buildNSSF();
-    await this.buildAMFs();
-    await this.buildSMFs();
-    await this.finish();
-  }
-
-  private async buildNRF(): Promise<void> {
+  public async buildNRF(): Promise<void> {
     await this.defineService("nrf", ["cp"], "5g/nrf.json");
   }
 
-  private async buildUDM(): Promise<void> {
+  public async buildUDM(): Promise<void> {
     const { netdef } = this;
     await this.createDatabase("5g/sql/udm_db.sql", "udm_db", function*() {
       yield "DELETE FROM gpsi_supi_association";
@@ -285,11 +271,11 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     await this.defineService("udm", ["db", "cp"], "5g/udm.json");
   }
 
-  private async buildAUSF(): Promise<void> {
+  public async buildAUSF(): Promise<void> {
     await this.defineService("ausf", ["cp"], "5g/ausf.json");
   }
 
-  private async buildNSSF(): Promise<void> {
+  public async buildNSSF(): Promise<void> {
     const { amfs } = this.netdef;
     const amfNSSAIs = new Set<string>();
     for (const amf of amfs) {
@@ -317,7 +303,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     await this.defineService("nssf", ["cp"], "5g_nssf/nssf.json");
   }
 
-  private async buildAMFs(): Promise<void> {
+  public async buildAMFs(): Promise<void> {
     for (const [ct, amf] of compose.suggestNames("amf", this.ctx.netdef.amfs)) {
       const { nf } = await this.defineService(ct, ["cp", "n2"], "5g/amf.json");
       setNrfClientSlices(nf, amf.nssai);
@@ -341,7 +327,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     }
   }
 
-  private async buildSMFs(): Promise<void> {
+  public async buildSMFs(): Promise<void> {
     const { network, netdef: { smfs, dataPathLinks } } = this;
     let nextTeid = 0x10000000;
     const eachTeid = Math.floor(0xE0000000 / smfs.length);
@@ -459,144 +445,140 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
 /** Build CP functions using Open5GCore. */
 export async function phoenixCP(ctx: NetDefComposeContext, opts: PhoenixOpts): Promise<void> {
   const b = new PhoenixCPBuilder(ctx, opts);
-  await b.build();
+  b.buildSQL();
+  await b.buildNRF();
+  await b.buildUDM();
+  await b.buildAUSF();
+  await b.buildNSSF();
+  await b.buildAMFs();
+  await b.buildSMFs();
+  await b.finish();
 }
 
 class PhoenixUPBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "up";
 
-  public async build(): Promise<void> {
-    await this.buildUPFs();
-    await this.finish();
-  }
-
-  private async buildUPFs(): Promise<void> {
+  public async buildUPF(upf: N.UPF): Promise<void> {
+    const ct = upf.name;
     const nWorkers = this.opts["phoenix-upf-workers"];
     assert(nWorkers <= 8, "pfcp.so allows up to 8 threads");
 
-    for (const [ct, upf] of compose.suggestNames("upf", this.ctx.network.upfs)) {
-      const { s, nf, initCommands } = await this.defineService(ct, ["n4", "n3", "n6", "n9"], "5g/upf1.json");
-      compose.annotate(s, "cpus", nWorkers);
-      for (const netif of ["all", "default"]) {
-        s.sysctls[`net.ipv4.conf.${netif}.accept_local`] = 1;
-        s.sysctls[`net.ipv4.conf.${netif}.rp_filter`] = 2;
-      }
-      s.devices.push("/dev/net/tun:/dev/net/tun");
-
-      const peers = this.netdef.gatherUPFPeers(upf);
-      assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
-      assert(peers.N6IPv6.length === 0, "UPF does not support IPv6 DN");
-
-      nf.editModule("pfcp", ({ config }) => {
-        assert(config.mode === "UP");
-        assert(config.data_plane_mode === "integrated");
-        assert(config.DataPlane.xdp);
-
-        let nThreadPoolWorkers = nWorkers;
-        let needThreadPool = false;
-        const getInterfaceMode = (intf: "n3" | "n9" | "n6"): PH.pfcp.Interface["mode"] => {
-          if (this.opts[`phoenix-upf-single-worker-${intf}`]) {
-            --nThreadPoolWorkers;
-            return "single_thread";
-          }
-          needThreadPool = true;
-          return "thread_pool";
-        };
-
-        config.ethernet_session_identifier = peers.N6Ethernet[0]?.dnn;
-        config.DataPlane.threads = nWorkers;
-        config.DataPlane.interfaces = [];
-        config.DataPlane.xdp.interfaces = [];
-        if (peers.N3.length > 0) {
-          config.DataPlane.interfaces.push({
-            type: "n3_n9",
-            name: "n3",
-            bind_ip: s.networks.n3!.ipv4_address,
-            mode: getInterfaceMode("n3"),
-          });
-          config.DataPlane.xdp.interfaces.push({
-            type: "n3_n9",
-            name: "n3",
-          });
-        }
-        if (peers.N9.length > 0) {
-          config.DataPlane.interfaces.push({
-            type: "n3_n9",
-            name: "n9",
-            bind_ip: s.networks.n9!.ipv4_address,
-            mode: getInterfaceMode("n9"),
-          });
-          config.DataPlane.xdp.interfaces.push({
-            type: "n3_n9",
-            name: "n9",
-          });
-        }
-        if (peers.N6IPv4.length > 0) {
-          config.DataPlane.interfaces.push({
-            type: "n6_l3",
-            name: "n6_tun",
-            bind_ip: s.networks.n6!.ipv4_address,
-            mode: getInterfaceMode("n6"),
-          });
-          config.DataPlane.xdp.interfaces.push({
-            type: "n6_l3",
-            name: "n6_tun",
-          });
-        }
-        if (peers.N6Ethernet.length > 0) {
-          config.DataPlane.interfaces.push({
-            type: "n6_l2",
-            name: "n6_tap",
-            mode: getInterfaceMode("n6"),
-          });
-        }
-
-        assert(config.DataPlane.interfaces.length <= 8, "pfcp.so allows up to 8 interfaces");
-        if (this.opts["phoenix-upf-xdp"]) {
-          s.cap_add.push("BPF", "SYS_ADMIN");
-        } else {
-          delete config.DataPlane.xdp;
-        }
-        assert(needThreadPool ? nThreadPoolWorkers > 0 : nThreadPoolWorkers >= 0,
-          "insufficient thread_pool workers after satisfying single_thread interfaces");
-
-        config.hacks.qfi = 1;
-      });
-
-      initCommands.push(
-        ...applyQoS(s),
-        ...(peers.N6IPv4.length > 0 ? [
-          "ip tuntap add mode tun user root name n6_tun",
-          "ip link set n6_tun up",
-        ] : []),
-        ...Array.from(peers.N6IPv4, ({ subnet }) => `ip route add ${subnet} dev n6_tun`),
-        ...(peers.N6Ethernet.length > 0 ? [
-          "ip link add name br-eth type bridge",
-          "ip link set br-eth up",
-          "ip tuntap add mode tap user root name n6_tap",
-          "ip link set n6_tap up master br-eth",
-        ] : []),
-        ...makeUPFRoutes(this.ctx, peers),
-      );
+    const { s, nf, initCommands } = await this.defineService(ct, ["n4", "n3", "n6", "n9"], "5g/upf1.json");
+    compose.annotate(s, "cpus", nWorkers);
+    for (const netif of ["all", "default"]) {
+      s.sysctls[`net.ipv4.conf.${netif}.accept_local`] = 1;
+      s.sysctls[`net.ipv4.conf.${netif}.rp_filter`] = 2;
     }
+    s.devices.push("/dev/net/tun:/dev/net/tun");
+
+    const peers = this.netdef.gatherUPFPeers(upf);
+    assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
+    assert(peers.N6IPv6.length === 0, "UPF does not support IPv6 DN");
+
+    nf.editModule("pfcp", ({ config }) => {
+      assert(config.mode === "UP");
+      assert(config.data_plane_mode === "integrated");
+      assert(config.DataPlane.xdp);
+
+      let nThreadPoolWorkers = nWorkers;
+      let needThreadPool = false;
+      const getInterfaceMode = (intf: "n3" | "n9" | "n6"): PH.pfcp.Interface["mode"] => {
+        if (this.opts[`phoenix-upf-single-worker-${intf}`]) {
+          --nThreadPoolWorkers;
+          return "single_thread";
+        }
+        needThreadPool = true;
+        return "thread_pool";
+      };
+
+      config.ethernet_session_identifier = peers.N6Ethernet[0]?.dnn;
+      config.DataPlane.threads = nWorkers;
+      config.DataPlane.interfaces = [];
+      config.DataPlane.xdp.interfaces = [];
+      if (peers.N3.length > 0) {
+        config.DataPlane.interfaces.push({
+          type: "n3_n9",
+          name: "n3",
+          bind_ip: s.networks.n3!.ipv4_address,
+          mode: getInterfaceMode("n3"),
+        });
+        config.DataPlane.xdp.interfaces.push({
+          type: "n3_n9",
+          name: "n3",
+        });
+      }
+      if (peers.N9.length > 0) {
+        config.DataPlane.interfaces.push({
+          type: "n3_n9",
+          name: "n9",
+          bind_ip: s.networks.n9!.ipv4_address,
+          mode: getInterfaceMode("n9"),
+        });
+        config.DataPlane.xdp.interfaces.push({
+          type: "n3_n9",
+          name: "n9",
+        });
+      }
+      if (peers.N6IPv4.length > 0) {
+        config.DataPlane.interfaces.push({
+          type: "n6_l3",
+          name: "n6_tun",
+          bind_ip: s.networks.n6!.ipv4_address,
+          mode: getInterfaceMode("n6"),
+        });
+        config.DataPlane.xdp.interfaces.push({
+          type: "n6_l3",
+          name: "n6_tun",
+        });
+      }
+      if (peers.N6Ethernet.length > 0) {
+        config.DataPlane.interfaces.push({
+          type: "n6_l2",
+          name: "n6_tap",
+          mode: getInterfaceMode("n6"),
+        });
+      }
+
+      assert(config.DataPlane.interfaces.length <= 8, "pfcp.so allows up to 8 interfaces");
+      if (this.opts["phoenix-upf-xdp"]) {
+        s.cap_add.push("BPF", "SYS_ADMIN");
+      } else {
+        delete config.DataPlane.xdp;
+      }
+      assert(needThreadPool ? nThreadPoolWorkers > 0 : nThreadPoolWorkers >= 0,
+        "insufficient thread_pool workers after satisfying single_thread interfaces");
+
+      config.hacks.qfi = 1;
+    });
+
+    initCommands.push(
+      ...applyQoS(s),
+      ...(peers.N6IPv4.length > 0 ? [
+        "ip tuntap add mode tun user root name n6_tun",
+        "ip link set n6_tun up",
+      ] : []),
+      ...Array.from(peers.N6IPv4, ({ subnet }) => `ip route add ${subnet} dev n6_tun`),
+      ...(peers.N6Ethernet.length > 0 ? [
+        "ip link add name br-eth type bridge",
+        "ip link set br-eth up",
+        "ip tuntap add mode tap user root name n6_tap",
+        "ip link set n6_tap up master br-eth",
+      ] : []),
+      ...makeUPFRoutes(this.ctx, peers),
+    );
   }
 }
 /** Build UP functions using Open5GCore as UPF. */
-export async function phoenixUP(ctx: NetDefComposeContext, opts: PhoenixOpts): Promise<void> {
+export async function phoenixUP(ctx: NetDefComposeContext, upf: N.UPF, opts: PhoenixOpts): Promise<void> {
   const b = new PhoenixUPBuilder(ctx, opts);
-  await b.build();
+  await b.buildUPF(upf);
+  await b.finish();
 }
 
 class PhoenixRANBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "ran";
 
-  public async build(): Promise<void> {
-    await this.buildGNBs();
-    await this.buildUEs();
-    await this.finish();
-  }
-
-  private async buildGNBs(): Promise<void> {
+  public async buildGNBs(): Promise<void> {
     const sliceKeys = ["slice", "slice2"] as const;
     const slices = this.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
     assert(slices.length <= sliceKeys.length, `gNB allows up to ${sliceKeys.length} slices`);
@@ -637,7 +619,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     }
   }
 
-  private async buildUEs(): Promise<void> {
+  public async buildUEs(): Promise<void> {
     const { "phoenix-ue-isolated": isolated } = this.opts;
     const mcc = Number.parseInt(this.plmn.mcc, 10);
     const mnc = Number.parseInt(this.plmn.mnc, 10);
@@ -689,7 +671,9 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 /** Build RAN functions using Open5GCore RAN simulators. */
 export async function phoenixRAN(ctx: NetDefComposeContext, opts: PhoenixOpts): Promise<void> {
   const b = new PhoenixRANBuilder(ctx, opts);
-  await b.build();
+  await b.buildGNBs();
+  await b.buildUEs();
+  await b.finish();
 }
 
 function setNrfClientSlices(c: NetworkFunction, nssai: readonly N.SNSSAI[]): void {

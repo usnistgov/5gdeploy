@@ -47,6 +47,16 @@ These combinations are verified to be compatible:
 * `--cp=phoenix --up=phoenix --ran=srsran`
 * `--cp=phoenix --up=phoenix --ran=ueransim`
 
+Each UPF implementation may be chosen independently, by repeating the `--up` flag.
+Each flag value consists of a minimatch pattern followed by a 5G implementation identifier.
+Example command:
+
+```bash
+corepack pnpm netdef-compose \
+  --up='upf1=free5gc' --up='*=phoenix' \
+  [other arguments]
+```
+
 ## IP Address Assignment
 
 5gdeploy assigns internal IPv4 addresses of 5G network functions in two parts:

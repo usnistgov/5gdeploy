@@ -427,35 +427,31 @@ export async function f5CP(ctx: NetDefComposeContext): Promise<void> {
   await b.build();
 }
 
-/** Build UP functions using free5GC as UPF. */
-export async function f5UP(ctx: NetDefComposeContext): Promise<void> {
-  const dnnList: F5.upf.DN[] = ctx.network.dataNetworks.filter((dn) => dn.type === "IPv4").map((dn) => ({
+/** Build free5GC UPF. */
+export async function f5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void> {
+  const s = ctx.defineService(upf.name, "5gdeploy.localhost/free5gc-upf", ["n3", "n4", "n6", "n9"]);
+  const peers = ctx.netdef.gatherUPFPeers(upf);
+  compose.setCommands(s, [
+    ...compose.renameNetifs(s, { pipeworkWait: true }),
+    ...makeUPFRoutes(ctx, peers),
+    "msg Starting free5GC UPF",
+    "exec ./upf -c ./config/upfcfg.yaml",
+  ]);
+  dependOnGtp5g(s, ctx.c);
+
+  const c = await f5_conf.loadTemplate("upfcfg") as F5.upf.Root;
+  c.pfcp.addr = s.networks.n4!.ipv4_address;
+  c.pfcp.nodeID = s.networks.n4!.ipv4_address;
+  // go-upf gtp5g driver listens on the first interface defined in ifList and does not distinguish N3 or N9
+  // https://github.com/free5gc/go-upf/blob/efae7532f8f9ed081065cdaa0589b0c76d11b204/internal/forwarder/driver.go#L53-L58
+  c.gtpu.ifList = [{
+    addr: "0.0.0.0",
+    type: "N3",
+  }];
+  c.dnnList = ctx.network.dataNetworks.filter((dn) => dn.type === "IPv4").map((dn) => ({
     dnn: dn.dnn,
     cidr: dn.subnet!,
   }));
 
-  for (const [ct, upf] of compose.suggestNames("upf", ctx.network.upfs)) {
-    const s = ctx.defineService(ct, "5gdeploy.localhost/free5gc-upf", ["n3", "n4", "n6", "n9"]);
-    const peers = ctx.netdef.gatherUPFPeers(upf);
-    compose.setCommands(s, [
-      ...compose.renameNetifs(s, { pipeworkWait: true }),
-      ...makeUPFRoutes(ctx, peers),
-      "msg Starting free5GC UPF",
-      "exec ./upf -c ./config/upfcfg.yaml",
-    ]);
-    dependOnGtp5g(s, ctx.c);
-
-    const c = await f5_conf.loadTemplate("upfcfg") as F5.upf.Root;
-    c.pfcp.addr = s.networks.n4!.ipv4_address;
-    c.pfcp.nodeID = s.networks.n4!.ipv4_address;
-    // go-upf gtp5g driver listens on the first interface defined in ifList and does not distinguish N3 or N9
-    // https://github.com/free5gc/go-upf/blob/efae7532f8f9ed081065cdaa0589b0c76d11b204/internal/forwarder/driver.go#L53-L58
-    c.gtpu.ifList = [{
-      addr: "0.0.0.0",
-      type: "N3",
-    }];
-    c.dnnList = dnnList;
-
-    await ctx.writeFile(`up-cfg/${ct}.yaml`, c, { s, target: "/free5gc/config/upfcfg.yaml" });
-  }
+  await ctx.writeFile(`up-cfg/${upf.name}.yaml`, c, { s, target: "/free5gc/config/upfcfg.yaml" });
 }
