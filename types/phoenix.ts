@@ -19,11 +19,13 @@ export interface ModuleConfigMap {
   json_rpc: {};
   monitoring: monitoring.Config;
   nrf_client: nrf_client.Config;
+  nssf: nssf.Config;
   pfcp: pfcp.Config;
   remote_command: {};
   rest_api: {};
   sdn_routing_topology: sdn_routing_topology.Config;
   smf: smf.Config;
+  udm: udm.Config;
   ue_5g_nas_only: ue_5g_nas_only.Config;
 }
 
@@ -152,6 +154,13 @@ export namespace nrf_client {
   }
 }
 
+export namespace nssf {
+  export interface Config {
+    database: Database;
+    [k: string]: unknown;
+  }
+}
+
 export namespace pfcp {
   export type Config = UP | CP;
 
@@ -270,6 +279,13 @@ export namespace smf {
     id: string;
     mtu: 1456;
     startTeid: number;
+    [k: string]: unknown;
+  }
+}
+
+export namespace udm {
+  export interface Config {
+    Database: Database;
     [k: string]: unknown;
   }
 }

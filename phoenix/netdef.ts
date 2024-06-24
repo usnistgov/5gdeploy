@@ -72,6 +72,7 @@ interface PhoenixServiceContext {
   s: ComposeService;
   nf: NetworkFunction;
   initCommands: string[];
+  makeDatabase: (tpl: `${string}.sql`, database: PH.Database, append: AnyIterable<string>) => Promise<void>;
 }
 
 abstract class PhoenixScenarioBuilder {
@@ -108,10 +109,20 @@ abstract class PhoenixScenarioBuilder {
     s.sysctls["net.ipv4.ip_forward"] = 1;
     s.sysctls["net.ipv6.conf.all.disable_ipv6"] = 1;
 
+    const initCommands: string[] = [];
     const sc: PhoenixServiceContext = {
       s,
       nf: await this.loadNF(tpl, s),
-      initCommands: [],
+      initCommands,
+      makeDatabase: async (tpl, d, append) => {
+        d.database = ct;
+        d.hostname = this.ctx.gatherIPs("sql", "db")[0]!;
+        await this.ctx.writeFile(
+          `${this.nfKind}-sql/${ct}.sql`,
+          await compose.mysql.join(await this.loadDatabase(tpl, ct), append),
+        );
+        initCommands.push(...compose.mysql.wait(d.hostname, d.username, d.password, ct));
+      },
     };
     this.unsaved.set(ct, sc);
     return sc;
@@ -170,14 +181,13 @@ abstract class PhoenixScenarioBuilder {
     compose.mysql.init(s, `./${this.nfKind}-sql`);
   }
 
-  protected async createDatabase(tpl: `${string}.sql`, dbName: string, append: () => AnyIterable<string>): Promise<void> {
+  private async loadDatabase(tpl: string, dbName: string): Promise<string> {
     let body = await file_io.readText(this.tplFile(tpl), { once: true });
     body = body.replace(/^create database .*;$/im, `CREATE OR REPLACE DATABASE ${dbName};`);
     body = body.replaceAll(/^create database .*;$/gim, "");
     body = body.replaceAll(/^use .*;$/gim, `USE ${dbName};`);
     body = body.replaceAll(/^grant ([a-z,]*) on \w+\.\* to (.*);$/gim, `GRANT $1 ON ${dbName}.* TO $2;`);
-    body = await compose.mysql.join(body, append());
-    await this.ctx.writeFile(`${this.nfKind}-sql/${dbName}.sql`, body);
+    return body;
   }
 
   public async finish(): Promise<void> {
@@ -188,7 +198,7 @@ abstract class PhoenixScenarioBuilder {
       compose.setCommands(s, [
         ...compose.renameNetifs(s, { pipeworkWait: true, disableTxOffload: true }),
         ...initCommands ?? [],
-        `/entrypoint.sh ${ct}`,
+        `exec /opt/phoenix/dist/phoenix.sh -j ${ct}.json -p /opt/phoenix/dist/lib`,
       ]);
     }
     this.unsaved.clear();
@@ -228,47 +238,49 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
   }
 
   public async buildUDM(): Promise<void> {
-    const { netdef } = this;
-    await this.createDatabase("5g/sql/udm_db.sql", "udm_db", function*() {
-      yield "DELETE FROM gpsi_supi_association";
-      yield "DELETE FROM supi";
-      yield "DELETE FROM gpsi";
-      yield "SELECT @am_json:=access_and_mobility_sub_data FROM am_data WHERE supi='0'";
-      yield "DELETE FROM am_data";
-      yield "SELECT @dnn_json:=json FROM dnn_configurations WHERE supi='default_data' LIMIT 1";
-      yield "DELETE FROM dnn_configurations";
+    const { nf, makeDatabase } = await this.defineService("udm", ["db", "cp"], "5g/udm.json");
+    await nf.editModule("udm", async ({ config }) => {
+      await makeDatabase("5g/sql/udm_db.sql", config.Database, this.makeUDMDatabase());
+    });
+  }
 
-      for (const { supi, k, opc, subscribedNSSAI, subscribedDN } of netdef.listSubscribers()) {
-        yield sql`
-          INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type)
-          VALUES (${supi},UNHEX(${k}),UNHEX(${USIM.amf}),UNHEX(${opc}),UNHEX(${USIM.sqn}),0,1,0)
-          RETURNING @supi_id:=id
-        `;
-        yield sql`INSERT gpsi (identity) VALUES (${`msisdn-${supi}`}) RETURNING @gpsi_id:=id`;
-        yield "INSERT gpsi_supi_association (gpsi_id,supi_id) VALUES (@gpsi_id,@supi_id)";
+  private *makeUDMDatabase(): Iterable<string> {
+    yield "DELETE FROM gpsi_supi_association";
+    yield "DELETE FROM supi";
+    yield "DELETE FROM gpsi";
+    yield "SELECT @am_json:=access_and_mobility_sub_data FROM am_data WHERE supi='0'";
+    yield "DELETE FROM am_data";
+    yield "SELECT @dnn_json:=json FROM dnn_configurations WHERE supi='default_data' LIMIT 1";
+    yield "DELETE FROM dnn_configurations";
 
-        const amPatch = {
-          nssai: {
-            defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => NetDef.splitSNSSAI(snssai).ih),
+    for (const { supi, k, opc, subscribedNSSAI, subscribedDN } of this.netdef.listSubscribers()) {
+      yield sql`
+        INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type)
+        VALUES (${supi},UNHEX(${k}),UNHEX(${USIM.amf}),UNHEX(${opc}),UNHEX(${USIM.sqn}),0,1,0)
+        RETURNING @supi_id:=id
+      `;
+      yield sql`INSERT gpsi (identity) VALUES (${`msisdn-${supi}`}) RETURNING @gpsi_id:=id`;
+      yield "INSERT gpsi_supi_association (gpsi_id,supi_id) VALUES (@gpsi_id,@supi_id)";
+
+      const amPatch = {
+        nssai: {
+          defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => NetDef.splitSNSSAI(snssai).ih),
+        },
+      };
+      yield sql`INSERT am_data (supi,access_and_mobility_sub_data) VALUES (${supi},JSON_MERGE_PATCH(@am_json,${amPatch}))`;
+
+      for (const { snssai, dnn } of subscribedDN) {
+        const dn = this.netdef.findDN(dnn, snssai);
+        assert(!!dn);
+        const { sst } = NetDef.splitSNSSAI(snssai).ih;
+        const dnnPatch = {
+          pduSessionTypes: {
+            defaultSessionType: dn.type.toUpperCase(),
           },
         };
-        yield sql`INSERT am_data (supi,access_and_mobility_sub_data) VALUES (${supi},JSON_MERGE_PATCH(@am_json,${amPatch}))`;
-
-        for (const { snssai, dnn } of subscribedDN) {
-          const dn = netdef.findDN(dnn, snssai);
-          assert(!!dn);
-          const { sst } = NetDef.splitSNSSAI(snssai).ih;
-          const dnnPatch = {
-            pduSessionTypes: {
-              defaultSessionType: dn.type.toUpperCase(),
-            },
-          };
-          yield sql`INSERT dnn_configurations (supi,sst,dnn,json) VALUES (${supi},${sst},${dnn},JSON_MERGE_PATCH(@dnn_json,${dnnPatch}))`;
-        }
+        yield sql`INSERT dnn_configurations (supi,sst,dnn,json) VALUES (${supi},${sst},${dnn},JSON_MERGE_PATCH(@dnn_json,${dnnPatch}))`;
       }
-    });
-
-    await this.defineService("udm", ["db", "cp"], "5g/udm.json");
+    }
   }
 
   public async buildAUSF(): Promise<void> {
@@ -276,9 +288,8 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
   }
 
   public async buildNSSF(): Promise<void> {
-    const { amfs } = this.netdef;
     const amfNSSAIs = new Set<string>();
-    for (const amf of amfs) {
+    for (const amf of this.netdef.amfs) {
       amf.nssai.sort((a, b) => a.localeCompare(b));
       amfNSSAIs.add(amf.nssai.join(","));
     }
@@ -286,21 +297,24 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       return;
     }
 
-    await this.createDatabase("5g_nssf/sql/nssf_db.sql", "nssf_db", function*() {
-      yield "DELETE FROM snssai_nsi_mapping";
-      yield "DELETE FROM nsi";
-      yield "DELETE FROM snssai";
-      for (const [i, amf] of amfs.entries()) {
-        yield sql`INSERT nsi (nsi_id,nrf_id,target_amf_set) VALUES (${`nsi_id_${i}`},${`nrf_id_${i}`},${`${amf.amfi[1]}`}) RETURNING @nsi_id:=row_id`;
-        for (const snssai of amf.nssai) {
-          const { sst, sd = "" } = NetDef.splitSNSSAI(snssai).ih;
-          yield sql`INSERT snssai (sst,sd) VALUES (${sst},${sd}) RETURNING @snssai_id:=row_id`;
-          yield "INSERT snssai_nsi_mapping (row_id_snssai,row_id_nsi) VALUES (@snssai_id,@nsi_id)";
-        }
-      }
+    const { nf, makeDatabase } = await this.defineService("nssf", ["cp"], "5g_nssf/nssf.json");
+    await nf.editModule("nssf", async ({ config }) => {
+      await makeDatabase("5g_nssf/sql/nssf_db.sql", config.database, this.makeNSSFDatabase());
     });
+  }
 
-    await this.defineService("nssf", ["cp"], "5g_nssf/nssf.json");
+  private *makeNSSFDatabase(): Iterable<string> {
+    yield "DELETE FROM snssai_nsi_mapping";
+    yield "DELETE FROM nsi";
+    yield "DELETE FROM snssai";
+    for (const [i, amf] of this.netdef.amfs.entries()) {
+      yield sql`INSERT nsi (nsi_id,nrf_id,target_amf_set) VALUES (${`nsi_id_${i}`},${`nrf_id_${i}`},${`${amf.amfi[1]}`}) RETURNING @nsi_id:=row_id`;
+      for (const snssai of amf.nssai) {
+        const { sst, sd = "" } = NetDef.splitSNSSAI(snssai).ih;
+        yield sql`INSERT snssai (sst,sd) VALUES (${sst},${sd}) RETURNING @snssai_id:=row_id`;
+        yield "INSERT snssai_nsi_mapping (row_id_snssai,row_id_nsi) VALUES (@snssai_id,@nsi_id)";
+      }
+    }
   }
 
   public async buildAMFs(): Promise<void> {
@@ -328,41 +342,25 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
   }
 
   public async buildSMFs(): Promise<void> {
-    const { network, netdef: { smfs, dataPathLinks } } = this;
     let nextTeid = 0x10000000;
-    const eachTeid = Math.floor(0xE0000000 / smfs.length);
+    const eachTeid = Math.floor(0xE0000000 / this.netdef.smfs.length);
     for (const [ct, smf] of compose.suggestNames("smf", this.ctx.netdef.smfs)) {
-      const { nf } = await this.defineService(ct, ["db", "cp", "n4"], "5g/smf.json");
-      const startTeid = nextTeid;
-      nextTeid += eachTeid;
-
-      await this.createDatabase("5g/sql/smf_db.sql", ct, function*() {
-        yield "DELETE FROM dn_dns";
-        yield "DELETE FROM dn_info";
-        yield "DELETE FROM dn_ipv4_allocations";
-        yield "DELETE FROM dnn";
-        for (const { dnn, type, subnet } of network.dataNetworks) {
-          yield sql`INSERT dnn (dnn) VALUES (${dnn}) RETURNING @dn_id:=dn_id`;
-          if (type === "IPv4") {
-            assert(!!subnet);
-            const net = new Netmask(subnet);
-            yield "INSERT dn_dns (dn_id,addr,ai_family) VALUES (@dn_id,'1.1.1.1',2)";
-            yield sql`INSERT dn_info (dnn,network,prefix) VALUES (${dnn},${net.base},${net.bitmask})`;
-          }
-        }
-      });
+      const { nf, makeDatabase } = await this.defineService(ct, ["db", "cp", "n4"], "5g/smf.json");
 
       setNrfClientSlices(nf, smf.nssai);
-      nf.editModule("smf", ({ config }) => {
+
+      const startTeid = nextTeid;
+      nextTeid += eachTeid;
+      await nf.editModule("smf", async ({ config }) => {
         Object.assign(config, this.plmn);
-        config.Database.database = ct;
+        await makeDatabase("5g/sql/smf_db.sql", config.Database, this.makeSMFDatabase());
         config.id = ct;
         config.mtu = 1456;
         config.startTeid = startTeid;
       });
 
       nf.editModule("sdn_routing_topology", ({ config }) => {
-        config.Topology.Link = dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
+        config.Topology.Link = this.netdef.dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
           const typeA = this.determineDataPathNodeType(nodeA);
           const typeB = this.determineDataPathNodeType(nodeB);
           if (smf.nssai) {
@@ -388,6 +386,22 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         config.Associations.heartbeat_interval = 5;
         config.Associations.max_heartbeat_retries = 2;
       });
+    }
+  }
+
+  private *makeSMFDatabase(): Iterable<string> {
+    yield "DELETE FROM dn_dns";
+    yield "DELETE FROM dn_info";
+    yield "DELETE FROM dn_ipv4_allocations";
+    yield "DELETE FROM dnn";
+    for (const { dnn, type, subnet } of this.network.dataNetworks) {
+      yield sql`INSERT dnn (dnn) VALUES (${dnn}) RETURNING @dn_id:=dn_id`;
+      if (type === "IPv4") {
+        assert(!!subnet);
+        const net = new Netmask(subnet);
+        yield "INSERT dn_dns (dn_id,addr,ai_family) VALUES (@dn_id,'1.1.1.1',2)";
+        yield sql`INSERT dn_info (dnn,network,prefix) VALUES (${dnn},${net.base},${net.bitmask})`;
+      }
     }
   }
 
@@ -541,6 +555,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
 
       assert(config.DataPlane.interfaces.length <= 8, "pfcp.so allows up to 8 interfaces");
       if (this.opts["phoenix-upf-xdp"]) {
+        s.environment.XDP_GTP = "/opt/phoenix/dist/lib/objects-Debug/xdp_program_files/xdp_gtp.c.o";
         s.cap_add.push("BPF", "SYS_ADMIN");
       } else {
         delete config.DataPlane.xdp;

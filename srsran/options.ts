@@ -2,7 +2,7 @@ import type { YargsInfer, YargsOptions } from "../util/mod.js";
 
 /** Yargs options definition for srsRAN. */
 export const srsOptions = {
-  "oai-gnb-sdr": {
+  "srs-gnb-sdr": {
     desc: "srsGNB SDR config file",
     group: "srs",
     normalize: true,

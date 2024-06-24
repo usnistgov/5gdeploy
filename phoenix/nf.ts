@@ -25,16 +25,16 @@ export class NetworkFunction {
    * @param binaryName - Module binary name without path or .so suffix.
    * @param edit - Edit function.
    */
-  public editModule<K extends keyof PH.ModuleConfigMap>(binaryName: K, edit: (m: PH.Module<PH.ModuleConfigMap[K]>) => void): void;
+  public editModule<K extends keyof PH.ModuleConfigMap, R = void>(binaryName: K, edit: (m: PH.Module<PH.ModuleConfigMap[K]>) => R): R;
 
   /**
-   * Edit a module, skip if module does not exist.
+   * Edit a module if it exists.
    * @param binaryName - Module binary name without path or .so suffix.
    * @param edit - Edit function.
    */
-  public editModule<K extends keyof PH.ModuleConfigMap>(binaryName: K, optional: true, edit: (m: PH.Module<PH.ModuleConfigMap[K]>) => void): void;
+  public editModule<K extends keyof PH.ModuleConfigMap, R = void>(binaryName: K, optional: true, edit: (m: PH.Module<PH.ModuleConfigMap[K]>) => R): R | void;
 
-  public editModule(binaryName: string, arg2: any, arg3?: any): void {
+  public editModule(binaryName: keyof PH.ModuleConfigMap, arg2: any, arg3?: any) {
     const [optional, edit] = arg2 === true ? [true, arg3] : [false, arg2];
 
     const m = this.Phoenix.Module.find((m) => m.binaryFile.endsWith(`/${binaryName}.so`));

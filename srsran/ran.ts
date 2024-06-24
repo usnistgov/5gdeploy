@@ -31,7 +31,7 @@ class RANBuilder {
   private readonly plmn: NetDef.PLMN;
 
   public async build(): Promise<void> {
-    const sdrFile = this.opts["oai-gnb-sdr"];
+    const sdrFile = this.opts["srs-gnb-sdr"];
     if (sdrFile) {
       await this.buildSdr(sdrFile);
     } else {

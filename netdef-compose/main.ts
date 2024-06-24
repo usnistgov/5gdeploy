@@ -76,7 +76,7 @@ const args = Yargs()
         return [new Minimatch(tokens[0]!), tokens[1]! as keyof UpProvider];
       });
     },
-    default: [[undefined, "phoenix"]],
+    default: "phoenix",
     desc: "User Plane provider",
     type: "string",
   })
