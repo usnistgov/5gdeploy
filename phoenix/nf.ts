@@ -1,4 +1,4 @@
-import stringify from "json-stringify-deterministic";
+import { sortBy } from "sort-by-typescript";
 import assert from "tiny-invariant";
 
 import type { PH } from "../types/mod.js";
@@ -7,11 +7,12 @@ import type { PH } from "../types/mod.js";
 export class NetworkFunction {
   /** Parse network function JSON document. */
   public static parse(body: string): NetworkFunction {
-    const cfg = new NetworkFunction();
-    cfg.Phoenix = JSON.parse(body).Phoenix;
-    assert(cfg.Phoenix?.Platform);
-    assert(Array.isArray(cfg.Phoenix.Module));
-    return cfg;
+    const nf = new NetworkFunction();
+    nf.Phoenix = JSON.parse(body).Phoenix;
+    assert(nf.Phoenix?.Platform);
+    assert(Array.isArray(nf.Phoenix.Module));
+    nf.Phoenix.Module.sort(sortBy("binaryFile"));
+    return nf;
   }
 
   public Phoenix: PH.Phoenix = {
@@ -19,21 +20,36 @@ export class NetworkFunction {
     Module: [],
   };
 
-  /** Retrieve module by module binary name (without path or .so prefix). */
-  public getModule<K extends keyof PH.ModuleConfigMap>(binaryName: K): PH.Module<PH.ModuleConfigMap[K]>;
-  public getModule<K extends keyof PH.ModuleConfigMap>(binaryName: K, optional: true): PH.Module<PH.ModuleConfigMap[K]> | undefined;
-  public getModule(binaryName: string): PH.Module;
-  public getModule(binaryName: string, optional: true): PH.Module | undefined;
-  public getModule(binaryName: string, optional?: boolean): any {
+  /**
+   * Edit a module.
+   * @param binaryName - Module binary name without path or .so suffix.
+   * @param edit - Edit function.
+   */
+  public editModule<K extends keyof PH.ModuleConfigMap>(binaryName: K, edit: (m: PH.Module<PH.ModuleConfigMap[K]>) => void): void;
+
+  /**
+   * Edit a module, skip if module does not exist.
+   * @param binaryName - Module binary name without path or .so suffix.
+   * @param edit - Edit function.
+   */
+  public editModule<K extends keyof PH.ModuleConfigMap>(binaryName: K, optional: true, edit: (m: PH.Module<PH.ModuleConfigMap[K]>) => void): void;
+
+  public editModule(binaryName: string, arg2: any, arg3?: any): void {
+    const [optional, edit] = arg2 === true ? [true, arg3] : [false, arg2];
+
     const m = this.Phoenix.Module.find((m) => m.binaryFile.endsWith(`/${binaryName}.so`));
-    if (m === undefined && !optional) {
+    if (m === undefined) {
+      if (optional) {
+        return;
+      }
       throw new Error(`module ${binaryName} not found`);
     }
-    return m;
+
+    edit(m);
   }
 
-  /** Save as network function JSON. */
-  public save(): string {
-    return stringify({ Phoenix: this.Phoenix }, { space: "  " });
+  /** Save as JSON. */
+  public save(): unknown {
+    return { Phoenix: this.Phoenix };
   }
 }
