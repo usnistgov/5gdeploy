@@ -49,7 +49,7 @@ The scanned subnet size for each Data Network is adjusted to cover all online UE
 ./compose.sh nmap --dnn='internet'
 
 # print commands instead of executing
-./compose.sh nmap --cmdout=-
+./compose.sh nmap --cmdout=-.sh
 
 # save commands to file instead of executing
 ./compose.sh nmap --cmdout=nmap.sh

@@ -1,4 +1,5 @@
 import { execa } from "execa";
+import { type AnyIterable, collect } from "streaming-iterables";
 
 import * as file_io from "./file-io.js";
 import type { YargsInfer, YargsOptions } from "./yargs.js";
@@ -23,18 +24,18 @@ export const cmdOptions = {
  * @param args - Filename or result of {@link cmdOptions}.
  * @param lines - Script command lines.
  */
-export async function cmdOutput(args: string | YargsInfer<typeof cmdOptions>, lines: Iterable<string>): Promise<void> {
+export async function cmdOutput(args: string | YargsInfer<typeof cmdOptions>, lines: AnyIterable<string>): Promise<void> {
   const script = [
     "#!/bin/bash",
     ...scriptHead,
-    ...lines,
-  ].join("\n");
+    ...await collect(lines),
+  ];
 
   const filename = typeof args === "string" ? args : args.cmdout;
   if (filename) {
     await file_io.write(filename, script);
   } else {
-    const result = await execa("bash", ["-c", script], {
+    const result = await execa("bash", ["-c", script.join("\n")], {
       stdin: "inherit",
       stdout: "inherit",
       stderr: "inherit",

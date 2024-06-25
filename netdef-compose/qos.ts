@@ -104,7 +104,7 @@ export async function saveQoS(ctx: NetDefComposeContext, opts: QoSOpts): Promise
   if (!Object.values(ctx.c.services).some((s) => hasQoSVolume(s))) {
     return;
   }
-  await ctx.writeFile(qosVolume.source, Array.from(generateScript(ctx.c, opts)).join("\n"));
+  await ctx.writeFile(qosVolume.source, generateScript(ctx.c, opts));
 }
 
 function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {

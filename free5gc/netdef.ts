@@ -154,11 +154,7 @@ class F5CPBuilder {
     }
 
     const s = this.ctx.defineService("webclient", "5gdeploy.localhost/free5gc-webclient", ["mgmt"]);
-    await this.ctx.writeFile(
-      "cp-cfg/webclient.sh",
-      Array.from(generateCommands()).join("\n"),
-      { s, target: "/action.sh" },
-    );
+    await this.ctx.writeFile("cp-cfg/webclient.sh", generateCommands(), { s, target: "/action.sh" });
     s.entrypoint = [];
     s.command = ["/bin/ash", "/action.sh"];
   }

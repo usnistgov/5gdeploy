@@ -10,6 +10,7 @@ import yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
 import * as jsonc from "jsonc-parser";
 import DefaultMap from "mnemonist/default-map.js";
+import { type AnyIterable, collect } from "streaming-iterables";
 import type { Promisable } from "type-fest";
 
 export const fsWalk = promisify(fsWalkLib.walk);
@@ -75,12 +76,14 @@ export namespace readYAML {
 /**
  * Write file.
  * @param filename - Filename, "-" or "-.*" for stdout.
- * @param body - File content; {@link MKDIR} to make directory instead of file.
+ * @param body - File content.
  *
  * @remarks
  * If `body.save` is a function, its return value is used as body.
  *
+ * {@link MKDIR} makes a directory instead of writing a file.
  * Uint8Array and string are written directly.
+ * String arrays and iterables are joined as lines, when filename ends with ".sh".
  * Other types are serialized as either JSON or YAML (when filename ends with ".yaml" or ".yml").
  *
  * Parent directories are created automatically.
@@ -96,16 +99,21 @@ export async function write(filename: string, body: unknown): Promise<void> {
     return;
   }
 
-  if (!(typeof body === "string" || body instanceof Uint8Array)) {
-    if (filename.endsWith(".yaml") || filename.endsWith(".yml")) {
-      const yamlOpts: yaml.DumpOptions = { lineWidth: -1, noRefs: true, sortKeys: true };
-      if (!filename.includes("compose.")) {
-        yamlOpts.forceQuotes = true;
-      }
-      body = yaml.dump(body, yamlOpts);
-    } else {
-      body = stringify(body, { space: "  " });
+  if (typeof body === "string" || body instanceof Uint8Array) {
+    //
+  } else if (filename.endsWith(".sh") && (
+    !!(body as Iterable<string>)[Symbol.iterator] ||
+    !!(body as AsyncIterable<string>)[Symbol.asyncIterator]
+  )) {
+    body = (await collect(body as AnyIterable<string>)).join("\n");
+  } else if (filename.endsWith(".yaml") || filename.endsWith(".yml")) {
+    const yamlOpts: yaml.DumpOptions = { lineWidth: -1, noRefs: true, sortKeys: true };
+    if (!filename.includes("compose.")) {
+      yamlOpts.forceQuotes = true;
     }
+    body = yaml.dump(body, yamlOpts);
+  } else {
+    body = stringify(body, { space: "  " });
   }
 
   if (filename === "-" || filename.startsWith("-.")) {

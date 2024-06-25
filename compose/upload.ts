@@ -14,27 +14,25 @@ const args = Yargs()
   .parseSync();
 
 const c = await file_io.readYAML(path.join(args.dir, "compose.yml")) as ComposeFile;
-const localImages = await dockerode.listImages("5gdeploy.localhost/*");
-const cmds: string[] = [];
 
-for (const hostServices of compose.classifyByHost(c).filter(({ host }) => !!host)) {
-  const remoteImages = await dockerode.listImages("5gdeploy.localhost/*", hostServices.host);
-  const pushImages = new Set<string>();
-  for (const { image } of hostServices.services) {
-    if (image.startsWith("5gdeploy.localhost/") && remoteImages.get(image) !== localImages.get(image)) {
-      pushImages.add(image);
+await cmdOutput(args, (async function*() {
+  const localImages = await dockerode.listImages("5gdeploy.localhost/*");
+
+  for (const hostServices of compose.classifyByHost(c).filter(({ host }) => !!host)) {
+    const remoteImages = await dockerode.listImages("5gdeploy.localhost/*", hostServices.host);
+    const pushImages = new Set<string>();
+    for (const { image } of hostServices.services) {
+      if (image.startsWith("5gdeploy.localhost/") && remoteImages.get(image) !== localImages.get(image)) {
+        pushImages.add(image);
+      }
+    }
+
+    if (pushImages.size > 0) {
+      const images = Array.from(pushImages).join(" ");
+      yield `msg Uploading ${images} to ${hostServices.hostDesc}`;
+      yield `docker save ${images} | ${hostServices.dockerH} load`;
+    } else {
+      yield `msg Docker images are up-to-date on ${hostServices.hostDesc}`;
     }
   }
-
-  if (pushImages.size > 0) {
-    const images = Array.from(pushImages).join(" ");
-    cmds.push(
-      `msg Uploading ${images} to ${hostServices.hostDesc}`,
-      `docker save ${images} | ${hostServices.dockerH} load`,
-    );
-  } else {
-    cmds.push(`msg Docker images are up-to-date on ${hostServices.hostDesc}`);
-  }
-}
-
-await cmdOutput(args, cmds);
+})());

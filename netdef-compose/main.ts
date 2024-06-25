@@ -115,4 +115,4 @@ compose.defineBridge(ctx.c, args);
 compose.place(ctx.c, args);
 await prometheusFinish(ctx);
 await ctx.writeFile("compose.yml", ctx.c);
-await ctx.writeFile("compose.sh", Array.from(makeScript(ctx.c)).join("\n"));
+await ctx.writeFile("compose.sh", makeScript(ctx.c));
