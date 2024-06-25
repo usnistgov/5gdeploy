@@ -45,7 +45,7 @@ export class NetworkFunction {
       throw new Error(`module ${binaryName} not found`);
     }
 
-    edit(m);
+    return edit(m);
   }
 
   /** Save as JSON. */

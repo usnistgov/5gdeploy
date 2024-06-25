@@ -32,7 +32,7 @@
     "jayson": "^4.1.0",
     "js-yaml": "^4.1.0",
     "json-stringify-deterministic": "^1.0.12",
-    "jsonc-parser": "^3.2.1",
+    "jsonc-parser": "^3.3.1",
     "minimatch": "^9.0.4",
     "mnemonist": "^0.39.8",
     "multimatch": "^7.0.0",
@@ -48,7 +48,7 @@
     "tslib": "^2.6.3",
     "tsx": "^4.15.7",
     "type-fest": "^4.20.1",
-    "typescript": "~5.4.5",
+    "typescript": "~5.5.2",
     "uint8-util": "^2.2.5",
     "yargs": "^17.7.2"
   },
