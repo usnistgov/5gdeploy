@@ -68,11 +68,10 @@ export class NetDefComposeContext {
       if ((typeof nf === "string") ? (compose.nameToNf(ct) !== nf) : (!nf.includes(ct))) {
         continue;
       }
-      const netif = s.networks[net];
-      if (!netif) {
-        continue;
+      const ip = compose.annotate(s, `ip_${net}`) ?? s.networks[net]?.ipv4_address;
+      if (ip) {
+        list.push(ip);
       }
-      list.push(netif.ipv4_address);
     }
     return list;
   }

@@ -110,7 +110,7 @@ function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]):
         break;
       }
       case "@": {
-        const macaddr = ip2mac(ip2long(ip));
+        const macaddr = ip2mac(ip);
         yield `      msg Using MACVLAN ${macaddr} on ${hostif}${vlanDesc} as ${ct}:${net}`;
         yield `      pipework mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${macaddr} ${vlanFlag}`;
         break;

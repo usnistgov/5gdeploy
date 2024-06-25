@@ -1,5 +1,5 @@
 import stringify from "json-stringify-deterministic";
-import { Netmask } from "netmask";
+import { ip2long, Netmask } from "netmask";
 import assert from "tiny-invariant";
 import type { ConditionalKeys } from "type-fest";
 
@@ -233,8 +233,11 @@ export function listByAnnotation(
 }
 
 /** Derive MAC address from IPv4 address. */
-export function ip2mac(ipLong: number): string {
-  return `52:de${hexPad(ipLong, 8).replaceAll(/([\da-f]{2})/gi, ":$1").toLowerCase()}`;
+export function ip2mac(ip: number | string): string {
+  if (typeof ip === "string") {
+    ip = ip2long(ip);
+  }
+  return `52:de${hexPad(ip, 8).replaceAll(/([\da-f]{2})/gi, ":$1").toLowerCase()}`;
 }
 
 /**

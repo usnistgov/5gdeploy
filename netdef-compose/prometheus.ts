@@ -1,7 +1,7 @@
 import path from "node:path";
 
+import DefaultWeakMap from "mnemonist/default-weak-map.js";
 import map from "obliterator/map.js";
-import assert from "tiny-invariant";
 import type { OverrideProperties } from "type-fest";
 
 import * as compose from "../compose/mod.js";
@@ -199,13 +199,11 @@ class PromBuilder {
   }
 }
 
-const ctxBuilder = new WeakMap<NetDefComposeContext, PromBuilder>();
+const ctxBuilder = new DefaultWeakMap<NetDefComposeContext, PromBuilder>((ctx) => new PromBuilder(ctx));
 
 /** Define Prometheus and Grafana containers in the scenario. */
 export async function prometheus(ctx: NetDefComposeContext, opts: YargsInfer<typeof prometheusOptions>): Promise<void> {
-  const b = new PromBuilder(ctx);
-  ctxBuilder.set(ctx, b);
-
+  const b = ctxBuilder.get(ctx);
   await b.build(opts);
   ctx.finalize.push(() => b.finish());
 }
@@ -223,7 +221,6 @@ export function setProcessExporterRule(
     relabel: readonly setProcessExporterRule.RelabelConfig[],
 ) {
   const b = ctxBuilder.get(ctx);
-  assert(b);
   b.processExporterRules.set(key, [
     names.map((rule) => ({
       ...rule,
