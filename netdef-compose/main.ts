@@ -17,7 +17,7 @@ import { makeScript } from "./compose-sh.js";
 import { NetDefComposeContext } from "./context.js";
 import { defineDNServices, dnOptions, setDNCommands } from "./dn.js";
 import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
-import { prometheus, prometheusFinish, prometheusOptions } from "./prometheus.js";
+import { prometheus, prometheusOptions } from "./prometheus.js";
 import { qosOptions, saveQoS } from "./qos.js";
 
 type Provider = (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>;
@@ -113,6 +113,8 @@ await saveQoS(ctx, args);
 await prometheus(ctx, args);
 compose.defineBridge(ctx.c, args);
 compose.place(ctx.c, args);
-await prometheusFinish(ctx);
+for (const op of ctx.finalize) {
+  await op();
+}
 await ctx.writeFile("compose.yml", ctx.c);
 await ctx.writeFile("compose.sh", makeScript(ctx.c));

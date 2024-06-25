@@ -219,15 +219,16 @@ class UPBuilder extends CN5GBuilder {
     assert(peers.N9.length === 0, "N9 not supported");
     compose.setCommands(s, this.makeExecCommands(s, "upf", makeUPFRoutes(this.ctx, peers)));
 
-    this.updateConfigUPF(peers);
-    await this.ctx.writeFile(configPath, this.c);
+    this.ctx.finalize.push(async () => {
+      this.updateConfigUPF(peers); // depends on NRF and SMF IPs to be known
+      await this.ctx.writeFile(configPath, this.c);
+    });
   }
 
   private updateConfigUPF(peers: NetDef.UPFPeers): void {
-    // rely on hosts entry because UP is created before CP so that NRF and SMF IPs are unknown
-    this.c.nfs.nrf!.host = "nrf.br-cp"; // assuming only one NRF
+    this.c.nfs.nrf!.host = this.ctx.gatherIPs("nrf", "cp")[0]!;
     this.c.upf!.remote_n6_gw = "127.0.0.1";
-    this.c.upf!.smfs = this.netdef.smfs.map((smf): CN5G.upf.SMF => ({ host: `${smf.name}.br-n4` }));
+    this.c.upf!.smfs = this.ctx.gatherIPs("smf", "n4").map((host): CN5G.upf.SMF => ({ host }));
     this.c.nfs.smf!.host = this.c.upf!.smfs[0]!.host;
 
     this.updateConfigDNNs();

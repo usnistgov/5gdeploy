@@ -1,5 +1,7 @@
 import path from "node:path";
 
+import type { Promisable } from "type-fest";
+
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import type { ComposeFile, ComposeService } from "../types/mod.js";
@@ -104,6 +106,9 @@ export class NetDefComposeContext {
 
     return result;
   }
+
+  /** Final steps. */
+  public readonly finalize: Array<() => Promisable<void>> = [];
 }
 export namespace NetDefComposeContext {
   /** Options to mount file as volume. */
