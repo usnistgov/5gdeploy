@@ -4,6 +4,7 @@ import { Minimatch } from "minimatch";
 
 import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc/mod.js";
+import { ndndpdkUP } from "../ndndpdk/upf.js";
 import { NetDef } from "../netdef/netdef.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { bessUP, gnbsimRAN } from "../omec/mod.js";
@@ -32,6 +33,7 @@ const cpProviders: Record<string, Provider> = {
 const upProviders: Record<string, UpProvider> = {
   bess: bessUP,
   free5gc: f5UP,
+  ndndpdk: ndndpdkUP,
   oai: oaiUP,
   "oai-vpp": oaiUPvpp,
   phoenix: phoenixUP,

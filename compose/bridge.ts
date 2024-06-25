@@ -105,6 +105,7 @@ function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]):
     yield "    true)"; // container exists and started - execute
     switch (op) {
       case "=": {
+        annotate(c.services[ct]!, `mac_${net}`, hostif);
         yield `      msg Using physical interface ${hostif}${vlanDesc} as ${ct}:${net}`;
         yield `      pipework --direct-phys mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${vlanFlag}`;
         break;
