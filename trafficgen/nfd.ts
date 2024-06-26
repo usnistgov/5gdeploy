@@ -74,7 +74,8 @@ await pipeline(
       server ??= defineServer(dnService);
     }
 
-    const client = compose.defineService(output, ueService.container_name.replace(/^ue/, "nfd"), nfdDockerImage);
+    const ct = ueService.container_name.replace(compose.nameToNf(ueService.container_name), "nfd");
+    const client = compose.defineService(output, ct, nfdDockerImage);
     copyPlacementNetns(client, ueService);
     client.healthcheck = {
       test: ["CMD-SHELL", `echo ${shlex.quote([

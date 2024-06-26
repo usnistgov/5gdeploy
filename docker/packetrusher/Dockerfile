@@ -1,6 +1,6 @@
 FROM golang:1.22-alpine3.20 AS build
 SHELL ["/bin/ash", "-c"]
-ADD https://github.com/HewlettPackard/PacketRusher/archive/2bbcc24fa2ebf14335d6eec8737291f2205b91a1.zip /PacketRusher.zip
+ADD https://github.com/HewlettPackard/PacketRusher/archive/32a08fa9fb2d83b654628b5187a0244a66b737b2.zip /PacketRusher.zip
 
 RUN <<EOF
   set -euxo pipefail

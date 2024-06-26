@@ -32,6 +32,7 @@ If you installed 5gdeploy with `NOPHOENIX=1` environ (Open5GCore disabled), you 
 Due to incompatibilities in 5G implementations, not every combinations will work.
 These combinations are verified to be compatible:
 
+* `--cp=free5gc --up=free5gc --ran=packetrusher`
 * `--cp=free5gc --up=free5gc --ran=ueransim`
 * `--cp=oai --up=oai --ran=gnbsim`
 * `--cp=oai --up=oai --ran=oai`
