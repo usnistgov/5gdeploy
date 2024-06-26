@@ -114,7 +114,7 @@ export class NetDef {
    * Iterate over subscribers.
    * @param expandCount - If true, emit each `.count>1` entry as multiple entries.
    */
-  public listSubscribers({ expandCount = true }: NetDef.ListSubscribersOptions = {}): NetDef.Subscriber[] {
+  public listSubscribers({ expandCount = true, gnb }: NetDef.ListSubscribersOptions = {}): NetDef.Subscriber[] {
     this.network.subscriberDefault ??= {};
     this.network.subscriberDefault.k ??= arr2hex(randomBytes(16));
     this.network.subscriberDefault.opc ??= arr2hex(randomBytes(16));
@@ -137,6 +137,10 @@ export class NetDef {
         requestedDN: [],
       };
       assert(sub.count >= 1);
+
+      if (gnb !== undefined && !sub.gnbs.includes(gnb)) {
+        continue;
+      }
 
       for (const { snssai, dnns } of sub.subscribedNSSAI) {
         for (const dnn of dnns) {
@@ -293,6 +297,9 @@ export namespace NetDef {
   export interface ListSubscribersOptions {
     /** If true, emit `.count>1` entry as multiple entries. */
     expandCount?: boolean;
+
+    /** If specified, emit subscribers connected to this gNB only. */
+    gnb?: string;
   }
 
   /** Information about a subscriber. */

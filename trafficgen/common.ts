@@ -109,7 +109,7 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef) {
         const dnService = compose.listByAnnotation(c, "dn", `${dn.snssai}_${dn.dnn}`)[0];
         assert(dnService, `DN container for ${dn.dnn} not found`);
         const dnHost = compose.annotate(dnService, "host") ?? "";
-        const dnIP = compose.annotate(dnService, "ip_n6");
+        const dnIP = compose.getIP(dnService, "n6");
         assert(dnIP !== undefined);
 
         yield { sub, ueService, ueHost, dn, dnService, dnHost, dnIP, pduIP, pduNetif };

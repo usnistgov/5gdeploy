@@ -57,7 +57,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: Net
     },
   };
 
-  const subs = ctx.netdef.listSubscribers({ expandCount: false }).filter((sub) => sub.gnbs.includes(gnb.name));
+  const subs = ctx.netdef.listSubscribers({ expandCount: false, gnb: gnb.name });
   const profiles: OMEC.gnbsim.Profile[] = [];
   for (const profile of PROFILES) {
     for (const sub of subs) {
@@ -89,10 +89,7 @@ function makeProfile(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
   assert(sub.requestedDN.length > 0);
   const dn = ctx.netdef.findDN(sub.requestedDN[0]!);
   assert(!!dn);
-  const upfNames = Array.from(ctx.netdef.listDataPathPeers(dn), ([node]) => node)
-    .filter((node): node is string => typeof node === "string");
-  assert(upfNames.length > 0);
-  const upfService = ctx.c.services[upfNames[0]!]!;
+  const dnIP = compose.getIP(ctx.c.services[`dn_${dn.dnn}`]!, "n6");
   const plmnId: OMEC.PLMNID = NetDef.splitPLMN(ctx.network.plmn);
 
   return {
@@ -101,7 +98,7 @@ function makeProfile(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
     gnbName: gnb.name,
     startImsi: sub.supi,
     ueCount: sub.count,
-    defaultAs: upfService.networks.n6!.ipv4_address,
+    defaultAs: dnIP,
     key: sub.k,
     opc: sub.opc,
     sequenceNumber: "000000000020",

@@ -39,6 +39,7 @@ These combinations are verified to be compatible:
 * `--cp=oai --up=oai --ran=ueransim`
 * `--cp=oai --up=oai-vpp --ran=packetrusher`
 * `--cp=oai --up=oai-vpp --ran=ueransim`
+* `--cp=phoenix --up=free5gc --ran=gnbsim`
 * `--cp=phoenix --up=free5gc --ran=oai`
 * `--cp=phoenix --up=free5gc --ran=phoenix`
 * `--cp=phoenix --up=free5gc --ran=ueransim`

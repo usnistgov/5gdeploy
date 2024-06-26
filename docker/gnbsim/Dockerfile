@@ -1,11 +1,17 @@
 FROM golang:1.22-alpine3.20 AS build
-ADD https://github.com/omec-project/gnbsim/archive/8d1dca0ed09f57747075e16e20954f940e6bf33a.zip /gnbsim.zip
-RUN cd / \
- && unzip -n gnbsim.zip \
- && mv gnbsim-* gnbsim \
- && cd /gnbsim \
- && env CGO_ENABLED=0 go build . \
- && cp config/gnbsim.yaml config/config.base.yaml
+SHELL ["/bin/ash", "-c"]
+ADD https://github.com/omec-project/gnbsim/archive/b8819f1aa976443dd0bd85684663cb1c35e847a4.zip /gnbsim.zip
+
+RUN <<EOF
+  set -euxo pipefail
+  cd /
+  unzip -n gnbsim.zip
+  mv gnbsim-* gnbsim
+  cd /gnbsim
+  env CGO_ENABLED=0 go build .
+  cp config/gnbsim.yaml config/config.base.yaml
+EOF
+
 
 FROM alpine:3.20
 RUN apk add --no-cache iproute2 yq

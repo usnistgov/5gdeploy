@@ -1,6 +1,7 @@
 import assert from "node:assert";
 
 import { Minimatch } from "minimatch";
+import type { Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc/mod.js";
@@ -21,8 +22,8 @@ import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
 import { prometheus, prometheusOptions } from "./prometheus.js";
 import { qosOptions, saveQoS } from "./qos.js";
 
-type Provider = (ctx: NetDefComposeContext, opts: typeof args) => Promise<void>;
-type UpProvider = (ctx: NetDefComposeContext, upf: N.UPF, opts: typeof args) => Promise<void>;
+type Provider = (ctx: NetDefComposeContext, opts: typeof args) => Promisable<void>;
+type UpProvider = (ctx: NetDefComposeContext, upf: N.UPF, opts: typeof args) => Promisable<void>;
 
 const cpProviders: Record<string, Provider> = {
   free5gc: f5CP,

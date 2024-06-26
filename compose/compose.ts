@@ -274,12 +274,21 @@ export function disconnectNetif(c: ComposeFile, ct: string, net: string): string
 }
 
 /**
+ * Retrieve IPv4 address.
+ * @throws Error - Netif does not exist.
+ */
+export function getIP(s: ComposeService, net: string): string {
+  const ip = annotate(s, `ip_${net}`) ?? s.networks[net]?.ipv4_address;
+  assert(ip, `netif ${s.container_name}:${net} missing`);
+  return ip;
+}
+
+/**
  * Retrieve IPv4 and MAC address.
  * @throws Error - Netif does not exist.
  */
 export function getIPMAC(s: ComposeService, net: string): [ip: string, mac: string] {
-  const ip = annotate(s, `ip_${net}`) ?? s.networks[net]?.ipv4_address;
-  assert(ip, `netif ${s.container_name}:${net} missing`);
+  const ip = getIP(s, net);
   const mac = annotate(s, `mac_${net}`) ?? ip2mac(ip);
   return [ip, mac];
 }
