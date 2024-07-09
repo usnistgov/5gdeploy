@@ -125,11 +125,12 @@ function createService(name: string, image: string): ComposeService {
     },
     networks: {},
     ports: [],
+    extra_hosts: {},
     depends_on: {},
   };
 
   for (const key of [
-    "sysctls", "environment", "networks", "depends_on",
+    "sysctls", "environment", "networks", "extra_hosts", "depends_on",
   ] as const satisfies ReadonlyArray<ConditionalKeys<ComposeService, Record<string, unknown>>>) {
     Object.defineProperty(s, key, {
       enumerable: true,

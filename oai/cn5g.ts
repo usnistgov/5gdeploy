@@ -171,22 +171,21 @@ class CPBuilder extends CN5GBuilder {
     const { smfs } = this.netdef;
     assert(smfs.length === 1, "support exactly 1 SMF");
 
+    const s = this.ctx.c.services.smf!;
     const c = this.c.smf!;
 
     const upfTpl = c.upfs[0]!;
     c.upfs = this.ctx.network.upfs.map((upf): CN5G.smf.UPF => {
-      const ct = this.ctx.c.services[upf.name]!;
-      return {
-        ...upfTpl,
-        host: ct.networks.n4!.ipv4_address,
-      };
+      const host = compose.getIP(this.ctx.c.services[upf.name]!, "n4");
+      s.extra_hosts[`${upf.name}.5gdeploy.oai`] = host; // SMF would attempt RDNS lookup
+      return { ...upfTpl, host };
     });
 
     c.smf_info.sNssaiSmfInfoList = this.netdef.nssai.map((snssai): CN5G.smf.SNSSAIInfo => {
-      const dns = this.ctx.network.dataNetworks.filter((dn) => dn.snssai === snssai);
+      const dataNetworks = this.ctx.network.dataNetworks.filter((dn) => dn.snssai === snssai);
       return {
         sNssai: NetDef.splitSNSSAI(snssai).ih,
-        dnnSmfInfoList: dns.map(({ dnn }) => ({ dnn })),
+        dnnSmfInfoList: dataNetworks.map(({ dnn }) => ({ dnn })),
       };
     });
 

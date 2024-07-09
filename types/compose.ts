@@ -37,6 +37,7 @@ export interface ComposeService {
   network_mode?: "host" | "none" | `service:${string}`;
   readonly networks: Record<string, ComposeNetif>;
   readonly ports: ComposePort[];
+  readonly extra_hosts: Record<string, string>;
   cpuset?: string;
   healthcheck?: ComposeHealthCheck;
   depends_on: Record<string, ComposeDependency>;
