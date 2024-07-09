@@ -13,7 +13,7 @@ import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { srsOptions, srsRAN } from "../srsran/mod.js";
 import type { N } from "../types/mod.js";
-import { ueransimRAN } from "../ueransim/netdef.js";
+import { ueransimOptions, ueransimRAN } from "../ueransim/netdef.js";
 import { file_io, Yargs } from "../util/mod.js";
 import { makeScript } from "./compose-sh.js";
 import { NetDefComposeContext } from "./context.js";
@@ -98,6 +98,7 @@ const args = Yargs()
   .option(prometheusOptions)
   .option(qosOptions)
   .option(srsOptions)
+  .option(ueransimOptions)
   .parseSync();
 
 const netdef = new NetDef(await file_io.readJSON(args.netdef) as N.Network);

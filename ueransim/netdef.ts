@@ -3,16 +3,28 @@ import type { PartialDeep } from "type-fest";
 import * as compose from "../compose/mod.js";
 import { applyQoS, NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { UERANSIM } from "../types/mod.js";
+import type { YargsInfer, YargsOptions } from "../util/mod.js";
+
+/** Yargs options definition for UERANSIM. */
+export const ueransimOptions = {
+  "ueransim-single-ue": {
+    default: false,
+    desc: "run a separate UERANSIM container for each UE",
+    group: "ueransim",
+    type: "boolean",
+  },
+} as const satisfies YargsOptions;
+export type UeransimOpts = YargsInfer<typeof ueransimOptions>;
 
 export const ueransimDockerImage = "5gdeploy.localhost/ueransim";
 
 /** Build RAN functions using UERANSIM. */
-export async function ueransimRAN(ctx: NetDefComposeContext): Promise<void> {
-  await new UeransimBuilder(ctx).build();
+export async function ueransimRAN(ctx: NetDefComposeContext, opts: UeransimOpts): Promise<void> {
+  await new UeransimBuilder(ctx, opts).build();
 }
 
 class UeransimBuilder {
-  constructor(private readonly ctx: NetDefComposeContext) {
+  constructor(private readonly ctx: NetDefComposeContext, private readonly opts: UeransimOpts) {
     this.plmn = NetDef.splitPLMN(ctx.network.plmn);
   }
 
@@ -23,7 +35,8 @@ class UeransimBuilder {
       await this.buildGNB(ct, gnb);
     }
 
-    for (const [ct, sub] of compose.suggestUENames(this.ctx.netdef.listSubscribers({ expandCount: false }))) {
+    const expandCount = this.opts["ueransim-single-ue"];
+    for (const [ct, sub] of compose.suggestUENames(this.ctx.netdef.listSubscribers({ expandCount }))) {
       await this.buildUE(ct, sub);
     }
   }

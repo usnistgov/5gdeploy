@@ -104,7 +104,6 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef) {
           continue;
         }
         const [pduIP, pduNetif] = pduSess;
-        assert(dn);
 
         const dnService = compose.listByAnnotation(c, "dn", `${dn.snssai}_${dn.dnn}`)[0];
         assert(dnService, `DN container for ${dn.dnn} not found`);
