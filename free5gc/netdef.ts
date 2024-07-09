@@ -425,10 +425,10 @@ export async function f5CP(ctx: NetDefComposeContext): Promise<void> {
 
 /** Build free5GC UPF. */
 export async function f5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void> {
-  const s = ctx.defineService(upf.name, "5gdeploy.localhost/free5gc-upf", ["n3", "n4", "n6", "n9"]);
+  const s = ctx.defineService(upf.name, await f5_conf.getTaggedImageName("upf"), ["n3", "n4", "n6", "n9"]);
   const peers = ctx.netdef.gatherUPFPeers(upf);
   compose.setCommands(s, [
-    ...compose.renameNetifs(s, { pipeworkWait: true }),
+    ...compose.renameNetifs(s),
     ...makeUPFRoutes(ctx, peers),
     "msg Starting free5GC UPF",
     "exec ./upf -c ./config/upfcfg.yaml",

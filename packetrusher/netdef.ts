@@ -26,7 +26,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
   const c = makeConfigUpdate(ctx, gnb, sub);
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
   compose.setCommands(s, [
-    ...compose.renameNetifs(s, { pipeworkWait: true }),
+    ...compose.renameNetifs(s),
     ...applyQoS(s, "ash"),
     "msg Preparing PacketRusher config",
     ...compose.mergeConfigFile(c, { base: "/config.base.yml", merged: filename }),

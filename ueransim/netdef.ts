@@ -52,7 +52,7 @@ class UeransimBuilder {
     await this.ctx.writeFile(`ran-cfg/${ct}.yaml`, c, { s, target: "/ueransim/config/update.yaml" });
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s, { pipeworkWait: true }),
+      ...compose.renameNetifs(s),
       ...applyQoS(s),
       "msg Preparing UERANSIM gNB config",
       ...compose.mergeConfigFile("/ueransim/config/update.yaml", {
@@ -97,7 +97,7 @@ class UeransimBuilder {
     await this.ctx.writeFile(`ran-cfg/${ct}.yaml`, c, { s, target: "/ueransim/config/update.yaml" });
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s, { pipeworkWait: true }),
+      ...compose.renameNetifs(s),
       "msg Preparing UERANSIM UE config",
       ...compose.mergeConfigFile("/ueransim/config/update.yaml", {
         base: "/ueransim/config/custom-ue.yaml",

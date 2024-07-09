@@ -60,7 +60,7 @@ abstract class CN5GBuilder {
 
   protected *makeExecCommands(s: ComposeService, nf: string, insert: Iterable<string> = []): Iterable<string> {
     if (iproute2Available.has(nf)) {
-      yield* compose.renameNetifs(s, { pipeworkWait: true });
+      yield* compose.renameNetifs(s);
     } else {
       yield "msg Listing IP addresses";
       yield "ip addr list up || /usr/sbin/ifconfig || true";

@@ -80,7 +80,7 @@ export function setDNCommands(ctx: NetDefComposeContext): void {
 
     const s = ctx.c.services[makeDNServiceName(ctx, dn)]!;
     compose.setCommands(s, [
-      ...compose.renameNetifs(s, { pipeworkWait: true }),
+      ...compose.renameNetifs(s),
       ...makeDNRoutes(ctx, dn),
       "exec tail -f",
     ], "ash");

@@ -14,7 +14,7 @@ export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
     const c = makeConfigUpdate(ctx, s, gnb);
     await ctx.writeFile(`ran-cfg/${ct}.yaml`, c, { s, target: "/config.update.yaml" });
     compose.setCommands(s, [
-      ...compose.renameNetifs(s, { pipeworkWait: true }),
+      ...compose.renameNetifs(s),
       "msg Preparing gNBSim config",
       ...compose.mergeConfigFile("/config.update.yaml", {
         base: "/config.base.yaml",

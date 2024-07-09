@@ -23,7 +23,6 @@ export function setCommands(service: ComposeService, commands: Iterable<string>,
  * @param s - Compose service. NET_ADMIN capability is added.
  */
 export function* renameNetifs(s: ComposeService, {
-  pipeworkWait = false,
   disableTxOffload = false,
 }: renameNetifs.Options = {}): Iterable<string> {
   s.cap_add.push("NET_ADMIN");
@@ -31,13 +30,9 @@ export function* renameNetifs(s: ComposeService, {
   for (const [net, { ipv4_address }] of Object.entries(s.networks)) {
     yield `IFNAME=$(ip -o addr show to ${ipv4_address} | awk '{ print $2 }')`;
     yield "if [[ -z $IFNAME ]]; then";
-    if (pipeworkWait) {
-      yield `  msg Waiting for netif ${net} to appear`;
-      yield `  pipework --wait -i ${net}`;
-      yield "  PIPEWORK_WAITED=1";
-    } else {
-      yield `  die Missing netif ${net}`;
-    }
+    yield `  msg Waiting for netif ${net} to appear`;
+    yield `  with_retry ip link show dev ${net} &>/dev/null`;
+    yield "  NETIF_WAITED=1";
     yield `elif [[ $IFNAME != ${net} ]]; then`;
     yield `  msg Renaming netif $IFNAME with IPv4 ${ipv4_address} to ${net}`;
     yield "  ip link set dev $IFNAME down";
@@ -51,22 +46,14 @@ export function* renameNetifs(s: ComposeService, {
   }
 
   yield "unset IFNAME";
-  yield "sleep ${PIPEWORK_WAITED:-0}"; // eslint-disable-line no-template-curly-in-string
+  // eslint-disable-next-line no-template-curly-in-string
+  yield "sleep ${NETIF_WAITED:-0}"; // give 1 second for newly appeared netifs to stabilize
   yield "msg Listing IP addresses";
   yield "ip addr list up";
   yield "msg Finished renaming netifs";
 }
 export namespace renameNetifs {
   export interface Options {
-    /**
-     * Whether to wait for netifs to appear with pipework.
-     * @defaultValue false
-     *
-     * @remarks
-     * Setting to true requires `pipework` to be installed in the container.
-     */
-    pipeworkWait?: boolean;
-
     /**
      * Whether to disable netif TX offload with ethtool.
      * @defaultValue false

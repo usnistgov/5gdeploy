@@ -31,7 +31,6 @@ function setCommands(ctx: NetDefComposeContext, s: ComposeService, upf: N.UPF): 
   }
 
   compose.setCommands(s, [
-    "sleep 10", // wait for netifs to be brought in, as pipework is unavailable
     ...compose.renameNetifs(s),
     `ndndpdk-upf ${flags.join(" ")}`,
   ]);

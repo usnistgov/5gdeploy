@@ -91,7 +91,7 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
 
   await ctx.writeFile(`ran-cfg/${ct}.conf`, c, { s, target: "/opt/oai-gnb/etc/gnb.conf" });
   compose.setCommands(s, [
-    ...compose.renameNetifs(s, { pipeworkWait: true }),
+    ...compose.renameNetifs(s),
     "sleep 10",
     "msg Starting OpenAirInterface5G gNB",
     `exec /opt/oai-gnb/bin/nr-softmodem ${shlex.join(softmodemArgs)}`,

@@ -34,9 +34,6 @@ export async function getTaggedImageName(opts: OAIOpts, nf: string): Promise<str
   if (tagOpt) {
     return `${image}:${tagOpt}`;
   }
-  if (["upf", "gnb"].includes(nf)) {
-    return `5gdeploy.localhost/oai-${nf}`;
-  }
   return await compose.getTaggedImageName(path.resolve(composePath, filename), image) ?? `${image}:${dfltTag}`;
 }
 

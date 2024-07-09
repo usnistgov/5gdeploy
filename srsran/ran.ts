@@ -9,7 +9,7 @@ import srsgnbSchema from "../types/srsgnb.schema.json";
 import { file_io } from "../util/mod.js";
 import type { SRSOpts } from "./options.js";
 
-const gnbDockerImage = "5gdeploy.localhost/srsgnb";
+const gnbDockerImage = "gradiant/srsran-5g:24_04";
 const ueDockerImage = "gradiant/srsran-4g:23_11";
 const srate = 23.04;
 
@@ -134,7 +134,7 @@ class RANBuilder {
     await this.ctx.writeFile(`ran-cfg/${gnb.name}.yml`, c, { s, target: "/gnb.yml" });
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s, { pipeworkWait: true }),
+      ...compose.renameNetifs(s),
       "sleep 10",
       "exec /opt/srsRAN_Project/target/bin/gnb -c /gnb.yml",
     ]);
