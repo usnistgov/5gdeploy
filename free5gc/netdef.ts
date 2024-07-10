@@ -43,7 +43,7 @@ class F5CPBuilder {
   private buildMongo(): void {
     const s = this.ctx.defineService("mongo", compose.mongo.image, ["db"]);
     compose.mongo.init(s);
-    this.mongoUrl.hostname = s.networks.db!.ipv4_address;
+    this.mongoUrl.hostname = compose.getIP(s, "db");
   }
 
   private async buildNRF(): Promise<void> {
@@ -62,8 +62,8 @@ class F5CPBuilder {
     const [s, webuicfg] = await this.defineService<F5.webui.Configuration>("webui", ["mgmt", "db", "cp"]);
     const c = webuicfg.configuration;
     c.mongodb.url = this.mongoUrl.toString();
-    c.webServer.ipv4Address = s.networks.mgmt!.ipv4_address;
-    c.billingServer.hostIPv4 = s.networks.cp!.ipv4_address;
+    c.webServer.ipv4Address = compose.getIP(s, "mgmt");
+    c.billingServer.hostIPv4 = compose.getIP(s, "cp");
 
     s.command = [
       "./webui",
@@ -72,7 +72,7 @@ class F5CPBuilder {
   }
 
   private async buildWebClient(): Promise<void> {
-    const serverIP = this.ctx.c.services.webui!.networks.mgmt!.ipv4_address;
+    const serverIP = compose.getIP(this.ctx.c.services.webui!, "mgmt");
     const serverPort = 5000;
     const server = `http://${serverIP}:${serverPort}`;
     const { netdef, network } = this.ctx;
@@ -163,9 +163,9 @@ class F5CPBuilder {
     const [s, chfcfg] = await this.defineService<F5.chf.Configuration>("chf", ["db", "cp"]);
     const c = chfcfg.configuration;
     c.mongodb.url = this.mongoUrl.toString();
-    c.cgf.hostIPv4 = this.ctx.c.services.webui!.networks.cp!.ipv4_address;
-    c.abmfDiameter.hostIPv4 = s.networks.cp!.ipv4_address;
-    c.rfDiameter.hostIPv4 = s.networks.cp!.ipv4_address;
+    c.cgf.hostIPv4 = compose.getIP(this.ctx.c.services.webui!, "cp");
+    c.abmfDiameter.hostIPv4 = compose.getIP(s, "cp");
+    c.rfDiameter.hostIPv4 = compose.getIP(s, "cp");
 
     s.command = [
       "./chf",
@@ -227,7 +227,7 @@ class F5CPBuilder {
     for (const [ct, amf] of compose.suggestNames("amf", netdef.amfs)) {
       const [s, amfcfg] = await this.defineService<F5.amf.Configuration>(ct, ["cp", "n2"]);
       const c = amfcfg.configuration;
-      c.ngapIpList = [s.networks.n2!.ipv4_address];
+      c.ngapIpList = [compose.getIP(s, "n2")];
 
       const [region, set, pointer] = amf.amfi;
       const amfi = (BigInt(region) << 16n) | (BigInt(set) << 6n) | BigInt(pointer);
@@ -261,9 +261,9 @@ class F5CPBuilder {
 
       const c = smfcfg.configuration;
       c.pfcp = {
-        listenAddr: s.networks.n4!.ipv4_address,
-        externalAddr: s.networks.n4!.ipv4_address,
-        nodeID: s.networks.n4!.ipv4_address,
+        listenAddr: compose.getIP(s, "n4"),
+        externalAddr: compose.getIP(s, "n4"),
+        nodeID: compose.getIP(s, "n4"),
       };
       c.plmnList = [this.plmn];
       c.snssaiInfos = smf.nssai.map((snssai): F5.smf.SNSSAIInfo => ({
@@ -304,7 +304,7 @@ class F5CPBuilder {
       const peersJoined = peers.join(",");
       gnbPeers ??= [gnb.name, peersJoined, peers];
       if (gnbPeers[1] !== peersJoined) {
-        throw new Error(`${gnb.name} peer list (${peersJoined}) differs from ${gnbPeers[0]} peer list ( ${gnbPeers[1]}), not supported by free5GC SMF`);
+        throw new Error(`${gnb.name} peer list (${peersJoined}) differs from ${gnbPeers[0]} peer list (${gnbPeers[1]}), not supported by free5GC SMF`);
       }
     }
     if (gnbPeers) {
@@ -319,8 +319,8 @@ class F5CPBuilder {
       assert(upfService);
       const node: F5.smf.UPNodeUPF = {
         type: "UPF",
-        nodeID: upfService.networks.n4!.ipv4_address,
-        addr: upfService.networks.n4!.ipv4_address,
+        nodeID: compose.getIP(upfService, "n4"),
+        addr: compose.getIP(upfService, "n4"),
         sNssaiUpfInfos: [],
         interfaces: [],
       };
@@ -396,10 +396,11 @@ class F5CPBuilder {
 
   private updateSBI(s: ComposeService, c: F5.SBI): void {
     if (c.sbi !== undefined) {
+      const cpIP = compose.getIP(s, "cp");
       c.sbi = {
         scheme: "http",
-        registerIPv4: s.networks.cp!.ipv4_address,
-        bindingIPv4: s.networks.cp!.ipv4_address,
+        registerIPv4: cpIP,
+        bindingIPv4: cpIP,
         port: 8000,
       };
     }
@@ -407,7 +408,9 @@ class F5CPBuilder {
     if (c.nrfUri !== undefined) {
       const { nrf } = this.ctx.c.services;
       assert(!!nrf, "NRF is not yet created");
-      c.nrfUri = `http://${nrf.networks.cp!.ipv4_address}:8000`;
+      const nrfUri = new URL("http://invalid:8000");
+      nrfUri.hostname = compose.getIP(nrf, "cp");
+      c.nrfUri = nrfUri.toString().replace(/\/$/, ""); // trailing '/' causes NRF to return HTTP 404
     }
   }
 
@@ -436,8 +439,8 @@ export async function f5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void>
   dependOnGtp5g(s, ctx.c);
 
   const c = await f5_conf.loadTemplate("upfcfg") as F5.upf.Root;
-  c.pfcp.addr = s.networks.n4!.ipv4_address;
-  c.pfcp.nodeID = s.networks.n4!.ipv4_address;
+  c.pfcp.addr = compose.getIP(s, "n4");
+  c.pfcp.nodeID = compose.getIP(s, "n4");
   // go-upf gtp5g driver listens on the first interface defined in ifList and does not distinguish N3 or N9
   // https://github.com/free5gc/go-upf/blob/efae7532f8f9ed081065cdaa0589b0c76d11b204/internal/forwarder/driver.go#L53-L58
   c.gtpu.ifList = [{

@@ -54,7 +54,7 @@ class RANBuilder {
   private async buildZmq(): Promise<void> {
     for (const [gnb, sub] of NetDef.pairGnbUe(this.ctx.netdef)) {
       const ue = this.ctx.defineService(gnb.name.replace("gnb", "ue"), ueDockerImage, ["air"]);
-      const gnbIP = await this.buildGNBzmq(gnb, ue.networks.air!.ipv4_address);
+      const gnbIP = await this.buildGNBzmq(gnb, compose.getIP(ue, "air"));
       this.buildUE(ue, sub, gnbIP);
     }
   }
@@ -81,7 +81,7 @@ class RANBuilder {
       srate,
       device_driver: "zmq",
       device_args: [
-        `tx_port=tcp://${s.networks.air!.ipv4_address}:2000`,
+        `tx_port=tcp://${compose.getIP(s, "air")}:2000`,
         `rx_port=tcp://${ueIP}:2001`,
         "id=gnb",
         `base_srate=${srate}e6`,
@@ -100,7 +100,7 @@ class RANBuilder {
         prach_config_index: 1,
       },
     });
-    return s.networks.air!.ipv4_address;
+    return compose.getIP(s, "air");
   }
 
   private async buildGNB(s: ComposeService, gnb: NetDef.GNB, rusdr: SRS.gnb.RUSDR, cellcfg: SetOptional<SRS.gnb.Cell, "plmn" | "tac" | "pci">): Promise<void> {
@@ -111,9 +111,9 @@ class RANBuilder {
       slicing: Array.from(this.ctx.netdef.nssai, (snssai) => NetDef.splitSNSSAI(snssai).int),
       amf: {
         addr: this.ctx.gatherIPs("amf", "n2")[0]!,
-        bind_addr: s.networks.n2!.ipv4_address,
-        n2_bind_addr: s.networks.n2!.ipv4_address,
-        n3_bind_addr: s.networks.n3!.ipv4_address,
+        bind_addr: compose.getIP(s, "n2"),
+        n2_bind_addr: compose.getIP(s, "n2"),
+        n3_bind_addr: compose.getIP(s, "n3"),
       },
       cu_cp: {
         // https://github.com/srsran/srsRAN_Project/discussions/527#discussioncomment-8980792
@@ -157,7 +157,7 @@ class RANBuilder {
       ENB_HOSTNAME: "",
       ENB_ADDRESS: gnbIP,
       UE_HOSTNAME: "",
-      UE_ADDRESS: s.networks.air!.ipv4_address,
+      UE_ADDRESS: compose.getIP(s, "air"),
       DL_EARFCN: 2850,
       BANDS: 3,
       APN: sub.requestedDN[0]?.dnn,

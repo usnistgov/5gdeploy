@@ -47,7 +47,7 @@ export async function bessUP(ctx: NetDefComposeContext, upf: N.UPF): Promise<voi
     "msg Loading BESS pipeline",
     "bessctl run up4",
     "msg Starting bessctl GUI",
-    `exec bessctl http ${pfcpiface.networks.mgmt!.ipv4_address} 8000`,
+    `exec bessctl http ${compose.getIP(pfcpiface, "mgmt")} 8000`,
   ]);
   cfg.mountInto({ s: gui, target: "/opt/bess/bessctl/conf/upf.jsonc" });
 

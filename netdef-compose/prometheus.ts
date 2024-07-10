@@ -85,7 +85,7 @@ class PromBuilder {
 
   private configureProcessExporter(): void {
     const s = this.ctx.c.services.processexporter!;
-    const ctTarget = `${s.networks.meas!.ipv4_address}:9256`;
+    const ctTarget = `${compose.getIP(s, "meas")}:9256`;
     const targets = new Set(map(
       compose.classifyByHost(this.ctx.c),
       ({ host }) => host === "" ? ctTarget : `${new URL(`ssh://${host}`).hostname}:9256`,
@@ -140,7 +140,7 @@ class PromBuilder {
     ];
 
     const url = new URL("http://localhost:9090");
-    url.hostname = s.networks.meas!.ipv4_address;
+    url.hostname = compose.getIP(s, "meas");
     return url;
   }
 

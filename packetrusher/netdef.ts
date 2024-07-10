@@ -46,8 +46,8 @@ function makeConfigUpdate(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDe
     (ip) => ({ ip, port: 38412 }),
   );
   c.gnodeb = {
-    controlif: { ip: s.networks.n2!.ipv4_address },
-    dataif: { ip: s.networks.n3!.ipv4_address },
+    controlif: { ip: compose.getIP(s, "n2") },
+    dataif: { ip: compose.getIP(s, "n3") },
     plmnlist: {
       ...plmn,
       tac: hexPad(ctx.netdef.tac, 6),

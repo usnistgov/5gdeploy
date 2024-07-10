@@ -57,9 +57,9 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
   }));
   g0.NETWORK_INTERFACES = {
     GNB_INTERFACE_NAME_FOR_NG_AMF: "n2",
-    GNB_IPV4_ADDRESS_FOR_NG_AMF: s.networks.n2!.ipv4_address,
+    GNB_IPV4_ADDRESS_FOR_NG_AMF: compose.getIP(s, "n2"),
     GNB_INTERFACE_NAME_FOR_NGU: "n3",
-    GNB_IPV4_ADDRESS_FOR_NGU: s.networks.n3!.ipv4_address,
+    GNB_IPV4_ADDRESS_FOR_NGU: compose.getIP(s, "n3"),
     GNB_PORT_FOR_S1U: 2152,
   };
 
@@ -68,7 +68,7 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
   };
 
   c.telnetsrv = {
-    listenaddr: s.networks.mgmt!.ipv4_address,
+    listenaddr: compose.getIP(s, "mgmt"),
     listenport: 9090,
   };
 
@@ -142,7 +142,7 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
   };
 
   c.telnetsrv = {
-    listenaddr: s.networks.mgmt!.ipv4_address,
+    listenaddr: compose.getIP(s, "mgmt"),
     listenport: 9090,
   };
 

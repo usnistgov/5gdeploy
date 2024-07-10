@@ -159,7 +159,7 @@ abstract class PhoenixScenarioBuilder {
 
     nf.editModule("monitoring", true, ({ config }) => {
       this.hasPrometheus = true;
-      const mgmt = s.networks.mgmt!.ipv4_address;
+      const mgmt = compose.getIP(s, "mgmt");
       config.Prometheus = {
         listener: mgmt,
         port: 9888,
@@ -445,12 +445,12 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         const upf = this.ctx.c.services[node as string]!;
         return {
           type: "UPF",
-          id: upf.networks.n4!.ipv4_address,
-          ip: upf.networks[{
+          id: compose.getIP(upf, "n4"),
+          ip: compose.getIP(upf, {
             DNN: "n6",
             gNodeB: "n3",
             UPF: "n9",
-          }[peerType]]!.ipv4_address,
+          }[peerType]),
         };
       }
     }
@@ -513,7 +513,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         config.DataPlane.interfaces.push({
           type: "n3_n9",
           name: "n3",
-          bind_ip: s.networks.n3!.ipv4_address,
+          bind_ip: compose.getIP(s, "n3"),
           mode: getInterfaceMode("n3"),
         });
         config.DataPlane.xdp.interfaces.push({
@@ -525,7 +525,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         config.DataPlane.interfaces.push({
           type: "n3_n9",
           name: "n9",
-          bind_ip: s.networks.n9!.ipv4_address,
+          bind_ip: compose.getIP(s, "n9"),
           mode: getInterfaceMode("n9"),
         });
         config.DataPlane.xdp.interfaces.push({
@@ -537,7 +537,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         config.DataPlane.interfaces.push({
           type: "n6_l3",
           name: "n6_tun",
-          bind_ip: s.networks.n6!.ipv4_address,
+          bind_ip: compose.getIP(s, "n6"),
           mode: getInterfaceMode("n6"),
         });
         config.DataPlane.xdp.interfaces.push({
@@ -672,8 +672,8 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
             mcc,
             mnc,
             cell_id: gnb.nci.nci,
-            gnb_cp_addr: gnbService.networks.air!.ipv4_address,
-            gnb_up_addr: gnbService.networks.air!.ipv4_address,
+            gnb_cp_addr: compose.getIP(gnbService, "air"),
+            gnb_up_addr: compose.getIP(gnbService, "air"),
             gnb_port: 10000,
           };
         });

@@ -31,9 +31,9 @@ function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: Net
   const plmnId: OMEC.PLMNID = NetDef.splitPLMN(ctx.network.plmn);
   const amfIP = ctx.gatherIPs("amf", "n2")[0]!;
   const g: OMEC.gnbsim.GNB = {
-    n2IpAddr: s.networks.n2!.ipv4_address,
+    n2IpAddr: compose.getIP(s, "n2"),
     n2Port: 9487,
-    n3IpAddr: s.networks.n3!.ipv4_address,
+    n3IpAddr: compose.getIP(s, "n3"),
     n3Port: 2152,
     name: gnb.name,
     globalRanId: {
@@ -68,7 +68,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: Net
   return {
     configuration: {
       gnbs: { [gnb.name]: g },
-      httpServer: { enable: true, ipAddr: s.networks.mgmt!.ipv4_address },
+      httpServer: { enable: true, ipAddr: compose.getIP(s, "mgmt") },
       profiles,
       execInParallel: true,
       runConfigProfilesAtStart: true,

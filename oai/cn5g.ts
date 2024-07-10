@@ -52,7 +52,7 @@ abstract class CN5GBuilder {
       read_only: true,
     });
 
-    c.host = s.networks.cp!.ipv4_address;
+    c.host = compose.getIP(s, "cp");
 
     compose.setCommands(s, this.makeExecCommands(s, nf));
     return s;
@@ -101,7 +101,7 @@ class CPBuilder extends CN5GBuilder {
     const s = this.ctx.defineService("sql", compose.mysql.image, ["db"]);
     compose.mysql.init(s, "cp-sql");
     const dbc = this.c.database;
-    dbc.host = s.networks.db!.ipv4_address;
+    dbc.host = compose.getIP(s, "db");
     dbc.user = "oai";
     dbc.password = "oai";
     dbc.database_name = "oai_db";

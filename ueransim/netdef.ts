@@ -50,9 +50,9 @@ class UeransimBuilder {
       nci: Number.parseInt(gnb.nci, 16),
       idLength: this.ctx.network.gnbIdLength,
       tac: this.ctx.netdef.tac,
-      linkIp: s.networks.air!.ipv4_address,
-      ngapIp: s.networks.n2!.ipv4_address,
-      gtpIp: s.networks.n3!.ipv4_address,
+      linkIp: compose.getIP(s, "air"),
+      ngapIp: compose.getIP(s, "n2"),
+      gtpIp: compose.getIP(s, "n3"),
       amfConfigs: Array.from(
         this.ctx.gatherIPs("amf", "n2"),
         (address) => ({ address, port: 38412 }),

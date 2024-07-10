@@ -60,7 +60,7 @@ function* makeDNRoutes(ctx: NetDefComposeContext, dn: N.DataNetwork): Iterable<s
     assert(typeof upfName === "string");
     const upf = ctx.c.services[upfName];
     assert(!!upf, `${upfName} container not found`);
-    yield `ip route add ${dest} via ${upf.networks.n6!.ipv4_address} metric ${cost}`;
+    yield `ip route add ${dest} via ${compose.getIP(upf, "n6")} metric ${cost}`;
   }
   yield "msg Listing IP routes";
   yield "ip route list table all type unicast";
