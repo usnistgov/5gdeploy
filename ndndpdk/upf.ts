@@ -32,6 +32,12 @@ function setCommands(ctx: NetDefComposeContext, s: ComposeService, upf: N.UPF): 
 
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
+    "msg Waiting for NDN-DPDK ethdev",
+    `wait_ethdev() { test $(ndndpdk-ctrl list-ethdev 2>/dev/null | jq -s -e --arg MAC ${upfN3mac} "map(select(.macAddr==\\$MAC)) | length") -gt 0; }`,
+    "with_retry wait_ethdev", // `with_retry $(subshell)` is incorrect - subshell is evaluated only once
+    "msg Listing NDN-DPDK ethdevs",
+    "ndndpdk-ctrl list-ethdev",
+    "msg Starting UPF",
     `ndndpdk-upf ${flags.join(" ")}`,
   ]);
 }
