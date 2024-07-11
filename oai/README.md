@@ -23,6 +23,13 @@ This package offers these choices in the **netdef-compose** command:
 
 This package adds several OAI-specific options to the **netdef-compose** command.
 
+`--oai-cn5g-tag` specifies Docker image tag for core network functions.
+`--oai-ran-tag` specifies Docker image tag for RAN functions.
+The default is gathered from oai-cn5g-fed repository checkout.
+
+`--oai-cn5g-nrf=false` disables Network Repository Function (NRF) globally.
+The default is using NRF, which includes UPF discovery by SMF.
+
 `--oai-upf-workers` specifies CPU cores reserved for each UPF.
 These should be used together with CPU isolation via `--place` flag.
 
@@ -32,10 +39,6 @@ The default is using the userspace implementation.
 `--oai-gnb-conf` specifies template config file for gNB.
 `--oai-ue-conf` specifies template config file for UE.
 It's advised to use absolute paths for these options.
-
-`--oai-cn5g-tag` specifies Docker image tag for core network functions.
-`--oai-ran-tag` specifies Docker image tag for RAN functions.
-The default is gathered from oai-cn5g-fed repository checkout.
 
 ## RAN telnet
 

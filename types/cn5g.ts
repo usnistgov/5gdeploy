@@ -99,6 +99,13 @@ export namespace smf {
 
   export interface UPF {
     host: string;
+    upf_info?: upf.UPFInfo;
+    config?: UPFConfig;
+    [k: string]: unknown;
+  }
+
+  export interface UPFConfig {
+    n3_local_ipv4?: string;
     [k: string]: unknown;
   }
 

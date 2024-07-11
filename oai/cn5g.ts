@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import { sortBy } from "sort-by-typescript";
 import sql from "sql-tagged-template-literal";
 import assert from "tiny-invariant";
 
@@ -21,6 +22,14 @@ abstract class CN5GBuilder {
   protected get netdef() { return this.ctx.netdef; }
   protected c!: CN5G.Config;
 
+  protected async loadTemplateConfig(): Promise<void> {
+    this.c = await oai_conf.loadCN5G();
+    this.c.register_nf.general = this.opts["oai-cn5g-nrf"];
+    if (!this.c.register_nf.general) {
+      delete this.c.nfs.nrf;
+    }
+  }
+
   protected async defineService(ct: string, nf: string, c: CN5G.NF, db: boolean, configPath: string): Promise<ComposeService> {
     const nets: Array<[net: string, intf: CN5G.NF.Interface | undefined]> = [];
     if (db) {
@@ -33,7 +42,7 @@ abstract class CN5GBuilder {
         nets.push([key, c[key as `n${number}`]]);
       }
     }
-    nets.sort(([a], [b]) => a.localeCompare(b));
+    nets.sort(sortBy("0"));
     for (const [i, [net, intf]] of nets.entries()) {
       if (intf) {
         intf.interface_name = iproute2Available.has(nf) ? net : `eth${i}`;
@@ -78,22 +87,48 @@ abstract class CN5GBuilder {
       ipv4_subnet: dn.subnet,
     }));
   }
+
+  protected makeUPFInfo(peers: NetDef.UPFPeers, inSMF = false): CN5G.upf.UPFInfo {
+    const info: CN5G.upf.UPFInfo = {
+      sNssaiUpfInfoList: [],
+    };
+    for (const snssai of this.netdef.nssai) {
+      const sPeers = peers.N6IPv4.filter((peer) => peer.snssai === snssai);
+      if (sPeers.length === 0) {
+        continue;
+      }
+
+      const item: CN5G.upf.SNSSAIInfo = {
+        sNssai: NetDef.splitSNSSAI(snssai).ih,
+        dnnUpfInfoList: sPeers.map(({ dnn }) => ({ dnn })),
+      };
+      if (inSMF) {
+        // As of OAI-CN5G-SMF v2.0.1, upf_graph::select_upf_node() performs string comparison to
+        // verify UPF's S-NSSAI, in which SD is encoded as decimal string.
+        const { sd = "FFFFFF" } = item.sNssai;
+        item.sNssai.sd = Number.parseInt(sd, 16).toString(10);
+      }
+      info.sNssaiUpfInfoList.push(item);
+    }
+    return info;
+  }
 }
 
 class CPBuilder extends CN5GBuilder {
   public async build(): Promise<void> {
-    this.c = await oai_conf.loadCN5G();
+    await this.loadTemplateConfig();
+    delete this.c.nfs.upf;
+    delete this.c.upf;
+
     await this.buildSQL();
     const configPath = "cp-cfg/config.yaml";
-    for (const [nf, c] of Object.entries(this.c.nfs).filter(([nf]) => nf !== "upf")) {
+    for (const [nf, c] of Object.entries(this.c.nfs)) {
       await this.defineService(nf, nf, c, true, configPath);
     }
 
     this.updateConfigDNNs();
     this.updateConfigAMF();
     this.updateConfigSMF();
-    delete this.c.nfs.upf;
-    delete this.c.upf;
     await this.ctx.writeFile(configPath, this.c);
   }
 
@@ -176,9 +211,19 @@ class CPBuilder extends CN5GBuilder {
 
     const upfTpl = c.upfs[0]!;
     c.upfs = this.ctx.network.upfs.map((upf): CN5G.smf.UPF => {
-      const host = compose.getIP(this.ctx.c.services[upf.name]!, "n4");
+      const upfService = this.ctx.c.services[upf.name]!;
+      const host = compose.getIP(upfService, "n4");
       s.extra_hosts[`${upf.name}.5gdeploy.oai`] = host; // SMF would attempt RDNS lookup
-      return { ...upfTpl, host };
+      const upfCfg: CN5G.smf.UPF = { ...upfTpl, host };
+      if (!this.opts["oai-cn5g-nrf"]) {
+        const peers = this.netdef.gatherUPFPeers(upf);
+        upfCfg.upf_info = this.makeUPFInfo(peers, true);
+        upfCfg.config = {
+          ...upfCfg.config,
+          n3_local_ipv4: compose.getIP(upfService, "n3"),
+        };
+      }
+      return upfCfg;
     });
 
     c.smf_info.sNssaiSmfInfoList = this.netdef.nssai.map((snssai): CN5G.smf.SNSSAIInfo => {
@@ -206,7 +251,14 @@ export async function oaiCP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<v
 
 class UPBuilder extends CN5GBuilder {
   public async build(upf: N.UPF): Promise<void> {
-    this.c = await oai_conf.loadCN5G();
+    await this.loadTemplateConfig();
+    for (const nf of Object.keys(this.c.nfs) as CN5G.NFName[]) {
+      if (!["nrf", "smf", "upf"].includes(nf)) {
+        delete this.c.nfs[nf]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+      }
+    }
+    delete this.c.amf;
+    delete this.c.smf;
 
     const ct = upf.name;
     const configPath = `up-cfg/${ct}.yaml`;
@@ -219,13 +271,15 @@ class UPBuilder extends CN5GBuilder {
     compose.setCommands(s, this.makeExecCommands(s, "upf", makeUPFRoutes(this.ctx, peers)));
 
     this.ctx.finalize.push(async () => {
-      this.updateConfigUPF(peers); // depends on NRF and SMF IPs to be known
+      this.updateConfigUPF(peers); // depends on known NRF and SMF IPs
       await this.ctx.writeFile(configPath, this.c);
     });
   }
 
   private updateConfigUPF(peers: NetDef.UPFPeers): void {
-    this.c.nfs.nrf!.host = this.ctx.gatherIPs("nrf", "cp")[0]!;
+    if (this.c.nfs.nrf) {
+      this.c.nfs.nrf.host = compose.getIP(this.ctx.c.services.nrf!, "cp");
+    }
     this.c.upf!.remote_n6_gw = "127.0.0.1";
     this.c.upf!.smfs = this.ctx.gatherIPs("smf", "n4").map((host): CN5G.upf.SMF => ({ host }));
     this.c.nfs.smf!.host = this.c.upf!.smfs[0]!.host;
@@ -233,26 +287,7 @@ class UPBuilder extends CN5GBuilder {
     this.updateConfigDNNs();
     this.c.upf!.support_features.enable_bpf_datapath = this.opts["oai-upf-bpf"];
     this.c.upf!.support_features.enable_snat = false;
-    for (const nf of Object.keys(this.c.nfs) as CN5G.NFName[]) {
-      if (!["nrf", "smf", "upf"].includes(nf)) {
-        delete this.c.nfs[nf]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
-      }
-    }
-    delete this.c.amf;
-    delete this.c.smf;
-
-    const { sNssaiUpfInfoList } = this.c.upf!.upf_info;
-    sNssaiUpfInfoList.splice(0, Infinity);
-    for (const snssai of this.netdef.nssai) {
-      const sPeers = peers.N6IPv4.filter((peer) => peer.snssai === snssai);
-      if (sPeers.length === 0) {
-        continue;
-      }
-      sNssaiUpfInfoList.push({
-        sNssai: NetDef.splitSNSSAI(snssai).ih,
-        dnnUpfInfoList: sPeers.map(({ dnn }) => ({ dnn })),
-      });
-    }
+    this.c.upf!.upf_info = this.makeUPFInfo(peers);
   }
 }
 

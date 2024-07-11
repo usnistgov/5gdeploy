@@ -11,6 +11,12 @@ export const oaiOptions = {
     group: "oai",
     type: "string",
   },
+  "oai-cn5g-nrf": {
+    default: true,
+    desc: "enable NRF in OAI-CN5G",
+    group: "oai",
+    type: "boolean",
+  },
   "oai-upf-workers": {
     default: 2,
     desc: "number of worker threads in OAI-CN5G-UPF or OAI-UPF-VPP",
