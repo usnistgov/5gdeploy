@@ -8,6 +8,11 @@ RUN <<EOF
   rm -rf /var/lib/apt/lists/*
 EOF
 
-ADD https://github.com/free5gc/gtp5g.git#v0.8.10 /gtp5g
+RUN <<EOF
+  set -euxo pipefail
+  git clone --single-branch --branch v0.8.10 https://github.com/free5gc/gtp5g.git /gtp5g
+  # ADD git repository does not support proxy, https://github.com/moby/buildkit/issues/4643
+EOF
+
 COPY --chmod=755 load.sh /
 ENTRYPOINT ["/load.sh"]

@@ -9,7 +9,7 @@ if [[ ${NOPULL:-} -eq 1 ]]; then
 fi
 
 build_image() {
-  docker build $PULL -t 5gdeploy.localhost/$1 docker/$1
+  docker build $PULL --progress=plain -t 5gdeploy.localhost/$1 docker/$1
 }
 
 build_phoenix() {
@@ -21,13 +21,13 @@ build_phoenix() {
 
   pushd ../phoenix-repo/phoenix-src
   sed 's/cmake -G Ninja/\0 -DWITH_4G=OFF -DWITH_5G=ON/' deploy/docker/Dockerfile |
-    docker build $PULL -t 5gdeploy.localhost/phoenix-base \
+    docker build $PULL --progress=plain -t 5gdeploy.localhost/phoenix-base \
       --build-arg UBUNTU_VERSION=22.04 \
       --build-arg CACHE_PREFIX= \
       -f - .
   popd
 
-  docker build -t 5gdeploy.localhost/phoenix docker/phoenix
+  docker build --progress=plain -t 5gdeploy.localhost/phoenix docker/phoenix
 }
 
 case $D in
