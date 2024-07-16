@@ -64,6 +64,18 @@ docker run --rm --entrypoint='' -e PYTHONUNBUFFERED=1 -v /usr/local/share/uhd/im
   oaisoftwarealliance/oai-gnb:develop /opt/oai-gnb/bin/uhd_images_downloader.py
 ```
 
+## RAN configuration comparison
+
+`confdiff.ts` is a script to compare two libconf files.
+It's mainly useful for finding out the difference between two gNB configuration files.
+
+```bash
+$(env -C ~/5gdeploy corepack pnpm bin)/tsx ~/5gdeploy/oai/confdiff.ts A.conf B.conf
+```
+
+The output is given in [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) format.
+In most cases, each changed value has a `test` operation with the old value and a `replace` operation with the new value.
+
 ## UPF-VPP status
 
 Here are some commands to show status of UPF-VPP:
