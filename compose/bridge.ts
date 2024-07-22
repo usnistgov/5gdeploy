@@ -24,22 +24,22 @@ function* buildVxlan(c: ComposeFile, net: string, ips: readonly string[], netInd
   assert(ips.length >= 2, "at least 2 hosts");
   assert(ips.every((ip) => ip2long(ip) !== 0), "some IP is invalid");
 
-  yield `msg Setting up VXLAN bridge for br-${net}`;
-  yield `pipework --wait -i br-${net}`;
-
   // Find current host in `ips` array.
   // SELF= index into `ips` that current host is assigned
   // SELFIP= the corresponding IP address
-  yield "SELF=''";
+  yield "SELF=-1";
   for (const [i, ip] of ips.entries()) {
     yield `if [[ -n "$(ip -o addr show to ${ip})" ]]; then`;
     yield `  SELF=${i}`;
     yield `  SELFIP=${ip}`;
     yield "fi";
   }
-  yield "if [[ -z $SELF ]]; then";
-  yield `  msg "This host is not part of br-${net}. If this is unexpected, assign ${ips.join(" or ")} to a host netif."`;
-  yield "  SELF=-1";
+
+  yield "if [[ $SELF -ge 0 ]]; then";
+  yield `  msg Setting up VXLAN bridge for br-${net}`;
+  yield `  pipework --wait -i br-${net}`;
+  yield `elif [[ -n "$(ip -o link show dev br-${net} 2>/dev/null)" ]]; then`;
+  yield `  msg "This host is not part of br-${net} but the netif exists. If this is unexpected, assign ${ips.join(" or ")} to a host netif."`;
   yield "fi";
 
   // Unicast VXLAN tunnels are created between first host (SELF=0) and each subsequent host.
@@ -148,6 +148,7 @@ export function defineBridge(c: ComposeFile, opts: YargsInfer<typeof bridgeOptio
     "  ash -c \"$CLEANUPS\"",
     "}",
     "trap cleanup SIGTERM",
+    "",
   ];
   for (const [i, bridgeArg] of opts.bridge.entries()) {
     const tokens = bridgeArg.split(",");
@@ -159,6 +160,7 @@ export function defineBridge(c: ComposeFile, opts: YargsInfer<typeof bridgeOptio
     assert(impl, `unknown mode ${mode}`);
     modes.add(mode);
     commands.push(...impl(c, net, tokens, i));
+    commands.push("");
   }
   commands.push(
     "msg Idling",

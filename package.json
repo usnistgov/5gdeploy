@@ -11,14 +11,14 @@
     "shfmt": "git ls-files -- '*.sh' | xargs docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
     "typecheck": "tsc"
   },
-  "packageManager": "pnpm@9.5.0+sha512.140036830124618d624a2187b50d04289d5a087f326c9edfc0ccd733d76c4f52c3a313d4fc148794a2a9d81553016004e6742e8cf850670268a7387fc220c903",
+  "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e",
   "dependencies": {
     "@nodelib/fs.walk": "^2.0.0",
     "@segment/ajv-human-errors": "^2.13.0",
     "@types/dockerode": "^3.3.30",
     "@types/js-yaml": "^4.0.9",
     "@types/netmask": "^2.0.5",
-    "@types/node": "^20.14.10",
+    "@types/node": "^20.14.11",
     "@types/sql-tagged-template-literal": "^1.2.2",
     "@types/yargs": "^17.0.32",
     "ajv": "^8.17.1",
@@ -47,7 +47,7 @@
     "ts-json-schema-generator": "2.3.0",
     "tslib": "^2.6.3",
     "tsx": "^4.16.2",
-    "type-fest": "^4.21.0",
+    "type-fest": "^4.22.1",
     "typescript": "~5.5.3",
     "uint8-util": "^2.2.5",
     "yargs": "^17.7.2"
