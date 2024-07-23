@@ -20,6 +20,7 @@ export interface TrafficGenFlowContext {
   c: ComposeFile;
   output: ComposeFile;
   prefix: string;
+  group: string;
   port: number;
   dnIP: string;
   pduIP: string;
@@ -41,7 +42,7 @@ export interface TrafficGen {
   statsCommands?: (prefix: string) => Iterable<string>;
 }
 
-function rewriteOutputFlag(s: ComposeService, prefix: string, port: number, flags: readonly string[], re: RegExp, ext: string): string[] {
+function rewriteOutputFlag(s: ComposeService, prefix: string, group: string, port: number, flags: readonly string[], re: RegExp, ext: string): string[] {
   let hasOutput = false;
   const rFlags = flags.map((flag, i) => {
     const m = flags[i - 1]?.match(re);
@@ -49,7 +50,7 @@ function rewriteOutputFlag(s: ComposeService, prefix: string, port: number, flag
       return flag;
     }
     hasOutput = true;
-    return `/output/${port}-${m[1]}${ext}`;
+    return `/output/${group}-${port}-${m[1]}${ext}`;
   });
 
   if (hasOutput) {
@@ -94,8 +95,7 @@ const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
   },
   statsExt: ".json",
   *statsCommands(prefix) {
-    yield `msg Gathering iperf3 statistics table to ${prefix}.tsv`;
-    yield `cd ${path.join(import.meta.dirname, "..")}`;
+    yield `msg Gathering iperf3 statistics table to ${prefix}/iperf3.tsv`;
     yield `$(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/iperf3-stats.ts ` +
       `--dir=$COMPOSE_CTX --prefix=${prefix}`;
   },
@@ -106,17 +106,19 @@ const iperf3t: typeof iperf3 = {
   jsonFlag: [],
   statsExt: ".log",
   *statsCommands() {
-    yield "msg Showing final results from iperf3 text output";
-    yield "grep -w receiver *_c.log";
+    yield "msg Showing iperf3 final results from iperf3 text output";
+    yield "grep -w receiver iperf3t_*-*-c.log";
   },
 };
 
 const owamp: TrafficGen & {
+  tgid: string;
   serverBin: string;
   clientBin: string;
   outputExt: string;
   statsGrep: string;
 } = {
+  tgid: "owamp",
   determineDirection({ cFlags }) {
     const dl = cFlags.includes("-f") || cFlags.includes("-F");
     const ul = cFlags.includes("-t") || cFlags.includes("-T");
@@ -146,8 +148,8 @@ const owamp: TrafficGen & {
   },
   clientDockerImage: "perfsonar/tools",
   clientBin: "owping",
-  clientSetup(s, { prefix, port, dnIP, pduIP, cFlags }) {
-    cFlags = rewriteOutputFlag(s, prefix, port, cFlags, /^-([FT])$/, this.outputExt);
+  clientSetup(s, { prefix, group, port, dnIP, pduIP, cFlags }) {
+    cFlags = rewriteOutputFlag(s, prefix, group, port, cFlags, /^-([FT])$/, this.outputExt);
     s.command = [
       this.clientBin,
       "-P", `${port + 1}-${port + this.nPorts - 1}`,
@@ -160,13 +162,14 @@ const owamp: TrafficGen & {
   statsExt: ".log",
   statsGrep: "one-way (delay|jitter)",
   *statsCommands() {
-    yield `msg Showing final results from ${this.clientBin} text output`;
-    yield `grep -wE ${shlex.quote(this.statsGrep)} *_c.log`;
+    yield `msg Showing ${this.tgid} final results from ${this.clientBin} text output`;
+    yield `grep -wE ${shlex.quote(this.statsGrep)} ${this.tgid}_*-*-c.log`;
   },
 };
 
 const twamp: typeof owamp = {
   ...owamp,
+  tgid: "twamp",
   determineDirection() {
     return Direction.bidir;
   },
@@ -219,8 +222,8 @@ const sockperf: TrafficGen = {
     ];
   },
   clientDockerImage: "pazaan/sockperf",
-  clientSetup(s, { prefix, port, dnIP, pduIP, cFlags }) {
-    cFlags = rewriteOutputFlag(s, prefix, port, cFlags, /^--(full-log)$/, ".csv");
+  clientSetup(s, { prefix, group, port, dnIP, pduIP, cFlags }) {
+    cFlags = rewriteOutputFlag(s, prefix, group, port, cFlags, /^--(full-log)$/, ".csv");
     s.command = [
       ...cFlags,
       "-i", dnIP,
@@ -258,12 +261,12 @@ const ndnping: TrafficGen = {
   },
   statsExt: ".log",
   *statsCommands() {
-    yield "msg Showing final results from ndnping text output";
-    yield "grep -wE 'packets transmitted|rtt min' *_c.log";
+    yield "msg Showing ndnping final results from ndnping text output";
+    yield "grep -wE 'packets transmitted|rtt min' ndnping_*-*-c.log";
   },
 };
 
-export const trafficGenerators: Record<string, TrafficGen> = {
+const tgs = {
   iperf3,
   iperf3t,
   owamp,
@@ -272,3 +275,5 @@ export const trafficGenerators: Record<string, TrafficGen> = {
   sockperf,
   ndnping,
 };
+
+export const trafficGenerators: Record<keyof typeof tgs, TrafficGen> = tgs;

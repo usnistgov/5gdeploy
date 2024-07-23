@@ -27,16 +27,16 @@ You can only launch one NFD instance attached to each UE container, because:
 
 ## ndnping
 
-`./compose.sh ndnping` prepares NDN reachability test using [ndnping and ndnpingserver](https://github.com/named-data/ndn-tools/tree/master/tools/ping).
+`--ndnping` flag of `./compose.sh tgcs` command prepares NDN reachability test using [ndnping and ndnpingserver](https://github.com/named-data/ndn-tools/tree/master/tools/ping).
 
 ```bash
-./compose.sh ndnping --flow='dnn | * | -c 4 | -s 1000'
-./ndnping.sh
+./compose.sh tgcs --ndnping='dnn | * | -c 4 | -s 1000'
+./tg.sh
 ```
 
 The command line syntax follows [client-server traffic generators](trafficgen.md).
 It accepts the `--prefix` flag, not only as the prefix for container names, but also as the NDN name prefix.
-In the `--flow` flags, you must specify a DNN in which NFD instances have been launched.
+In the `--ndnping` flags, you must specify a DNN in which NFD instances have been launched.
 ndnping and ndnpingserver will connect to local NFD on tcp:6363; port numbers in the TSV output are ignored.
 
 When launching NFD, if the `--server` flag was used to specify an alternate "server" NFD, the ndnpingserver started by the traffic generator script will not receive Interests.

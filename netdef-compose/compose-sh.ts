@@ -4,13 +4,10 @@ import * as shlex from "shlex";
 import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
-import { trafficGenerators } from "../trafficgen/pduperf-tg.js";
 import type { ComposeFile } from "../types/mod.js";
 import { scriptHead as baseScriptHead } from "../util/mod.js";
 
-const trafficgenScripts = ["linkstat", "list-pdu", "nmap", "nfd"];
-const pduperfSubcommands = Object.keys(trafficGenerators);
-pduperfSubcommands.sort((a, b) => a.localeCompare(b));
+const trafficgenScripts = ["linkstat", "list-pdu", "nmap", "nfd", "tgcs"];
 
 const scriptUsage = `Usage:
   ./compose.sh up
@@ -41,8 +38,8 @@ The following are available after UE registration and PDU session establishment:
     Run nmap ping scans from Data Network to UEs.
   ./compose.sh nfd --dnn=DNN
     Deploy NDN Forwarding Daemon (NFD) between Data Network and UEs.
-  ./compose.sh ${pduperfSubcommands.join("|")} FLAGS
-    Prepare traffic generators.
+  ./compose.sh tgcs FLAGS
+    Prepare client-server traffic generators.
 `;
 
 const codebaseRoot = path.join(import.meta.dirname, "..");
@@ -71,8 +68,6 @@ const scriptTail = [
   "  done",
   `elif ${trafficgenScripts.map((tg) => `[[ $ACT == ${tg} ]]`).join(" || ")}; then`,
   `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/$ACT.ts --dir=$COMPOSE_CTX "$@"`,
-  `elif ${pduperfSubcommands.map((tg) => `[[ $ACT == ${tg} ]]`).join(" || ")}; then`,
-  `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/pduperf.ts --mode=$ACT --dir=$COMPOSE_CTX "$@"`,
   "else",
   `  echo ${shlex.quote(scriptUsage)}`,
   "  exit 1",

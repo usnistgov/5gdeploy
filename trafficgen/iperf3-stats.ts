@@ -23,16 +23,17 @@ const args = Yargs()
 const c = await file_io.readYAML(path.join(args.dir, `compose.${args.prefix}.yml`)) as ComposeFile;
 const table = await pipeline(
   () => Object.values(c.services).filter((s) =>
-    s.container_name.startsWith(`${args.prefix}_`) && s.container_name.endsWith("_c") &&
-    compose.annotate(s, "pduperf_mode") === "iperf3",
+    compose.annotate(s, "tgcs_tgid") === "iperf3" &&
+    s.container_name.endsWith("_c"),
   ),
   parallelMap(16, async (s): Promise<Array<string | number>> => {
-    const port = compose.annotate(s, "pduperf_port")!;
-    const dn = compose.annotate(s, "pduperf_dn")!;
-    const dir = compose.annotate(s, "pduperf_dir")!;
-    const ue = compose.annotate(s, "pduperf_ue")!;
+    const group = compose.annotate(s, "tgcs_group")!;
+    const port = compose.annotate(s, "tgcs_port")!;
+    const dn = compose.annotate(s, "tgcs_dn")!;
+    const dir = compose.annotate(s, "tgcs_dir")!;
+    const ue = compose.annotate(s, "tgcs_ue")!;
     try {
-      const report = await file_io.readJSON(path.join(args.dir, `${args.prefix}/${port}_c.json`)) as {
+      const report = await file_io.readJSON(path.join(args.dir, `${args.prefix}/${group}-${port}-c.json`)) as {
         end: {
           sum: {
             sender: boolean;
@@ -47,6 +48,7 @@ const table = await pipeline(
       };
       const { sum, cpu_utilization_percent: cpu } = report.end;
       return [
+        group,
         dn,
         dir,
         ue,
@@ -57,36 +59,37 @@ const table = await pipeline(
         sum.bits_per_second * (1 - sum.lost_percent / 100) / 1e6,
       ];
     } catch {
-      return [dn, dir, ue, port, Number.NaN, Number.NaN, Number.NaN, Number.NaN];
+      return [group, dn, dir, ue, port, Number.NaN, Number.NaN, Number.NaN, Number.NaN];
     }
   }),
   collect,
 );
-table.sort(sortBy("0", "1", "2", "3", "4"));
+table.sort(sortBy("0", "1", "2", "3", "4", "5"));
 
-const sums = new DefaultMap<string, [sum: number, dir: string, dn: string]>(
-  (key: string) => [0, ...key.split("|")] as [number, string, string],
+const sums = new DefaultMap<string, [send: number, recv: number, group: string, dn: string, dir: string]>(
+  (key: string) => [0, 0, ...key.split("|")] as [number, number, string, string, string],
 );
 for (const row of table) {
-  const [dn, dir] = row;
-  const recv = row.at(-1);
-  sums.get(`${dir}|${dn}`)[0] += recv as number;
+  const [group, dn, dir] = row;
+  const sum = sums.get(`${group}|${dn}|${dir}`);
+  sum[0] += row.at(-2) as number;
+  sum[1] += row.at(-1) as number;
 }
 table.push(...map(sums.values(),
-  ([value, dir, dn]) => [dn, dir, "TOTAL", "*", "_", "_", "_", value],
+  ([send, recv, group, dn, dir]) => [group, dn, dir, "TOTAL", "*", "_", "_", send, recv],
 ));
 
 for (const row of table) {
   for (const [i, col] of row.entries()) {
     if (typeof col === "number" && !Number.isInteger(col)) {
-      row[i] = Math.trunc(col * 1e3) / 1e3;
+      row[i] = col.toFixed(3);
     }
   }
 }
 
 const tTable = file_io.toTable(
-  ["snssai_dnn", "dir", "supi", "port", "send-CPU", "recv-CPU", "send-Mbps", "recv-Mbps"],
+  ["group", "snssai_dnn", "dir", "supi", "port", "send-CPU", "recv-CPU", "send-Mbps", "recv-Mbps"],
   table,
 );
-await file_io.write(path.join(args.dir, `${args.prefix}.tsv`), tTable.tsv);
+await file_io.write(path.join(args.dir, args.prefix, "iperf3.tsv"), tTable.tsv);
 await file_io.write("-", tTable.tui);

@@ -12,27 +12,10 @@ import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/compose.js";
 import { cmdOutput, file_io, Yargs } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
-import { trafficGenerators, type TrafficGenFlowContext } from "./pduperf-tg.js";
+import { type TrafficGen, trafficGenerators, type TrafficGenFlowContext } from "./tgcs-tg.js";
 
-const args = Yargs()
-  .option(ctxOptions)
-  .option("mode", {
-    choices: Object.keys(trafficGenerators),
-    demandOption: true,
-    desc: "traffic generator",
-    type: "string",
-  })
-  .option("prefix", {
-    defaultDescription: "same as mode",
-    desc: "container name prefix",
-    type: "string",
-  })
-  .option("port", {
-    default: 20000,
-    desc: "starting port number",
-    type: "number",
-  })
-  .option("flow", {
+function makeOption(tgid: string) {
+  return {
     array: true,
     coerce(lines: readonly string[]): Array<{
       dnPattern: Minimatch;
@@ -40,7 +23,7 @@ const args = Yargs()
     } & Pick<TrafficGenFlowContext, "cFlags" | "sFlags">> {
       return Array.from(lines, (line) => {
         const tokens = line.split("|");
-        assert([2, 3, 4].includes(tokens.length), `bad --flow ${line}`);
+        assert([2, 3, 4].includes(tokens.length), `bad --${tgid} ${line}`);
         return {
           dnPattern: new Minimatch(tokens[0]!.trim()),
           uePattern: new Minimatch(tokens[1]!.trim()),
@@ -49,16 +32,32 @@ const args = Yargs()
         };
       });
     },
-    demandOption: true,
-    desc: "PDU session selector and traffic generator flags",
+    desc: `define ${tgid} flows`,
     nargs: 1,
     type: "string",
+  } as const;
+}
+
+const args = Yargs()
+  .option(ctxOptions)
+  .option("prefix", {
+    default: "tg",
+    desc: "container name prefix",
+    type: "string",
   })
+  .option("port", {
+    default: 20000,
+    desc: "starting port number",
+    type: "number",
+  })
+  .options(Object.fromEntries(Array.from(
+    Object.keys(trafficGenerators),
+    (tgid) => [tgid, makeOption(tgid)],
+  )) as Record<keyof typeof trafficGenerators, ReturnType<typeof makeOption>>)
   .parseSync();
 
-const tg = trafficGenerators[args.mode]!;
-args.prefix ??= args.mode;
 const [c, netdef] = await loadCtx(args);
+const { prefix } = args;
 
 const output = compose.create();
 let nextPort = args.port;
@@ -66,9 +65,11 @@ const table = await pipeline(
   () => gatherPduSessions(c, netdef),
   flatTransform(16, function*(ctx) {
     const { sub: { supi }, dn: { dnn } } = ctx;
-    for (const [index, { dnPattern, uePattern, cFlags, sFlags }] of args.flow.entries()) {
-      if (dnPattern.match(dnn) && uePattern.match(supi)) {
-        yield { ...ctx, index, cFlags, sFlags };
+    for (const [tgid, tg] of Object.entries(trafficGenerators) as Iterable<[keyof typeof trafficGenerators, TrafficGen]>) {
+      for (const [index, { dnPattern, uePattern, cFlags, sFlags }] of (args[tgid] ?? []).entries()) {
+        if (dnPattern.match(dnn) && uePattern.match(supi)) {
+          yield { ...ctx, tgid, tg, group: `${tgid}_${index}`, cFlags, sFlags };
+        }
       }
     }
   }),
@@ -79,7 +80,9 @@ const table = await pipeline(
     dnService,
     dnIP,
     pduIP,
-    index,
+    tgid,
+    tg,
+    group,
     cFlags,
     sFlags,
   }) => {
@@ -88,7 +91,8 @@ const table = await pipeline(
     const tgFlow: TrafficGenFlowContext = {
       c,
       output,
-      prefix: args.prefix!,
+      prefix,
+      group,
       port,
       dnIP,
       pduIP,
@@ -102,7 +106,7 @@ const table = await pipeline(
 
     const services: ComposeService[] = [];
 
-    const serverName = tg.serverPerDN ? `${args.prefix}_${dn}_s` : `${args.prefix}_${port}_s`;
+    const serverName = tg.serverPerDN ? `${prefix}_${tgid}_${dn}_s` : `${prefix}_${group}_${port}_s`;
     if (!output.services[serverName]) {
       const server = compose.defineService(output, serverName, tg.serverDockerImage);
       copyPlacementNetns(server, dnService);
@@ -110,38 +114,39 @@ const table = await pipeline(
       services.push(server);
     }
 
-    const client = compose.defineService(output, `${args.prefix}_${port}_c`, tg.clientDockerImage);
+    const client = compose.defineService(output, `${prefix}_${group}_${port}_c`, tg.clientDockerImage);
     copyPlacementNetns(client, ueService);
     tg.clientSetup(client, tgFlow);
     services.push(client);
 
     for (const s of services) {
-      compose.annotate(s, "pduperf_mode", args.mode);
-      compose.annotate(s, "pduperf_dn", dn);
-      compose.annotate(s, "pduperf_ue", supi);
-      compose.annotate(s, "pduperf_dir", dir);
-      compose.annotate(s, "pduperf_port", port);
+      compose.annotate(s, "tgcs_tgid", tgid);
+      compose.annotate(s, "tgcs_group", group);
+      compose.annotate(s, "tgcs_dn", dn);
+      compose.annotate(s, "tgcs_ue", supi);
+      compose.annotate(s, "tgcs_dir", dir);
+      compose.annotate(s, "tgcs_port", port);
     }
 
-    return [index, dn, dir, supi, port];
+    return [group, dn, dir, supi, port];
   }),
   collect,
 );
 
-const composeFilename = `compose.${args.prefix}.yml`;
+const composeFilename = `compose.${prefix}.yml`;
 await file_io.write(path.join(args.dir, composeFilename), output);
 
-await cmdOutput(path.join(args.dir, `${args.prefix}.sh`), (function*() {
+await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
   yield "COMPOSE_CTX=$PWD";
-  yield `STATS_DIR=$PWD/${args.prefix}/`;
+  yield `STATS_DIR=$PWD/${prefix}/`;
   yield "ACT=${1:-}"; // eslint-disable-line no-template-curly-in-string
   yield "[[ -z $ACT ]] || shift";
 
   yield "if [[ -z $ACT ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
-    yield `  msg Deleting old ${args.mode} servers and clients on ${hostDesc}`;
-    yield `  with_retry ${dockerH} rm -f ${names.join(" ")}`;
+    yield `  msg Deleting old trafficgen servers and clients on ${hostDesc}`;
+    yield `  with_retry ${dockerH} rm -f ${names.join(" ")} 2>/dev/null`;
   }
   yield "  rm -rf $STATS_DIR";
   yield "fi";
@@ -149,7 +154,7 @@ await cmdOutput(path.join(args.dir, `${args.prefix}.sh`), (function*() {
 
   yield "if [[ -z $ACT ]] || [[ $ACT == servers ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_s"))) {
-    yield `  msg Starting ${args.mode} servers on ${hostDesc}`;
+    yield `  msg Starting trafficgen servers on ${hostDesc}`;
     yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} up -d ${names.join(" ")}`;
   }
   yield "  sleep 5";
@@ -157,54 +162,67 @@ await cmdOutput(path.join(args.dir, `${args.prefix}.sh`), (function*() {
 
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_c"))) {
-    yield `  msg Starting ${args.mode} clients on ${hostDesc}`;
+    yield `  msg Starting trafficgen clients on ${hostDesc}`;
     yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} up -d ${names.join(" ")}`;
   }
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == wait ]]; then";
-  yield `  msg Waiting for ${args.mode} clients to finish`;
+  yield "  msg Waiting for trafficgen clients to finish";
   for (const s of Object.values(output.services).filter((s) => s.container_name.endsWith("_c"))) {
+    yield `  echo -n ${s.container_name} ''`;
     yield `  ${compose.makeDockerH(s)} wait ${s.container_name}`;
   }
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == collect ]]; then";
-  yield `  msg Gathering ${args.mode} statistics to $\{STATS_DIR}'*${tg.statsExt}'`;
+  yield "  msg Gathering trafficgen statistics to ${STATS_DIR}"; // eslint-disable-line no-template-curly-in-string
   for (const s of Object.values(output.services)) {
+    const tg = trafficGenerators[compose.annotate(s, "tgcs_tgid") as keyof typeof trafficGenerators];
     const ct = s.container_name;
-    yield `  ${compose.makeDockerH(s)} logs ${ct} >$\{STATS_DIR}${ct.slice(args.prefix!.length + 1)}${tg.statsExt}`;
+    const group = compose.annotate(s, "tgcs_group")!;
+    const port = compose.annotate(s, "tgcs_port")!;
+    const dn = compose.annotate(s, "tgcs_dn")!;
+    const basename = tg.serverPerDN && ct.endsWith("s") ? `${group}-${dn}` : `${group}-${port}`;
+    yield `  ${compose.makeDockerH(s)} logs ${ct} >$\{STATS_DIR}${basename}-${ct.slice(-1)}${tg.statsExt}`;
   }
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == stop ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
-    yield `  msg Deleting ${args.mode} servers and clients on ${hostDesc}`;
-    yield `  with_retry ${dockerH} rm -f ${names.join(" ")}`;
+    yield `  msg Deleting trafficgen servers and clients on ${hostDesc}`;
+    yield `  with_retry ${dockerH} rm -f ${names.join(" ")} >/dev/null`;
   }
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == stats ]]; then";
-  if (tg.statsCommands) {
-    yield "  cd $STATS_DIR";
-    yield* oblMap(tg.statsCommands(args.prefix!), (line) => `  ${line}`);
-    yield "  cd $COMPOSE_CTX";
-  } else {
-    yield "  msg Statistics analysis is not supported";
+  yield "  cd $STATS_DIR";
+  for (const [tgid, tg] of Object.entries(trafficGenerators) as Iterable<[keyof typeof trafficGenerators, TrafficGen]>) {
+    if (!args[tgid]) {
+      continue;
+    } else if (tg.statsCommands) {
+      yield* oblMap(tg.statsCommands(prefix), (line) => `  ${line}`);
+    } else {
+      yield `  msg ${tgid} statistics analysis is not supported`;
+    }
   }
+  yield "  cd $COMPOSE_CTX";
   yield "fi";
 })());
 
+assert(table.length > 0, "No traffic generator defined, are the PDU sessions created?");
 table.sort(sortBy("0", "1", "2", "3"));
-const counts = new DefaultMap<number, [cnt: number, index: number]>((index: number) => [0, index]);
+const counts = new DefaultMap<string, [cnt: number, group: string]>((group: string) => [0, group]);
 for (const row of table) {
-  const index = row[0]! as number;
-  counts.get(index)[0] += 1;
+  const group = row[0]! as string;
+  counts.get(group)[0] += 1;
 }
 table.push(...oblMap(counts.values(),
-  ([cnt, index]) => [index, "*", "*", "COUNT", cnt],
+  ([cnt, group]) => [group, "*", "*", "COUNT", cnt],
 ));
-await file_io.write("-", file_io.toTable(
-  ["#", "snssai_dnn", "dir", "supi", "port"],
+const tTable = file_io.toTable(
+  ["group", "snssai_dnn", "dir", "supi", "port"],
   table,
-).tui);
+);
+await file_io.write(path.join(args.dir, `${args.prefix}.tsv`), tTable.tsv);
+await file_io.write("-", tTable.tui);
