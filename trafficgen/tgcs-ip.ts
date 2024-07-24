@@ -1,69 +1,10 @@
-import path from "node:path";
-
 import * as shlex from "shlex";
 import assert from "tiny-invariant";
-import type { ReadonlyDeep } from "type-fest";
 
-import type { ComposeFile, ComposeService } from "../types/mod.js";
+import { codebaseRoot } from "../util/mod.js";
+import { Direction, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
-const codebaseRoot = path.join(import.meta.dirname, "..");
-
-/** Traffic direction. */
-export enum Direction {
-  dl = "DL>",
-  ul = "<UL",
-  bidir = "<->",
-}
-
-/** Traffic generator flow information. */
-export interface TrafficGenFlowContext {
-  c: ComposeFile;
-  output: ComposeFile;
-  prefix: string;
-  group: string;
-  port: number;
-  dnIP: string;
-  pduIP: string;
-  cFlags: readonly string[];
-  sFlags: readonly string[];
-  dnService: ReadonlyDeep<ComposeService>;
-  ueService: ReadonlyDeep<ComposeService>;
-}
-
-export interface TrafficGen {
-  determineDirection: (flow: TrafficGenFlowContext) => Direction;
-  nPorts: number;
-  serverDockerImage: string;
-  serverPerDN?: boolean;
-  serverSetup: (s: ComposeService, flow: TrafficGenFlowContext) => void;
-  clientDockerImage: string;
-  clientSetup: (s: ComposeService, flow: TrafficGenFlowContext) => void;
-  statsExt: string;
-  statsCommands?: (prefix: string) => Iterable<string>;
-}
-
-function rewriteOutputFlag(s: ComposeService, prefix: string, group: string, port: number, flags: readonly string[], re: RegExp, ext: string): string[] {
-  let hasOutput = false;
-  const rFlags = flags.map((flag, i) => {
-    const m = flags[i - 1]?.match(re);
-    if (!m) {
-      return flag;
-    }
-    hasOutput = true;
-    return `/output/${group}-${port}-${m[1]}${ext}`;
-  });
-
-  if (hasOutput) {
-    s.volumes.push({
-      type: "bind",
-      source: `./${prefix}`,
-      target: "/output",
-    });
-  }
-  return rFlags;
-}
-
-const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
+export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
   jsonFlag: ["--json"],
   determineDirection({ cFlags }) {
     return cFlags.includes("--bidir") ? Direction.bidir :
@@ -101,7 +42,7 @@ const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
   },
 };
 
-const iperf3t: typeof iperf3 = {
+export const iperf3t: typeof iperf3 = {
   ...iperf3,
   jsonFlag: [],
   statsExt: ".log",
@@ -111,7 +52,7 @@ const iperf3t: typeof iperf3 = {
   },
 };
 
-const owamp: TrafficGen & {
+export const owamp: TrafficGen & {
   tgid: string;
   serverBin: string;
   clientBin: string;
@@ -167,7 +108,7 @@ const owamp: TrafficGen & {
   },
 };
 
-const twamp: typeof owamp = {
+export const twamp: typeof owamp = {
   ...owamp,
   tgid: "twamp",
   determineDirection() {
@@ -179,7 +120,7 @@ const twamp: typeof owamp = {
   statsGrep: "round-trip time|two-way jitter",
 };
 
-const netperf: TrafficGen = {
+export const netperf: TrafficGen = {
   determineDirection() {
     return Direction.bidir;
   },
@@ -207,7 +148,7 @@ const netperf: TrafficGen = {
   statsExt: ".log",
 };
 
-const sockperf: TrafficGen = {
+export const sockperf: TrafficGen = {
   determineDirection() {
     return Direction.bidir;
   },
@@ -234,46 +175,3 @@ const sockperf: TrafficGen = {
   },
   statsExt: ".log",
 };
-
-const ndnping: TrafficGen = {
-  determineDirection() {
-    return Direction.dl;
-  },
-  nPorts: 1,
-  serverDockerImage: "ghcr.io/named-data/ndn-tools",
-  serverPerDN: true,
-  serverSetup(s, { prefix, sFlags }) {
-    s.environment.NDN_CLIENT_TRANSPORT = "tcp://127.0.0.1";
-    s.command = [
-      "ndnpingserver",
-      ...sFlags,
-      `/${prefix}`,
-    ];
-  },
-  clientDockerImage: "ghcr.io/named-data/ndn-tools",
-  clientSetup(s, { prefix, cFlags }) {
-    s.environment.NDN_CLIENT_TRANSPORT = "tcp://127.0.0.1";
-    s.command = [
-      "ndnping",
-      ...cFlags,
-      `/${prefix}`,
-    ];
-  },
-  statsExt: ".log",
-  *statsCommands() {
-    yield "msg Showing ndnping final results from ndnping text output";
-    yield "grep -wE 'packets transmitted|rtt min' ndnping_*-*-c.log";
-  },
-};
-
-const tgs = {
-  iperf3,
-  iperf3t,
-  owamp,
-  twamp,
-  netperf,
-  sockperf,
-  ndnping,
-};
-
-export const trafficGenerators: Record<keyof typeof tgs, TrafficGen> = tgs;

@@ -4,7 +4,7 @@ import * as shlex from "shlex";
 import assert from "tiny-invariant";
 
 import type { ComposeFile } from "../types/mod.js";
-import type { YargsInfer, YargsOptions } from "../util/mod.js";
+import { scriptCleanup, scriptHead, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate, disconnectNetif, ip2mac } from "./compose.js";
 import type { ComposeContext } from "./context.js";
 
@@ -146,7 +146,6 @@ export async function defineBridge(ctx: ComposeContext, opts: BridgeOpts): Promi
 
   const s = ctx.defineService("bridge", bridgeDockerImage, []);
   annotate(s, "every_host", 1);
-  s.stop_signal = "SIGTERM";
   s.network_mode = "host";
   s.command = ["ash", "/bridge.sh"];
   s.cap_add.push("NET_ADMIN");
@@ -168,9 +167,8 @@ export async function defineBridge(ctx: ComposeContext, opts: BridgeOpts): Promi
 }
 
 function* generateScript(c: ComposeFile, opts: BridgeOpts, modes: Set<string>): Iterable<string> {
-  yield "CLEANUPS='set -euo pipefail'";
-  yield "cleanup() { msg Performing cleanup; ash -c \"$CLEANUPS\"; }";
-  yield "trap cleanup SIGTERM";
+  yield* scriptHead;
+  yield* scriptCleanup({ shell: "ash" });
   yield "";
 
   for (const [i, bridgeArg] of opts.bridge!.entries()) {
@@ -186,4 +184,8 @@ function* generateScript(c: ComposeFile, opts: BridgeOpts, modes: Set<string>): 
     yield* impl(c, net, rest, i);
     yield "";
   }
+
+  yield "msg Idling";
+  yield "tail -f &";
+  yield "wait $!";
 }

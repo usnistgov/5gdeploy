@@ -13,6 +13,7 @@ main(int argc, char* argv[]) {
   auto tapIP = ns3::Ipv4Address::GetAny();
   ns3::Ipv4Mask tapMask;
   auto appIP = ns3::Ipv4Address::GetAny();
+  ns3::Time stopTime;
   bool isServer = false;
   auto connectTo = ns3::Ipv4Address::GetAny();
   int nClients = 1;
@@ -21,6 +22,7 @@ main(int argc, char* argv[]) {
   cmd.AddValue("tap-ip", "TAP IPv4 address", tapIP);
   cmd.AddValue("tap-mask", "TAP IPv4 subnet mask", tapMask);
   cmd.AddValue("app-ip", "application IPv4 address", appIP);
+  cmd.AddValue("stop-time", "scenario stop time", stopTime);
   cmd.AddValue("listen", "run as server", isServer);
   cmd.AddValue("connect", "run as client and connect to server IPv4 address", connectTo);
   cmd.AddValue("clients", "number of clients (1-1000)", nClients);
@@ -59,5 +61,8 @@ main(int argc, char* argv[]) {
     }
   }
 
+  if (!stopTime.IsNegative()) {
+    ns3::Simulator::Stop(stopTime);
+  }
   ns3::Simulator::Run();
 }

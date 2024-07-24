@@ -12,7 +12,16 @@ import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/compose.js";
 import { cmdOutput, file_io, Yargs } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
-import { type TrafficGen, trafficGenerators, type TrafficGenFlowContext } from "./tgcs-tg.js";
+import type { TrafficGen, TrafficGenFlowContext } from "./tgcs-defs.js";
+import * as tg_ip from "./tgcs-ip.js";
+import * as tg_ndn from "./tgcs-ndn.js";
+import * as tg_ns3 from "./tgcs-ns3.js";
+
+const trafficGenerators = {
+  ...tg_ip,
+  ...tg_ns3,
+  ...tg_ndn,
+} satisfies Record<string, TrafficGen>;
 
 function makeOption(tgid: string) {
   return {
@@ -191,6 +200,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "if [[ -z $ACT ]] || [[ $ACT == stop ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
     yield `  msg Deleting trafficgen servers and clients on ${hostDesc}`;
+    yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} stop -t 2 ${names.join(" ")} >/dev/null`;
     yield `  with_retry ${dockerH} rm -f ${names.join(" ")} >/dev/null`;
   }
   yield "fi";

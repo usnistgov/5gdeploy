@@ -1,8 +1,13 @@
+import path from "node:path";
+
 import { execa } from "execa";
+import * as shlex from "shlex";
 import { type AnyIterable, collect } from "streaming-iterables";
 
 import * as file_io from "./file-io.js";
 import type { YargsInfer, YargsOptions } from "./yargs.js";
+
+export const codebaseRoot = path.join(import.meta.dirname, "..");
 
 /** Shell script heading with common shell functions. */
 export const scriptHead = [
@@ -11,6 +16,38 @@ export const scriptHead = [
   "die() { msg \"$*\"; exit 1; }",
   "with_retry() { while ! \"$@\"; do sleep 0.2; done }",
 ];
+
+/**
+ * Shell script cleanup trap.
+ *
+ * @remarks
+ * This should be placed near the top of the script.
+ *
+ * To add a cleanup action:
+ * ```bash
+ * CLEANUP=$CLEANUP"; cleanup command"
+ * ```
+ *
+ * The service process should be launched as:
+ * ```bash
+ * service-binary &
+ * wait $!
+ * ```
+ */
+export function* scriptCleanup({
+  shell = "bash",
+  signals = ["EXIT", "SIGTERM"],
+}: scriptCleanup.Options = {}): Iterable<string> {
+  yield "CLEANUPS='set -euo pipefail'";
+  yield `cleanup() { msg Performing cleanup; ${shell} -c "$CLEANUPS"; trap - ${shlex.join(signals as string[])}; }`;
+  yield `trap cleanup ${shlex.join(signals as string[])}`;
+}
+export namespace scriptCleanup {
+  export interface Options {
+    shell?: string;
+    signals?: readonly string[];
+  }
+}
 
 export const cmdOptions = {
   cmdout: {

@@ -113,6 +113,7 @@ function createService(name: string, image: string): ComposeService {
     hostname: name,
     image: image,
     init: true,
+    stop_signal: "SIGTERM",
     cap_add: [],
     devices: [],
     sysctls: {},

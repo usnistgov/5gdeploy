@@ -59,6 +59,10 @@ The scanned subnet size for each Data Network is adjusted to cover all online UE
 
 See [client-server traffic generators](tgcs.md) for how to use iperf3, OWAMP, etc.
 
+## ns-3 Traffic Generators
+
+See [ns-3 traffic generators](ns3.md).
+
 ## Named Data Networking
 
 See [Named Data Networking in user plane](NDN.md).
