@@ -3,7 +3,7 @@ import type { PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { dependOnGtp5g } from "../free5gc/mod.js";
-import { applyQoS, NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { prush } from "../types/mod.js";
 import { hexPad } from "../util/mod.js";
 
@@ -27,7 +27,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
-    ...applyQoS(s, "ash"),
+    ...compose.applyQoS(s, "ash"),
     "msg Preparing PacketRusher config",
     ...compose.mergeConfigFile(c, { base: "/config.base.yml", merged: filename }),
     "sleep 20",

@@ -6,7 +6,7 @@ import type { AnyIterable } from "streaming-iterables";
 import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
-import { applyQoS, importGrafanaDashboard, makeUPFRoutes, NetDef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
+import { importGrafanaDashboard, makeUPFRoutes, NetDef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
 import type { ComposeService, N, PH } from "../types/mod.js";
 import { file_io, findByName, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { NetworkFunction } from "./nf.js";
@@ -567,7 +567,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
     });
 
     initCommands.push(
-      ...applyQoS(s),
+      ...compose.applyQoS(s),
       ...(peers.N6IPv4.length > 0 ? [
         "ip tuntap add mode tun user root name n6_tun",
         "ip link set n6_tun up",
@@ -629,7 +629,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 
       initCommands.push(
         "iptables -I OUTPUT -p icmp --icmp-type destination-unreachable -j DROP",
-        ...applyQoS(s),
+        ...compose.applyQoS(s),
       );
     }
   }

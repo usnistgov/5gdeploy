@@ -1,7 +1,7 @@
 import type { PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { applyQoS, NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { UERANSIM } from "../types/mod.js";
 import type { YargsInfer, YargsOptions } from "../util/mod.js";
 
@@ -66,7 +66,7 @@ class UeransimBuilder {
 
     compose.setCommands(s, [
       ...compose.renameNetifs(s),
-      ...applyQoS(s),
+      ...compose.applyQoS(s),
       "msg Preparing UERANSIM gNB config",
       ...compose.mergeConfigFile("/ueransim/config/update.yaml", {
         base: "/ueransim/config/custom-gnb.yaml",

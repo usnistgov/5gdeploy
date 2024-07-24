@@ -9,7 +9,7 @@ import type { ReadonlyDeep } from "type-fest";
 import * as compose from "../compose/mod.js";
 import type { ComposeFile, ComposeService, ComposeVolume } from "../types/compose";
 import { hexPad, scriptHead, type YargsInfer, type YargsOptions } from "../util/mod.js";
-import type { NetDefComposeContext } from "./context.js";
+import type { ComposeContext } from "./context.js";
 
 interface BaseRule {
   flag: string;
@@ -100,7 +100,7 @@ export function* applyQoS(s: ComposeService, shell = "bash"): Iterable<string> {
  * @remarks
  * This should be called once after all containers that may support QoS rules are defined.
  */
-export async function saveQoS(ctx: NetDefComposeContext, opts: QoSOpts): Promise<void> {
+export async function saveQoS(ctx: ComposeContext, opts: QoSOpts): Promise<void> {
   if (!Object.values(ctx.c.services).some((s) => hasQoSVolume(s))) {
     return;
   }

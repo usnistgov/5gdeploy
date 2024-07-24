@@ -1,11 +1,12 @@
 import { minimatch } from "minimatch";
 import { ip2long, Netmask } from "netmask";
+import * as shlex from "shlex";
 import assert from "tiny-invariant";
 
 import type { ComposeFile } from "../types/mod.js";
 import type { YargsInfer, YargsOptions } from "../util/mod.js";
-import { annotate, defineService, disconnectNetif, ip2mac } from "./compose.js";
-import { setCommands } from "./snippets.js";
+import { annotate, disconnectNetif, ip2mac } from "./compose.js";
+import type { ComposeContext } from "./context.js";
 
 export const bridgeDockerImage = "5gdeploy.localhost/bridge";
 
@@ -18,6 +19,7 @@ export const bridgeOptions = {
     type: "string",
   },
 } as const satisfies YargsOptions;
+type BridgeOpts = YargsInfer<typeof bridgeOptions>;
 
 function* buildVxlan(c: ComposeFile, net: string, ips: readonly string[], netIndex: number): Iterable<string> {
   void c;
@@ -46,6 +48,7 @@ function* buildVxlan(c: ComposeFile, net: string, ips: readonly string[], netInd
   // VNI= 100000*netIndex + 1000*MIN(SELF,PEER) + 1*MAX(SELF,PEER)
   for (const [i, ip] of ips.entries()) {
     const netif = `vx-${net}-${i}`;
+    yield "";
     yield `if [[ $SELF -ge 0 ]] && [[ $SELF -ne ${i} ]] && ( [[ $SELF -eq 0 ]] || [[ ${i} -eq 0 ]] ); then`;
     yield `  if [[ $SELF -lt ${i} ]]; then`;
     yield `    VNI=$((${1000000 * netIndex + i} + 1000 * SELF))`;
@@ -94,6 +97,7 @@ function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]):
     const vlanDesc = vlan ? ` VLAN ${vlan}` : "";
     const vlanFlag = vlan ? `@${vlan}` : "";
 
+    yield "";
     yield "I=0; while true; do";
     yield `  case $(docker inspect ${ct} --format='{{.State.Running}}' 2>/dev/null || echo none) in`;
     yield "    false)"; // container exists but not started - wait
@@ -132,47 +136,26 @@ const bridgeModes: Record<string, (c: ComposeFile, net: string, tokens: readonly
 
 /**
  * Define a bridge container.
- * @param c - Compose file.
+ * @param ctx - Compose context.
  * @param bridgeArgs - Command line `--bridge` arguments.
  */
-export function defineBridge(c: ComposeFile, opts: YargsInfer<typeof bridgeOptions>): void {
+export async function defineBridge(ctx: ComposeContext, opts: BridgeOpts): Promise<void> {
   if (!opts.bridge) {
     return;
   }
 
-  const modes = new Set<string>();
-  const commands = [
-    "CLEANUPS='set -euo pipefail'",
-    "cleanup() {",
-    "  msg Performing cleanup",
-    "  ash -c \"$CLEANUPS\"",
-    "}",
-    "trap cleanup SIGTERM",
-    "",
-  ];
-  for (const [i, bridgeArg] of opts.bridge.entries()) {
-    const tokens = bridgeArg.split(",");
-    assert(tokens.length >= 2);
-    const net = tokens.shift()!;
-    const mode = tokens.shift()!;
-    assert(c.networks[net], `unknown network ${net}`);
-    const impl = bridgeModes[mode];
-    assert(impl, `unknown mode ${mode}`);
-    modes.add(mode);
-    commands.push(...impl(c, net, tokens, i));
-    commands.push("");
-  }
-  commands.push(
-    "msg Idling",
-    "tail -f &",
-    "wait $!",
-  );
-
-  const s = defineService(c, "bridge", bridgeDockerImage);
+  const s = ctx.defineService("bridge", bridgeDockerImage, []);
   annotate(s, "every_host", 1);
   s.stop_signal = "SIGTERM";
   s.network_mode = "host";
+  s.command = ["ash", "/bridge.sh"];
   s.cap_add.push("NET_ADMIN");
+
+  const modes = new Set<string>();
+  await ctx.writeFile("bridge.sh", generateScript(ctx.c, opts, modes), {
+    s, target: s.command[1]!,
+  });
+
   if (modes.has("eth")) {
     s.privileged = true;
     s.pid = "host";
@@ -182,5 +165,25 @@ export function defineBridge(c: ComposeFile, opts: YargsInfer<typeof bridgeOptio
       target: "/var/run/docker.sock",
     });
   }
-  setCommands(s, commands, "ash");
+}
+
+function* generateScript(c: ComposeFile, opts: BridgeOpts, modes: Set<string>): Iterable<string> {
+  yield "CLEANUPS='set -euo pipefail'";
+  yield "cleanup() { msg Performing cleanup; ash -c \"$CLEANUPS\"; }";
+  yield "trap cleanup SIGTERM";
+  yield "";
+
+  for (const [i, bridgeArg] of opts.bridge!.entries()) {
+    const tokens = bridgeArg.split(",");
+    assert(tokens.length >= 2);
+    const [net, mode, ...rest] = tokens as [string, string, ...string[]];
+    assert(c.networks[net], `unknown network ${net}`);
+    const impl = bridgeModes[mode];
+    assert(impl, `unknown mode ${mode}`);
+    modes.add(mode);
+    yield "";
+    yield `# --bridge=${shlex.quote(bridgeArg)}`;
+    yield* impl(c, net, rest, i);
+    yield "";
+  }
 }

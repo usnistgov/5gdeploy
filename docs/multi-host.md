@@ -67,18 +67,13 @@ Defining a bridge allows network functions in different hosts to communicate wit
 
 You can mix-and-match both kinds of bridges, for different Docker networks.
 
-5gdeploy generates bridge configuration scripts that should run on every host machine.
-They are defined as the command line of a special `bridge` container.
-You may view these commands with:
-
-```bash
-yq .services.bridge.command.2 compose.yml | sed 's/\$\$/$/g'
-```
+5gdeploy generates bridge configuration scripts as `bridge.sh`.
+They are executed in a special `bridge` container on every host netns.
 
 The `compose.sh` script would ensure:
 
 * The `bridge` container is started on every host machine.
-* Each of other containers are started on exactly one host machine.
+* Each network function container is started on exactly one host machine.
 
 If you want to start the containers manually, you must ensure the same condition.
 The bridge configuration scripts would wait for other containers and physical Ethernet adapter to appear, and then configure the bridges.

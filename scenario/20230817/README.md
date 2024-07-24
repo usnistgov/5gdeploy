@@ -111,10 +111,10 @@ Traffic classification is based on DSCP field in the IPv4 header of ingress pack
 * Packets to UPF141 should have been tagged with DSCP=40, which are assigned TC 0 (high priority).
 
 gNB container is expected to perform DSCP tagging.
-Currently this is only implemented in Open5GCore gNB container, which can be activated by passing these flags to netdef-compose:
+This feature can be activated by passing these flags to netdef-compose:
 
 ```text
---phoenix-gnb-to-upf-dscp='upf1=8'
---phoenix-gnb-to-upf-dscp='upf140=32'
---phoenix-gnb-to-upf-dscp='upf141=40'
+--set-dscp='n3 | gnb* | upf1 | 8'
+--set-dscp='n3 | gnb* | upf140 | 32'
+--set-dscp='n3 | gnb* | upf141 | 40'
 ```

@@ -18,9 +18,7 @@ import { file_io, Yargs } from "../util/mod.js";
 import { makeScript } from "./compose-sh.js";
 import { NetDefComposeContext } from "./context.js";
 import { defineDNServices, dnOptions, setDNCommands } from "./dn.js";
-import { IPAlloc, ipAllocOptions } from "./ipalloc.js";
 import { prometheus, prometheusOptions } from "./prometheus.js";
-import { qosOptions, saveQoS } from "./qos.js";
 
 type Provider = (ctx: NetDefComposeContext, opts: typeof args) => Promisable<void>;
 type UpProvider = (ctx: NetDefComposeContext, upf: N.UPF, opts: typeof args) => Promisable<void>;
@@ -90,20 +88,20 @@ const args = Yargs()
     type: "string",
   })
   .option(compose.bridgeOptions)
+  .option(compose.ipAllocOptions)
   .option(compose.placeOptions)
+  .option(compose.qosOptions)
   .option(dnOptions)
-  .option(ipAllocOptions)
   .option(oaiOptions)
   .option(phoenixOptions)
   .option(prometheusOptions)
-  .option(qosOptions)
   .option(srsOptions)
   .option(ueransimOptions)
   .parseSync();
 
 const netdef = new NetDef(await file_io.readJSON(args.netdef) as N.Network);
 netdef.validate();
-const ctx = new NetDefComposeContext(netdef, args.out, new IPAlloc(args));
+const ctx = new NetDefComposeContext(netdef, args.out, new compose.IPAlloc(args));
 defineDNServices(ctx, args);
 for (const upf of ctx.network.upfs) {
   const up = args.up.find(([pattern]) => pattern === undefined || pattern.match(upf.name));
@@ -113,9 +111,9 @@ for (const upf of ctx.network.upfs) {
 setDNCommands(ctx);
 await cpProviders[args.cp]!(ctx, args);
 await ranProviders[args.ran]!(ctx, args);
-await saveQoS(ctx, args);
+await compose.saveQoS(ctx, args);
 await prometheus(ctx, args);
-compose.defineBridge(ctx.c, args);
+await compose.defineBridge(ctx, args);
 compose.place(ctx.c, args);
 for (const op of ctx.finalize) {
   await op();
