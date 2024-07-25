@@ -25,7 +25,7 @@ export const scriptHead = [
  *
  * To add a cleanup action:
  * ```bash
- * CLEANUP=$CLEANUP"; cleanup command"
+ * CLEANUPS=$CLEANUPS"; cleanup command"
  * ```
  *
  * The service process should be launched as:

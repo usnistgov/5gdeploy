@@ -15,15 +15,11 @@ See [traffic generators](trafficgen.md) for other traffic generators.
 `./compose.sh tgcs` defines a measurement set that runs one or more client-server traffic generators.
 
 ```bash
-./compose.sh tgcs --prefix=PREFIX --port=PORT \
+./compose.sh tgcs --prefix=PREFIX --port=PORT --startup-delay=DELAY \
   --TGID='DN-PATTERN | UE-PATTERN | CLIENT-FLAGS | SERVER-FLAGS'
 ```
 
-* `--prefix` flag specifies container name prefix and result folder name (optional, defaults to "tg").
-* `--port` flag specifies the port number used by the first traffic generator (optional, defaults to 20000).
-* Each traffic generator type has a distinct flag named after *TGID*, such as `--iperf3` or `--owamp`.
-  These flags define the traffic flows for each traffic generator.
-
+There's a traffic flow flags for each traffic generator type, such as `--iperf3` or `--owamp`.
 The traffic flow flags are repeatable.
 Each flag value consists of four parts, separated by `|` character:
 
@@ -38,10 +34,19 @@ Each traffic flow flag is processed separately, so that the same PDU session may
 
 ![client-server traffic generators](tgcs.svg)
 
+Optional flags:
+
+* `--prefix` flag specifies container name prefix and result folder name.
+  Default is "tg".
+* `--port` flag specifies the port number used by the first traffic generator.
+  Default is 20000.
+* `--startup-delay` flag specifies wait duration between starting servers and starting clients.
+  Default is 5000 i.e. 5 seconds.
+
 The command prints a brief report on the matched PDU sessions and traffic flows.
 If there are fewer than expected traffic flows, please check that UEs are registered and PDU sessions have been established.
 
-The output includes:
+The outputs are:
 
 * Compose file `compose.PREFIX.yml`, which defines necessary traffic generator containers.
 * bash script `PREFIX.sh`, which runs traffic generator containers and saves statistics in `~/compose/20230601/PREFIX` directory.
@@ -174,7 +179,7 @@ Normally, you can run `PREFIX.sh` script without parameter, to execute all the s
 The script has these steps / subcommands:
 
 ```bash
-# start servers and sleep 5 seconds
+# start servers and sleep for startup-delay
 ./tg.sh servers
 
 # start clients

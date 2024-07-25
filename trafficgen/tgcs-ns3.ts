@@ -22,7 +22,7 @@ function setupNs3(
   s.devices.push("/dev/net/tun:/dev/net/tun");
 
   const tapNetif = `ns3tap${index}`;
-  const tapNetwork = ip2long("172.23.0.0") + (index << 2);
+  const tapNetwork = ip2long(ports.length === 0 ? "172.23.0.0" : "172.23.128.0") + (index << 2);
   const tapIP = long2ip(tapNetwork + 1);
   const appIP = long2ip(tapNetwork + 2);
 
@@ -37,6 +37,7 @@ function setupNs3(
     yield "if [[ -n $TABLE ]]; then";
     yield `  msg Using route table $TABLE for traffic from ${appIP}`;
     yield `  ip rule add from ${appIP} table $TABLE`;
+    yield `  CLEANUPS=$CLEANUPS"; ip rule del from ${appIP} table $TABLE"`;
     yield "fi";
     yield "";
 
@@ -72,16 +73,16 @@ export const ns3http: TrafficGen = {
   determineDirection() {
     return Direction.dl;
   },
-  nPorts: 4,
+  nPorts: 8,
   serverDockerImage: "5gdeploy.localhost/ns3http",
   serverPerDN: true,
   serverSetup(s, { port, dnIP, sFlags }) {
-    setupNs3(s, port >> 2, dnIP, ["tcp:80"], ["ns3http", "--listen", ...sFlags]);
+    setupNs3(s, port >> 3, dnIP, ["tcp:80"], ["ns3http", "--listen", ...sFlags]);
     s.environment.NS_LOG = "ThreeGppHttpServer";
   },
   clientDockerImage: "5gdeploy.localhost/ns3http",
   clientSetup(s, { port, dnIP, pduIP, cFlags }) {
-    setupNs3(s, port >> 2, pduIP, [], ["ns3http", `--connect=${dnIP}`, ...cFlags]);
+    setupNs3(s, port >> 3, pduIP, [], ["ns3http", `--connect=${dnIP}`, ...cFlags]);
     s.environment.NS_LOG = "ThreeGppHttpClient";
   },
   statsExt: ".log",

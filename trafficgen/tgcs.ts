@@ -59,6 +59,11 @@ const args = Yargs()
     desc: "starting port number",
     type: "number",
   })
+  .option("startup-delay", {
+    default: 5000,
+    desc: "wait duration (milliseconds) between starting servers and starting clients",
+    type: "number",
+  })
   .options(Object.fromEntries(Array.from(
     Object.keys(trafficGenerators),
     (tgid) => [tgid, makeOption(tgid)],
@@ -166,7 +171,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
     yield `  msg Starting trafficgen servers on ${hostDesc}`;
     yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} up -d ${names.join(" ")}`;
   }
-  yield "  sleep 5";
+  yield `  sleep ${(args["startup-delay"] / 1000).toFixed(3)}`;
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
@@ -179,19 +184,18 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "if [[ -z $ACT ]] || [[ $ACT == wait ]]; then";
   yield "  msg Waiting for trafficgen clients to finish";
   for (const s of Object.values(output.services).filter((s) => s.container_name.endsWith("_c"))) {
-    yield `  echo -n ${s.container_name} ''`;
-    yield `  ${compose.makeDockerH(s)} wait ${s.container_name}`;
+    yield `  echo ${s.container_name} $(${compose.makeDockerH(s)} wait ${s.container_name})`;
   }
   yield "fi";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == collect ]]; then";
-  yield "  msg Gathering trafficgen statistics to ${STATS_DIR}"; // eslint-disable-line no-template-curly-in-string
+  yield "  msg Gathering trafficgen statistics to $STATS_DIR";
   for (const s of Object.values(output.services)) {
     const tg = trafficGenerators[compose.annotate(s, "tgcs_tgid") as keyof typeof trafficGenerators];
-    const ct = s.container_name;
     const group = compose.annotate(s, "tgcs_group")!;
     const port = compose.annotate(s, "tgcs_port")!;
     const dn = compose.annotate(s, "tgcs_dn")!;
+    const ct = s.container_name;
     const basename = tg.serverPerDN && ct.endsWith("s") ? `${group}-${dn}` : `${group}-${port}`;
     yield `  ${compose.makeDockerH(s)} logs ${ct} >$\{STATS_DIR}${basename}-${ct.slice(-1)}${tg.statsExt}`;
   }
