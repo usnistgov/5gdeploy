@@ -7,6 +7,7 @@ import type { ComposeFile } from "../types/mod.js";
 import { scriptCleanup, scriptHead, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate, disconnectNetif, ip2mac } from "./compose.js";
 import type { ComposeContext } from "./context.js";
+import { setCommandsFile } from "./snippets.js";
 
 export const bridgeDockerImage = "5gdeploy.localhost/bridge";
 
@@ -147,13 +148,10 @@ export async function defineBridge(ctx: ComposeContext, opts: BridgeOpts): Promi
   const s = ctx.defineService("bridge", bridgeDockerImage, []);
   annotate(s, "every_host", 1);
   s.network_mode = "host";
-  s.command = ["ash", "/bridge.sh"];
   s.cap_add.push("NET_ADMIN");
 
   const modes = new Set<string>();
-  await ctx.writeFile("bridge.sh", generateScript(ctx.c, opts, modes), {
-    s, target: s.command[1]!,
-  });
+  await setCommandsFile(ctx, s, generateScript(ctx.c, opts, modes), undefined, "ash");
 
   if (modes.has("eth")) {
     s.privileged = true;

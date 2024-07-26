@@ -1,28 +1,28 @@
 import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 import assert from "tiny-invariant";
-import type { SetRequired } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { makeUPFRoutes, NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, F5, N } from "../types/mod.js";
 import { hexPad, scriptHead } from "../util/mod.js";
-import * as f5_conf from "./conf.js";
-import { dependOnGtp5g } from "./gtp5g.js";
+import { convertSNSSAI, getTaggedImageName, loadTemplate } from "./conf.js";
 import type * as W from "./webconsole-openapi/models/index.js";
 
-function convertSNSSAI(input: string): F5.SNSSAI {
-  const { sst, sd } = NetDef.splitSNSSAI(input).ih;
-  assert(!!sd, "free5GC does not support S-NSSAI without SD value");
-  return { sst, sd: sd.toLowerCase() };
+/** Build CP functions using free5GC. */
+export async function f5CP(ctx: NetDefComposeContext): Promise<void> {
+  const b = new F5CPBuilder(ctx);
+  await b.build();
 }
 
 class F5CPBuilder {
   constructor(protected readonly ctx: NetDefComposeContext) {
     this.plmn = NetDef.splitPLMN(ctx.network.plmn);
+    this.plmnID = ctx.network.plmn.replace("-", "");
   }
 
   private readonly plmn: F5.PLMNID;
+  private readonly plmnID: string;
   private readonly mongoUrl = new URL("mongodb://unset.invalid:27017");
 
   public async build(): Promise<void> {
@@ -72,91 +72,125 @@ class F5CPBuilder {
   }
 
   private async buildWebClient(): Promise<void> {
+    const webconsole = await import("./webconsole-openapi/models/index.js");
     const serverIP = compose.getIP(this.ctx.c.services.webui!, "mgmt");
+    const s = this.ctx.defineService("webclient", "5gdeploy.localhost/free5gc-webclient", ["mgmt"]);
+    await compose.setCommandsFile(this.ctx, s, this.generateWebClientCommands(webconsole, serverIP), "cp-cfg/webclient.sh", "ash");
+  }
+
+  private *generateWebClientCommands(webconsole: typeof W, serverIP: string): Iterable<string> {
     const serverPort = 5000;
     const server = `http://${serverIP}:${serverPort}`;
-    const { netdef, network } = this.ctx;
-    const plmnID = network.plmn.replace("-", "");
 
-    const webconsole = await import("./webconsole-openapi/models/index.js");
-    function* generateCommands() {
-      yield* scriptHead;
-      yield "msg Waiting for WebUI to become ready";
-      yield `with_retry nc -z ${serverIP} ${serverPort}`;
-      yield "sleep 1";
-      yield "msg Requesting WebUI access token";
-      yield `http --ignore-stdin -j POST ${server}/api/login username=admin password=free5gc | tee /login.json | jq .`;
-      yield "TOKEN=\"$(jq -r .access_token /login.json)\"";
-      for (const sub of netdef.listSubscribers({ expandCount: false })) {
-        const smData = new DefaultMap<N.SNSSAI, Record<string, W.DnnConfiguration>>(() => ({}));
-        const smPolicy: Record<string, SetRequired<W.SmPolicySnssai, "smPolicyDnnData">> = {};
-        for (const { snssai, dnn } of sub.subscribedDN) {
-          const dn = netdef.findDN(dnn, snssai);
-          assert(dn);
-          const { sst, sd = "FFFFFF" } = NetDef.splitSNSSAI(snssai).hex;
-          const key = `${sst}${sd}`.toLowerCase();
-          const sessionType = dn.type.toUpperCase();
-          smData.get(key)[dnn] = {
-            pduSessionTypes: {
-              defaultSessionType: sessionType,
-              allowedSessionTypes: [sessionType],
-            },
-            _5gQosProfile: {
-              _5qi: 9,
-              arp: { priorityLevel: 8 },
-            },
-            sessionAmbr: { uplink: "200 Mbps", downlink: "100 Mbps" },
-          };
-          (smPolicy[key] ??= {
-            snssai: convertSNSSAI(snssai),
-            smPolicyDnnData: {},
-          }).smPolicyDnnData[dnn] = { dnn };
-        }
-        const j: W.Subscription = {
-          plmnID,
-          ueId: `imsi-${sub.supi}`,
-          authenticationSubscription: {
-            authenticationMethod: "5G_AKA",
-            permanentKey: { permanentKeyValue: sub.k },
-            authenticationManagementField: "8000",
-            milenage: { op: { opValue: "" } },
-            opc: { opcValue: sub.opc },
-          },
-          accessAndMobilitySubscriptionData: {
-            gpsis: ["msisdn-"],
-            subscribedUeAmbr: { uplink: "2 Gbps", downlink: "1 Gbps" },
-            nssai: {
-              defaultSingleNssais: sub.subscribedNSSAI.map(({ snssai }) => convertSNSSAI(snssai)),
-            },
-          },
-          sessionManagementSubscriptionData: Array.from(smData, ([snssai, dnnConfigurations]) => ({
-            singleNssai: convertSNSSAI(snssai),
-            dnnConfigurations,
-          })),
-          smfSelectionSubscriptionData: undefined,
-          amPolicyData: undefined,
-          smPolicyData: { smPolicySnssaiData: smPolicy },
-          flowRules: undefined,
-          qosFlows: undefined,
-        };
-        const payload = JSON.stringify(webconsole.SubscriptionToJSON(j));
-        if (sub.count > 1) {
-          yield `msg Inserting UEs ${sub.supi}..${NetDef.listSUPIs(sub).at(-1)}`;
-        } else {
-          yield `msg Inserting UE ${sub.supi}`;
-        }
-        const url = `${server}/api/subscriber/imsi-${sub.supi}/${plmnID}/${sub.count}`;
-        yield `echo ${shlex.quote(payload)} | http -j POST ${shlex.quote(url)} Token:"$TOKEN"`;
-        yield "echo";
+    yield* scriptHead;
+    yield "msg Waiting for WebUI to become ready";
+    yield `with_retry nc -z ${serverIP} ${serverPort}`;
+    yield "sleep 1";
+    yield "msg Requesting WebUI access token";
+    yield `http --ignore-stdin -j POST ${server}/api/login username=admin password=free5gc | tee /login.json | jq .`;
+    yield "TOKEN=\"$(jq -r .access_token /login.json)\"";
+    for (const sub of this.ctx.netdef.listSubscribers({ expandCount: false })) {
+      const j = this.toSubscription(sub);
+      const payload = JSON.stringify(webconsole.SubscriptionToJSON(j));
+      if (sub.count > 1) {
+        yield `msg Inserting UEs ${sub.supi}..${NetDef.listSUPIs(sub).at(-1)}`;
+      } else {
+        yield `msg Inserting UE ${sub.supi}`;
       }
-      yield "msg Idling";
-      yield "exec tail -f";
+      const url = `${server}/api/subscriber/imsi-${sub.supi}/${this.plmnID}/${sub.count}`;
+      yield `echo ${shlex.quote(payload)} | http -j POST ${shlex.quote(url)} Token:"$TOKEN"`;
+      yield "echo";
+    }
+  }
+
+  private toSubscription(sub: NetDef.Subscriber): W.Subscription {
+    const j: W.Subscription = {
+      plmnID: this.plmnID,
+      ueId: `imsi-${sub.supi}`,
+      authenticationSubscription: {
+        authenticationMethod: "5G_AKA",
+        permanentKey: {
+          permanentKeyValue: sub.k,
+          encryptionKey: 0,
+          encryptionAlgorithm: 0,
+        },
+        sequenceNumber: "000000000023",
+        authenticationManagementField: "8000",
+        milenage: {},
+        opc: {
+          opcValue: sub.opc,
+          encryptionKey: 0,
+          encryptionAlgorithm: 0,
+        },
+      },
+      accessAndMobilitySubscriptionData: {
+        gpsis: ["msisdn-"],
+        subscribedUeAmbr: { uplink: "2 Gbps", downlink: "1 Gbps" },
+        nssai: {
+          defaultSingleNssais: sub.subscribedNSSAI.map(({ snssai }) => convertSNSSAI(snssai)),
+        },
+      },
+      sessionManagementSubscriptionData: [],
+      smfSelectionSubscriptionData: {
+        subscribedSnssaiInfos: {},
+      },
+      amPolicyData: {},
+      smPolicyData: {
+        smPolicySnssaiData: {},
+      },
+      flowRules: [],
+      qosFlows: [],
+      chargingDatas: [],
+    };
+
+    const smDatas: Record<N.SNSSAI, W.SessionManagementSubscriptionData> = {};
+    for (const { snssai, dnn } of sub.subscribedDN) {
+      const dn = this.ctx.netdef.findDN(dnn, snssai);
+      assert(dn);
+      const { sst, sd = "FFFFFF" } = NetDef.splitSNSSAI(snssai).hex;
+      const key = `${sst}${sd}`.toLowerCase();
+      const sessionType = dn.type.toUpperCase();
+
+      let smData = smDatas[snssai];
+      if (!smData) {
+        smData = {
+          singleNssai: convertSNSSAI(snssai),
+          dnnConfigurations: {},
+        };
+        smDatas[snssai] = smData;
+        j.sessionManagementSubscriptionData.push(smData);
+      }
+      smData.dnnConfigurations![dnn] = {
+        pduSessionTypes: {
+          defaultSessionType: sessionType,
+          allowedSessionTypes: [sessionType],
+        },
+        sscModes: {
+          defaultSscMode: "SSC_MODE_1",
+          allowedSscModes: ["SSC_MODE_2", "SSC_MODE_3"],
+        },
+        _5gQosProfile: {
+          _5qi: 9,
+          arp: { priorityLevel: 8, preemptCap: "", preemptVuln: "" },
+          priorityLevel: 8,
+        },
+        sessionAmbr: {
+          downlink: "1000 Mbps",
+          uplink: "1000 Mbps",
+        },
+      };
+
+      (j.smfSelectionSubscriptionData.subscribedSnssaiInfos![key] ??= {
+        dnnInfos: [],
+      }).dnnInfos.push({ dnn });
+
+      (j.smPolicyData.smPolicySnssaiData[key] ??= {
+        snssai: convertSNSSAI(snssai),
+        smPolicyDnnData: {},
+      }).smPolicyDnnData![dnn] = { dnn };
     }
 
-    const s = this.ctx.defineService("webclient", "5gdeploy.localhost/free5gc-webclient", ["mgmt"]);
-    await this.ctx.writeFile("cp-cfg/webclient.sh", generateCommands(), { s, target: "/action.sh" });
-    s.entrypoint = [];
-    s.command = ["/bin/ash", "/action.sh"];
+    return j;
   }
 
   private async buildCHF(): Promise<void> {
@@ -257,7 +291,7 @@ class F5CPBuilder {
     const upi = this.buildSMFupi();
     for (const [ct, smf] of compose.suggestNames("smf", netdef.smfs)) {
       const [s, smfcfg] = await this.defineService<F5.smf.Configuration>(ct, ["cp", "n2", "n4"]);
-      const uerouting = await f5_conf.loadTemplate("uerouting");
+      const uerouting = await loadTemplate("uerouting");
 
       const c = smfcfg.configuration;
       c.pfcp = {
@@ -379,11 +413,11 @@ class F5CPBuilder {
 
   private async defineService<C extends {}>(ct: string, nets: readonly string[]): Promise<[s: ComposeService, cfg: F5.Root<C>]> {
     const nf = compose.nameToNf(ct);
-    const s = this.ctx.defineService(ct, await f5_conf.getTaggedImageName(nf), nets);
+    const s = this.ctx.defineService(ct, await getTaggedImageName(nf), nets);
     s.stop_signal = "SIGQUIT";
     s.environment.GIN_MODE = "release";
 
-    const cfg = await f5_conf.loadTemplate(`${nf}cfg`) as F5.Root<C>;
+    const cfg = await loadTemplate(`${nf}cfg`) as F5.Root<C>;
 
     const nameProp = `${nf}Name`;
     if (Object.hasOwn(cfg.configuration, nameProp)) {
@@ -418,39 +452,4 @@ class F5CPBuilder {
     await this.ctx.writeFile(filename, body, { s, target: `/free5gc/config/${mount}` });
     return `./config/${mount}`;
   }
-}
-
-/** Build CP functions using free5GC. */
-export async function f5CP(ctx: NetDefComposeContext): Promise<void> {
-  const b = new F5CPBuilder(ctx);
-  await b.build();
-}
-
-/** Build free5GC UPF. */
-export async function f5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void> {
-  const s = ctx.defineService(upf.name, await f5_conf.getTaggedImageName("upf"), ["n3", "n4", "n6", "n9"]);
-  const peers = ctx.netdef.gatherUPFPeers(upf);
-  compose.setCommands(s, [
-    ...compose.renameNetifs(s),
-    ...makeUPFRoutes(ctx, peers),
-    "msg Starting free5GC UPF",
-    "exec ./upf -c ./config/upfcfg.yaml",
-  ]);
-  dependOnGtp5g(s, ctx.c);
-
-  const c = await f5_conf.loadTemplate("upfcfg") as F5.upf.Root;
-  c.pfcp.addr = compose.getIP(s, "n4");
-  c.pfcp.nodeID = compose.getIP(s, "n4");
-  // go-upf gtp5g driver listens on the first interface defined in ifList and does not distinguish N3 or N9
-  // https://github.com/free5gc/go-upf/blob/efae7532f8f9ed081065cdaa0589b0c76d11b204/internal/forwarder/driver.go#L53-L58
-  c.gtpu.ifList = [{
-    addr: "0.0.0.0",
-    type: "N3",
-  }];
-  c.dnnList = ctx.network.dataNetworks.filter((dn) => dn.type === "IPv4").map((dn) => ({
-    dnn: dn.dnn,
-    cidr: dn.subnet!,
-  }));
-
-  await ctx.writeFile(`up-cfg/${upf.name}.yaml`, c, { s, target: "/free5gc/config/upfcfg.yaml" });
 }

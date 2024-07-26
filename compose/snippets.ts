@@ -5,17 +5,25 @@ import assert from "tiny-invariant";
 
 import type { ComposeService } from "../types/mod.js";
 import { scriptHead } from "../util/mod.js";
+import type { ComposeContext } from "./context.js";
 
 /**
  * Set commands on a service.
- * @param service - Compose service to edit.
+ * @param s - Compose service to edit.
  * @param commands - List of commands.
  * @param shell - Shell program. This should be set to `ash` for alpine based images.
  */
-export function setCommands(service: ComposeService, commands: Iterable<string>, shell = "bash"): void {
+export function setCommands(s: ComposeService, commands: Iterable<string>, shell = "bash"): void {
   const joined = [...scriptHead, ...commands].join("\n").replaceAll("$", "$$$$");
-  service.command = [`/bin/${shell}`, "-c", joined];
-  service.entrypoint = [];
+  s.command = [`/bin/${shell}`, "-c", joined];
+  s.entrypoint = [];
+}
+
+export async function setCommandsFile(ctx: ComposeContext, s: ComposeService, commands: Iterable<string>, filename?: string, shell = "bash"): Promise<void> {
+  filename ??= `${s.container_name}.sh`;
+  await ctx.writeFile(filename, commands, { s, target: "/action.sh" });
+  s.command = [`/bin/${shell}`, "/action.sh"];
+  s.entrypoint = [];
 }
 
 /**
