@@ -1,8 +1,8 @@
-import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import type { NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, N } from "../types/mod.js";
+import { assert } from "../util/mod.js";
 
 const ndndpdkDockerImage = "localhost/ndn-dpdk";
 

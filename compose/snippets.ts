@@ -1,10 +1,9 @@
 import path from "node:path";
 
 import * as shlex from "shlex";
-import assert from "tiny-invariant";
 
 import type { ComposeService } from "../types/mod.js";
-import { scriptHead } from "../util/mod.js";
+import { assert, scriptHead } from "../util/mod.js";
 import type { ComposeContext } from "./context.js";
 
 /**

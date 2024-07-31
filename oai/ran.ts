@@ -1,9 +1,9 @@
 import * as shlex from "shlex";
-import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, OAI } from "../types/mod.js";
+import { assert } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
 import type { OAIOpts } from "./options.js";
 

@@ -1,12 +1,11 @@
 import path from "node:path";
 
 import yaml from "js-yaml";
-import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import type { F5 } from "../types/mod.js";
-import { file_io } from "../util/mod.js";
+import { assert, file_io } from "../util/mod.js";
 
 /** Determine free5GC Docker image name with version tag. */
 export async function getTaggedImageName(nf: string): Promise<string> {

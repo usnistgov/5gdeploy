@@ -1,8 +1,7 @@
 import BiMap from "mnemonist/bi-map.js";
 import { ip2long, long2ip, Netmask } from "netmask";
-import assert from "tiny-invariant";
 
-import type { YargsInfer, YargsOptions } from "../util/mod.js";
+import { assert, type YargsInfer, type YargsOptions } from "../util/mod.js";
 
 /** Yargs options definition for IPv4 address allocator. */
 export const ipAllocOptions = {

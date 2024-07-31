@@ -1,11 +1,10 @@
 import path from "node:path";
 
 import * as shlex from "shlex";
-import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeFile } from "../types/mod.js";
-import { scriptHead as baseScriptHead } from "../util/mod.js";
+import { assert, scriptHead as baseScriptHead } from "../util/mod.js";
 
 const trafficgenScripts = ["linkstat", "list-pdu", "nmap", "nfd", "tgcs"];
 

@@ -1,10 +1,9 @@
 import { minimatch } from "minimatch";
 import { ip2long, Netmask } from "netmask";
 import * as shlex from "shlex";
-import assert from "tiny-invariant";
 
 import type { ComposeFile } from "../types/mod.js";
-import { scriptCleanup, scriptHead, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { assert, scriptCleanup, scriptHead, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate, disconnectNetif, ip2mac } from "./compose.js";
 import type { ComposeContext } from "./context.js";
 import { setCommandsFile } from "./snippets.js";

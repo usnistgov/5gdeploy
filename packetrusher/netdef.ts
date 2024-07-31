@@ -1,11 +1,10 @@
-import assert from "tiny-invariant";
 import type { PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { dependOnGtp5g } from "../free5gc/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { prush } from "../types/mod.js";
-import { hexPad } from "../util/mod.js";
+import { assert, hexPad } from "../util/mod.js";
 
 /** Build RAN functions using PacketRusher. */
 export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> {

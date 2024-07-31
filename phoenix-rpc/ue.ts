@@ -1,9 +1,8 @@
 import multimatch from "multimatch";
-import assert from "tiny-invariant";
 import type { CommandModule } from "yargs";
 
 import { PhoenixUE } from "../types/mod.js";
-import { dockerode } from "../util/mod.js";
+import { assert, dockerode } from "../util/mod.js";
 import { clientJ, dockerContainer } from "./client.js";
 import { print, waitUntil } from "./util.js";
 

@@ -1,7 +1,7 @@
 import { sortBy } from "sort-by-typescript";
-import assert from "tiny-invariant";
 
 import type { PH } from "../types/mod.js";
+import { assert } from "../util/mod.js";
 
 /** Open5GCore network function configuration. */
 export class NetworkFunction {

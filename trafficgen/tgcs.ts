@@ -6,11 +6,10 @@ import oblMap from "obliterator/map.js";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 import { collect, flatTransform, map, pipeline } from "streaming-iterables";
-import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/compose.js";
-import { cmdOutput, file_io, Yargs } from "../util/mod.js";
+import { assert, cmdOutput, file_io, Yargs } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import type { TrafficGen, TrafficGenFlowContext } from "./tgcs-defs.js";
 import * as tg_ip from "./tgcs-ip.js";

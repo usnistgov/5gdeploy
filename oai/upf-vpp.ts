@@ -1,11 +1,9 @@
 import path from "node:path";
 
-import assert from "tiny-invariant";
-
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { N } from "../types/mod.js";
-import { file_io } from "../util/mod.js";
+import { assert, file_io } from "../util/mod.js";
 import type { OAIOpts } from "./options.js";
 
 /** Build oai-upf-vpp UPF. */

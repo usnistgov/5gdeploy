@@ -1,10 +1,9 @@
-import assert from "tiny-invariant";
 import type { OptionalKeysOf, PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, OMEC } from "../types/mod.js";
-import { hexPad } from "../util/mod.js";
+import { assert, hexPad } from "../util/mod.js";
 
 /** Build RAN functions using gNBSim. */
 export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {

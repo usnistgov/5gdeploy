@@ -3,12 +3,11 @@ import path from "node:path";
 import { Netmask } from "netmask";
 import sql from "sql-tagged-template-literal";
 import type { AnyIterable } from "streaming-iterables";
-import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import { importGrafanaDashboard, makeUPFRoutes, NetDef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
 import type { ComposeService, N, PH } from "../types/mod.js";
-import { file_io, findByName, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { assert, file_io, findByName, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { NetworkFunction } from "./nf.js";
 
 const phoenixDockerImage = "5gdeploy.localhost/phoenix";

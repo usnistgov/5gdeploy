@@ -3,11 +3,10 @@ import path from "node:path";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
 import { consume, filter, map, pipeline } from "streaming-iterables";
-import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/compose.js";
-import { cmdOptions, cmdOutput, file_io, Yargs } from "../util/mod.js";
+import { assert, cmdOptions, cmdOutput, file_io, Yargs } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 
 const nfdDockerImage = "ghcr.io/named-data/nfd";

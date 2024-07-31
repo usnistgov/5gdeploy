@@ -2,12 +2,11 @@ import DefaultWeakMap from "mnemonist/default-weak-map.js";
 import { Netmask } from "netmask";
 import map from "obliterator/map.js";
 import * as shlex from "shlex";
-import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import type { N } from "../types/mod.js";
-import type { YargsInfer, YargsOptions } from "../util/mod.js";
+import { assert, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import type { NetDefComposeContext } from "./context.js";
 
 /** Yargs options definition for Data Networks. */

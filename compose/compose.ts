@@ -1,10 +1,9 @@
 import stringify from "json-stringify-deterministic";
 import { ip2long, Netmask } from "netmask";
-import assert from "tiny-invariant";
 import type { ConditionalKeys } from "type-fest";
 
 import type { ComposeFile, ComposeNetwork, ComposePort, ComposeService, ComposeVolume } from "../types/mod.js";
-import { hexPad } from "../util/string.js";
+import { assert, hexPad } from "../util/mod.js";
 
 /** Derive network function name from container name. */
 export function nameToNf(ct: string): string {

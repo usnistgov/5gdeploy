@@ -1,7 +1,6 @@
 import * as shlex from "shlex";
-import assert from "tiny-invariant";
 
-import { codebaseRoot } from "../util/mod.js";
+import { assert, codebaseRoot } from "../util/mod.js";
 import { Direction, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
 export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {

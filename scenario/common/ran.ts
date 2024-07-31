@@ -1,7 +1,6 @@
-import assert from "tiny-invariant";
 
 import type { N } from "../../types/mod.js";
-import { decPad } from "../../util/mod.js";
+import { assert, decPad } from "../../util/mod.js";
 
 export function addUEsPerGNB(network: N.Network, firstSUPI: string, total: number, subscribedNSSAI: N.SubscriberSNSSAI[]): void {
   const nGNBs = network.gnbs.length;

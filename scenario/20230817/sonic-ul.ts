@@ -1,6 +1,5 @@
-import assert from "tiny-invariant";
 
-import { Yargs } from "../../util/mod.js";
+import { assert, Yargs } from "../../util/mod.js";
 import * as sonic from "../common/sonic.js";
 
 const args = Yargs()

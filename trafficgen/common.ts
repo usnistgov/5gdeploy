@@ -4,13 +4,12 @@ import type { LinkWithAddressInfo } from "iproute";
 import yaml from "js-yaml";
 import { Netmask } from "netmask";
 import { flatTransform, pipeline } from "streaming-iterables";
-import assert from "tiny-invariant";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import type { ComposeFile, ComposeService, N, UERANSIM } from "../types/mod.js";
 import { ueransimDockerImage } from "../ueransim/netdef.js";
-import { dockerode, file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { assert, dockerode, file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
 
 /** Yargs options `--dir` and `--netdef`. */
 export const ctxOptions = {

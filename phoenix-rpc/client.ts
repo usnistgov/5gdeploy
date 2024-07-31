@@ -5,9 +5,8 @@ import type Dockerode from "dockerode";
 import jayson from "jayson/promise/index.js";
 import { ip2long } from "netmask";
 import { pEvent } from "p-event";
-import assert from "tiny-invariant";
 
-import { dockerode } from "../util/mod.js";
+import { assert, dockerode } from "../util/mod.js";
 
 const noColor = (process.env.NO_COLOR ?? "") !== "";
 

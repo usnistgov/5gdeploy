@@ -1,10 +1,9 @@
 import { Minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
 import { sortBy } from "sort-by-typescript";
-import assert from "tiny-invariant";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";
-import type { YargsInfer, YargsOptions } from "../util/mod.js";
+import { assert, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate } from "./compose.js";
 
 interface PlaceRule {

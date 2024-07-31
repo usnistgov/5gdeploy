@@ -1,13 +1,12 @@
 import { AggregateAjvError } from "@segment/ajv-human-errors";
 import Ajv from "ajv";
 import map from "obliterator/map.js";
-import assert from "tiny-invariant";
 import type { SetRequired } from "type-fest";
 import { arr2hex, randomBytes } from "uint8-util";
 
 import type { N } from "../types/mod.js";
 import netdefSchema from "../types/netdef.schema.json";
-import { decPad, findByName, hexPad } from "../util/mod.js";
+import { assert, decPad, findByName, hexPad } from "../util/mod.js";
 
 const validate = new Ajv({
   allErrors: true,
