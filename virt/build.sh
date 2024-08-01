@@ -18,18 +18,17 @@ if ! [[ -f daemon.json ]]; then
   }' >daemon.json
 fi
 
-if ! [[ -f kern.done ]]; then
-  cp -H /boot/vmlinuz kern.vmlinuz || sudo cat /boot/vmlinuz >kern.vmlinuz
-  touch kern.done
-fi
-
 if ! [[ -f gtp5g.done ]]; then
   curl -fsLS https://github.com/free5gc/gtp5g/archive/v0.8.10.tar.gz -o gtp5g.tgz
   touch gtp5g.done
 fi
 
 if ! [[ -f base.done ]]; then
-  docker run --user $(id -u):$(id -g) --group-add $(getent group kvm | cut -d: -f3) $GUESTFS_INVOKE \
+  docker run $GUESTFS_INVOKE bash -c "
+    set -euo pipefail
+    $GUESTFS_KERN
+
+    yasu $(id -u):\$(stat -c %g /dev/kvm) \
     virt-builder debian-12 \
     --size 20G --format qcow2 -o base.qcow2 \
     --run-command 'apt-mark hold grub-pc' \
@@ -46,8 +45,10 @@ if ! [[ -f base.done ]]; then
       cd /root
       mkdir -p gtp5g
       tar -C gtp5g -xzf gtp5g.tgz --strip-components=1
+      rm gtp5g.tgz
     ' \
     --firstboot-command 'make -C /root/gtp5g module install'
+  "
   touch base.done
 fi
 
@@ -83,7 +84,7 @@ jq -n -S \
 
 if [[ -n $VMHOST ]]; then
   if ! [[ -f tarball.done ]]; then
-    tar -cSf tarball.tar base.qcow2 kern.vmlinuz id_ed25519.pub
+    tar -cSf tarball.tar base.qcow2 id_ed25519.pub
     touch tarball.done
   fi
   for FILE in tarball.tar 01-netcfg$INDEX.yaml; do
@@ -98,6 +99,9 @@ if [[ -n $VMHOST ]]; then
   DOCKERH="docker -H ssh://$VMHOST"
 fi
 $DOCKERH run $GUESTFS_INVOKE bash -c "
+  set -euo pipefail
+  $GUESTFS_KERN
+
   if [[ -f base.qcow2 ]]; then
     yasu \$(stat -c %u:%g base.qcow2) bash -c \"
       cp base.qcow2 vm$INDEX.qcow2
