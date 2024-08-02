@@ -1,5 +1,3 @@
-import { parse as csvParse } from "csv/sync";
-
 import { validateNetDef } from "../netdef/netdef.js";
 import type { N } from "../types/mod.js";
 import { decPad, file_io, Yargs } from "../util/mod.js";
@@ -18,12 +16,8 @@ const args = Yargs()
   })
   .parseSync();
 
-const sims = csvParse(await file_io.readText(args.sims), {
+const sims = await file_io.readTable(args.sims, {
   columns: ["supi", "k", "opc"],
-  comment: "#",
-  delimiter: [",", " ", "\t"],
-  skipEmptyLines: true,
-  trim: true,
 }) as Array<Required<Pick<N.Subscriber, "supi" | "k" | "opc">>>;
 
 const network = await file_io.readJSON(args.netdef) as N.Network;

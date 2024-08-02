@@ -1,5 +1,3 @@
-import assert from "node:assert";
-
 import { Minimatch } from "minimatch";
 import type { Promisable } from "type-fest";
 
@@ -14,7 +12,7 @@ import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod
 import { srsOptions, srsRAN } from "../srsran/mod.js";
 import type { N } from "../types/mod.js";
 import { ueransimOptions, ueransimRAN } from "../ueransim/netdef.js";
-import { file_io, Yargs } from "../util/mod.js";
+import { assert, file_io, Yargs } from "../util/mod.js";
 import { makeScript } from "./compose-sh.js";
 import { NetDefComposeContext } from "./context.js";
 import { defineDNServices, dnOptions, setDNCommands } from "./dn.js";

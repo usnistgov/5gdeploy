@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 
 import fsWalkLib from "@nodelib/fs.walk";
 import asTable from "as-table";
-import { stringify as csvStringify } from "csv/sync";
+import { parse as csvParse, type parser as csvParser, stringify as csvStringify } from "csv/sync";
 import getStdin from "get-stdin";
 import yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
@@ -70,6 +70,24 @@ export async function readYAML(filename: string, opts: readYAML.Options = {}): P
 export namespace readYAML {
   /** {@link readYAML} options. */
   export interface Options extends readText.Options, Pick<yaml.LoadOptions, "schema"> {
+  }
+}
+
+/**
+ * Read file as UTF-8 text and parse as TSV/CSV table.
+ * @param filename - Filename, "-" for stdin.
+ */
+export async function readTable(filename: string, opts: readTable.Options = {}): Promise<unknown> {
+  return csvParse(await readText(filename, opts), {
+    columns: opts.columns,
+    comment: "#",
+    delimiter: [",", " ", "\t"],
+    skipEmptyLines: true,
+    trim: true,
+  });
+}
+export namespace readTable {
+  export interface Options extends readText.Options, Pick<csvParser.Options, "columns"> {
   }
 }
 
