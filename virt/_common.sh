@@ -33,7 +33,7 @@ GUESTFS_KERN="
   fi
 "
 
-PIPEWORK_INVOKE="
+BRIDGE_INVOKE="
   --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock
   --network host
   --pid host
@@ -46,7 +46,6 @@ QEMU_INVOKE="
   --mount type=bind,source=$WORK,target=/work
   --network none
   --privileged
-  --rm
   --workdir /work
   5gdeploy.localhost/virt
 "
