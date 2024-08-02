@@ -18,11 +18,6 @@ if ! [[ -f daemon.json ]]; then
   }' >daemon.json
 fi
 
-if ! [[ -f gtp5g.done ]]; then
-  curl -fsLS https://github.com/free5gc/gtp5g/archive/v0.8.10.tar.gz -o gtp5g.tgz
-  touch gtp5g.done
-fi
-
 if ! [[ -f base.done ]]; then
   docker run $GUESTFS_INVOKE bash -c "
     set -euo pipefail
@@ -34,20 +29,14 @@ if ! [[ -f base.done ]]; then
     --run-command 'apt-mark hold grub-pc' \
     --uninstall ifupdown \
     --update \
-    --install curl,htop,linux-headers-amd64,make,netplan.io \
+    --install curl,htop,linux-headers-amd64,make,netplan.io,wireshark-common \
     --run-command 'apt-mark unhold grub-pc' \
     --delete '/etc/ssh/ssh_host_*' \
     --firstboot-command 'dpkg-reconfigure openssh-server' \
     --run-command 'curl -fsLS https://get.docker.com | bash' \
     --copy-in daemon.json:/etc/docker/ \
-    --copy-in gtp5g.tgz:/root/ \
-    --run-command '
-      cd /root
-      mkdir -p gtp5g
-      tar -C gtp5g -xzf gtp5g.tgz --strip-components=1
-      rm gtp5g.tgz
-    ' \
-    --firstboot-command 'make -C /root/gtp5g module install'
+    --copy-in /gtp5g:/ \
+    --firstboot /gtp5g-load.sh
   "
   touch base.done
 fi

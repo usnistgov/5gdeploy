@@ -9,7 +9,11 @@ if [[ ${NOPULL:-} -eq 1 ]]; then
 fi
 
 build_image() {
-  docker build $PULL --progress=plain -t 5gdeploy.localhost/$1 docker/$1
+  local PULL1=$PULL
+  if grep -q localhost/ docker/$1/Dockerfile; then
+    PULL1=''
+  fi
+  docker build $PULL1 --progress=plain -t 5gdeploy.localhost/$1 docker/$1
 }
 
 build_phoenix() {
@@ -27,7 +31,7 @@ build_phoenix() {
       -f - .
   popd
 
-  docker build --progress=plain -t 5gdeploy.localhost/phoenix docker/phoenix
+  build_image phoenix
 }
 
 case $D in

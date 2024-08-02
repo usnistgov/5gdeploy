@@ -14,5 +14,5 @@ RUN <<EOF
   # ADD git repository does not support proxy, https://github.com/moby/buildkit/issues/4643
 EOF
 
-COPY --chmod=755 load.sh /
-ENTRYPOINT ["/load.sh"]
+COPY --chmod=755 gtp5g-load.sh /
+ENTRYPOINT ["/gtp5g-load.sh"]
