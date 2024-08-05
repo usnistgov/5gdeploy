@@ -13,7 +13,6 @@ import { srsOptions, srsRAN } from "../srsran/mod.js";
 import type { N } from "../types/mod.js";
 import { ueransimOptions, ueransimRAN } from "../ueransim/netdef.js";
 import { assert, file_io, Yargs } from "../util/mod.js";
-import { makeScript } from "./compose-sh.js";
 import { NetDefComposeContext } from "./context.js";
 import { defineDNServices, dnOptions, setDNCommands } from "./dn.js";
 import { prometheus, prometheusOptions } from "./prometheus.js";
@@ -116,5 +115,4 @@ compose.place(ctx.c, args);
 for (const op of ctx.finalize) {
   await op();
 }
-await ctx.writeFile("compose.yml", ctx.c);
-await ctx.writeFile("compose.sh", makeScript(ctx.c));
+await ctx.saveTop();
