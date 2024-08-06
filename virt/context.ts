@@ -186,7 +186,8 @@ export class VirtComposeContext extends compose.ComposeContext {
   }
 
   private createRun(vmc: VMContext, s: ComposeService): void {
-    const { nCores, vmrunVolume } = vmc;
+    const { name, nCores, vmrunVolume } = vmc;
+    compose.annotate(s, "vmname", name);
     compose.annotate(s, "cpus", nCores);
     s.privileged = true;
     s.volumes.push(vmrunVolume);
@@ -233,6 +234,36 @@ export class VirtComposeContext extends compose.ComposeContext {
     yield `yasu $(stat -c %u vm.qcow2):$(stat -c %g /dev/kvm) qemu-system-x86_64 ${
       shlex.join(qemuFlags)} ${qemuRedirects.join(" ")} &`;
     yield "wait $!";
+  }
+
+  protected override makeComposeSh(): Iterable<string> {
+    const { c } = this;
+    return compose.makeComposeSh(c, {
+      act: "ssh",
+      cmd: "ssh VM",
+      desc: "SSH connect to VM.",
+      *code() {
+        yield "VMNAME=${1:-}"; // eslint-disable-line no-template-curly-in-string
+        yield "if [[ -n $VMNAME ]]; then shift; fi";
+        yield "case $VMNAME in";
+        for (const vm of compose.listByAnnotation(c, "vmname", () => true)) {
+          yield `  ${compose.annotate(vm, "vmname")}) exec ssh -o StrictHostKeyChecking=no root@${compose.getIP(vm, "vmctrl")} "$@";;`;
+        }
+        yield "  *) die VM not found;;";
+        yield "esac";
+      },
+    }, {
+      act: "keyscan",
+      desc: "Update known_hosts with SSH host keys.",
+      *code() {
+        for (const vm of compose.listByAnnotation(c, "vmname", () => true)) {
+          const ip = compose.getIP(vm, "vmctrl");
+          yield `msg Updating known_hosts for ${compose.annotate(vm, "vmname")} at ${ip}`;
+          yield `ssh-keygen -R ${ip}`;
+          yield `ssh -o StrictHostKeyChecking=no root@${ip} hostname -f`;
+        }
+      },
+    });
   }
 }
 

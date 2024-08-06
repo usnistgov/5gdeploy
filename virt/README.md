@@ -8,4 +8,8 @@ corepack pnpm -s virt --ip-space=172.25.64.0/18 \
   --vm='c3 | 192.168.60.3(16-21) | vmctrl@02:00:00:00:00:03,n6@02:00:00:00:06:03' \
   --vm='c4 | 192.168.60.4(22-27) | vmctrl@02:00:00:00:00:03,n6@02:00:00:00:06:03' \
   --ctrlif='02:00:00:00:00:01'
+
+cd ~/compose/virt
+./compose.sh up
+./compose.sh keyscan
 ```

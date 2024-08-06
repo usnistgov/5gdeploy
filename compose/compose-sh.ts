@@ -33,7 +33,7 @@ export function* makeComposeSh(
   yield "  esac";
 
   yield "elif [[ $ACT == upload ]]; then";
-  yield `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/compose/upload.ts --dir=$COMPOSE_CTX`;
+  yield "  $TSRUN/compose/upload.ts --dir=$COMPOSE_CTX";
   yield `  ${path.join(import.meta.dirname, "../upload.sh")} $COMPOSE_CTX ${
     hostServices.map(({ host }) => host).join(" ")}`;
 

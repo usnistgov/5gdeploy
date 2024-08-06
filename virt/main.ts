@@ -13,15 +13,17 @@ const args = Yargs()
         assert(tokens.length === 3, `bad --vm ${line}`);
         const name = tokens[0]!.trim();
         const place = compose.parsePlaceRule(`vm_${name}@${tokens[1]!.trim()}`);
+        const networks = Array.from(tokens[2]!.split(","), (line1): VMNetwork => {
+          const m = /^(\w+)@((?:[\da-f]{2}:){5}[\da-f]{2})$/.exec(line1.trim());
+          assert(m, `bad --vm.network ${line1}`);
+          return [m[1]!, m[2]!];
+        });
+        assert(networks.some(([net]) => net === "vmctrl"), `VM ${name} does not have vmctrl network`);
         return {
           name,
           place,
           nCores: place.cpuset?.nAvail ?? 4,
-          networks: Array.from(tokens[2]!.split(","), (line1): VMNetwork => {
-            const m = /^(\w+)@((?:[\da-f]{2}:){5}[\da-f]{2})$/.exec(line1.trim());
-            assert(m, `bad --vm.network ${line1}`);
-            return [m[1]!, m[2]!];
-          }),
+          networks,
         };
       });
     },
