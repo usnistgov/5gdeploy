@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import stringify from "json-stringify-deterministic";
+import yaml from "js-yaml";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
@@ -19,6 +19,22 @@ export interface VMOptions {
 export class VirtComposeContext extends compose.ComposeContext {
   private kern?: ComposeService;
   private base?: ComposeService;
+
+  public createCtrlif(hostNetif: string): void {
+    const s = this.defineService("virt_ctrlif", virtDockerImage, ["vmctrl"]);
+    const [ip, mac] = compose.getIPMAC(s, "vmctrl");
+    compose.disconnectNetif(this.c, s.container_name, "vmctrl");
+    s.network_mode = "host";
+    s.cap_add.push("NET_ADMIN");
+    compose.setCommands(s, (function*() {
+      yield* scriptCleanup();
+      yield* makeMacvlan("macvtap", "vmctrl", mac, hostNetif, "vmctrl");
+      yield `ip addr replace ${ip}/24 dev vmctrl`;
+      yield "msg Idling";
+      yield "tail -f &";
+      yield "wait $!";
+    })());
+  }
 
   private createKern(): ComposeService {
     compose.defineVolume(this.c, vmbuildVolume.source);
@@ -46,7 +62,15 @@ export class VirtComposeContext extends compose.ComposeContext {
     compose.annotate(s, "only_if_needed", 1);
     s.depends_on[this.kern.container_name] = { condition: "service_completed_successfully" };
     applyLibguestfsCommon(s);
-    s.volumes.push(vmbuildVolume);
+    for (const key of Object.keys(s.environment).filter((key) => /_proxy/i.test(key))) {
+      delete s.environment[key]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+    }
+    s.volumes.push(vmbuildVolume, {
+      type: "bind",
+      source: "/etc/docker/daemon.json",
+      target: "/etc/docker/daemon.json",
+      read_only: true,
+    });
     s.environment.XDG_CACHE_HOME = "/vmbuild/cache";
     s.working_dir = "/vmbuild";
     compose.setCommands(s, [
@@ -54,7 +78,7 @@ export class VirtComposeContext extends compose.ComposeContext {
       "  msg base.qcow2 already exists",
       "  exit 0",
       "fi",
-      `echo ${shlex.quote(stringify(daemonJson))} >daemon.json`,
+      "cat /etc/docker/daemon.json >daemon.json",
       `chown -R ${owner} .`,
       "msg Building base.qcow2",
       `yasu ${owner}:$(stat -c %g /dev/kvm) virt-builder debian-12 ${shlex.join([
@@ -72,7 +96,7 @@ export class VirtComposeContext extends compose.ComposeContext {
         "--copy-in", "/gtp5g:/",
         "--firstboot", "/gtp5g-load.sh",
       ])}`,
-      "msg base.qcow2 is built successfully",
+      "msg base.qcow2 built successfully",
       "touch base.done",
     ]);
     return s;
@@ -105,15 +129,15 @@ export class VirtComposeContext extends compose.ComposeContext {
   private makeNetplan({ networks }: VMContext, vm: ComposeService) {
     const ethernets: Record<string, unknown> = {};
     for (const [net] of networks) {
-      const [ip, mac] = compose.getIPMAC(vm, net);
+      const [ip, macaddress] = compose.getIPMAC(vm, net);
       ethernets[net] = {
         "set-name": net,
-        match: {
-          macaddress: mac,
-        },
-        addresses: [
-          `${ip}/24`,
-        ],
+        match: { macaddress },
+        dhcp4: false,
+        dhcp6: false,
+        "accept-ra": false,
+        "link-local": [],
+        addresses: [`${ip}/24`],
       };
     }
     return {
@@ -143,18 +167,20 @@ export class VirtComposeContext extends compose.ComposeContext {
       "  msg vm.qcow2 already exists",
       "  exit 0",
       "fi",
-      `echo ${shlex.quote(stringify(netplan))} >01-netcfg.yaml`,
-      `chown -R ${owner} .`,
       "msg Preparing VM disk image",
-      `install -m 0600 -o ${owner} /vmbuild/base.qcow2 vm.qcow2`,
+      `echo ${shlex.quote(yaml.dump(netplan, { sortKeys: true }))} >01-netcfg.yaml`,
+      "cat /id_ed25519.pub >id_ed25519.pub",
+      "install /vmbuild/base.qcow2 vm.qcow2",
+      `chown -R ${owner} .`,
       `yasu ${owner}:$(stat -c %g /dev/kvm) virt-sysprep ${shlex.join([
         "-a", "vm.qcow2",
         "--hostname", `vm-${name}.5gdeploy`,
         "--copy-in", "01-netcfg.yaml:/etc/netplan/",
         "--run-command", "dpkg-reconfigure openssh-server",
         "--root-password", "password:0000",
-        "--ssh-inject", "root:file:/id_ed25519.pub",
+        "--ssh-inject", "root:file:id_ed25519.pub",
       ])}`,
+      "msg vm.qcow2 built successfully",
       "touch vm.done",
     ]);
   }
@@ -208,22 +234,6 @@ export class VirtComposeContext extends compose.ComposeContext {
       shlex.join(qemuFlags)} ${qemuRedirects.join(" ")} &`;
     yield "wait $!";
   }
-
-  public createCtrlif(hostNetif: string): void {
-    const s = this.defineService("virt_ctrlif", virtDockerImage, ["vmctrl"]);
-    const [ip, mac] = compose.getIPMAC(s, "vmctrl");
-    compose.disconnectNetif(this.c, s.container_name, "vmctrl");
-    s.network_mode = "host";
-    s.cap_add.push("NET_ADMIN");
-    compose.setCommands(s, (function*() {
-      yield* scriptCleanup();
-      yield* makeMacvlan("macvtap", "vmctrl", mac, hostNetif, "vmctrl");
-      yield `ip addr replace ${ip}/24 dev vmctrl`;
-      yield "msg Idling";
-      yield "tail -f &";
-      yield "wait $!";
-    })());
-  }
 }
 
 const virtDockerImage = "5gdeploy.localhost/virt";
@@ -248,15 +258,6 @@ const install = [
   "netplan.io",
   "wireshark-common",
 ];
-
-const daemonJson = {
-  bridge: "none",
-  "log-driver": "local",
-  "log-opts": {
-    "max-size": "10m",
-    "max-file": "3",
-  },
-};
 
 function applyLibguestfsCommon(s: ComposeService): void {
   s.devices.push("/dev/kvm:/dev/kvm");
