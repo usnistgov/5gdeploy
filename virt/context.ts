@@ -1,0 +1,285 @@
+import path from "node:path";
+
+import stringify from "json-stringify-deterministic";
+import * as shlex from "shlex";
+
+import * as compose from "../compose/mod.js";
+import type { ComposeService, ComposeVolume } from "../types/mod.js";
+import { scriptCleanup } from "../util/cmd.js";
+
+export type VMNetwork = [net: string, hostNetif: string];
+
+export interface VMOptions {
+  name: string;
+  nCores: number;
+  networks: readonly VMNetwork[];
+}
+
+/** Contextual information and helpers while converting VM list into Compose context. */
+export class VirtComposeContext extends compose.ComposeContext {
+  private kern?: ComposeService;
+  private base?: ComposeService;
+
+  private createKern(): ComposeService {
+    compose.defineVolume(this.c, vmbuildVolume.source);
+    const s = this.defineService("virt_kern", "rclone/rclone", []);
+    compose.annotate(s, "only_if_needed", 1);
+    s.network_mode = "none";
+    s.volumes.push({
+      type: "bind",
+      source: "/boot",
+      target: "/hostboot",
+      read_only: true,
+    }, vmbuildVolume);
+    s.command = [
+      "copyto",
+      "--copy-links",
+      "/hostboot/vmlinuz",
+      "/vmbuild/vmlinuz",
+    ];
+    return s;
+  }
+
+  private createBase(): ComposeService {
+    this.kern ??= this.createKern();
+    const s = this.defineService("virt_base", virtDockerImage, []);
+    compose.annotate(s, "only_if_needed", 1);
+    s.depends_on[this.kern.container_name] = { condition: "service_completed_successfully" };
+    applyLibguestfsCommon(s);
+    s.volumes.push(vmbuildVolume);
+    s.environment.XDG_CACHE_HOME = "/vmbuild/cache";
+    s.working_dir = "/vmbuild";
+    compose.setCommands(s, [
+      "if [[ -f base.done ]]; then",
+      "  msg base.qcow2 already exists",
+      "  exit 0",
+      "fi",
+      `echo ${shlex.quote(stringify(daemonJson))} >daemon.json`,
+      `chown -R ${owner} .`,
+      "msg Building base.qcow2",
+      `yasu ${owner}:$(stat -c %g /dev/kvm) virt-builder debian-12 ${shlex.join([
+        "--size", "20G",
+        "--format", "qcow2",
+        "-o", "base.qcow2",
+        "--run-command", "apt-mark hold grub-pc",
+        "--uninstall", uninstall.join(","),
+        "--update",
+        "--install", install.join(","),
+        "--run-command", "apt-mark unhold grub-pc",
+        "--delete", "/etc/ssh/ssh_host_*",
+        "--run-command", "curl -fsLS https://get.docker.com | bash",
+        "--copy-in", "daemon.json:/etc/docker/",
+        "--copy-in", "/gtp5g:/",
+        "--firstboot", "/gtp5g-load.sh",
+      ])}`,
+      "msg base.qcow2 is built successfully",
+      "touch base.done",
+    ]);
+    return s;
+  }
+
+  public defineVM(opts: VMOptions): ComposeService {
+    const { name, networks } = opts;
+    const vmrunVolume: ComposeVolume = {
+      type: "volume",
+      source: `vm_${name}`,
+      target: "/vmrun",
+    };
+    compose.defineVolume(this.c, vmrunVolume.source);
+    const vmc = { ...opts, vmrunVolume };
+
+    const vm = this.defineService(`vm_${name}`, virtDockerImage, networks.map(([net]) => net));
+    const netplan = this.makeNetplan(vmc, vm);
+
+    this.base ??= this.createBase();
+    const prep = this.defineService(`vmprep_${name}`, virtDockerImage, []);
+    prep.depends_on[this.base.container_name] = { condition: "service_completed_successfully" };
+    this.createPrep(vmc, prep, netplan);
+
+    vm.depends_on[prep.container_name] = { condition: "service_completed_successfully" };
+    this.createRun(vmc, vm);
+
+    return vm;
+  }
+
+  private makeNetplan({ networks }: VMContext, vm: ComposeService) {
+    const ethernets: Record<string, unknown> = {};
+    for (const [net] of networks) {
+      const [ip, mac] = compose.getIPMAC(vm, net);
+      ethernets[net] = {
+        "set-name": net,
+        match: {
+          macaddress: mac,
+        },
+        addresses: [
+          `${ip}/24`,
+        ],
+      };
+    }
+    return {
+      network: {
+        ethernets,
+      },
+    };
+  }
+
+  private createPrep({ name, vmrunVolume }: VMContext, s: ComposeService, netplan: unknown): void {
+    compose.annotate(s, "only_if_needed", 1);
+    s.network_mode = "none";
+    applyLibguestfsCommon(s);
+    s.volumes.push({
+      ...vmbuildVolume,
+      read_only: true,
+    }, vmrunVolume, {
+      type: "bind",
+      source: path.join(process.env.HOME ?? "/root", ".ssh/id_ed25519.pub"),
+      target: "/id_ed25519.pub",
+      read_only: true,
+    });
+
+    s.working_dir = "/vmrun";
+    compose.setCommands(s, [
+      "if [[ -f vm.done ]]; then",
+      "  msg vm.qcow2 already exists",
+      "  exit 0",
+      "fi",
+      `echo ${shlex.quote(stringify(netplan))} >01-netcfg.yaml`,
+      `chown -R ${owner} .`,
+      "msg Preparing VM disk image",
+      `install -m 0600 -o ${owner} /vmbuild/base.qcow2 vm.qcow2`,
+      `yasu ${owner}:$(stat -c %g /dev/kvm) virt-sysprep ${shlex.join([
+        "-a", "vm.qcow2",
+        "--hostname", `vm-${name}.5gdeploy`,
+        "--copy-in", "01-netcfg.yaml:/etc/netplan/",
+        "--run-command", "dpkg-reconfigure openssh-server",
+        "--root-password", "password:0000",
+        "--ssh-inject", "root:file:/id_ed25519.pub",
+      ])}`,
+      "touch vm.done",
+    ]);
+  }
+
+  private createRun(vmc: VMContext, s: ComposeService): void {
+    const { nCores, vmrunVolume } = vmc;
+    compose.annotate(s, "cpus", nCores);
+    s.privileged = true;
+    s.volumes.push(vmrunVolume);
+    s.working_dir = "/vmrun";
+    compose.setCommands(s, this.makeRunCommands(vmc, s));
+    s.network_mode = "host";
+    s.stdin_open = true;
+    s.tty = true;
+  }
+
+  private *makeRunCommands({ name, nCores, networks }: VMContext, s: ComposeService): Iterable<string> {
+    yield* scriptCleanup();
+    const qemuFlags = [
+      "-name", name,
+      "-nodefaults", "-nographic", "-msg", "timestamp=on",
+      "-chardev", "pty,id=charserial0", "-device", "isa-serial,chardev=charserial0,id=serial0", "-serial", "stdio",
+      "-enable-kvm", "-machine", "accel=kvm,usb=off",
+      "-cpu", "host", "-smp", `${nCores},sockets=1,cores=${nCores},threads=1`, "-m", "8192",
+      "-drive", "if=virtio,file=vm.qcow2",
+    ];
+    const qemuRedirects = [];
+    let fd = 3;
+    for (const [net, hostNetif] of networks) {
+      yield "";
+      const [, mac] = compose.getIPMAC(s, net);
+      const shortMac = mac.replaceAll(":", "");
+      const netif = `vm-${shortMac}`;
+      const netdev = `net-${shortMac}`;
+      const tap = `vmtap-${shortMac}`;
+      compose.disconnectNetif(this.c, s.container_name, net);
+      yield* makeMacvlan("macvtap", netif, mac, hostNetif, `${s.container_name}:${net}`);
+      yield `IFS=: read MAJOR MINOR < <(cat /sys/devices/virtual/net/${netif}/tap*/dev)`;
+      yield `mknod -m 0666 /dev/${tap} c $MAJOR $MINOR`;
+      qemuFlags.push(
+        "-device", `virtio-net-pci,netdev=${netdev},mac=${mac}`,
+        "-netdev", `tap,id=${netdev},vhost=on,fd=${fd}`,
+      );
+      qemuRedirects.push(`${fd}<>/dev/${tap}`);
+      ++fd;
+    }
+
+    yield "";
+    yield "msg Starting QEMU";
+    yield `yasu $(stat -c %u vm.qcow2):$(stat -c %g /dev/kvm) qemu-system-x86_64 ${
+      shlex.join(qemuFlags)} ${qemuRedirects.join(" ")} &`;
+    yield "wait $!";
+  }
+
+  public createCtrlif(hostNetif: string): void {
+    const s = this.defineService("virt_ctrlif", virtDockerImage, ["vmctrl"]);
+    const [ip, mac] = compose.getIPMAC(s, "vmctrl");
+    compose.disconnectNetif(this.c, s.container_name, "vmctrl");
+    s.network_mode = "host";
+    s.cap_add.push("NET_ADMIN");
+    compose.setCommands(s, (function*() {
+      yield* scriptCleanup();
+      yield* makeMacvlan("macvtap", "vmctrl", mac, hostNetif, "vmctrl");
+      yield `ip addr replace ${ip}/24 dev vmctrl`;
+      yield "msg Idling";
+      yield "tail -f &";
+      yield "wait $!";
+    })());
+  }
+}
+
+const virtDockerImage = "5gdeploy.localhost/virt";
+
+const vmbuildVolume: ComposeVolume = {
+  type: "volume",
+  source: "vmbuild",
+  target: "/vmbuild",
+};
+
+const owner = 50086;
+
+const uninstall = [
+  "ifupdown",
+];
+
+const install = [
+  "curl",
+  "htop",
+  "linux-headers-amd64",
+  "make",
+  "netplan.io",
+  "wireshark-common",
+];
+
+const daemonJson = {
+  bridge: "none",
+  "log-driver": "local",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3",
+  },
+};
+
+function applyLibguestfsCommon(s: ComposeService): void {
+  s.devices.push("/dev/kvm:/dev/kvm");
+  s.volumes.push({
+    type: "bind",
+    source: "/lib/modules",
+    target: "/lib/modules",
+    read_only: true,
+  });
+  s.environment.LIBGUESTFS_DEBUG = "1";
+  s.environment.SUPERMIN_KERNEL = "/vmbuild/vmlinuz";
+}
+
+interface VMContext extends VMOptions {
+  vmrunVolume: ComposeVolume;
+}
+
+function* makeMacvlan(ifType: "macvlan" | "macvtap", netif: string, mac: string, hostNetif: string, desc: string): Iterable<string> {
+  yield `HOSTIF=$(ip -j link show | jq -r '.[] | select(.address=="${hostNetif}") | .ifname')`;
+  yield `[[ -n $HOSTIF ]] || die Host netif not found for ${hostNetif}`;
+  yield `msg Making ${ifType.toUpperCase()} ${netif} for ${desc} on $HOSTIF`;
+  yield "ip link set $HOSTIF up";
+  yield `ip link add link $HOSTIF name ${netif} type ${ifType} mode bridge`;
+  yield `CLEANUPS=$CLEANUPS"; ip link del ${netif}"`;
+  yield `ip link set ${netif} up address ${mac}`;
+}

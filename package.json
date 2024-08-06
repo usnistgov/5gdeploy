@@ -9,7 +9,8 @@
     "netdef-compose": "tsx ./netdef-compose/main.ts",
     "phoenix-rpc": "tsx ./phoenix-rpc/main.ts",
     "shfmt": "git ls-files -- '*.sh' | xargs docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "virt": "tsx ./virt/main.ts"
   },
   "packageManager": "pnpm@9.6.0+sha512.38dc6fba8dba35b39340b9700112c2fe1e12f10b17134715a4aa98ccf7bb035e76fd981cf0bb384dfa98f8d6af5481c2bef2f4266a24bfa20c34eb7147ce0b5e",
   "dependencies": {

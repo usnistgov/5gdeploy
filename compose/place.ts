@@ -6,10 +6,21 @@ import type { ComposeFile, ComposeService } from "../types/mod.js";
 import { assert, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate } from "./compose.js";
 
-interface PlaceRule {
+export interface PlaceRule {
   pattern: Minimatch;
   host: string;
-  cpuset?: string;
+  cpuset?: AssignCpuset;
+}
+
+export function parsePlaceRule(line: string): PlaceRule {
+  const m = /^([^@]+)@([^@()]*)(?:\((\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)\))?$/.exec(line);
+  assert(m, `--place=${line} invalid`);
+  const [, pattern, host, cpuset] = m as string[] as [string, string, string, string | undefined];
+  return {
+    pattern: new Minimatch(pattern),
+    host,
+    cpuset: cpuset === undefined ? undefined : new AssignCpuset(cpuset),
+  };
 }
 
 /** Yargs options definition for placing Compose services onto multiple hosts. */
@@ -17,16 +28,7 @@ export const placeOptions = {
   place: {
     array: true,
     coerce(lines: readonly string[]): PlaceRule[] {
-      return Array.from(lines, (line) => {
-        const m = /^([^@]+)@([^@()]*)(?:\((\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)\))?$/.exec(line);
-        assert(m, `--place=${line} invalid`);
-        const [, pattern, host, cpuset] = m as string[] as [string, string, string, string | undefined];
-        return {
-          pattern: new Minimatch(pattern),
-          host,
-          cpuset,
-        };
-      });
+      return Array.from(lines, (line) => parsePlaceRule(line));
     },
     default: [],
     desc: "place containers on host and set CPU isolation",
@@ -66,15 +68,14 @@ export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): vo
   );
   for (let { pattern, host, cpuset } of opts.place) {
     host = opts["ssh-uri"]?.[host] ?? host;
-    const assignCpuset = cpuset ? new AssignCpuset(cpuset) : undefined;
     for (const [ct, s] of services) {
       if (pattern.match(ct)) {
         services.delete(ct);
         annotate(s, "host", host);
-        assignCpuset?.prepare(s);
+        cpuset?.prepare(s);
       }
     }
-    assignCpuset?.update();
+    cpuset?.update();
   }
   for (const s of services.values()) {
     annotate(s, "host", "");
@@ -96,6 +97,10 @@ class AssignCpuset {
         this.avail.push(i);
       }
     }
+  }
+
+  public get nAvail(): number {
+    return this.avail.length;
   }
 
   private readonly avail: number[] = [];

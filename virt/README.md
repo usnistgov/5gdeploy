@@ -2,13 +2,10 @@
 
 Package **virt** contains scripts to start virtual machines.
 
-## bash scripts
-
-* **build.sh** prepares a virtual machine image with Docker and gtp5g kernel module: `./virt/build.sh INDEX HOST-IP`
-* **start.sh** launches a virtual machine: `./virt/start.sh INDEX HOST-IP HOST-MAC`
-
-Arguments:
-
-* *INDEX*: VM ID, between 2 and 254.
-* *HOST-IP*: host IP address for SSH; empty string means localhost.
-* *HOST-MAC*: host MAC address for MACVLAN interface creation.
+```bash
+corepack pnpm -s virt --ip-space=172.25.64.0/18 \
+  --vm='b2 | 192.168.60.2(10-15) | vmctrl@02:00:00:00:00:02,n6@02:00:00:00:06:02' \
+  --vm='c3 | 192.168.60.3(16-21) | vmctrl@02:00:00:00:00:03,n6@02:00:00:00:06:03' \
+  --vm='c4 | 192.168.60.4(22-27) | vmctrl@02:00:00:00:00:03,n6@02:00:00:00:06:03' \
+  --ctrlif='02:00:00:00:00:01'
+```

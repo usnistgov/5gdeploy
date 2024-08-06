@@ -13,12 +13,6 @@ RUN <<EOF
   sed -i '/archive\.libguestfs\.org/Q' /etc/virt-builder/repos.d/libguestfs.conf
 EOF
 
-RUN <<EOF
-  set -euxo pipefail
-  mkdir /vmbuild /vmrun
-  chown 1000:1000 /vmbuild /vmrun
-EOF
-
 COPY --from=yasu /usr/local/bin/yasu /usr/local/bin/yasu
 ADD --chmod=755 https://github.com/jpetazzo/pipework/raw/34f48f37c7b748a51dea79e4b6ab6a5028a02485/pipework /usr/local/bin/
 

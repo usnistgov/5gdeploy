@@ -1,8 +1,13 @@
 /** Compose file. */
 export interface ComposeFile {
+  volumes: Record<string, ComposeNamedVolume>;
   networks: Record<string, ComposeNetwork>;
-  volumes: Record<string, {}>;
   services: Record<string, ComposeService>;
+}
+
+/** Compose top-level volume. */
+export interface ComposeNamedVolume {
+  name: string;
 }
 
 /** Compose network. */
@@ -44,7 +49,7 @@ export interface ComposeService {
   depends_on: Record<string, ComposeDependency>;
 }
 
-/** Compose service bind volume. */
+/** Compose service volume. */
 export interface ComposeVolume {
   type: "bind" | "volume";
   source: string;

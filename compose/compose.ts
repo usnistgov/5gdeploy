@@ -2,7 +2,7 @@ import stringify from "json-stringify-deterministic";
 import { ip2long, Netmask } from "netmask";
 import type { ConditionalKeys } from "type-fest";
 
-import type { ComposeFile, ComposeNetwork, ComposePort, ComposeService, ComposeVolume } from "../types/mod.js";
+import type { ComposeFile, ComposeNamedVolume, ComposeNetwork, ComposePort, ComposeService, ComposeVolume } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
 
 /** Derive network function name from container name. */
@@ -49,10 +49,20 @@ export function suggestUENames<T extends { supi: string }>(list: readonly T[]): 
 /** Create an empty Compose file. */
 export function create(): ComposeFile {
   return {
-    networks: {},
     volumes: {},
+    networks: {},
     services: {},
   };
+}
+
+/**
+ * Define a Compose named volume.
+ *
+ * @remarks
+ * If a volume with same name already exists, it is not replaced.
+ */
+export function defineVolume(c: ComposeFile, name: string): ComposeNamedVolume {
+  return (c.volumes[name] ??= { name });
 }
 
 /**
@@ -244,7 +254,7 @@ export function ip2mac(ip: number | string): string {
 
 /**
  * Add a netif to a service.
- * @returns IPv4 address previously assigned to the netif.
+ * @returns IPv4 address assigned to the netif.
  */
 export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string): string {
   const s = c.services[ct];
