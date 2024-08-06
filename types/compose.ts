@@ -1,6 +1,7 @@
 /** Compose file. */
 export interface ComposeFile {
   networks: Record<string, ComposeNetwork>;
+  volumes: Record<string, {}>;
   services: Record<string, ComposeService>;
 }
 
@@ -45,10 +46,13 @@ export interface ComposeService {
 
 /** Compose service bind volume. */
 export interface ComposeVolume {
-  type: "bind";
+  type: "bind" | "volume";
   source: string;
   target: string;
   read_only?: boolean;
+  bind?: {
+    create_host_path?: boolean;
+  };
 }
 
 /** Compose service network interface. */

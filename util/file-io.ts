@@ -76,12 +76,15 @@ export namespace readYAML {
 /**
  * Read file as UTF-8 text and parse as TSV/CSV table.
  * @param filename - Filename, "-" for stdin.
+ *
+ * @remarks
+ * Space delimited input files are supported, for up to 64 consecutive spaces.
  */
 export async function readTable(filename: string, opts: readTable.Options = {}): Promise<unknown> {
   return csvParse(await readText(filename, opts), {
-    columns: opts.columns,
+    columns: opts.columns ?? false,
     comment: "#",
-    delimiter: [",", " ", "\t"],
+    delimiter: [",", "\t", ...Array.from({ length: 64 }, (x, i) => " ".repeat(64 - i))],
     skipEmptyLines: true,
     trim: true,
   });

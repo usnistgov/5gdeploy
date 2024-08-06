@@ -112,7 +112,4 @@ await compose.saveQoS(ctx, args);
 await prometheus(ctx, args);
 await compose.defineBridge(ctx, args);
 compose.place(ctx.c, args);
-for (const op of ctx.finalize) {
-  await op();
-}
-await ctx.saveTop();
+await ctx.finalSave();

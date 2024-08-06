@@ -46,6 +46,7 @@ export function dependOnGtp5g(dependant: ComposeService, c: ComposeFile): void {
 function defineGtp5gLoader(c: ComposeFile): void {
   const s = compose.defineService(c, "gtp5g", "5gdeploy.localhost/gtp5g");
   compose.annotate(s, "every_host", 1);
+  compose.annotate(s, "only_if_needed", 1);
 
   s.network_mode = "none";
   s.cap_add.push("SYS_MODULE");

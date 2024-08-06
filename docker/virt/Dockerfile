@@ -7,10 +7,16 @@ SHELL ["/bin/bash", "-c"]
 RUN <<EOF
   set -euxo pipefail
   apt-get update
-  apt-get install -y --no-install-recommends gnupg guestfs-tools qemu-system-x86
+  apt-get install -y --no-install-recommends gnupg guestfs-tools jq qemu-system-x86
   rm -rf /var/lib/apt/lists/*
   find /etc/virt-builder/repos.d -type f ! -name 'libguestfs.*' -delete
   sed -i '/archive\.libguestfs\.org/Q' /etc/virt-builder/repos.d/libguestfs.conf
+EOF
+
+RUN <<EOF
+  set -euxo pipefail
+  mkdir /vmbuild /vmrun
+  chown 1000:1000 /vmbuild /vmrun
 EOF
 
 COPY --from=yasu /usr/local/bin/yasu /usr/local/bin/yasu

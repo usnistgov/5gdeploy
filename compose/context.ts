@@ -1,8 +1,11 @@
 import path from "node:path";
 
+import type { Promisable } from "type-fest";
+
 import type { ComposeFile, ComposeService } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 import * as compose from "./compose.js";
+import { makeComposeSh } from "./compose-sh.js";
 import type { IPAlloc } from "./ipalloc.js";
 
 /** Compose context output folder. */
@@ -94,6 +97,22 @@ export class ComposeContext {
     }
 
     return result;
+  }
+
+  /** Final steps. */
+  public readonly finalize: Array<() => Promisable<void>> = [];
+
+  protected makeComposeSh(): Iterable<string> {
+    return makeComposeSh(this.c);
+  }
+
+  /** Run final steps, save compose.yml and compose.sh. */
+  public async finalSave(): Promise<void> {
+    for (const op of this.finalize) {
+      await op();
+    }
+    await this.writeFile("compose.yml", this.c);
+    await this.writeFile("compose.sh", this.makeComposeSh());
   }
 }
 export namespace ComposeContext {

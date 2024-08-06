@@ -1,5 +1,3 @@
-import type { Promisable } from "type-fest";
-
 import * as compose from "../compose/mod.js";
 import type { NetDef } from "../netdef/netdef.js";
 import type { ComposeFile } from "../types/mod.js";
@@ -28,13 +26,8 @@ export class NetDefComposeContext extends compose.ComposeContext {
     return this.netdef.network;
   }
 
-  /** Final steps. */
-  public readonly finalize: Array<() => Promisable<void>> = [];
-
-  /** Save compose.yml and compose.sh files. */
-  public async saveTop(): Promise<void> {
-    await this.writeFile("compose.yml", this.c);
-    await this.writeFile("compose.sh", makeScript(this.c));
+  protected override makeComposeSh(): Iterable<string> {
+    return makeScript(this.c);
   }
 }
 

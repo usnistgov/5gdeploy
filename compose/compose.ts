@@ -50,6 +50,7 @@ export function suggestUENames<T extends { supi: string }>(list: readonly T[]): 
 export function create(): ComposeFile {
   return {
     networks: {},
+    volumes: {},
     services: {},
   };
 }

@@ -6,6 +6,7 @@ import type { SetOptional } from "type-fest";
 
 import type { ComposeFile } from "../types/mod.js";
 import { assert, codebaseRoot, scriptHead } from "../util/mod.js";
+import { annotate } from "./compose.js";
 import { classifyByHost } from "./place.js";
 
 /** Generate compose.sh script. */
@@ -36,24 +37,24 @@ export function* makeComposeSh(
   yield `  ${path.join(import.meta.dirname, "../upload.sh")} $COMPOSE_CTX ${
     hostServices.map(({ host }) => host).join(" ")}`;
 
-  for (const [act, cmd, listServiceNames, msg1, msg2] of ctActions) {
+  for (const [act, cmd, upNames, msg1, msg2] of ctActions) {
     yield `elif [[ $ACT == ${act} ]]; then`;
-    for (const { hostDesc, dockerH, names } of hostServices) {
+    for (const { hostDesc, dockerH, services } of hostServices) {
       yield `  msg ${shlex.quote(`${msg1} on ${hostDesc}`)}`;
-      yield `  ${dockerH} ${cmd}${listServiceNames ? ` ${names.join(" ")}` : ""}`;
+      yield `  ${dockerH} ${cmd}${
+        upNames ? services.filter((s) => !annotate(s, "only_if_needed")).map((s) => ` ${s.container_name}`).join("") : ""
+      }`;
     }
     yield `  msg ${shlex.quote(msg2)}`;
   }
 
-  const help = [...baseHelp];
   for (const action of actions) {
-    help.push(action);
     yield `elif [[ $ACT == ${action.act} ]]; then`;
     yield* map(action.code(), (line) => `  ${line}`);
   }
 
   yield "else";
-  yield `  echo ${shlex.quote(`Usage:\n${[...makeHelp(help)].join("\n")}`)}`;
+  yield `  echo ${shlex.quote(`Usage:\n${[...makeHelp([...baseHelp, ...actions])].join("\n")}`)}`;
   yield "  exit 1";
   yield "fi";
 }
@@ -90,7 +91,7 @@ const baseHelp: ReadonlyArray<SetOptional<makeComposeSh.Action, "code">> = [{
   desc: "View containers on each host machine.",
 }];
 
-const ctActions: ReadonlyArray<[act: string, cmd: string, listServiceNames: boolean, msg1: string, msg2: string]> = [
+const ctActions: ReadonlyArray<[act: string, cmd: string, upNames: boolean, msg1: string, msg2: string]> = [
   ["create", "compose create --remove-orphans", true, "Creating scenario containers", "Scenario containers have been created, ready for traffic capture"],
   ["up", "compose up -d --remove-orphans", true, "Starting the scenario", "Scenario has started"],
   ["ps", "ps -a", false, "Checking containers", "If any container is 'Exited' with non-zero code, please investigate why it failed"],
