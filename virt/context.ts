@@ -1,13 +1,14 @@
 import path from "node:path";
 
 import yaml from "js-yaml";
+import { Netmask } from "netmask";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService, ComposeVolume } from "../types/mod.js";
-import { scriptCleanup } from "../util/cmd.js";
+import { assert, parseCpuset, scriptCleanup, setupCpuIsolation } from "../util/mod.js";
 
-export type VMNetwork = [net: string, hostNetif: string];
+export type VMNetwork = [net: string, hostMac: string];
 
 export interface VMOptions {
   name: string;
@@ -15,20 +16,25 @@ export interface VMOptions {
   networks: readonly VMNetwork[];
 }
 
+interface VMContext extends VMOptions {
+  vmrunVolume: ComposeVolume;
+}
+
 /** Contextual information and helpers while converting VM list into Compose context. */
 export class VirtComposeContext extends compose.ComposeContext {
   private kern?: ComposeService;
   private base?: ComposeService;
 
-  public createCtrlif(hostNetif: string): void {
-    const s = this.defineService("virt_ctrlif", virtDockerImage, ["vmctrl"]);
-    const [ip, mac] = compose.getIPMAC(s, "vmctrl");
-    compose.disconnectNetif(this.c, s.container_name, "vmctrl");
+  public createCtrlif(hostMac: string): void {
+    const vmctrl = new Netmask(this.defineNetwork("vmctrl"));
+    const ip = vmctrl.first;
+
+    const s = this.defineService("virt_ctrlif", virtDockerImage, []);
     s.network_mode = "host";
     s.cap_add.push("NET_ADMIN");
     compose.setCommands(s, (function*() {
       yield* scriptCleanup();
-      yield* makeMacvlan("macvtap", "vmctrl", mac, hostNetif, "vmctrl");
+      yield* makeMacvlan("macvtap", "vmctrl", compose.ip2mac(ip), hostMac, "vmctrl");
       yield `ip addr replace ${ip}/24 dev vmctrl`;
       yield "msg Idling";
       yield "tail -f &";
@@ -58,7 +64,8 @@ export class VirtComposeContext extends compose.ComposeContext {
 
   private createBase(): ComposeService {
     this.kern ??= this.createKern();
-    const s = this.defineService("virt_base", virtDockerImage, []);
+    this.defineNetwork("vmbuild", { wantNAT: true });
+    const s = this.defineService("virt_base", virtDockerImage, ["vmbuild"]);
     compose.annotate(s, "only_if_needed", 1);
     s.depends_on[this.kern.container_name] = { condition: "service_completed_successfully" };
     applyLibguestfsCommon(s);
@@ -103,6 +110,8 @@ export class VirtComposeContext extends compose.ComposeContext {
   }
 
   public defineVM(opts: VMOptions): ComposeService {
+    this.base ??= this.createBase();
+
     const { name, networks } = opts;
     const vmrunVolume: ComposeVolume = {
       type: "volume",
@@ -115,7 +124,6 @@ export class VirtComposeContext extends compose.ComposeContext {
     const vm = this.defineService(`vm_${name}`, virtDockerImage, networks.map(([net]) => net));
     const netplan = this.makeNetplan(vmc, vm);
 
-    this.base ??= this.createBase();
     const prep = this.defineService(`vmprep_${name}`, virtDockerImage, []);
     prep.depends_on[this.base.container_name] = { condition: "service_completed_successfully" };
     this.createPrep(vmc, prep, netplan);
@@ -147,7 +155,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     };
   }
 
-  private createPrep({ name, vmrunVolume }: VMContext, s: ComposeService, netplan: unknown): void {
+  private createPrep({ name, nCores, vmrunVolume }: VMContext, s: ComposeService, netplan: unknown): void {
     compose.annotate(s, "only_if_needed", 1);
     s.network_mode = "none";
     applyLibguestfsCommon(s);
@@ -161,6 +169,13 @@ export class VirtComposeContext extends compose.ComposeContext {
       read_only: true,
     });
 
+    const cpuset = parseCpuset(`0-${nCores - 1}`);
+    assert(cpuset.length >= 2);
+    const insideCommands = [
+      "dpkg-reconfigure openssh-server",
+      ...setupCpuIsolation(cpuset.slice(0, 1), cpuset.slice(1)),
+    ];
+
     s.working_dir = "/vmrun";
     compose.setCommands(s, [
       "if [[ -f vm.done ]]; then",
@@ -168,15 +183,15 @@ export class VirtComposeContext extends compose.ComposeContext {
       "  exit 0",
       "fi",
       "msg Preparing VM disk image",
-      `echo ${shlex.quote(yaml.dump(netplan, { sortKeys: true }))} >01-netcfg.yaml`,
       "cat /id_ed25519.pub >id_ed25519.pub",
+      `echo ${shlex.quote(yaml.dump(netplan, { sortKeys: true }))} >01-netcfg.yaml`,
       "install /vmbuild/base.qcow2 vm.qcow2",
       `chown -R ${owner} .`,
       `yasu ${owner}:$(stat -c %g /dev/kvm) virt-sysprep ${shlex.join([
         "-a", "vm.qcow2",
         "--hostname", `vm-${name}.5gdeploy`,
         "--copy-in", "01-netcfg.yaml:/etc/netplan/",
-        "--run-command", "dpkg-reconfigure openssh-server",
+        "--run-command", `bash -c ${shlex.quote(insideCommands.join("\n"))}`,
         "--root-password", "password:0000",
         "--ssh-inject", "root:file:id_ed25519.pub",
       ])}`,
@@ -210,7 +225,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     ];
     const qemuRedirects = [];
     let fd = 3;
-    for (const [net, hostNetif] of networks) {
+    for (const [net, hostMac] of networks) {
       yield "";
       const [, mac] = compose.getIPMAC(s, net);
       const shortMac = mac.replaceAll(":", "");
@@ -218,7 +233,7 @@ export class VirtComposeContext extends compose.ComposeContext {
       const netdev = `net-${shortMac}`;
       const tap = `vmtap-${shortMac}`;
       compose.disconnectNetif(this.c, s.container_name, net);
-      yield* makeMacvlan("macvtap", netif, mac, hostNetif, `${s.container_name}:${net}`);
+      yield* makeMacvlan("macvtap", netif, mac, hostMac, `${s.container_name}:${net}`);
       yield `IFS=: read MAJOR MINOR < <(cat /sys/devices/virtual/net/${netif}/tap*/dev)`;
       yield `mknod -m 0666 /dev/${tap} c $MAJOR $MINOR`;
       qemuFlags.push(
@@ -236,9 +251,15 @@ export class VirtComposeContext extends compose.ComposeContext {
     yield "wait $!";
   }
 
+  private *iterVM(): Iterable<[s: ComposeService, name: string]> {
+    for (const s of compose.listByAnnotation(this.c, "vmname", () => true)) {
+      yield [s, compose.annotate(s, "vmname")!];
+    }
+  }
+
   protected override makeComposeSh(): Iterable<string> {
-    const { c } = this;
-    return compose.makeComposeSh(c, {
+    const self = this; // eslint-disable-line unicorn/no-this-assignment,@typescript-eslint/no-this-alias
+    return compose.makeComposeSh(this.c, {
       act: "ssh",
       cmd: "ssh VM",
       desc: "SSH connect to VM.",
@@ -246,8 +267,8 @@ export class VirtComposeContext extends compose.ComposeContext {
         yield "VMNAME=${1:-}"; // eslint-disable-line no-template-curly-in-string
         yield "if [[ -n $VMNAME ]]; then shift; fi";
         yield "case $VMNAME in";
-        for (const vm of compose.listByAnnotation(c, "vmname", () => true)) {
-          yield `  ${compose.annotate(vm, "vmname")}) exec ssh -o StrictHostKeyChecking=no root@${compose.getIP(vm, "vmctrl")} "$@";;`;
+        for (const [s, name] of self.iterVM()) {
+          yield `  ${name}) exec ssh root@${compose.getIP(s, "vmctrl")} "$@";;`;
         }
         yield "  *) die VM not found;;";
         yield "esac";
@@ -256,9 +277,9 @@ export class VirtComposeContext extends compose.ComposeContext {
       act: "keyscan",
       desc: "Update known_hosts with SSH host keys.",
       *code() {
-        for (const vm of compose.listByAnnotation(c, "vmname", () => true)) {
-          const ip = compose.getIP(vm, "vmctrl");
-          yield `msg Updating known_hosts for ${compose.annotate(vm, "vmname")} at ${ip}`;
+        for (const [s, name] of self.iterVM()) {
+          const ip = compose.getIP(s, "vmctrl");
+          yield `msg Updating known_hosts for ${name} at ${ip}`;
           yield `ssh-keygen -R ${ip}`;
           yield `ssh -o StrictHostKeyChecking=no root@${ip} hostname -f`;
         }
@@ -302,13 +323,9 @@ function applyLibguestfsCommon(s: ComposeService): void {
   s.environment.SUPERMIN_KERNEL = "/vmbuild/vmlinuz";
 }
 
-interface VMContext extends VMOptions {
-  vmrunVolume: ComposeVolume;
-}
-
-function* makeMacvlan(ifType: "macvlan" | "macvtap", netif: string, mac: string, hostNetif: string, desc: string): Iterable<string> {
-  yield `HOSTIF=$(ip -j link show | jq -r '.[] | select(.address=="${hostNetif}") | .ifname')`;
-  yield `[[ -n $HOSTIF ]] || die Host netif not found for ${hostNetif}`;
+function* makeMacvlan(ifType: "macvlan" | "macvtap", netif: string, mac: string, hostMac: string, desc: string): Iterable<string> {
+  yield `HOSTIF=$(ip -j link show | jq -r '.[] | select(.address=="${hostMac}") | .ifname')`;
+  yield `[[ -n $HOSTIF ]] || die Host netif not found for ${hostMac}`;
   yield `msg Making ${ifType.toUpperCase()} ${netif} for ${desc} on $HOSTIF`;
   yield "ip link set $HOSTIF up";
   yield `ip link add link $HOSTIF name ${netif} type ${ifType} mode bridge`;

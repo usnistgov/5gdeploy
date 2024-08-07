@@ -25,13 +25,15 @@ export class ComposeContext {
 
   /**
    * Define a Compose network.
+   * @returns Subnet string in CIDR format.
    *
    * @remarks
    * Unlike networks implicitly defined in `.defineService()`, this allows setting network options.
    */
-  public defineNetwork(net: string, opts: compose.defineNetwork.Options = {}): void {
+  public defineNetwork(net: string, opts: compose.defineNetwork.Options = {}): string {
     const subnet = this.ipAlloc.allocNetwork(net);
     compose.defineNetwork(this.c, net, subnet, opts);
+    return subnet;
   }
 
   /**

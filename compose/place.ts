@@ -3,7 +3,7 @@ import DefaultMap from "mnemonist/default-map.js";
 import { sortBy } from "sort-by-typescript";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";
-import { assert, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { assert, parseCpuset, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate } from "./compose.js";
 
 export interface PlaceRule {
@@ -84,19 +84,7 @@ export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): vo
 
 class AssignCpuset {
   constructor(cpuset: string) {
-    for (const token of cpuset.split(",")) {
-      const [firstS, lastS] = token.split("-");
-      const first = Number.parseInt(firstS!, 10);
-      if (lastS === undefined) {
-        this.avail.push(first);
-        continue;
-      }
-      const last = Number.parseInt(lastS, 10);
-      assert(first <= last, "bad cpuset");
-      for (let i = first; i <= last; ++i) {
-        this.avail.push(i);
-      }
-    }
+    this.avail = parseCpuset(cpuset);
   }
 
   public get nAvail(): number {
