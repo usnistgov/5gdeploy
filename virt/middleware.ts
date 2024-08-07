@@ -14,6 +14,13 @@ export const useVmOptions = {
     normalize: true,
     type: "string",
   },
+  "vm-list": {
+    coerce(): Record<string, string> {
+      return {};
+    },
+    hidden: true,
+    type: "string",
+  },
 } as const satisfies YargsOptions;
 
 /**
@@ -29,9 +36,9 @@ export const useVmOptions = {
  * "netif" defaults for the bridge network name.
  * This is achieved by performing regex replacements on bridge flags.
  */
-export async function useVm(args: YargsInfer<typeof useVmOptions> &
-WritableDeep<YargsInfer<typeof compose.placeOptions> & YargsInfer<typeof compose.bridgeOptions>>,
-) {
+export async function useVm(args: WritableDeep<YargsInfer<typeof useVmOptions> &
+YargsInfer<typeof compose.placeOptions> & YargsInfer<typeof compose.bridgeOptions>>) {
+  args["vm-list"] = {};
   if (!args["use-vm"]) {
     return;
   }
@@ -39,7 +46,9 @@ WritableDeep<YargsInfer<typeof compose.placeOptions> & YargsInfer<typeof compose
 
   for (const [s, name] of iterVM(c)) {
     const ip = compose.getIP(s, "vmctrl");
-    (args["ssh-uri"] ??= {})[`vm-${name}`] = `root@${ip}`;
+    const sshUri = `root@${ip}`;
+    (args["ssh-uri"] ??= {})[`vm-${name}`] = sshUri;
+    args["vm-list"][sshUri] = name;
   }
 
   args.bridge = Array.from(args.bridge ?? [], (line) => {
@@ -56,4 +65,13 @@ WritableDeep<YargsInfer<typeof compose.placeOptions> & YargsInfer<typeof compose
       return `=${mac}`;
     });
   });
+}
+
+export function annotateVm(c: ComposeFile, args: YargsInfer<typeof useVmOptions>): void {
+  if (!args["vm-list"]) {
+    return;
+  }
+  for (const s of compose.listByAnnotation(c, "host", (host) => !!args["vm-list"]![host])) {
+    compose.annotate(s, "vmname", args["vm-list"][compose.annotate(s, "host")!]!);
+  }
 }

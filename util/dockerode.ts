@@ -39,9 +39,14 @@ export function open(host?: string | Dockerode): Dockerode {
  * @param host - Docker host name (empty means localhost) or existing handle.
  * @returns Mapping from image name to ID.
  */
-export async function listImages(pattern: string, host?: string | Dockerode): Promise<Map<string, string>> {
+export async function listImages(pattern: string | undefined, host?: string | Dockerode): Promise<Map<string, string>> {
+  const listOpts: Dockerode.ListImagesOptions = {};
+  if (pattern) {
+    listOpts.filters = { reference: [pattern] };
+  }
+
   const m = new Map<string, string>();
-  for (const image of await open(host).listImages({ filters: { reference: [pattern] } })) {
+  for (const image of await open(host).listImages(listOpts)) {
     for (const tag of image.RepoTags ?? []) {
       m.set(tag, image.Id);
       if (tag.endsWith(":latest")) {
