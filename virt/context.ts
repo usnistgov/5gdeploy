@@ -9,7 +9,7 @@ import type { ComposeService, ComposeVolume } from "../types/mod.js";
 import { assert, parseCpuset, scriptCleanup, setupCpuIsolation } from "../util/mod.js";
 import { iterVM } from "./helper.js";
 
-export type VMNetwork = [net: string, hostMac: string];
+export type VMNetwork = [net: string, hostNetif: string];
 
 export interface VMOptions {
   name: string;
@@ -26,7 +26,7 @@ export class VirtComposeContext extends compose.ComposeContext {
   private kern?: ComposeService;
   private base?: ComposeService;
 
-  public createCtrlif(hostMac: string): void {
+  public createCtrlif(hostNetif: string): void {
     const vmctrl = new Netmask(this.defineNetwork("vmctrl"));
     const ip = vmctrl.first;
 
@@ -35,7 +35,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     s.cap_add.push("NET_ADMIN");
     compose.setCommands(s, (function*() {
       yield* scriptCleanup();
-      yield* makeMacvlan("macvtap", "vmctrl", compose.ip2mac(ip), hostMac, "vmctrl");
+      yield* makeMacvlan("macvtap", "vmctrl", compose.ip2mac(ip), hostNetif, "vmctrl");
       yield `ip addr replace ${ip}/24 dev vmctrl`;
       yield "msg Idling";
       yield "tail -f &";
@@ -226,7 +226,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     ];
     const qemuRedirects = [];
     let fd = 3;
-    for (const [net, hostMac] of networks) {
+    for (const [net, hostNetif] of networks) {
       yield "";
       const [, mac] = compose.getIPMAC(s, net);
       const shortMac = mac.replaceAll(":", "");
@@ -234,7 +234,7 @@ export class VirtComposeContext extends compose.ComposeContext {
       const netdev = `net-${shortMac}`;
       const tap = `vmtap-${shortMac}`;
       compose.disconnectNetif(this.c, s.container_name, net);
-      yield* makeMacvlan("macvtap", netif, mac, hostMac, `${s.container_name}:${net}`);
+      yield* makeMacvlan("macvtap", netif, mac, hostNetif, `${s.container_name}:${net}`);
       yield `IFS=: read MAJOR MINOR < <(cat /sys/devices/virtual/net/${netif}/tap*/dev)`;
       yield `mknod -m 0666 /dev/${tap} c $MAJOR $MINOR`;
       qemuFlags.push(
@@ -272,6 +272,7 @@ export class VirtComposeContext extends compose.ComposeContext {
       act: "keyscan",
       desc: "Update known_hosts with SSH host keys.",
       *code() {
+        yield "[[ -f ~/.ssh/known_hosts ]] || touch ~/.ssh/known_hosts";
         for (const [s, name] of iterVM(self.c)) {
           const ip = compose.getIP(s, "vmctrl");
           yield `msg Updating known_hosts for ${name} at ${ip}`;
@@ -318,9 +319,13 @@ function applyLibguestfsCommon(s: ComposeService): void {
   s.environment.SUPERMIN_KERNEL = "/vmbuild/vmlinuz";
 }
 
-function* makeMacvlan(ifType: "macvlan" | "macvtap", netif: string, mac: string, hostMac: string, desc: string): Iterable<string> {
-  yield `HOSTIF=$(ip -j link show | jq -r '.[] | select(.address=="${hostMac}") | .ifname')`;
-  yield `[[ -n $HOSTIF ]] || die Host netif not found for ${hostMac}`;
+function* makeMacvlan(ifType: "macvlan" | "macvtap", netif: string, mac: string, hostNetif: string, desc: string): Iterable<string> {
+  if (/^(?:[\da-f]{2}:){5}[\da-f]{2}$/i.test(hostNetif)) {
+    yield `HOSTIF=$(ip -j link show | jq -r '.[] | select(.address=="${hostNetif.toLowerCase()}") | .ifname' | tail -1)`;
+    yield `[[ -n $HOSTIF ]] || die Host netif not found for ${hostNetif}`;
+  } else {
+    yield `HOSTIF=${shlex.quote(hostNetif)}`;
+  }
   yield `msg Making ${ifType.toUpperCase()} ${netif} for ${desc} on $HOSTIF`;
   yield "ip link set $HOSTIF up";
   yield `ip link add link $HOSTIF name ${netif} type ${ifType} mode bridge`;

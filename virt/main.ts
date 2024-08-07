@@ -14,9 +14,9 @@ const args = Yargs()
         const name = tokens[0]!.trim();
         const place = compose.parsePlaceRule(`vm_${name}@${tokens[1]!.trim()}`);
         const networks = Array.from(tokens[2]!.split(","), (line1): VMNetwork => {
-          const m = /^(\w+)@((?:[\da-f]{2}:){5}[\da-f]{2})$/.exec(line1.trim());
+          const m = /^(\w+)@([^@+]+)$/i.exec(line1.trim());
           assert(m, `bad --vm.network ${line1}`);
-          return [m[1]!, m[2]!];
+          return [m[1]!.toLowerCase(), m[2]!];
         });
         assert(networks.some(([net]) => net === "vmctrl"), `VM ${name} does not have vmctrl network`);
         return {
