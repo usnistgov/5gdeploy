@@ -42,17 +42,17 @@ const args = Yargs()
     type: "string",
   })
   .option(compose.ipAllocOptions)
-  .option(compose.placeOptions)
+  .option("ssh-uri", compose.placeOptions["ssh-uri"])
   .parseSync();
-args.place.splice(0, Infinity);
 
 const ctx = new VirtComposeContext(args.out, new compose.IPAlloc(args));
 ctx.createCtrlif(args.ctrlif);
 
+const placeRules: compose.PlaceRule[] = [];
 for (const vm of args.vm) {
   ctx.defineVM(vm);
-  args.place.push(vm.place);
+  placeRules.push(vm.place);
 }
 
-compose.place(ctx.c, args);
+compose.place(ctx.c, { ...args, place: placeRules });
 await ctx.finalSave();

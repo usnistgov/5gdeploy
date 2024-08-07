@@ -13,6 +13,7 @@ import { srsOptions, srsRAN } from "../srsran/mod.js";
 import type { N } from "../types/mod.js";
 import { ueransimOptions, ueransimRAN } from "../ueransim/netdef.js";
 import { assert, file_io, Yargs } from "../util/mod.js";
+import { useVm, useVmOptions } from "../virt/middleware.js";
 import { NetDefComposeContext } from "./context.js";
 import { defineDNServices, dnOptions, setDNCommands } from "./dn.js";
 import { prometheus, prometheusOptions } from "./prometheus.js";
@@ -44,7 +45,7 @@ const ranProviders: Record<string, Provider> = {
   ueransim: ueransimRAN,
 };
 
-const args = Yargs()
+const args = await Yargs()
   .option("netdef", {
     demandOption: true,
     desc: "network definition file, '-' for stdin",
@@ -94,7 +95,9 @@ const args = Yargs()
   .option(prometheusOptions)
   .option(srsOptions)
   .option(ueransimOptions)
-  .parseSync();
+  .option(useVmOptions)
+  .middleware(useVm)
+  .parseAsync();
 
 const netdef = new NetDef(await file_io.readJSON(args.netdef) as N.Network);
 netdef.validate();

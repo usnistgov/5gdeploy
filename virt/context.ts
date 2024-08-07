@@ -7,6 +7,7 @@ import * as shlex from "shlex";
 import * as compose from "../compose/mod.js";
 import type { ComposeService, ComposeVolume } from "../types/mod.js";
 import { assert, parseCpuset, scriptCleanup, setupCpuIsolation } from "../util/mod.js";
+import { iterVM } from "./helper.js";
 
 export type VMNetwork = [net: string, hostMac: string];
 
@@ -251,12 +252,6 @@ export class VirtComposeContext extends compose.ComposeContext {
     yield "wait $!";
   }
 
-  private *iterVM(): Iterable<[s: ComposeService, name: string]> {
-    for (const s of compose.listByAnnotation(this.c, "vmname", () => true)) {
-      yield [s, compose.annotate(s, "vmname")!];
-    }
-  }
-
   protected override makeComposeSh(): Iterable<string> {
     const self = this; // eslint-disable-line unicorn/no-this-assignment,@typescript-eslint/no-this-alias
     return compose.makeComposeSh(this.c, {
@@ -267,7 +262,7 @@ export class VirtComposeContext extends compose.ComposeContext {
         yield "VMNAME=${1:-}"; // eslint-disable-line no-template-curly-in-string
         yield "if [[ -n $VMNAME ]]; then shift; fi";
         yield "case $VMNAME in";
-        for (const [s, name] of self.iterVM()) {
+        for (const [s, name] of iterVM(self.c)) {
           yield `  ${name}) exec ssh root@${compose.getIP(s, "vmctrl")} "$@";;`;
         }
         yield "  *) die VM not found;;";
@@ -277,7 +272,7 @@ export class VirtComposeContext extends compose.ComposeContext {
       act: "keyscan",
       desc: "Update known_hosts with SSH host keys.",
       *code() {
-        for (const [s, name] of self.iterVM()) {
+        for (const [s, name] of iterVM(self.c)) {
           const ip = compose.getIP(s, "vmctrl");
           yield `msg Updating known_hosts for ${name} at ${ip}`;
           yield `ssh-keygen -R ${ip}`;
