@@ -328,7 +328,8 @@ function* makeMacvlan(ifType: "macvlan" | "macvtap", netif: string, mac: string,
   }
   yield `msg Making ${ifType.toUpperCase()} ${netif} for ${desc} on $HOSTIF`;
   yield "ip link set $HOSTIF up";
-  yield `ip link add link $HOSTIF name ${netif} type ${ifType} mode bridge`;
+  yield `ip link del ${netif} 2>/dev/null || true`;
+  yield `ip link add link $HOSTIF name ${netif} address ${mac} type ${ifType} mode bridge`;
   yield `CLEANUPS=$CLEANUPS"; ip link del ${netif}"`;
-  yield `ip link set ${netif} up address ${mac}`;
+  yield `ip link set ${netif} up`;
 }
