@@ -87,8 +87,8 @@ class AssignCpuset {
     this.avail = parseCpuset(cpuset);
   }
 
-  public get nAvail(): number {
-    return this.avail.length;
+  public get cores(): number[] {
+    return [...this.avail];
   }
 
   private readonly avail: number[] = [];

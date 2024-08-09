@@ -6,14 +6,14 @@ import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService, ComposeVolume } from "../types/mod.js";
-import { assert, parseCpuset, scriptCleanup, setupCpuIsolation } from "../util/mod.js";
+import { scriptCleanup, setupCpuIsolation } from "../util/mod.js";
 import { iterVM } from "./helper.js";
 
 export type VMNetwork = [net: string, hostNetif: string];
 
 export interface VMOptions {
   name: string;
-  nCores: number;
+  cores: readonly number[];
   networks: readonly VMNetwork[];
 }
 
@@ -156,7 +156,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     };
   }
 
-  private createPrep({ name, nCores, vmrunVolume }: VMContext, s: ComposeService, netplan: unknown): void {
+  private createPrep({ name, vmrunVolume }: VMContext, s: ComposeService, netplan: unknown): void {
     compose.annotate(s, "only_if_needed", 1);
     s.network_mode = "none";
     applyLibguestfsCommon(s);
@@ -170,11 +170,13 @@ export class VirtComposeContext extends compose.ComposeContext {
       read_only: true,
     });
 
-    const cpuset = parseCpuset(`0-${nCores - 1}`);
-    assert(cpuset.length >= 2);
     const insideCommands = [
       "dpkg-reconfigure openssh-server",
-      ...setupCpuIsolation(cpuset.slice(0, 1), cpuset.slice(1)),
+      ...setupCpuIsolation("0", "1-127"),
+      // docker-.scopae AllowedCPUs=1-127 would be ignored because some cores do not exist;
+      // instead, systemd would allow Docker containers to use all cores. The actual cpuset for
+      // each container should be set for each container. This approach allows reusing a prep'ed
+      // VM image even if the number of cores is changed.
     ];
 
     s.working_dir = "/vmrun";
@@ -202,7 +204,7 @@ export class VirtComposeContext extends compose.ComposeContext {
   }
 
   private createRun(vmc: VMContext, s: ComposeService): void {
-    const { name, nCores, vmrunVolume } = vmc;
+    const { name, cores: { length: nCores }, vmrunVolume } = vmc;
     compose.annotate(s, "vmname", name);
     compose.annotate(s, "cpus", nCores);
     s.privileged = true;
@@ -214,14 +216,16 @@ export class VirtComposeContext extends compose.ComposeContext {
     s.tty = true;
   }
 
-  private *makeRunCommands({ name, nCores, networks }: VMContext, s: ComposeService): Iterable<string> {
+  private *makeRunCommands({ name, cores, networks }: VMContext, s: ComposeService): Iterable<string> {
     yield* scriptCleanup();
+    yield "YASU='yasu '$(stat -c %u vm.qcow2):$(stat -c %g /dev/kvm)";
+
     const qemuFlags = [
-      "-name", name,
+      "-name", name, "-qmp", "unix:./qmp,server,wait=off",
       "-nodefaults", "-nographic", "-msg", "timestamp=on",
       "-chardev", "pty,id=charserial0", "-device", "isa-serial,chardev=charserial0,id=serial0", "-serial", "stdio",
       "-enable-kvm", "-machine", "accel=kvm,usb=off",
-      "-cpu", "host", "-smp", `${nCores},sockets=1,cores=${nCores},threads=1`, "-m", "8192",
+      "-cpu", "host", "-smp", `${cores.length},sockets=1,cores=${cores.length},threads=1`, "-m", "8192",
       "-drive", "if=virtio,file=vm.qcow2",
     ];
     const qemuRedirects = [];
@@ -246,8 +250,23 @@ export class VirtComposeContext extends compose.ComposeContext {
     }
 
     yield "";
+    yield "rm -f ./qmp";
+    yield ": >qemu-threads.tsv";
+    yield "set_qemu_affinity() {";
+    yield "  sleep 5";
+    yield `  while [[ $(wc -l qemu-threads.tsv | cut -d' ' -f1) -ne ${cores.length} ]]; do`;
+    yield "    sleep 1";
+    yield "    echo query-cpus-fast | $YASU qmp-shell ./qmp | jq -r '.[] | .[\"thread-id\"]' >qemu-threads.tsv";
+    yield "  done";
+    yield `  $YASU awk ${shlex.quote(Array.from(cores,
+      (core, i) => `NR==${1 + i} { system("taskset -pc ${core} " $1) }`,
+    ).join("\n"))} qemu-threads.tsv`;
+    yield "}";
+    yield "set_qemu_affinity &";
+
+    yield "";
     yield "msg Starting QEMU";
-    yield `yasu $(stat -c %u vm.qcow2):$(stat -c %g /dev/kvm) qemu-system-x86_64 ${
+    yield `$YASU qemu-system-x86_64 ${
       shlex.join(qemuFlags)} ${qemuRedirects.join(" ")} &`;
     yield "wait $!";
   }

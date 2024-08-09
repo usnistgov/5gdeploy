@@ -13,6 +13,7 @@ const args = Yargs()
         assert(tokens.length === 3, `bad --vm ${line}`);
         const name = tokens[0]!.trim();
         const place = compose.parsePlaceRule(`vm_${name}@${tokens[1]!.trim()}`);
+        assert(place.cpuset && place.cpuset.cores.length >= 2, `VM ${name} must have cpuset with at least 2 cores`);
         const networks = Array.from(tokens[2]!.split(","), (line1): VMNetwork => {
           const m = /^(\w+)@([^@+]+)$/i.exec(line1.trim());
           assert(m, `bad --vm.network ${line1}`);
@@ -21,9 +22,9 @@ const args = Yargs()
         assert(networks.some(([net]) => net === "vmctrl"), `VM ${name} does not have vmctrl network`);
         return {
           name,
-          place,
-          nCores: place.cpuset?.nAvail ?? 4,
+          cores: place.cpuset.cores,
           networks,
+          place,
         };
       });
     },
