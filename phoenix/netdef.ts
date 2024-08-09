@@ -562,7 +562,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
       assert(needThreadPool ? nThreadPoolWorkers > 0 : nThreadPoolWorkers >= 0,
         "insufficient thread_pool workers after satisfying single_thread interfaces");
 
-      config.hacks.qfi = 1;
+      config.hacks.qfi = 1; // only effective in non-XDP mode
     });
 
     initCommands.push(

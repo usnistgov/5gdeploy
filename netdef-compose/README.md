@@ -41,12 +41,13 @@ These combinations are verified to be compatible:
 * `--cp=oai --up=oai-vpp --ran=ueransim`
 * `--cp=phoenix --up=free5gc --ran=gnbsim`
 * `--cp=phoenix --up=free5gc --ran=oai`
+* `--cp=phoenix --up=free5gc --ran=packetrusher`
 * `--cp=phoenix --up=free5gc --ran=phoenix`
 * `--cp=phoenix --up=free5gc --ran=ueransim`
-* `--cp=phoenix --up=phoenix --ran=packetrusher`
+* `--cp=phoenix --up=phoenix --ran=packetrusher` with `--phoenix-upf-xdp=false`
 * `--cp=phoenix --up=phoenix --ran=phoenix`
-* `--cp=phoenix --up=phoenix --ran=srsran`
-* `--cp=phoenix --up=phoenix --ran=ueransim`
+* `--cp=phoenix --up=phoenix --ran=srsran` with `--phoenix-upf-xdp=false`
+* `--cp=phoenix --up=phoenix --ran=ueransim` with `--phoenix-upf-xdp=false`
 
 Each UPF implementation may be chosen independently, by repeating the `--up` flag.
 Each flag value consists of a minimatch pattern followed by a 5G implementation identifier.
