@@ -16,15 +16,15 @@ There's no restriction on where a network function may run.
 The *primary* designation is only relevant to where to invoke (most of) the commands.
 
 Many commands, despited being invoked on the *primary* host, need to perform actions on multiple hosts, such as starting containers.
-They commands would internally connect to *secondary* hosts via SSH to perform these actions.
-The [installation guide](INSTALL.md) "secondary hosts" section explains how to setup SSH keys to enable such control.
+These commands would internally connect to *secondary* hosts via SSH to perform these actions.
+The [installation guide](INSTALL.md) "secondary host" section explains how to setup SSH keys to enable such control.
 
 ## How Multi-Host Deployment Works
 
-Both [netdef-compose](../netdef-compose/README.md) and [phoenix-compose](../phoenix-compose/README.md) commands support multi-host deployment.
+The [netdef-compose](../netdef-compose/README.md) command supports multi-host deployment.
 They generate a Compose context with multi-host deployment with these steps:
 
-1. The 5G network, defined in either [NetDef](../netdef/README.md) or ph\_init input, is initially converted to a Compose context for single-host deployment.
+1. The 5G network, defined in either [NetDef](../netdef/README.md) format, is initially converted to a Compose context for single-host deployment.
 
     * This Compose file defines what network functions (i.e. containers) should be running, how they are connected to each other via Docker networks, and the IP address of each network interface.
     * You can view this Compose file if you do not specify any command line flags for multi-host deployment.
@@ -33,15 +33,14 @@ They generate a Compose context with multi-host deployment with these steps:
 2. 5gdeploy processes the `--bridge` command line flags, which allows network functions on different hosts to communicate with each other.
 
     * If two network functions that need to communicate with each other would be running on separate hosts, you must specify a bridge to facilitate such communication.
-      Otherwise, when they are separated to multiple hosts, they cannot reach each other, and the 5G network will not work.
+      Otherwise, when they are placed onto different hosts, they cannot reach each other, and the 5G network will not work.
     * You can identify which network functions belong to the same Docker network by reading the single-host Compose file.
     * Establishing bridges should not change the logical network topology or IP address assignments in any way.
 
 3. 5gdeploy processes the `--place` command line flags, which specifies where to run each network function.
 
-    * `--place` is only supported in netdef-compose command.
     * Using pattern matches, every network function (i.e. container) is placed on exactly one host.
-    * The `5gdeploy.host` annotations in the Compose file indicates where a network function is being placed.
+    * The `5gdeploy.host` annotation in the Compose file indicates where a network function is being placed.
 
 4. 5gdeploy processes CPU isolation instructions in `--place` command line flags, too.
 
@@ -59,10 +58,10 @@ Defining a bridge allows network functions in different hosts to communicate wit
 * The **VXLAN** bridge interconnects Docker networks of the same name across multiple hosts.
   * A Docker network is created on each host.
   * Containers on each host are still attached to the Docker network, in the same way as a single-host deployment.
-  * VXLAN tunnels are established to interconnect the Docker networks from multiple hosts, so that packets sent from a container on one host could reach another container attached to a Docket network with the same name on another host.
-* The **Ethernet** bridge replaces the Docket network with an external physical switch.
+  * VXLAN tunnels are established to interconnect the Docker networks from multiple hosts, so that packets sent from a container on one host could reach another container attached to a Docker network with the same name on another host.
+* The **Ethernet** bridge replaces the Docker network with an external physical switch.
   * The Docker network is deleted from the Compose file and would not be created on each host.
-  * Each container previously on the Docket network is given either a physical Ethernet adapter or a MACVLAN sub-interface, with its own MAC address.
+  * Each container previously on the Docker network is given either a physical Ethernet adapter or a MACVLAN sub-interface, with its own MAC address.
   * Each physical Ethernet adapter involved in an Ethernet bridge must be connected to an external physical switch.
 
 You can mix-and-match both kinds of bridges, for different Docker networks.
@@ -120,12 +119,12 @@ After "eth", each parameter consists of:
 
 1. A [minimatch](https://www.npmjs.com/package/minimatch)-compatible pattern that selects containers attached to the Docker network.
    The patterns from all parameters in an `--bridge` flag must collectively match all containers originally attached to the Docker network.
-2. An operator (see below).
+2. Either `=` or `@` operator (see below).
 3. A host interface MAC address.
 4. VLAN ID (optional).
    This should be written as "+vlan" followed by an integer between 1 and 4094.
 
-The operator could be either `=` or `@`:
+The operator indicates what kind of network interface is put into the container:
 
 * The `=` operator moves the host interface into the container.
   * The pattern must match exactly one container.
@@ -134,8 +133,9 @@ The operator could be either `=` or `@`:
 * The `@` operator creates a MACVLAN subinterface on the host interface.
   * The pattern may match one or more containers.
   * The host interface remains accessible on the host.
-  * Multiple containers may share the same host interface; where each container gets a random MAC address.
+  * Multiple containers may share the same host interface, where each container gets a random MAC address.
   * Currently this uses MACVLAN "bridge" mode, so that traffic between two containers on the same host interface is switched internally in the Ethernet adapter and does not appear on the external Ethernet switch.
+  * This does not work if the host interface is itself a PCI Virtual Function that allows only one MAC address.
 
 Bridge configuration scripts will locate the host interface and invoke [pipework](https://github.com/jpetazzo/pipework) to make the move.
 The specified host interface MAC address must exist on the host machine where you start the relevant network function.
