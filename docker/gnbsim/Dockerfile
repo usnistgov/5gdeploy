@@ -1,6 +1,6 @@
 FROM golang:1.22-alpine3.20 AS build
 SHELL ["/bin/ash", "-c"]
-ADD https://github.com/omec-project/gnbsim/archive/79d8ec686169ee6979574bf19c3d9438814e6fb8.zip /gnbsim.zip
+ADD https://github.com/omec-project/gnbsim/archive/4794c80c0dfaf865bec19509e1b349519108bb23.zip /gnbsim.zip
 
 RUN <<EOF
   set -euxo pipefail
@@ -14,6 +14,6 @@ EOF
 
 
 FROM alpine:3.20
-RUN apk add --no-cache iproute2 yq
+RUN apk add --no-cache ethtool iproute2 yq
 COPY --from=build /gnbsim/gnbsim /gnbsim/config/config.base.yaml /
 RUN yq -i 'del(.configuration.gnbs) | del(.configuration.customProfiles) | del(.configuration.profiles)' config.base.yaml
