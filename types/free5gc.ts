@@ -144,28 +144,19 @@ export namespace smf {
   export interface Configuration extends SBI {
     smfName: string;
     pfcp: PFCP;
-    plmnList: PLMNID[];
-    snssaiInfos: SNSSAIInfo[];
     userplaneInformation: UP;
+    snssaiInfos: SNSSAIInfo[];
+    plmnList: PLMNID[];
+    urrPeriod?: number;
+    urrThreshold?: number;
     nwInstFqdnEncoding?: boolean;
+    [k: string]: unknown;
   }
 
   export interface PFCP {
     listenAddr: string;
     externalAddr: string;
     nodeID: string;
-  }
-
-  export interface SNSSAIInfo {
-    sNssai: SNSSAI;
-    dnnInfos: DNNInfo[];
-  }
-
-  export interface DNNInfo {
-    dnn: string;
-    dns: {
-      ipv4: string;
-    };
   }
 
   export interface UP {
@@ -207,6 +198,18 @@ export namespace smf {
   export interface UPLink {
     A: string;
     B: string;
+  }
+
+  export interface SNSSAIInfo {
+    sNssai: SNSSAI;
+    dnnInfos: DNNInfo[];
+  }
+
+  export interface DNNInfo {
+    dnn: string;
+    dns: {
+      ipv4: string;
+    };
   }
 }
 

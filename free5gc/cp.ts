@@ -298,7 +298,7 @@ class F5CPBuilder {
         externalAddr: compose.getIP(s, "n4"),
         nodeID: compose.getIP(s, "n4"),
       };
-      c.plmnList = [this.plmn];
+      c.userplaneInformation = upi;
       c.snssaiInfos = smf.nssai.map((snssai): F5.smf.SNSSAIInfo => ({
         sNssai: convertSNSSAI(snssai),
         dnnInfos: network.dataNetworks
@@ -308,7 +308,9 @@ class F5CPBuilder {
             dns: { ipv4: "1.1.1.1" },
           })),
       }));
-      c.userplaneInformation = upi;
+      c.plmnList = [this.plmn];
+      delete c.urrPeriod;
+      delete c.urrThreshold;
       c.nwInstFqdnEncoding = true;
 
       s.command = [
