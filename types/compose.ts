@@ -45,7 +45,7 @@ export interface ComposeService {
   readonly ports: ComposePort[];
   readonly extra_hosts: Record<string, string>;
   cpuset?: string;
-  healthcheck?: ComposeHealthCheck;
+  healthcheck?: ComposeHealthCheck | { disable: true };
   depends_on: Record<string, ComposeDependency>;
 }
 

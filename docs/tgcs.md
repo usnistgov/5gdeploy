@@ -52,6 +52,48 @@ The outputs are:
 * bash script `PREFIX.sh`, which runs traffic generator containers and saves statistics in `~/compose/20230601/PREFIX` directory.
 * TSV file `PREFIX.tsv`, which has the same information as the brief report.
 
+## iperf2
+
+`--iperf2` traffic flow flag prepares throughput measurement using [iperf2](https://iperf2.sourceforge.io/).
+
+```bash
+./compose.sh tgcs --iperf2='* | * | -e -i 1 -t 10 -u -l 1200 -b 10M | -e -i 1 -u -l 1200'
+./tg.sh
+```
+
+Client flags are passed to [iperf2 client](https://iperf2.sourceforge.io/iperf-manpage.html#lbAG).
+Server flags are passed to [iperf2 server](https://iperf2.sourceforge.io/iperf-manpage.html#lbAF).
+
+To use UDP mode, pass `-u` in both client flags and server flags; otherwise, it is TCP mode.
+It is an error to have UDP mode on one side and TCP mode on the other side.
+
+The text outputs of each iperf2 container are saved in `~/compose/20230601/PREFIX` directory.
+You should not use the `--output` flag.
+The script shows a brief summary of iperf2 results, but it cannot handle bidirectional traffic.
+
+### One-way Latency (trip-times)
+
+The `--trip-times` client flag enables measurement of one-way latency.
+This requires a synchronized clock between client and server.
+It is safe to use when UE and DN containers are placed on the same host.
+
+### Delayed TX Start
+
+The `--txdelay-time` client flag delays TX by several seconds.
+The `--txstart-time` client flag delays TX start until an absolute timestamp.
+These flags reduces the probability of control connection failure due to network congestion.
+
+To use the `--txstart-time` client flag, you can set its value to a variable that is interpolated by Docker Compose at runtime.
+
+```bash
+# prepare the measurement, notice the single quotes so that bash does not expand the variable
+./compose.sh tgcs \
+  --iperf2='* | * | -e -i 1 -t 60 -u -l 1200 -b 10M --txstart-time $IPERF2_TXSTART | -e -i 1 -u -l 1200'
+
+# run the traffic generators, pass the environment variable
+IPERF2_TXSTART="$(expr $(date -u +%s) + 30)" ./tg.sh
+```
+
 ## iperf3
 
 `--iperf3` traffic flow flag prepares throughput measurement using [iperf3](https://software.es.net/iperf/).

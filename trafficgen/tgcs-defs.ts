@@ -25,18 +25,56 @@ export interface TrafficGenFlowContext {
   ueService: ReadonlyDeep<ComposeService>;
 }
 
+/** Traffic generator application. */
 export interface TrafficGen {
+  /** Determine traffic direction, upstream or downstream. */
   determineDirection: (flow: TrafficGenFlowContext) => Direction;
+
+  /** Number of TCP/UDP ports needed per traffic flow. */
   nPorts: number;
+
+  /** Server side Docker image. */
   serverDockerImage: string;
+
+  /**
+   * If true, there's one server per Data Network.
+   * Otherwise, there's one server per flow.
+   */
   serverPerDN?: boolean;
+
+  /** Procedure to setup a server container. */
   serverSetup: (s: ComposeService, flow: TrafficGenFlowContext) => void;
+
+  /** Client side Docker image. */
   clientDockerImage: string;
+
+  /** Procedure to setup a client container. */
   clientSetup: (s: ComposeService, flow: TrafficGenFlowContext) => void;
+
+  /**
+   * Filename extension for statistics from `docker logs`.
+   * This should start with ".".
+   */
   statsExt: string;
+
+  /**
+   * bash commands to tally statistics and show on the console.
+   * @param prefix - Service name prefix aka output folder name.
+   */
   statsCommands?: (prefix: string) => Iterable<string>;
 }
 
+/**
+ * Rewrite trafficgen flags so that output files are placed in the output folder.
+ * @param s - Compose service for trafficgen client or server.
+ * @param prefix - Service name prefix aka output folder name.
+ * @param group - Flow group name.
+ * @param port - Flow port number.
+ * @param flags - Command line flags for client or server.
+ * @param re - Regular expression to match output file flag name. It should have a capture group to identify the output file.
+ * @param ext - Output file extension.
+ * @returns - Transformed flags.
+ */
 export function rewriteOutputFlag(s: ComposeService, prefix: string, group: string, port: number, flags: readonly string[], re: RegExp, ext: string): string[] {
   let hasOutput = false;
   const rFlags = flags.map((flag, i) => {
@@ -53,6 +91,7 @@ export function rewriteOutputFlag(s: ComposeService, prefix: string, group: stri
       type: "bind",
       source: `./${prefix}`,
       target: "/output",
+      bind: { create_host_path: true },
     });
   }
   return rFlags;

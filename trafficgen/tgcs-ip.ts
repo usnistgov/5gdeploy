@@ -3,6 +3,61 @@ import * as shlex from "shlex";
 import { assert, codebaseRoot } from "../util/mod.js";
 import { Direction, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
+export const iperf2: TrafficGen = {
+  determineDirection({ cFlags }) {
+    for (const [flag, dir] of Object.entries<Direction>({
+      "-d": Direction.bidir,
+      "--dualtest": Direction.bidir,
+      "-r": Direction.bidir,
+      "--tradeoff": Direction.bidir,
+      "--full-duplex": Direction.bidir,
+      "-R": Direction.dl,
+      "--reverse": Direction.dl,
+    })) {
+      if (cFlags.includes(flag)) {
+        return dir;
+      }
+    }
+    return Direction.ul;
+  },
+  nPorts: 1,
+  serverDockerImage: "mlabbe/iperf:2.1.9-r0",
+  serverSetup(s, { port, dnIP, cFlags, sFlags }) {
+    assert(cFlags.includes("-u") === sFlags.includes("-u"), "iperf2 client and server must be both in UDP mode or both in TCP mode");
+    s.command = [
+      "--utc",
+      "-B", dnIP,
+      "-p", `${port}`,
+      "-s",
+      ...sFlags,
+    ];
+    s.healthcheck = { disable: true };
+  },
+  clientDockerImage: "mlabbe/iperf:2.1.9-r0",
+  clientSetup(s, { port, dnIP, pduIP, cFlags }) {
+    s.command = [
+      "--utc",
+      "-B", pduIP,
+      "-p", `${port}`,
+      "-c", dnIP,
+      ...cFlags,
+    ];
+    s.healthcheck = { disable: true };
+  },
+  statsExt: ".log",
+  *statsCommands() {
+    yield `awk ${shlex.quote(`
+      FNR==1 { serverReport=0; firstPeriod="" }
+      $3=="Server" && $4=="Report:" { serverReport=1 }
+      serverReport==1 || $1!="[" { next }
+      $2=="ID]" && $7=="Lost/Total" { print FILENAME; print }
+      $3!~"^0\\.00-" || $4!="sec" || $12!~"%" { next }
+      firstPeriod=="" && $2=="1]" { firstPeriod=$3 }
+      firstPeriod!="" && $3!=firstPeriod { print }
+    `.replaceAll(/\n\s+/gm, "\n"))} iperf2_*.log`;
+  },
+};
+
 export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
   jsonFlag: ["--json"],
   determineDirection({ cFlags }) {

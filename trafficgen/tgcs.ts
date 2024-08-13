@@ -35,8 +35,8 @@ function makeOption(tgid: string) {
         return {
           dnPattern: new Minimatch(tokens[0]!.trim()),
           uePattern: new Minimatch(tokens[1]!.trim()),
-          cFlags: shlex.split(tokens[2]?.trim() ?? ""),
-          sFlags: shlex.split(tokens[3]?.trim() ?? ""),
+          cFlags: shlex.split(tokens[2] ?? ""),
+          sFlags: shlex.split(tokens[3] ?? ""),
         };
       });
     },
@@ -63,7 +63,7 @@ const args = Yargs()
     desc: "wait duration (milliseconds) between starting servers and starting clients",
     type: "number",
   })
-  .options(Object.fromEntries(Array.from(
+  .option(Object.fromEntries(Array.from(
     Object.keys(trafficGenerators),
     (tgid) => [tgid, makeOption(tgid)],
   )) as Record<keyof typeof trafficGenerators, ReturnType<typeof makeOption>>)
