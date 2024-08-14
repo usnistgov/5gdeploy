@@ -86,7 +86,7 @@ const args = await Yargs()
     type: "string",
   })
   .option(compose.bridgeOptions)
-  .option(compose.ipAllocOptions)
+  .option(compose.ipAllocOptions())
   .option(compose.placeOptions)
   .option(compose.qosOptions)
   .option(dnOptions)

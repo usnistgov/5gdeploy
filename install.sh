@@ -29,7 +29,7 @@ bash ./types/build-schema.sh
 bash ./free5gc/download.sh
 bash ./oai/download.sh
 
-for IMG in bridge dn free5gc-webclient gnbsim gtp5g ns3http packetrusher phoenix ueransim; do
+for IMG in bridge dn free5gc-webclient gnbsim gtp5g ns3http packetrusher phoenix ueransim virt; do
   if [[ $IMG == phoenix ]] && [[ ${NOPHOENIX:-} -eq 1 ]]; then
     msg Skipping Docker image $IMG
     continue

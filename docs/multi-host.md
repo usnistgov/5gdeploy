@@ -22,7 +22,7 @@ The [installation guide](INSTALL.md) "secondary host" section explains how to se
 ## How Multi-Host Deployment Works
 
 The [netdef-compose](../netdef-compose/README.md) command supports multi-host deployment.
-They generate a Compose context with multi-host deployment with these steps:
+It generates a Compose context with multi-host deployment with these steps:
 
 1. The 5G network, defined in either [NetDef](../netdef/README.md) format, is initially converted to a Compose context for single-host deployment.
 
@@ -30,21 +30,27 @@ They generate a Compose context with multi-host deployment with these steps:
     * You can view this Compose file if you do not specify any command line flags for multi-host deployment.
       Viewing the single-host Compose file is an important step in understanding how the scenario works and for designing the multi-host deployment.
 
-2. 5gdeploy processes the `--bridge` command line flags, which allows network functions on different hosts to communicate with each other.
+2. If `--use-vm` command line flag is present, 5gdeploy loads a [virtualization Compose context](../virt/README.md).
+
+    * Typical usage is `--use-vm=$HOME/compose/virt`.
+    * It allows `--bridge` and `--place` command line flags to refer to virtual machines, but otherwise does not change the logic.
+    * KVM guests must be running and ready for SSH connections, before generating/starting the scenario.
+
+3. 5gdeploy processes the `--bridge` command line flags, which allow network functions on different hosts to communicate with each other.
 
     * If two network functions that need to communicate with each other would be running on separate hosts, you must specify a bridge to facilitate such communication.
       Otherwise, when they are placed onto different hosts, they cannot reach each other, and the 5G network will not work.
     * You can identify which network functions belong to the same Docker network by reading the single-host Compose file.
     * Establishing bridges should not change the logical network topology or IP address assignments in any way.
 
-3. 5gdeploy processes the `--place` command line flags, which specifies where to run each network function.
+4. 5gdeploy processes the `--place` command line flags, which specify where to run each network function.
 
     * Using pattern matches, every network function (i.e. container) is placed on exactly one host.
     * The `5gdeploy.host` annotation in the Compose file indicates where a network function is being placed.
 
-4. 5gdeploy processes CPU isolation instructions in `--place` command line flags, too.
+5. 5gdeploy processes CPU isolation instructions in `--place` command line flags, too.
 
-5. The output is written as an annotated Compose file and a `compose.sh` script.
+6. The output is written as an annotated Compose file and a `compose.sh` script.
 
     * In the Compose file, each network function is annotated with host and CPU core assignements.
     * The `compose.sh` allows starting and stopping the Compose context at both *primary* and *secondary* hosts, invoked from the *primary* host.
@@ -137,6 +143,15 @@ The operator indicates what kind of network interface is put into the container:
   * Currently this uses MACVLAN "bridge" mode, so that traffic between two containers on the same host interface is switched internally in the Ethernet adapter and does not appear on the external Ethernet switch.
   * This does not work if the host interface is itself a PCI Virtual Function that allows only one MAC address.
 
+If a virtualization Compose context was loaded through `--use-vm` flag, the host interface MAC address portion can accept two additional formats:
+
+* `vm-`*vmname*`:`*guestnetif*
+  * Use KVM guest *vmname*, guest netif *guestnetif*.
+  * This only works with `=` operator, because each netif in a KVM guest is a MACVTAP subinterface that does not allow additional MAC addresses.
+  * If multiple containers in a KVM guest needs to use the same netif, you can create multiple guest netifs attached to the same physical host netif, and then assign one guest netif to each container.
+* `vm-`*vmname*
+  * Same as above, using network name (e.g. `n3`) as guest netif name.
+
 Bridge configuration scripts will locate the host interface and invoke [pipework](https://github.com/jpetazzo/pipework) to make the move.
 The specified host interface MAC address must exist on the host machine where you start the relevant network function.
 Otherwise, pipework will fail with error message "no host interface matched".
@@ -149,11 +164,13 @@ Per initial testing, when VLAN ID is specified:
 
 * With `=` operator, each hostif + VLAN ID combination can only be used with a single container.
 * With `@` operator, pipework completes but the containers cannot communicate.
+* VLAN ID with KVM guest is untested.
 
 ## Placement
 
 By default, if you simply run `docker compose up -d`, all network functions are started on the primary host.
-`--place=PATTERN@HOST` moves network functions matching pattern *PATTERN* to the Docker host *HOST*.
+`--place=PATTERN@HOST` moves network functions matching pattern *PATTERN* to the Docker host *HOST*, specified as an IP address.
+If a virtualization Compose context was loaded through `--use-vm` flag, the *HOST* portion accepts `vm-`*vmname* format.
 In the example diagram, gNBs and UEs are placed on *ran* host, UPFs and Data Networks are placed on *dn* host, everything else are placed on the *primary* host.
 These can be specified with command line flags like this:
 

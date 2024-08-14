@@ -4,30 +4,33 @@ import { ip2long, long2ip, Netmask } from "netmask";
 import { assert, type YargsInfer, type YargsOptions } from "../util/mod.js";
 
 /** Yargs options definition for IPv4 address allocator. */
-export const ipAllocOptions = {
-  "ip-space": {
-    coerce(arg: string): Netmask {
-      const subnet = new Netmask(arg);
-      assert(subnet.bitmask <= 18, "/18 or larger address space required");
-      return subnet;
+export function ipAllocOptions(dfltSpace = "172.25.192.0/18") {
+  const minBitmask = new Netmask(dfltSpace).bitmask;
+  return {
+    "ip-space": {
+      coerce(arg: string): Netmask {
+        const subnet = new Netmask(arg);
+        assert(subnet.bitmask <= minBitmask, `/${minBitmask} or larger address space required`);
+        return subnet;
+      },
+      default: dfltSpace,
+      desc: "Compose networks IP address space, /18 or larger",
+      type: "string",
     },
-    default: "172.25.192.0/18",
-    desc: "Compose networks IP address space, /18 or larger",
-    type: "string",
-  },
-  "ip-fixed": {
-    array: true,
-    desc: "fixed IP address assignment",
-    type: "string",
-  },
-} as const satisfies YargsOptions;
+    "ip-fixed": {
+      array: true,
+      desc: "fixed IP address assignment",
+      type: "string",
+    },
+  } as const satisfies YargsOptions;
+}
 
 /** IPv4 address allocator. */
 export class IPAlloc {
   constructor({
     "ip-space": space,
     "ip-fixed": fixed = [],
-  }: YargsInfer<typeof ipAllocOptions>) {
+  }: YargsInfer<ReturnType<typeof ipAllocOptions>>) {
     this.nextNetwork.n = BigInt(space.netLong);
     this.nextNetwork.max = BigInt(ip2long(space.last));
 

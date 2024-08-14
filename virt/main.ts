@@ -42,7 +42,7 @@ const args = Yargs()
     desc: "Compose output directory",
     type: "string",
   })
-  .option(compose.ipAllocOptions)
+  .option(compose.ipAllocOptions("172.25.160.0/20"))
   .option("ssh-uri", compose.placeOptions["ssh-uri"])
   .parseSync();
 

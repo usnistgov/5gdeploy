@@ -16,10 +16,14 @@ free5GC UPF and [PacketRusher](../packetrusher/README.md) depend on [gtp5g kerne
 The Compose file has a **gtp5g** service that compiles and loads this kernel module.
 It requires the host system to have kernel headers, provided by APT package `linux-headers-generic` or `linux-headers-lowlatency`.
 
+Note that the gtp5g service will not work in [KVM guests](../virt/README.md), because the KVM guest is running Debian 12 while the gtp5g service is designed for Ubuntu 22.
+Instead, the KVM guest preloads the gtp5g kernel module, and the gtp5g service will do nothing upon detecting the presence of this kernel module.
+
 If a network function terminates abnormally, gtp5g kernel objects may not release properly.
 To recover from this situation, either reboot the server, or run this command to manually unload and re-load the kernel module:
 
 ```bash
 sudo rmmod gtp5g
 sudo modprobe gtp5g
+# omit 'sudo' in KVM guest
 ```
