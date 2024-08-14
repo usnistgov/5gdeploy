@@ -344,7 +344,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     let nextTeid = 0x10000000;
     const eachTeid = Math.floor(0xE0000000 / this.netdef.smfs.length);
     for (const [ct, smf] of compose.suggestNames("smf", this.ctx.netdef.smfs)) {
-      const { nf, makeDatabase } = await this.defineService(ct, ["db", "cp", "n4"], "5g/smf.json");
+      const { nf, initCommands, makeDatabase } = await this.defineService(ct, ["db", "cp", "n4"], "5g/smf.json");
 
       setNrfClientSlices(nf, smf.nssai);
 
@@ -385,6 +385,19 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         config.Associations.heartbeat_interval = 5;
         config.Associations.max_heartbeat_retries = 2;
       });
+
+      // After an initial PFCP Association Setup Request times out, the SMF may generate duplicate
+      // PFCP Association Setup Requests and end up with multiple associations with the same UPF.
+      // This eventually leads to heartbeat timeout and SMF crash. To avoid this situation, we
+      // wait for all UPFs to come online before launching the SMF.
+      initCommands.push(
+        "msg Waiting for UPFs to become available",
+        ...Array.from(
+          this.ctx.gatherIPs("upf", "n4"),
+          (ip) => `with_retry ping -I n4 -c 1 -W 0.5 ${ip} &>/dev/null`,
+        ),
+        "sleep 5",
+      );
     }
   }
 

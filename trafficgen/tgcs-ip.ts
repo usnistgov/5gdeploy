@@ -51,7 +51,7 @@ export const iperf2: TrafficGen = {
       $3=="Server" && $4=="Report:" { serverReport=1 }
       serverReport==1 || $1!="[" { next }
       $2=="ID]" && $7=="Lost/Total" { print FILENAME; print }
-      $3!~"^0\\.00-" || $4!="sec" || $12!~"%" { next }
+      $3!~"^0\\\\.00-" || $4!="sec" || $12!~"%" { next }
       firstPeriod=="" && $2=="1]" { firstPeriod=$3 }
       firstPeriod!="" && $3!=firstPeriod { print }
     `.replaceAll(/\n\s+/gm, "\n"))} iperf2_*.log`;
