@@ -4,6 +4,9 @@ export * as CN5G from "./cn5g.js";
 /** free5GC related types. */
 export * as F5 from "./free5gc.js";
 
+/** iperf3 related types. */
+export * as IPERF3 from "./iperf3.js";
+
 /** 5gdeploy NetDef related types. */
 export * as N from "./netdef.js";
 

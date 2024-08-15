@@ -6,8 +6,12 @@ import { sortBy } from "sort-by-typescript";
 import { collect, parallelMap, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
-import type { ComposeFile } from "../types/mod.js";
-import { file_io, Yargs } from "../util/mod.js";
+import iperf3Schema from "../types/iperf3.schema.json";
+import type { ComposeFile, IPERF3 } from "../types/mod.js";
+import { file_io, makeSchemaValidator, Yargs } from "../util/mod.js";
+import { Direction } from "./tgcs-defs.js";
+
+const validateReport: (input: unknown) => asserts input is IPERF3.Report = makeSchemaValidator<IPERF3.Report>(iperf3Schema);
 
 const args = Yargs()
   .option("dir", {
@@ -21,50 +25,49 @@ const args = Yargs()
   .parseSync();
 
 const c = await file_io.readYAML(path.join(args.dir, `compose.${args.prefix}.yml`)) as ComposeFile;
-const table = await pipeline(
+const table = (await pipeline(
   () => Object.values(c.services).filter((s) =>
     compose.annotate(s, "tgcs_tgid") === "iperf3" &&
     s.container_name.endsWith("_c"),
   ),
-  parallelMap(16, async (s): Promise<Array<string | number>> => {
+  parallelMap(16, async (s): Promise<Array<Array<string | number>>> => {
     const group = compose.annotate(s, "tgcs_group")!;
     const port = compose.annotate(s, "tgcs_port")!;
     const dn = compose.annotate(s, "tgcs_dn")!;
     const dir = compose.annotate(s, "tgcs_dir")!;
     const ue = compose.annotate(s, "tgcs_ue")!;
+
+    let report: any;
     try {
-      const report = await file_io.readJSON(path.join(args.dir, `${args.prefix}/${group}-${port}-c.json`)) as {
-        end: {
-          sum: {
-            sender: boolean;
-            bits_per_second: number;
-            lost_percent: number;
-          };
-          cpu_utilization_percent: {
-            host_total: number;
-            remote_total: number;
-          };
-        };
-      };
-      const { sum, cpu_utilization_percent: cpu } = report.end;
-      return [
+      report = await file_io.readJSON(path.join(args.dir, args.prefix, `${group}-${port}-c.json`));
+      validateReport(report);
+    } catch {
+      return [[group, dn, dir, ue, port, Number.NaN, Number.NaN, Number.NaN, Number.NaN]];
+    }
+
+    const { sum, sum_bidir_reverse: rev, cpu_utilization_percent: cpu } = report.end;
+    const result: Array<Array<string | number>> = [];
+    for (const row of [sum, rev]) {
+      if (!row) {
+        continue;
+      }
+      result.push([
         group,
         dn,
-        dir,
+        row.sender ? Direction.ul : Direction.dl,
         ue,
         port,
-        sum.sender ? cpu.host_total : cpu.remote_total,
-        sum.sender ? cpu.remote_total : cpu.host_total,
-        sum.bits_per_second / 1e6,
-        sum.bits_per_second * (1 - sum.lost_percent / 100) / 1e6,
-      ];
-    } catch {
-      return [group, dn, dir, ue, port, Number.NaN, Number.NaN, Number.NaN, Number.NaN];
+        row.sender ? cpu.host_total : cpu.remote_total,
+        row.sender ? cpu.remote_total : cpu.host_total,
+        row.bits_per_second / 1e6,
+        row.bits_per_second * (1 - row.lost_percent / 100) / 1e6,
+      ]);
     }
+    return result;
   }),
   collect,
-);
-table.sort(sortBy("0", "1", "2", "3", "4", "5"));
+)).flat();
+table.sort(sortBy("0", "1", "2", "3", "4"));
 
 const sums = new DefaultMap<string, [send: number, recv: number, group: string, dn: string, dir: string]>(
   (key: string) => [0, 0, ...key.split("|")] as [number, number, string, string, string],
