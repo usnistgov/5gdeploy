@@ -14,7 +14,9 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIO
   const peers = ctx.netdef.gatherUPFPeers(upf);
   assert(peers.N6IPv4.length === 1, `UPF ${upf.name} must handle exactly 1 IPv4 DN`);
   const dn = peers.N6IPv4[0]!;
-  const { sst, sd = "FFFFFF" } = NetDef.splitSNSSAI(dn.snssai).ih;
+  // As of OAI-CN5G-SMF v2.0.1, upf_graph::select_upf_node() performs string comparison to
+  // verify UPF's S-NSSAI, in which SD is encoded as decimal string.
+  const { sst, sd = 0xFFFFFF } = NetDef.splitSNSSAI(dn.snssai).int;
 
   const s = ctx.defineService(ct, "oaisoftwarealliance/oai-upf-vpp:v2.0.1", ["cp", "n4", "n6", "n3"]);
   compose.annotate(s, "cpus", opts["oai-upf-workers"]);
@@ -31,15 +33,13 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIO
     VPP_MAIN_CORE: "0",
     VPP_CORE_WORKER: "1",
     VPP_PLUGIN_PATH: "/usr/lib/x86_64-linux-gnu/vpp_plugins/",
-    REGISTER_NRF: "yes",
-    NRF_IP_ADDR: "nrf.br-cp",
-    NRF_PORT: 8080,
+    REGISTER_NRF: "no",
     HTTP_VERSION: 2,
     IF_1_TYPE: "N4",
     IF_1_IP: compose.getIP(s, "n4"),
     IF_2_TYPE: "N6",
     IF_2_IP: compose.getIP(s, "n6"),
-    IF_2_NWI: "internet.oai.org",
+    IF_2_NWI: "core.oai.org",
     IF_3_TYPE: "N3",
     IF_3_IP: compose.getIP(s, "n3"),
     IF_3_NWI: "access.oai.org",
@@ -47,4 +47,16 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIO
     SNSSAI_SD: sd,
     DNN: dn.dnn,
   });
+
+  if (opts["oai-cn5g-nrf"]) {
+    ctx.finalize.push(() => {
+      const { nrf } = ctx.c.services;
+      assert(!!nrf);
+      Object.assign(s.environment, {
+        REGISTER_NRF: "yes",
+        NRF_IP_ADDR: compose.getIP(nrf, "cp"),
+        NRF_PORT: 8080,
+      });
+    });
+  }
 }

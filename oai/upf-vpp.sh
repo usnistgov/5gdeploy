@@ -45,7 +45,7 @@ sed -i \
 cat etc/startup_debug.conf
 
 msg Flushing IPv4 addresses
-ip -o -4 addr | awk '$2~"^(n4|n6|n3|n9)" { print "ip -4 addr flush dev " $2 }' | tee /dev/stderr | sh
+ip -o -4 addr | awk '$2~"^(n4|n6|n3|n9)" { print "ip -4 addr flush dev " $2 }' | sh -x
 
 msg Invoking run.sh
 exec /openair-upf/run.sh
