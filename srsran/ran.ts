@@ -1,22 +1,17 @@
-import { AggregateAjvError } from "@segment/ajv-human-errors";
-import Ajv from "ajv";
 import type { SetOptional } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { ComposeService, SRS } from "../types/mod.js";
+import { type ComposeService, type SRS } from "../types/mod.js";
 import srsgnbSchema from "../types/srsgnb.schema.json";
-import { file_io } from "../util/mod.js";
+import { file_io, makeSchemaValidator } from "../util/mod.js";
 import type { SRSOpts } from "./options.js";
 
 const gnbDockerImage = "gradiant/srsran-5g:24_04";
 const ueDockerImage = "gradiant/srsran-4g:23_11";
 const srate = 23.04;
 
-const srsgnbValidate = new Ajv({
-  allErrors: true,
-  verbose: true,
-}).compile(srsgnbSchema);
+const validateGNB: (input: unknown) => asserts input is SRS.gnb.Config = makeSchemaValidator<SRS.gnb.Config>(srsgnbSchema);
 
 /** Build RAN functions using srsRAN. */
 export async function srsRAN(ctx: NetDefComposeContext, opts: SRSOpts): Promise<void> {
@@ -41,13 +36,10 @@ class RANBuilder {
 
   private async buildSdr(sdrFile: string): Promise<void> {
     const c = await file_io.readYAML(sdrFile);
-    const valid = srsgnbValidate(c);
-    if (!valid) {
-      throw new AggregateAjvError(srsgnbValidate.errors!);
-    }
+    validateGNB(c);
 
     for (const gnb of this.ctx.netdef.gnbs) {
-      await this.buildGNBsdr(gnb, c as any);
+      await this.buildGNBsdr(gnb, c);
     }
   }
 

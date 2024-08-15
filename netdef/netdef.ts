@@ -1,25 +1,13 @@
-import { AggregateAjvError } from "@segment/ajv-human-errors";
-import Ajv from "ajv";
 import map from "obliterator/map.js";
 import type { SetRequired } from "type-fest";
 import { arr2hex, randomBytes } from "uint8-util";
 
 import type { N } from "../types/mod.js";
 import netdefSchema from "../types/netdef.schema.json";
-import { assert, decPad, findByName, hexPad } from "../util/mod.js";
-
-const validate = new Ajv({
-  allErrors: true,
-  verbose: true,
-}).compile(netdefSchema);
+import { assert, decPad, findByName, hexPad, makeSchemaValidator } from "../util/mod.js";
 
 /** Validate NetDef object against JSON schema. */
-export function validateNetDef(network: N.Network): void {
-  const valid = validate(network);
-  if (!valid) {
-    throw new AggregateAjvError(validate.errors!);
-  }
-}
+export const validateNetDef: (input: unknown) => asserts input is N.Network = makeSchemaValidator<N.Network>(netdefSchema);
 
 /** 5G network definition model. */
 export class NetDef {
