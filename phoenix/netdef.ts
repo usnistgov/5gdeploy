@@ -390,14 +390,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       // PFCP Association Setup Requests and end up with multiple associations with the same UPF.
       // This eventually leads to heartbeat timeout and SMF crash. To avoid this situation, we
       // wait for all UPFs to come online before launching the SMF.
-      initCommands.push(
-        "msg Waiting for UPFs to become available",
-        ...Array.from(
-          this.ctx.gatherIPs("upf", "n4"),
-          (ip) => `with_retry ping -I n4 -c 1 -W 0.5 ${ip} &>/dev/null`,
-        ),
-        "sleep 5",
-      );
+      initCommands.push(...compose.waitReachable("UPF", this.ctx.gatherIPs("upf", "n4")));
     }
   }
 

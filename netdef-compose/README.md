@@ -43,6 +43,7 @@ These combinations are verified to be compatible:
 * `--cp=phoenix --up=free5gc --ran=oai`
 * `--cp=phoenix --up=free5gc --ran=packetrusher`
 * `--cp=phoenix --up=free5gc --ran=phoenix`
+* `--cp=phoenix --up=free5gc --ran=srsran`
 * `--cp=phoenix --up=free5gc --ran=ueransim`
 * `--cp=phoenix --up=phoenix --ran=gnbsim`
 * `--cp=phoenix --up=phoenix --ran=packetrusher` with `--phoenix-upf-xdp=false`

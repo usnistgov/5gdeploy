@@ -68,7 +68,8 @@ class RANBuilder {
 
   private async buildGNBzmq(gnb: NetDef.GNB, ueIP: string): Promise<string> {
     const s = this.ctx.defineService(gnb.name, gnbDockerImage, ["air", "n2", "n3"]);
-    compose.annotate(s, "cpus", 1);
+    compose.annotate(s, "cpus", 3);
+
     await this.buildGNB(s, gnb, {
       srate,
       device_driver: "zmq",
@@ -96,13 +97,15 @@ class RANBuilder {
   }
 
   private async buildGNB(s: ComposeService, gnb: NetDef.GNB, rusdr: SRS.gnb.RUSDR, cellcfg: SetOptional<SRS.gnb.Cell, "plmn" | "tac" | "pci">): Promise<void> {
+    const amfIP = this.ctx.gatherIPs("amf", "n2")[0]!;
+
     const c: SRS.gnb.Config = {
       gnb_id: gnb.nci.gnb,
       gnb_id_bit_length: this.ctx.network.gnbIdLength,
       ran_node_name: gnb.name,
       slicing: Array.from(this.ctx.netdef.nssai, (snssai) => NetDef.splitSNSSAI(snssai).int),
       amf: {
-        addr: this.ctx.gatherIPs("amf", "n2")[0]!,
+        addr: amfIP,
         bind_addr: compose.getIP(s, "n2"),
         n2_bind_addr: compose.getIP(s, "n2"),
         n3_bind_addr: compose.getIP(s, "n3"),
@@ -127,21 +130,34 @@ class RANBuilder {
 
     compose.setCommands(s, [
       ...compose.renameNetifs(s),
-      "sleep 10",
+      ...compose.waitReachable("AMF", [amfIP]),
       "exec /opt/srsRAN_Project/target/bin/gnb -c /gnb.yml",
     ]);
   }
 
   private buildUE(s: ComposeService, sub: NetDef.Subscriber, gnbIP: string): void {
-    compose.annotate(s, "cpus", 1);
+    compose.annotate(s, "cpus", 2);
     compose.annotate(s, "ue_supi", sub.supi);
-    s.privileged = true;
+    s.cap_add.push("NET_ADMIN", "SYS_NICE");
+    s.devices.push("/dev/net/tun:/dev/net/tun");
+
     compose.setCommands(s, [
       ...compose.renameNetifs(s),
-      "sleep 20",
+      ...compose.waitReachable("gNB", [gnbIP], { mode: "tcp:2000", sleep: 2 }),
+      "",
+      "ue_route() {",
+      "  with_retry ip link show dev tun_srsue &>/dev/null",
+      "  msg Setting default route from tun_srsue",
+      "  ip route add default dev tun_srsue",
+      "  msg Listing IP routes",
+      "  ip route list type unicast",
+      "}",
+      "ue_route &",
+      "",
       "msg Starting srsRAN 4G UE in 5G SA mode",
       "exec /entrypoint.sh ue",
     ]);
+
     Object.assign(s.environment, {
       GTP_BIND_ADDR: "no-gtp",
       S1C_BIND_ADDR: "no-s1c",

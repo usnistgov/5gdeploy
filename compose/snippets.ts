@@ -74,6 +74,58 @@ export namespace renameNetifs {
 }
 
 /**
+ * Generate commands to wait for destination IPs to become reachable.
+ * @param noun - Description, either singular (+"s" for plural) or singular+plural.
+ * @param ips - IP addresses.
+ */
+export function* waitReachable(
+    noun: string | [singular: string, plural: string],
+    ips: readonly string[],
+    { mode = "icmp", sleep = 5 }: waitReachable.Options = {},
+): Iterable<string> {
+  let verb = "is";
+  switch (ips.length) {
+    case 0: {
+      return;
+    }
+    case 1: {
+      noun = Array.isArray(noun) ? noun[0] : noun;
+      break;
+    }
+    default: {
+      noun = Array.isArray(noun) ? noun[1] : `${noun}s`;
+      verb = "are";
+      break;
+    }
+  }
+
+  yield `msg Waiting for ${noun} to become reachable`;
+  for (const ip of ips) {
+    if (mode === "icmp") {
+      yield `with_retry ping -c 1 -W 0.5 ${ip} &>/dev/null`;
+    } else if (mode.startsWith("tcp:")) {
+      yield `with_retry bash -c ${shlex.quote(`>/dev/tcp/${ip}/${mode.slice(4)}`)} &>/dev/null`;
+    }
+  }
+  yield `msg The ${noun} ${verb} now reachable`;
+  yield `sleep ${sleep}`;
+}
+export namespace waitReachable {
+  export interface Options {
+    /**
+     * Reachability test mode: ICMP ping or TCP connect.
+     */
+    mode?: "icmp" | `tcp:${number}`;
+
+    /**
+     * Sleep duration after IPs become reachable.
+     * @defaultValue 5
+     */
+    sleep?: number;
+  }
+}
+
+/**
  * Generate commands to merge JSON/YAML configuration.
  * @param cfg - Config update object or mounted filename.
  * @returns Shell commands.
