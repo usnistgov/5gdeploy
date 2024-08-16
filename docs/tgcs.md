@@ -69,7 +69,7 @@ It is an error to have UDP mode on one side and TCP mode on the other side.
 
 The text outputs of each iperf2 container are saved in `~/compose/20230601/PREFIX` directory.
 You should not use the `--output` flag.
-The script shows a brief summary of iperf2 results, but it cannot handle bidirectional traffic.
+The script shows a brief summary of iperf2 results, but it requires interval reports to be enabled (`-i` flag) and cannot handle bidirectional traffic.
 
 ### One-way Latency (trip-times)
 

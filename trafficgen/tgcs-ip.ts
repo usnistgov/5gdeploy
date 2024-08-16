@@ -46,15 +46,8 @@ export const iperf2: TrafficGen = {
   },
   statsExt: ".log",
   *statsCommands() {
-    yield `awk ${shlex.quote(`
-      FNR==1 { serverReport=0; firstPeriod="" }
-      $3=="Server" && $4=="Report:" { serverReport=1 }
-      serverReport==1 || $1!="[" { next }
-      $2=="ID]" && $7=="Lost/Total" { print FILENAME; print }
-      $3!~"^0\\\\.00-" || $4!="sec" || $12!~"%" { next }
-      firstPeriod=="" && $2=="1]" { firstPeriod=$3 }
-      firstPeriod!="" && $3!=firstPeriod { print }
-    `.replaceAll(/\n\s+/gm, "\n"))} iperf2_*.log`;
+    yield "msg Showing iperf2 final results from iperf2 text output";
+    yield `awk -f ${codebaseRoot}/trafficgen/iperf2-stats.awk iperf2_*.log`;
   },
 };
 

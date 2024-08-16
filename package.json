@@ -3,12 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "clang-format": "git ls-files '*.cpp' | xargs clang-format-15 -i -style=file",
-    "hadolint": "git ls-files -- Dockerfile '*/Dockerfile' | xargs docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt hadolint/hadolint hadolint -t error",
+    "awkpretty": "git ls-files '*.awk' | xargs -I % -r sh -c 'awk -o%.awkpretty -f% && mv %.awkpretty %'",
+    "clang-format": "git ls-files '*.cpp' | xargs -r clang-format-15 -i -style=file",
+    "hadolint": "git ls-files -- Dockerfile '*/Dockerfile' | xargs -r docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt hadolint/hadolint hadolint -t error",
     "lint": "xo-yoursunny --fix",
     "netdef-compose": "tsx ./netdef-compose/main.ts",
     "phoenix-rpc": "tsx ./phoenix-rpc/main.ts",
-    "shfmt": "git ls-files -- '*.sh' | xargs docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
+    "shfmt": "git ls-files -- '*.sh' | xargs -r docker run --rm -u $(id -u):$(id -g) -v $PWD:/mnt -w /mnt mvdan/shfmt:v3 -l -w -s -i=2 -ci",
     "typecheck": "tsc",
     "virt": "tsx ./virt/main.ts"
   },
