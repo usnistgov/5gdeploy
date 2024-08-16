@@ -8,7 +8,7 @@ import { sortBy } from "sort-by-typescript";
 import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
-import type { ComposeService } from "../types/compose.js";
+import type { ComposeService } from "../types/mod.js";
 import { assert, cmdOutput, file_io, Yargs } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import type { TrafficGen, TrafficGenFlowContext } from "./tgcs-defs.js";
@@ -168,7 +168,8 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "if [[ -z $ACT ]] || [[ $ACT == servers ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_s"))) {
     yield `  msg Starting trafficgen servers on ${hostDesc}`;
-    yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} up -d ${names.join(" ")}`;
+    yield `  with_retry env COMPOSE_IGNORE_ORPHANS=1 ${dockerH} compose -f ${
+      composeFilename} up -d ${names.join(" ")}`;
   }
   yield `  sleep ${(args["startup-delay"] / 1000).toFixed(3)}`;
   yield "fi";
@@ -176,7 +177,8 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_c"))) {
     yield `  msg Starting trafficgen clients on ${hostDesc}`;
-    yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} up -d ${names.join(" ")}`;
+    yield `  with_retry env COMPOSE_IGNORE_ORPHANS=1 ${dockerH} compose -f ${
+      composeFilename} up -d ${names.join(" ")}`;
   }
   yield "fi";
 
@@ -203,7 +205,8 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "if [[ -z $ACT ]] || [[ $ACT == stop ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
     yield `  msg Deleting trafficgen servers and clients on ${hostDesc}`;
-    yield `  with_retry ${dockerH} compose -f compose.yml -f ${composeFilename} stop -t 2 ${names.join(" ")} >/dev/null`;
+    yield `  with_retry env COMPOSE_IGNORE_ORPHANS=1 ${dockerH} compose -f ${
+      composeFilename} stop -t 2 ${names.join(" ")} >/dev/null`;
     yield `  with_retry ${dockerH} rm -f ${names.join(" ")} >/dev/null`;
   }
   yield "fi";
