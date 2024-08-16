@@ -11,7 +11,7 @@ There are two slices and three Data Networks:
 Each slice is served by a dedicated UPF, while Data Networks on the same slice share the same UPF.
 All control plane network functions are shared.
 
-There are 6 phones and 2 vehicles, sharing 1 gNB.
+There are 4 phones and 4 vehicles, sharing 1 gNB.
 These quantities can be adjusted via command line flags.
 
 ![topology diagram](topo.svg)
@@ -33,10 +33,6 @@ cd ~/5gdeploy/scenario
 
 The Compose context is created at `~/compose/20231017`.
 See [scenario general README](../README.md) on how to interact with the Compose context, including how to establish PDU sessions from Open5GCore UE simulators.
-
-## Traffic Generation
-
-See [trafficgen](../20230817/trafficgen.md) for suggestions on how to generate traffic in this scenario.
 
 ## Multi-Host Usage
 

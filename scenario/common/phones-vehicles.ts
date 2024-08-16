@@ -12,13 +12,13 @@ export const cliOptions = {
   }),
   phones: YargsIntRange({
     desc: "phone quantity",
-    default: 6,
+    default: 4,
     min: 0,
     max: 1000,
   }),
   vehicles: YargsIntRange({
     desc: "vehicle quantity",
-    default: 2,
+    default: 4,
     min: 0,
     max: 1000,
   }),

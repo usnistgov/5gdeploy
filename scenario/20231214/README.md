@@ -35,7 +35,3 @@ cd ~/5gdeploy/scenario
 ./generate.sh 20231214 +gnbs=6 +phones=6 +vehicles=0 \
   --cp=free5gc --up=free5gc --ran=packetrusher
 ```
-
-## Traffic Generation
-
-See [trafficgen](../20230817/trafficgen.md) for suggestions on how to generate traffic in this scenario.

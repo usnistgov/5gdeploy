@@ -68,6 +68,11 @@ You can obtain command line help information with:
 ./generate.sh 20230601 --help
 ```
 
+See [trafficgen](../docs/trafficgen.md) for suggestions on how to generate traffic in this scenario.
+
+Most scenarios can be deployed onto multiple hosts, interconnected via Ethernet and VXLAN bridges.
+See [multi-host](../docs/multi-host.md) for more details.
+
 ## Interacting with a Compose Context
 
 After you have generated a Compose context, you can use these commands to interact with it.

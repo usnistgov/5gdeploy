@@ -13,7 +13,7 @@ There are three slices and three Data Networks:
 Each Data Network is served by a dedicated UPF.
 All control plane network functions are shared.
 
-There are 6 phones and 2 vehicles, sharing 1 gNB.
+There are 4 phones and 4 vehicles, sharing 1 gNB.
 These quantities can be adjusted via command line flags.
 
 ![topology diagram](topo.svg)
@@ -39,15 +39,6 @@ If you want to run with Open5GCore gNB simulator, add `+sst4` flag to change SST
 
 The Compose context is created at `~/compose/20230817`.
 See [scenario general README](../README.md) on how to interact with the Compose context.
-
-## Traffic Generation
-
-See [trafficgen](trafficgen.md) for suggestions on how to generate traffic in this scenario.
-
-## Multi-Host Usage
-
-This scenario can be deployed onto multiple hosts, over Ethernet and VXLAN bridges.
-See [multi-host](../../docs/multi-host.md) for more details.
 
 ## SONiC Switch QoS Setting
 
