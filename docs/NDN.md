@@ -16,15 +16,12 @@ NFD containers are attached to every UE with a PDU session on the specified Data
 ./compose.sh nfd --dnn=DNN --server=IP
 ```
 
-Each "client" NFD in UE containers have a "permanent" UDP face and a default route pointed to the "server" NFD in the DN.
+Each "client" NFD in UE containers has a "permanent" UDP face and a default route pointed to the "server" NFD in the DN.
 If `--server` flag is omitted, a "server" NFD is launched in the DN container netns; if `--server` flag is specified, it is assumed that a "server" NFD exists in the DN at the specified IP address.
 
-You can only launch one NFD instance attached to each UE container, because:
-
-* NFD does not support creating a unicast UDP face with a specific local IP address.
-  An IP route for the "server" address must be inserted, and there can be only one such route.
-* NFD listens on tcp:6363 for application connections.
-  Having multiple NFD instances would cause a port conflict.
+You can only launch one NFD instance attached to each UE container.
+One reason is that, NFD does not support creating a unicast UDP face with a specific local IP address.
+Therefore, an IP route for the "server" address must be inserted, and there can be only one such route.
 
 ## ndnping
 
@@ -36,7 +33,7 @@ You can only launch one NFD instance attached to each UE container, because:
 ```
 
 NFD must have been launched in the chosen DNN.
-ndnping and ndnpingserver will connect to local NFD via TCP.
+ndnping and ndnpingserver will connect to local NFD via Unix socket.
 Each DNN can have only one ndnpingserver instance.
 If multiple traffic flow flags match the DNN, the server flags are taken from the last traffic flow flag.
 

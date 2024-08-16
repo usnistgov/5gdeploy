@@ -5,9 +5,9 @@ import * as shlex from "shlex";
 import { consume, filter, map, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
-import type { ComposeService } from "../types/compose.js";
+import type { ComposeService } from "../types/mod.js";
 import { assert, cmdOptions, cmdOutput, file_io, Yargs } from "../util/mod.js";
-import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
+import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx, toNfdName } from "./common.js";
 
 const nfdDockerImage = "ghcr.io/named-data/nfd";
 
@@ -44,13 +44,27 @@ const output = compose.create();
 let server: ComposeService | undefined;
 const routeCommands = new Map<string, [dst: Netmask, dev: string]>();
 
-function defineServer(dnService: ComposeService): ComposeService {
-  const s = compose.defineService(output, dnService.container_name.replace(/^dn/, "nfd"), nfdDockerImage);
+function defineNfdService(netns: ComposeService): ComposeService {
+  const name = toNfdName(netns);
+  const s = compose.defineService(output, name, nfdDockerImage);
   compose.setCommands(s, [
     `sed -i '/unicast_mtu/ s/8800/${args.mtu}/' /config/nfd.conf`,
     "nfd --config /config/nfd.conf",
   ]);
-  copyPlacementNetns(s, dnService);
+  copyPlacementNetns(s, netns);
+
+  output.volumes[name] = { name };
+  s.volumes.push({
+    type: "volume",
+    source: name,
+    target: "/run/nfd",
+  });
+
+  return s;
+}
+
+function defineServer(dnService: ComposeService): ComposeService {
+  const s = defineNfdService(dnService);
   s.healthcheck = {
     test: ["CMD", "nfdc", "status", "show"],
     start_period: "30s",
@@ -73,9 +87,7 @@ await pipeline(
       server ??= defineServer(dnService);
     }
 
-    const ct = ueService.container_name.replace(compose.nameToNf(ueService.container_name), "nfd");
-    const client = compose.defineService(output, ct, nfdDockerImage);
-    copyPlacementNetns(client, ueService);
+    const client = defineNfdService(ueService);
     client.healthcheck = {
       test: ["CMD-SHELL", `echo ${shlex.quote([
         `face create udp4://${remote.base} persistency permanent mtu ${args.mtu}`,
@@ -105,6 +117,6 @@ await cmdOutput(args, (function*() {
 
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
     yield `msg Starting NFD on ${hostDesc}`;
-    yield `with_retry ${dockerH} compose -f compose.yml -f compose.nfd.yml up -d ${names.join(" ")}`;
+    yield `with_retry env COMPOSE_IGNORE_ORPHANS=1 ${dockerH} compose -f compose.nfd.yml up -d ${names.join(" ")}`;
   }
 })());

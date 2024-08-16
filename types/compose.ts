@@ -8,6 +8,7 @@ export interface ComposeFile {
 /** Compose top-level volume. */
 export interface ComposeNamedVolume {
   name: string;
+  external?: boolean;
 }
 
 /** Compose network. */

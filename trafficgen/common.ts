@@ -4,6 +4,7 @@ import type { LinkWithAddressInfo } from "iproute";
 import yaml from "js-yaml";
 import { Netmask } from "netmask";
 import { flatTransform, pipeline } from "streaming-iterables";
+import type { ReadonlyDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
@@ -145,4 +146,9 @@ export function copyPlacementNetns(target: ComposeService, source: ComposeServic
   compose.annotate(target, "host", compose.annotate(source, "host") ?? "");
   target.cpuset = source.cpuset;
   target.network_mode = `container:${source.container_name}`;
+}
+
+/** Derive NFD service name. */
+export function toNfdName({ container_name: ct }: ReadonlyDeep<ComposeService>): string {
+  return ct.replace(compose.nameToNf(ct), "nfd");
 }
