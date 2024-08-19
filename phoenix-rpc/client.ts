@@ -94,7 +94,7 @@ export class PhoenixClientUDP implements PhoenixClient {
   }
 }
 
-export let dockerContainer: Dockerode.Container;
+export let dockerContainer: Dockerode.Container | undefined;
 export let clientJ: PhoenixClientJSONRPC;
 export let clientU: PhoenixClientUDP;
 

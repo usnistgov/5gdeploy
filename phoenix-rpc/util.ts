@@ -1,5 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 
+import stringify from "json-stringify-deterministic";
+
 import type { PhoenixClient } from "./client.js";
 
 /**
@@ -17,7 +19,7 @@ export function print<T>(value: T): T {
   if (typeof value === "string") {
     process.stdout.write(`${value}\n`);
   } else {
-    process.stdout.write(`${JSON.stringify(value)}\n`);
+    process.stdout.write(`${stringify(value)}\n`);
   }
   return value;
 }
