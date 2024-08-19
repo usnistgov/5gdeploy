@@ -115,6 +115,10 @@ The syntax looks like `--set-netem='n3 | gnb* | upf* | delay 10ms'`, where each 
 3. Minimatch pattern that matches the destination network function container name.
 4. [tc-netem](https://man7.org/linux/man-pages/man8/tc-netem.8.html) command parameters.
 
+Note: the spaces around `|` are optional but they must be consistent.
+You can either have spaces around every `|` symbol (effectively `" | "` is the delimiter) or none of them.
+The minimatch patterns can container `|` symbol, only if the delimiter `|` symbols have spaces around them.
+
 ## Metrics Collection with Prometheus and Grafana
 
 Unless disabled with `--prometheus=false` flag, the generated Compose file supports Prometheus metrics collection and Grafana visualization.

@@ -8,7 +8,7 @@ import type { ReadonlyDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeFile, ComposeService, ComposeVolume } from "../types/compose";
-import { hexPad, scriptHead, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { hexPad, joinVbar, scriptHead, splitVbar, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import type { ComposeContext } from "./context.js";
 
 interface BaseRule {
@@ -16,6 +16,15 @@ interface BaseRule {
   net: string;
   src: Minimatch;
   dst: Minimatch;
+}
+
+function buildBaseRule(name: string, tokens: readonly [string, string, string, ...readonly string[]]): BaseRule {
+  return {
+    flag: joinVbar(name, tokens),
+    net: tokens[0],
+    src: new Minimatch(tokens[1]),
+    dst: new Minimatch(tokens[2]),
+  };
 }
 
 interface DSCPRule extends BaseRule {
@@ -26,23 +35,15 @@ interface NetemRule extends BaseRule {
   netem: string;
 }
 
-function extractBaseRule(flagName: string, line: string, expectedTokens: number): [rule: BaseRule, tokens: string[]] {
-  const tokens = Array.from(line.split("|"), (token) => token.trim());
-  assert(tokens.length === 3 + expectedTokens, `bad --${flagName} ${line}`);
-  const flag = `--${flagName}=${shlex.quote(tokens.join("|"))}`;
-  const [net, src, dst] = tokens.splice(0, 3) as [string, string, string];
-  return [{ flag, net, src: new Minimatch(src), dst: new Minimatch(dst) }, tokens];
-}
-
 export const qosOptions = {
   "set-dscp": {
     array: true,
     coerce(lines: readonly string[]): DSCPRule[] {
       return Array.from(lines, (line) => {
-        const [br, tokens] = extractBaseRule("set-dscp", line, 1);
-        const dscp = Number.parseInt(tokens[0]!, 0); // eslint-disable-line radix
+        const tokens = splitVbar("set-dscp", line, 4, 4);
+        const dscp = Number.parseInt(tokens[3], 0); // eslint-disable-line radix
         assert(Number.isInteger(dscp) && dscp >= 0 && dscp < 64, `bad DSCP in --set-dscp ${line}`);
-        return { ...br, dscp };
+        return { ...buildBaseRule("set-dscp", tokens), dscp };
       });
     },
     default: [],
@@ -54,8 +55,9 @@ export const qosOptions = {
     array: true,
     coerce(lines: readonly string[]): NetemRule[] {
       return Array.from(lines, (line) => {
-        const [br, tokens] = extractBaseRule("set-netem", line, 1);
-        return { ...br, netem: shlex.join(shlex.split(tokens[0]!)) };
+        const tokens = splitVbar("set-netem", line, 4, 4);
+        const netem = shlex.join(shlex.split(tokens[3]));
+        return { ...buildBaseRule("set-netem", tokens), netem };
       });
     },
     default: [],

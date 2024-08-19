@@ -19,7 +19,7 @@ See [traffic generators](trafficgen.md) for other traffic generators.
   --TGID='DN-PATTERN | UE-PATTERN | CLIENT-FLAGS | SERVER-FLAGS'
 ```
 
-There's a traffic flow flags for each traffic generator type, such as `--iperf3` or `--owamp`.
+There's a traffic flow flag for each traffic generator type, such as `--iperf3` or `--owamp`.
 The traffic flow flags are repeatable.
 Each flag value consists of four parts, separated by `|` character:
 

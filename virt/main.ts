@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import * as compose from "../compose/mod.js";
-import { assert, codebaseRoot, Yargs } from "../util/mod.js";
+import { assert, codebaseRoot, splitVbar, Yargs } from "../util/mod.js";
 import { VirtComposeContext, type VMNetwork, type VMOptions } from "./context.js";
 
 const args = Yargs()
@@ -9,12 +9,11 @@ const args = Yargs()
     array: true,
     coerce(lines: readonly string[]): Array<VMOptions & { place: compose.PlaceRule }> {
       return Array.from(lines, (line) => {
-        const tokens = line.split("|");
-        assert(tokens.length === 3, `bad --vm ${line}`);
-        const name = tokens[0]!.trim();
-        const place = compose.parsePlaceRule(`vm_${name}@${tokens[1]!.trim()}`);
+        const tokens = splitVbar("--vm", line, 3, 3);
+        const name = tokens[0];
+        const place = compose.parsePlaceRule(`vm_${name}@${tokens[1]}`);
         assert(place.cpuset && place.cpuset.cores.length >= 2, `VM ${name} must have cpuset with at least 2 cores`);
-        const networks = Array.from(tokens[2]!.split(","), (line1): VMNetwork => {
+        const networks = Array.from(tokens[2].split(","), (line1): VMNetwork => {
           const m = /^(\w+)@([^@+]+)$/i.exec(line1.trim());
           assert(m, `bad --vm.network ${line1}`);
           return [m[1]!.toLowerCase(), m[2]!];

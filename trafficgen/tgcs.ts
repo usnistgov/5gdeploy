@@ -9,7 +9,7 @@ import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
-import { assert, cmdOutput, file_io, Yargs } from "../util/mod.js";
+import { assert, cmdOutput, file_io, splitVbar, Yargs } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import type { TrafficGen, TrafficGenFlowContext } from "./tgcs-defs.js";
 import * as tg_ip from "./tgcs-ip.js";
@@ -30,11 +30,10 @@ function makeOption(tgid: string) {
       uePattern: Minimatch;
     } & Pick<TrafficGenFlowContext, "cFlags" | "sFlags">> {
       return Array.from(lines, (line) => {
-        const tokens = line.split("|");
-        assert([2, 3, 4].includes(tokens.length), `bad --${tgid} ${line}`);
+        const tokens = splitVbar(tgid, line, 2, 4);
         return {
-          dnPattern: new Minimatch(tokens[0]!.trim()),
-          uePattern: new Minimatch(tokens[1]!.trim()),
+          dnPattern: new Minimatch(tokens[0]),
+          uePattern: new Minimatch(tokens[1]),
           cFlags: shlex.split(tokens[2] ?? ""),
           sFlags: shlex.split(tokens[3] ?? ""),
         };

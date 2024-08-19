@@ -1,4 +1,6 @@
-import type { ReadonlyDeep } from "type-fest";
+import * as shlex from "shlex";
+import assert from "tiny-invariant";
+import type { LessThan, NonNegativeInteger, ReadonlyDeep, Subtract } from "type-fest";
 import yargs, { type Argv, type InferredOptionTypes, type Options } from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -53,4 +55,34 @@ export namespace YargsIntRange {
     /** Maximum value. */
     max: number;
   }
+}
+
+/**
+ * Split vertical-bar separated flag input.
+ * @param name - Flag name without leading "--".
+ * @param line - Flag value, separated by either " | " or "|".
+ * @param min - Minimum token quantity.
+ * @param max - Maximum token quantity.
+ */
+export function splitVbar<Min extends number, Max extends number>(
+    name: string,
+    line: string,
+    min: NonNegativeInteger<Min>,
+    max: NonNegativeInteger<Max>,
+): splitVbar.Result<Min, Max> {
+  const tokens = Array.from(
+    line.split(line.includes(" | ") ? " | " : "|"),
+    (token) => token.trim(),
+  );
+  assert(tokens.length >= min && tokens.length <= max, `bad ${joinVbar(name, tokens)}`);
+  return tokens as any;
+}
+export namespace splitVbar {
+  export type Result<Min extends number, Max extends number> =
+    LessThan<Min, Max> extends true ? [...Result<Min, Subtract<Max, 1>>, string | undefined] :
+    LessThan<Min, 1> extends true ? [] : [...Result<Subtract<Min, 1>, Subtract<Max, 1>>, string];
+}
+
+export function joinVbar(name: string, tokens: readonly string[]): string {
+  return `--${name}=${shlex.quote(tokens.join(" | "))}`;
 }
