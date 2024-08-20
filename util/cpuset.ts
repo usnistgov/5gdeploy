@@ -26,19 +26,21 @@ export function parseCpuset(cpuset: string): number[] {
   return list;
 }
 
+export type CpusetInput = string | readonly number[];
+
 /**
  * Generate commands for CPU isolation.
  * @param system - Cores for rest of system.
  * @param docker - Cores for Docker containers.
  */
-export function* setupCpuIsolation(system: string | readonly number[], docker: string | readonly number[]): Iterable<string> {
+export function* setupCpuIsolation(system: CpusetInput, docker: CpusetInput): Iterable<string> {
   yield* setupCpuIsolationUnit("init.scope", system);
   yield* setupCpuIsolationUnit("service", system);
   yield* setupCpuIsolationUnit("user.slice", system);
   yield* setupCpuIsolationUnit("docker-.scope", docker);
 }
 
-function* setupCpuIsolationUnit(unit: string, cores: string | readonly number[]): Iterable<string> {
+function* setupCpuIsolationUnit(unit: string, cores: CpusetInput): Iterable<string> {
   const sectionLower = unit.split(".").at(-1)!;
   const section = sectionLower.slice(0, 1).toUpperCase() + sectionLower.slice(1);
   const cpuset = Array.isArray(cores) ? cores.join(",") : cores;

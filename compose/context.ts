@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { Promisable } from "type-fest";
+import type { Arrayable, Promisable } from "type-fest";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
@@ -57,7 +57,7 @@ export class ComposeContext {
    * @param net - Network name.
    * @returns A list of IPv4 addresses used by containers serving the network function.
    */
-  public gatherIPs(nf: string | readonly string[], net: string): string[] {
+  public gatherIPs(nf: Arrayable<string>, net: string): string[] {
     const list: string[] = [];
     for (const [ct, s] of Object.entries(this.c.services)) {
       if ((typeof nf === "string") ? (compose.nameToNf(ct) !== nf) : (!nf.includes(ct))) {

@@ -2,7 +2,7 @@ import path from "node:path";
 
 import map from "obliterator/map.js";
 import * as shlex from "shlex";
-import type { SetOptional } from "type-fest";
+import type { Arrayable, SetOptional } from "type-fest";
 
 import type { ComposeFile } from "../types/mod.js";
 import { assert, codebaseRoot, scriptHead } from "../util/mod.js";
@@ -62,7 +62,7 @@ export namespace makeComposeSh {
   export interface Action {
     act: string;
     cmd?: string;
-    desc: string | readonly string[];
+    desc: Arrayable<string>;
     code: () => Iterable<string>;
   }
 }
