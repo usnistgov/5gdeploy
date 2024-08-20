@@ -1,6 +1,6 @@
 import * as shlex from "shlex";
 import assert from "tiny-invariant";
-import type { LessThan, NonNegativeInteger, ReadonlyDeep, Subtract } from "type-fest";
+import type { LessThan, NonNegativeInteger, PartialOnUndefinedDeep, ReadonlyDeep, Simplify, Subtract } from "type-fest";
 import yargs, { type Argv, type InferredOptionTypes, type Options } from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -17,7 +17,7 @@ export type YargsOpt = Options;
 
 export type YargsOptions = Record<string, YargsOpt>;
 
-export type YargsInfer<T extends YargsOptions> = ReadonlyDeep<InferredOptionTypes<T>>;
+export type YargsInfer<T extends YargsOptions> = Simplify<PartialOnUndefinedDeep<ReadonlyDeep<InferredOptionTypes<T>>>>;
 
 /** Infer argv from defaults in YargsOptions. */
 export function YargsDefaults<T extends YargsOptions>(opts: T): YargsInfer<T> {

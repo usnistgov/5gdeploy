@@ -62,6 +62,7 @@ const args = Yargs()
     desc: "wait duration (milliseconds) between starting servers and starting clients",
     type: "number",
   })
+  .option(compose.placeOptions)
   .option(Object.fromEntries(Array.from(
     Object.keys(trafficGenerators),
     (tgid) => [tgid, makeOption(tgid)],
@@ -121,12 +122,14 @@ const table = await pipeline(
     const serverName = tg.serverPerDN ? `${prefix}_${tgid}_${dn}_s` : `${prefix}_${group}_${port}_s`;
     if (!output.services[serverName]) {
       const server = compose.defineService(output, serverName, tg.serverDockerImage);
+      compose.annotate(server, "cpus", 1);
       copyPlacementNetns(server, dnService);
       tg.serverSetup(server, tgFlow);
       services.push(server);
     }
 
     const client = compose.defineService(output, `${prefix}_${group}_${port}_c`, tg.clientDockerImage);
+    compose.annotate(client, "cpus", 1);
     copyPlacementNetns(client, ueService);
     tg.clientSetup(client, tgFlow);
     services.push(client);
@@ -145,6 +148,7 @@ const table = await pipeline(
   collect,
 );
 
+compose.place(output, { ...args, "place-ignore-host": true });
 const composeFilename = `compose.${prefix}.yml`;
 await file_io.write(path.join(args.dir, composeFilename), output);
 

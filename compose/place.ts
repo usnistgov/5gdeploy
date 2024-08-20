@@ -9,7 +9,7 @@ import { annotate } from "./compose.js";
 export interface PlaceRule {
   pattern: Minimatch;
   host: string;
-  cpuset?: AssignCpuset;
+  cpuset?: string;
 }
 
 export function parsePlaceRule(line: string): PlaceRule {
@@ -19,7 +19,7 @@ export function parsePlaceRule(line: string): PlaceRule {
   return {
     pattern: new Minimatch(pattern),
     host,
-    cpuset: cpuset === undefined ? undefined : new AssignCpuset(cpuset),
+    cpuset,
   };
 }
 
@@ -52,6 +52,10 @@ export const placeOptions = {
     nargs: 1,
     type: "string",
   },
+  "place-ignore-host": {
+    hidden: true,
+    type: "boolean",
+  },
 } as const satisfies YargsOptions;
 
 /**
@@ -67,15 +71,22 @@ export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): vo
     Object.entries(c.services).filter(([, s]) => !annotate(s, "every_host")),
   );
   for (let { pattern, host, cpuset } of opts.place) {
+    const assignCpus = cpuset === undefined ? undefined : new AssignCpuset(cpuset);
     host = opts["ssh-uri"]?.[host] ?? host;
     for (const [ct, s] of services) {
       if (pattern.match(ct)) {
         services.delete(ct);
-        annotate(s, "host", host);
-        cpuset?.prepare(s);
+        if (!opts["place-ignore-host"]) {
+          annotate(s, "host", host);
+        }
+        assignCpus?.prepare(s);
       }
     }
-    cpuset?.update();
+    assignCpus?.update();
+  }
+
+  if (opts["place-ignore-host"]) {
+    return;
   }
   for (const s of services.values()) {
     annotate(s, "host", "");
