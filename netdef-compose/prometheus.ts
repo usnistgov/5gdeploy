@@ -41,7 +41,7 @@ class PromBuilder {
 
     this.ctx.defineNetwork("meas", { wantNAT: true });
     await this.buildProcessExporter();
-    const services = compose.listByAnnotation(this.ctx.c, "prometheus_target", () => true);
+    const services = compose.listByAnnotation(this.ctx.c, "prometheus_target");
     const promUrl = this.buildPrometheus(services);
     await this.buildGrafana(promUrl);
   }

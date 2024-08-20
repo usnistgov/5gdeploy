@@ -68,7 +68,7 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef) {
   }
 
   return pipeline(
-    () => compose.listByAnnotation(c, "ue_supi", () => true),
+    () => compose.listByAnnotation(c, "ue_supi"),
     flatTransform(16, async function*(ueService) {
       const subs = Array.from(
         compose.annotate(ueService, "ue_supi")!.split(","),

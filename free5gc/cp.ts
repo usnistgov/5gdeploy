@@ -412,7 +412,7 @@ class F5CPBuilder {
     return upi;
   }
 
-  private async defineService<C extends {}>(ct: string, nets: readonly string[]): Promise<[s: ComposeService, cfg: F5.Root<C>]> {
+  private async defineService<C extends F5.SBI>(ct: string, nets: readonly string[]): Promise<[s: ComposeService, cfg: F5.Root<C>]> {
     const nf = compose.nameToNf(ct);
     const s = this.ctx.defineService(ct, await getTaggedImageName(nf), nets);
     s.stop_signal = "SIGQUIT";
@@ -425,7 +425,7 @@ class F5CPBuilder {
       (cfg.configuration as any)[nameProp] = ct;
     }
 
-    this.updateSBI(s, cfg.configuration as unknown as F5.SBI);
+    this.updateSBI(s, cfg.configuration);
     return [s, cfg];
   }
 

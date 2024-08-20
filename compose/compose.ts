@@ -205,9 +205,21 @@ function createService(name: string, image: string): ComposeService {
   return s;
 }
 
-/** Get service annotation. */
+/**
+ * Get service annotation.
+ * @param s - Compose service instance.
+ * @param key - Annotation name.
+ *
+ * @see `docs/annotate.md` has a list of annotations used in the codebase.
+ */
 export function annotate(s: ComposeService, key: string): string | undefined;
-/** Set service annotation. */
+
+/**
+ * Set service annotation.
+ * @param s - Compose service instance.
+ * @param key - Annotation name.
+ * @param value - Annotation value.
+ */
 export function annotate(s: ComposeService, key: string, value: string | number): ComposeService;
 
 export function annotate(s: ComposeService, key: string, value?: string | number) {
@@ -230,7 +242,7 @@ export function annotate(s: ComposeService, key: string, value?: string | number
  */
 export function listByAnnotation(
     c: ComposeFile, key: string,
-    predicate: string | number | ((value: string) => boolean),
+    predicate: string | number | ((value: string) => boolean) = () => true,
 ): ComposeService[] {
   key = `5gdeploy.${key}`;
   if (typeof predicate !== "function") {
