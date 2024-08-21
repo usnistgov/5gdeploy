@@ -58,10 +58,11 @@ export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
       cFlags.includes("-R") ? Direction.dl : Direction.ul;
   },
   nPorts: 1,
-  serverDockerImage: "tangentsoft/iperf3:v3.17.1",
+  serverDockerImage: "perfsonar/tools",
   serverSetup(s, { port, dnIP, sFlags }) {
     assert(sFlags.length === 0, "iperf3 server does not accept server flags");
     s.command = [
+      "iperf3",
       "--forceflush",
       ...this.jsonFlag,
       "-B", dnIP,
@@ -69,14 +70,14 @@ export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
       "-s",
     ];
   },
-  clientDockerImage: "tangentsoft/iperf3:v3.17.1",
-  clientSetup(s, { port, dnIP, pduIP, cFlags }) {
+  clientDockerImage: "perfsonar/tools",
+  clientSetup(s, { group, port, dnIP, pduIP, cFlags }) {
     s.command = [
+      "iperf3",
       "--forceflush",
       ...this.jsonFlag,
       "-B", pduIP,
       "-p", `${port}`,
-      "--cport", "65000",
       "-c", dnIP,
       ...cFlags,
     ];
