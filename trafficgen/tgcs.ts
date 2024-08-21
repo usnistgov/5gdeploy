@@ -148,7 +148,7 @@ const table = await pipeline(
   collect,
 );
 
-compose.place(output, { ...args, "place-ignore-host": true });
+compose.place(output, { ...args, "place-match-host": true });
 const composeFilename = `compose.${prefix}.yml`;
 await file_io.write(path.join(args.dir, composeFilename), output);
 

@@ -31,7 +31,7 @@ export const placeOptions = {
       return Array.from(lines, (line) => parsePlaceRule(line));
     },
     default: [],
-    desc: "place containers on host and set CPU isolation",
+    desc: "PATTER@HOST(CPUSET), place containers on host and set CPU isolation",
     nargs: 1,
     type: "string",
   },
@@ -52,7 +52,8 @@ export const placeOptions = {
     nargs: 1,
     type: "string",
   },
-  "place-ignore-host": {
+  "place-match-host": {
+    desc: "if true, HOST indicates a match condition instead of a placement instruction",
     hidden: true,
     type: "boolean",
   },
@@ -74,22 +75,19 @@ export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): vo
     const assignCpus = cpuset === undefined ? undefined : new AssignCpuset(cpuset);
     host = opts["ssh-uri"]?.[host] ?? host;
     for (const [ct, s] of services) {
-      if (pattern.match(ct)) {
+      if (pattern.match(ct) && (!opts["place-match-host"] || annotate(s, "host") === host)) {
         services.delete(ct);
-        if (!opts["place-ignore-host"]) {
-          annotate(s, "host", host);
-        }
+        annotate(s, "host", host);
         assignCpus?.prepare(s);
       }
     }
     assignCpus?.update();
   }
 
-  if (opts["place-ignore-host"]) {
-    return;
-  }
-  for (const s of services.values()) {
-    annotate(s, "host", "");
+  if (!opts["place-match-host"]) {
+    for (const s of services.values()) {
+      annotate(s, "host", "");
+    }
   }
 }
 

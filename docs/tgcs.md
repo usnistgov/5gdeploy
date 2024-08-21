@@ -189,6 +189,25 @@ The script cannot gather summary information from the output.
 
 ## Advanced Usage
 
+### CPU Allocation
+
+By default, traffic generator client and server containers inherit the cpuset assigned to the respective UE and DN containers.
+This may cause CPU contention between traffic generator client and the UE process, as well as among traffic generator servers attached to the same DN.
+It's possible to override CPU allocation with `--place=PATTERN@HOST(CPUSET)` flags, which cause containers on *HOST* whose names match *PATTERN* to be assigned with CPU cores within *CPUSET*.
+For example:
+
+```bash
+./compose.sh tgcs --iperf3='internet | * | -t 60 -u -b 10M' \
+  --place='*_c@(12-15)' --place='*_s@192.168.60.3(16-19)'
+```
+
+In the example, the first `--place` flag assigns cores in cpuset 12-15 to clients on the primary host, the second `--place` flag assigns cores in cpuset 16-19 to servers on the specified secondary host.
+Note that the semantics of *HOST* differs from the `--place` flag in [multi-host](multi-host.md): it is a match condition here, rather than a placement instruction.
+
+Normally, [netdef-compose](../netdef-compose/README.md) assigns a dedicated CPU core to each DN or UE container.
+When you are assigning explicit cpuset to traffic generators, dedicated CPU cores become unnecessary for DN containers and for UE containers where the UE process does not participate in user plane traffic.
+You can turn off these assignments with `--dn-workers=0 --phoenix-ue-isolated=NONE`.
+
 ### Independent Measurement Sets
 
 Normally, `./compose.sh tgcs` prepares a measurement set that contains one or more traffic generators of either same or different types.
