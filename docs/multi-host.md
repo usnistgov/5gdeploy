@@ -125,7 +125,7 @@ After "eth", each parameter consists of:
 
 1. A [minimatch](https://www.npmjs.com/package/minimatch)-compatible pattern that selects containers attached to the Docker network.
    The patterns from all parameters in an `--bridge` flag must collectively match all containers originally attached to the Docker network.
-2. Either `=` or `@` operator (see below).
+2. An operator symbol, explained below.
 3. A host interface MAC address.
 4. VLAN ID (optional).
    This should be written as "+vlan" followed by an integer between 1 and 4094.
@@ -142,6 +142,8 @@ The operator indicates what kind of network interface is put into the container:
   * Multiple containers may share the same host interface, where each container gets a random MAC address.
   * Currently this uses MACVLAN "bridge" mode, so that traffic between two containers on the same host interface is switched internally in the Ethernet adapter and does not appear on the external Ethernet switch.
   * This does not work if the host interface is itself a PCI Virtual Function that allows only one MAC address.
+* The `~` operator records the MAC address of a container interface, but does not create the interface.
+  * This is only usable in [NDN-DPDK UPF](../ndndpdk/README.md) configured with an Ethernet adapter with PCI driver.
 
 If a virtualization Compose context was loaded through `--use-vm` flag, the host interface MAC address portion can accept two additional formats:
 

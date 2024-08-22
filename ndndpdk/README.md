@@ -3,7 +3,10 @@
 Package **ndndpdk** integrates [NDN-DPDK](https://github.com/usnistgov/ndn-dpdk) as a UPF implementation.
 This package offers these choices in the **netdef-compose** command:
 
-* `--up=ndndpdk`: [CN5G UPF](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-upf)
+* `--up=ndndpdk`: NDN-DPDK UPF
+
+5gdeploy does not build NDN-DPDK Docker images because compilation options are hardware dependent.
+You must [build the `localhost/ndn-dpdk` container image](https://github.com/usnistgov/ndn-dpdk/blob/main/docs/Docker.md) and made it available on each UPF host.
 
 ## NDN-UPF
 
@@ -30,6 +33,6 @@ For step 2 to succeed, you must manually perform these steps:
 2. Activate NDN-DPDK service as a forwarder.
 3. Create an EthDev on the N3 netif.
 
-Once these steps are completed, the UPF would launch itself and respond to PFCP commands from the SMF.
+Once these steps are completed, the UPF would be launched and start responding to PFCP commands from the SMF.
 When SMF instructs the UPF to establish/release a GTPv1U tunnel, the UPF would create/destroy a face in the NDN-DPDK forwarder.
 Currently there's no way to modify FIB entries, which means the UE can only act as consumers.

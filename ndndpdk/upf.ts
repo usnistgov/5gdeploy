@@ -33,10 +33,20 @@ function setCommands(ctx: NetDefComposeContext, s: ComposeService, upf: N.UPF): 
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
     "msg Waiting for NDN-DPDK ethdev",
-    `wait_ethdev() { test $(ndndpdk-ctrl list-ethdev 2>/dev/null | jq -s -e --arg MAC ${upfN3mac} "map(select(.macAddr==\\$MAC)) | length") -gt 0; }`,
+    `wait_ethdev() { test $(ndndpdk-ctrl list-ethdev 2>/dev/null | tee ethdev.ndjson | jq -s --arg MAC ${
+      upfN3mac} 'map(select(.macAddr==$MAC)) | length') -gt 0; }`,
     "with_retry wait_ethdev", // `with_retry $(subshell)` is incorrect - subshell is evaluated only once
     "msg Listing NDN-DPDK ethdevs",
-    "ndndpdk-ctrl list-ethdev",
+    "cat ethdev.ndjson",
+    `if [[ $(ip -o addr show to ${upfN3ip} | wc -l) -eq 0 ]]; then`,
+    `  ETHDEV_ID=$(jq -r --arg MAC ${upfN3mac} 'select(.macAddr==$MAC) | .id' ethdev.ndjson | head -1)`,
+    "  msg Making NDN-DPDK passthru face on $ETHDEV_ID",
+    `  jq -n --arg MAC ${upfN3mac} --arg PORT $ETHDEV_ID '{scheme:"passthru",local:$MAC,port:$PORT}' | ndndpdk-ctrl create-face`,
+    `  PASSTHRU_NETIF=$(ip -j link show | jq -r --arg MAC ${upfN3mac} '.[] | select(.address==$MAC and (.link|not)) | .ifname')`,
+    `  ip addr add ${upfN3ip}/24 dev $PASSTHRU_NETIF`,
+    "  msg Listing passthru device",
+    "  ip addr show dev $PASSTHRU_NETIF",
+    "fi",
     "msg Starting UPF",
     `ndndpdk-upf ${flags.join(" ")}`,
   ]);

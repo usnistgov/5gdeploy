@@ -66,10 +66,10 @@ function* buildVxlan(c: ComposeFile, net: string, ips: readonly string[], netInd
 
 function* parseEthDef(
     c: ComposeFile, net: string, tokens: readonly string[],
-): Iterable<[ct: string, op: "=" | "@", hostif: string, vlan: number | undefined]> {
+): Iterable<[ct: string, op: "=" | "@" | "~", hostif: string, vlan: number | undefined]> {
   const cts = new Set(Object.keys(c.services).filter((ct) => c.services[ct]!.networks[net]));
   for (const token of tokens) {
-    const m = /([=@])((?:[\da-f]{2}:){5}[\da-f]{2})(\+vlan\d+)?$/i.exec(token);
+    const m = /([=@~])((?:[\da-f]{2}:){5}[\da-f]{2})(\+vlan\d+)?$/i.exec(token);
     assert(m, `invalid parameter ${token}`);
     const op = m[1]! as "=" | "@";
     const hostif = m[2]!.toLowerCase();
@@ -118,6 +118,11 @@ function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]):
         const macaddr = ip2mac(ip);
         yield `      msg Using MACVLAN ${macaddr} on ${hostif}${vlanDesc} as ${ct}:${net}`;
         yield `      pipework mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${macaddr} ${vlanFlag}`;
+        break;
+      }
+      case "~": {
+        annotate(c.services[ct]!, `mac_${net}`, hostif);
+        yield `      msg Assuming ${hostif} is setup as ${ct}:${net}`;
         break;
       }
     }
