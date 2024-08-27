@@ -23,6 +23,7 @@ interface VMContext extends VMOptions {
 
 /** Contextual information and helpers while converting VM list into Compose context. */
 export class VirtComposeContext extends compose.ComposeContext {
+  public volumePrefix: [string, string] = ["", ""];
   private kern?: ComposeService;
   private base?: ComposeService;
 
@@ -44,7 +45,7 @@ export class VirtComposeContext extends compose.ComposeContext {
   }
 
   private createKern(): ComposeService {
-    compose.defineVolume(this.c, vmbuildVolume.source);
+    compose.defineVolume(this.c, vmbuildVolume.source, this.volumePrefix[0] + vmbuildVolume.source);
     const s = this.defineService("virt_kern", "rclone/rclone", []);
     compose.annotate(s, "only_if_needed", 1);
     s.network_mode = "none";
@@ -119,7 +120,7 @@ export class VirtComposeContext extends compose.ComposeContext {
       source: `vm_${name}`,
       target: "/vmrun",
     };
-    compose.defineVolume(this.c, vmrunVolume.source);
+    compose.defineVolume(this.c, vmrunVolume.source, this.volumePrefix[0] + this.volumePrefix[1] + vmrunVolume.source);
     const vmc = { ...opts, vmrunVolume };
 
     const vm = this.defineService(`vm_${name}`, virtDockerImage, networks.map(([net]) => net));
@@ -173,7 +174,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     const insideCommands = [
       "dpkg-reconfigure openssh-server",
       ...setupCpuIsolation("0", "1-127"),
-      // docker-.scopae AllowedCPUs=1-127 would be ignored because some cores do not exist;
+      // docker-.scope AllowedCPUs=1-127 would be ignored because some cores do not exist;
       // instead, systemd would allow Docker containers to use all cores. The actual cpuset for
       // each container should be set for each container. This approach allows reusing a prep'ed
       // VM image even if the number of cores is changed.

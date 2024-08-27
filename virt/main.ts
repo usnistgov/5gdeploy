@@ -1,3 +1,4 @@
+import os from "node:os";
 import path from "node:path";
 
 import * as compose from "../compose/mod.js";
@@ -30,6 +31,7 @@ const args = Yargs()
   })
   .option("ctrlif", {
     demandOption: true,
+    desc: "vmctrl netif on primary host",
     type: "string",
   })
   .option("out", {
@@ -37,11 +39,23 @@ const args = Yargs()
     desc: "Compose output directory",
     type: "string",
   })
+  .option("volume-prefix0", {
+    default: `${os.userInfo().username}_`,
+    desc: "Docker volume name prefix for base image and per-VM images",
+    type: "string",
+  })
+  .option("volume-prefix1", {
+    default: "",
+    desc: "Docker volume name prefix for per-VM images",
+    type: "string",
+  })
   .option(compose.ipAllocOptions("172.25.160.0/20"))
   .option("ssh-uri", compose.placeOptions["ssh-uri"])
   .parseSync();
 
 const ctx = new VirtComposeContext(args.out, new compose.IPAlloc(args));
+ctx.volumePrefix = [args["volume-prefix0"], args["volume-prefix1"]];
+
 ctx.createCtrlif(args.ctrlif);
 
 const placeRules: compose.PlaceRule[] = [];

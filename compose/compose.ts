@@ -61,8 +61,8 @@ export function create(): ComposeFile {
  * @remarks
  * If a volume with same name already exists, it is not replaced.
  */
-export function defineVolume(c: ComposeFile, name: string): ComposeNamedVolume {
-  return (c.volumes[name] ??= { name });
+export function defineVolume(c: ComposeFile, id: string, name = id): ComposeNamedVolume {
+  return (c.volumes[id] ??= { name });
 }
 
 /**
