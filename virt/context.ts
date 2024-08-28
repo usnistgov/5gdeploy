@@ -1,12 +1,10 @@
-import path from "node:path";
-
 import yaml from "js-yaml";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService, ComposeVolume } from "../types/mod.js";
-import { scriptCleanup, setupCpuIsolation } from "../util/mod.js";
+import { assert, scriptCleanup, setupCpuIsolation } from "../util/mod.js";
 import { iterVM } from "./helper.js";
 
 export type VMNetwork = [net: string, hostNetif: string];
@@ -24,6 +22,7 @@ interface VMContext extends VMOptions {
 /** Contextual information and helpers while converting VM list into Compose context. */
 export class VirtComposeContext extends compose.ComposeContext {
   public volumePrefix: [string, string] = ["", ""];
+  public authorizedKeys = "";
   private kern?: ComposeService;
   private base?: ComposeService;
 
@@ -158,18 +157,15 @@ export class VirtComposeContext extends compose.ComposeContext {
   }
 
   private createPrep({ name, vmrunVolume }: VMContext, s: ComposeService, netplan: unknown): void {
+    assert(this.authorizedKeys, "authorized_keys missing");
+
     compose.annotate(s, "only_if_needed", 1);
     s.network_mode = "none";
     applyLibguestfsCommon(s);
     s.volumes.push({
       ...vmbuildVolume,
       read_only: true,
-    }, vmrunVolume, {
-      type: "bind",
-      source: path.join(process.env.HOME ?? "/root", ".ssh/id_ed25519.pub"),
-      target: "/id_ed25519.pub",
-      read_only: true,
-    });
+    }, vmrunVolume);
 
     const insideCommands = [
       "dpkg-reconfigure openssh-server",
@@ -187,7 +183,6 @@ export class VirtComposeContext extends compose.ComposeContext {
       "  exit 0",
       "fi",
       "msg Preparing VM disk image",
-      "cat /id_ed25519.pub >id_ed25519.pub",
       `echo ${shlex.quote(yaml.dump(netplan, { sortKeys: true }))} >01-netcfg.yaml`,
       "install /vmbuild/base.qcow2 vm.qcow2",
       `chown -R ${owner} .`,
@@ -197,7 +192,7 @@ export class VirtComposeContext extends compose.ComposeContext {
         "--copy-in", "01-netcfg.yaml:/etc/netplan/",
         "--run-command", `bash -c ${shlex.quote(insideCommands.join("\n"))}`,
         "--root-password", "password:0000",
-        "--ssh-inject", "root:file:id_ed25519.pub",
+        "--ssh-inject", `root:string:${this.authorizedKeys}`,
       ])}`,
       "msg vm.qcow2 built successfully",
       "touch vm.done",

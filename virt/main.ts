@@ -2,7 +2,7 @@ import os from "node:os";
 import path from "node:path";
 
 import * as compose from "../compose/mod.js";
-import { assert, codebaseRoot, parseCpuset, splitVbar, Yargs } from "../util/mod.js";
+import { assert, codebaseRoot, file_io, parseCpuset, splitVbar, Yargs } from "../util/mod.js";
 import { VirtComposeContext, type VMNetwork, type VMOptions } from "./context.js";
 
 const args = Yargs()
@@ -55,6 +55,7 @@ const args = Yargs()
 
 const ctx = new VirtComposeContext(args.out, new compose.IPAlloc(args));
 ctx.volumePrefix = [args["volume-prefix0"], args["volume-prefix1"]];
+ctx.authorizedKeys = await file_io.readText(path.join(os.homedir(), ".ssh/id_ed25519.pub"));
 
 ctx.createCtrlif(args.ctrlif);
 
