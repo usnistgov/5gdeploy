@@ -240,10 +240,5 @@ If some network functions are not requesting dedicated cores, or if there aren't
 You can see a quick report of host placement and cpuset with this command:
 
 ```bash
-yq -o tsv '.services | map([
-  .container_name,
-  (.annotations["5gdeploy.host"] | with(select(.==""); .="PRIMARY")),
-  .cpuset,
-  .annotations["5gdeploy.cpuset_warning"]
-])' compose.yml | sort -k2,2 -k1,1 | column -t -N CONTAINER,HOST,CPUSET,CPUSET-WARNING
+~/5gdeploy/compose/place-report.sh compose.yml
 ```
