@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { execa } from "execa";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
 
 import * as compose from "../compose/mod.js";
@@ -19,10 +19,14 @@ export async function getTaggedImageName(opts: OAIOpts, nf: string): Promise<str
   let image = `oaisoftwarealliance/oai-${nf}`;
   let dfltTag = "latest";
   switch (nf) {
+    case "upf-vpp": {
+      filename = "docker-compose-basic-vpp-nrf.yaml";
+      break;
+    }
     case "ue": {
       image = "oaisoftwarealliance/oai-nr-ue";
+      // fallthrough
     }
-    // fallthrough
     case "gnb": {
       tagOpt = opts["oai-ran-tag"];
       filename = "docker-compose-slicing-ransim.yaml";

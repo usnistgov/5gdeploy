@@ -4,6 +4,7 @@ import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { N } from "../types/mod.js";
 import { assert, file_io } from "../util/mod.js";
+import * as oai_conf from "./conf.js";
 import type { OAIOpts } from "./options.js";
 
 /** Build oai-upf-vpp UPF. */
@@ -14,11 +15,10 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIO
   const peers = ctx.netdef.gatherUPFPeers(upf);
   assert(peers.N6IPv4.length === 1, `UPF ${upf.name} must handle exactly 1 IPv4 DN`);
   const dn = peers.N6IPv4[0]!;
-  // As of OAI-CN5G-SMF v2.0.1, upf_graph::select_upf_node() performs string comparison to
-  // verify UPF's S-NSSAI, in which SD is encoded as decimal string.
-  const { sst, sd = 0xFFFFFF } = NetDef.splitSNSSAI(dn.snssai).int;
+  const { sst, sd = "FFFFFF" } = NetDef.splitSNSSAI(dn.snssai).ih;
 
-  const s = ctx.defineService(ct, "oaisoftwarealliance/oai-upf-vpp:v2.0.1", ["cp", "n4", "n6", "n3"]);
+  const image = await oai_conf.getTaggedImageName(opts, "upf-vpp");
+  const s = ctx.defineService(ct, image, ["cp", "n4", "n6", "n3"]);
   compose.annotate(s, "cpus", opts["oai-upf-workers"]);
   s.privileged = true;
   s.command = ["/bin/bash", "/upf-vpp.sh"];

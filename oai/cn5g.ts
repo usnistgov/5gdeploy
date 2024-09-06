@@ -87,7 +87,7 @@ abstract class CN5GBuilder {
     }));
   }
 
-  protected makeUPFInfo(peers: NetDef.UPFPeers, inSMF = false): CN5G.upf.UPFInfo {
+  protected makeUPFInfo(peers: NetDef.UPFPeers): CN5G.upf.UPFInfo {
     const info: CN5G.upf.UPFInfo = {
       sNssaiUpfInfoList: [],
     };
@@ -101,12 +101,6 @@ abstract class CN5GBuilder {
         sNssai: NetDef.splitSNSSAI(snssai).ih,
         dnnUpfInfoList: sPeers.map(({ dnn }) => ({ dnn })),
       };
-      if (inSMF) {
-        // As of OAI-CN5G-SMF v2.0.1, upf_graph::select_upf_node() performs string comparison to
-        // verify UPF's S-NSSAI, in which SD is encoded as decimal string.
-        const { sd = "FFFFFF" } = item.sNssai;
-        item.sNssai.sd = Number.parseInt(sd, 16).toString(10);
-      }
       info.sNssaiUpfInfoList.push(item);
     }
     return info;
@@ -216,7 +210,7 @@ class CPBuilder extends CN5GBuilder {
       const upfCfg: CN5G.smf.UPF = { ...upfTpl, host };
       if (!this.opts["oai-cn5g-nrf"]) {
         const peers = this.netdef.gatherUPFPeers(upf);
-        upfCfg.upf_info = this.makeUPFInfo(peers, true);
+        upfCfg.upf_info = this.makeUPFInfo(peers);
         upfCfg.config = {
           ...upfCfg.config,
           n3_local_ipv4: compose.getIP(upfService, "n3"),

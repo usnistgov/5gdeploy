@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";

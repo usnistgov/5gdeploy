@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import type { LinkWithAddressInfo } from "iproute";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { Netmask } from "netmask";
 import { flatTransform, pipeline } from "streaming-iterables";
 import type { ReadonlyDeep } from "type-fest";

@@ -6,7 +6,7 @@ import fsWalkLib from "@nodelib/fs.walk";
 import asTable from "as-table";
 import { parse as csvParse, type parser as csvParser, stringify as csvStringify } from "csv/sync";
 import getStdin from "get-stdin";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
 import * as jsonc from "jsonc-parser";
 import DefaultMap from "mnemonist/default-map.js";
