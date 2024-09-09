@@ -49,6 +49,7 @@ const args = Yargs()
     desc: "Docker volume name prefix for per-VM images",
     type: "string",
   })
+  .option(compose.cpufreqOptions)
   .option(compose.ipAllocOptions("172.25.160.0/20"))
   .option("ssh-uri", compose.placeOptions["ssh-uri"])
   .parseSync();
@@ -65,5 +66,6 @@ for (const vm of args.vm) {
   placeRules.push(vm.place);
 }
 
+compose.makeCpufreqService(ctx, args, "virt_cpufreq");
 compose.place(ctx.c, { ...args, place: placeRules });
 await ctx.finalSave();

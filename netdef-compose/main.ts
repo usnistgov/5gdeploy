@@ -86,6 +86,7 @@ const args = await Yargs()
     type: "string",
   })
   .option(compose.bridgeOptions)
+  .option(compose.cpufreqOptions)
   .option(compose.ipAllocOptions())
   .option(compose.placeOptions)
   .option(compose.qosOptions)
@@ -114,6 +115,7 @@ await ranProviders[args.ran]!(ctx, args);
 await compose.saveQoS(ctx, args);
 await prometheus(ctx, args);
 await compose.defineBridge(ctx, args);
+compose.makeCpufreqService(ctx, args);
 compose.place(ctx.c, args);
 annotateVm(ctx.c, args);
 await ctx.finalSave();

@@ -2,6 +2,7 @@ export * from "./bridge.js";
 export * from "./compose.js";
 export * from "./compose-sh.js";
 export * from "./context.js";
+export * from "./cpufreq.js";
 export * from "./database.js";
 export * from "./image.js";
 export * from "./ipalloc.js";
