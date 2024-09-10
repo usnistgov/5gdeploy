@@ -1,4 +1,3 @@
-
 import type { ReadonlyDeep } from "type-fest";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";
@@ -95,4 +94,26 @@ export function rewriteOutputFlag(s: ComposeService, prefix: string, group: stri
     });
   }
   return rFlags;
+}
+
+export class ClientStartOpt {
+  constructor(private readonly s: ComposeService) {}
+  private varname = "";
+
+  public rewriteFlag(flags: readonly string[]): string[] {
+    const m = flags[0]?.match(/^#start=(\$\w+)$/);
+    if (!m) {
+      return [...flags];
+    }
+    this.varname = m[1]!;
+    return flags.slice(1);
+  }
+
+  public *waitCommands(): Iterable<string> {
+    if (!this.varname) {
+      return;
+    }
+    this.s.environment[this.varname.slice(1)] = this.varname;
+    yield `echo ${this.varname} $(date -u +%s.%N) | awk '{ d = $1 - $2; if (d > 0) { system("sleep " d) } }'`;
+  }
 }

@@ -40,7 +40,7 @@ Optional flags:
   Default is "tg".
 * `--port` flag specifies the port number used by the first traffic generator.
   Default is 20000.
-* `--startup-delay` flag specifies wait duration between starting servers and starting clients.
+* `--startup-delay` flag specifies wait duration between starting server containers and starting client containers.
   Default is 5000 i.e. 5 seconds.
 
 The command prints a brief report on the matched PDU sessions and traffic flows.
@@ -104,6 +104,7 @@ IPERF2_TXSTART="$(expr $(date -u +%s) + 30)" ./tg.sh
 ```
 
 Client flags are passed to iperf3 client.
+`#start` may be passed as the first client flag for delayed client start, described in "advanced usage" section.
 Server flags are not accepted.
 
 The JSON outputs of each iperf3 container are saved in `~/compose/20230601/PREFIX` directory.
@@ -134,6 +135,7 @@ The text outputs of each iperf3 container are saved in `~/compose/20230601/PREFI
 ```
 
 Client flags are passed to [owping](https://software.internet2.edu/owamp/owping.man.html) or twping.
+`#start` may be passed as the first client flag for delayed client start, described in "advanced usage" section.
 Server flags are not accepted.
 
 ### Session File
@@ -149,8 +151,8 @@ OWAMP session files can be further analyzed with `owstats` command.
 ./tg.sh
 
 alias owstats='docker run --rm --mount type=bind,source=$(pwd),target=/data,readonly=true -w /data perfsonar/tools owstats'
-owstats -R ./tg/21000-F.owp
-owstats -R ./tg/21000-T.owp
+owstats -R ./tg/owamp_0-21000-F.owp
+owstats -R ./tg/owamp_0-21000-T.owp
 ```
 
 There isn't a tool to analyze TWAMP session files.
@@ -228,6 +230,41 @@ For example:
 ./iperf3internet.sh
 ./iperf3vehicle.sh
 ```
+
+### Delayed Client Start
+
+The `#start` client flag delays client start until an absolute timestamp.
+This flag is translated by tgcs script and not passed to the client program.
+It must be specified as the first client flag.
+Its value must reference an environment variable that is resolved during `PREFIX.sh` invocation.
+
+Usage example:
+
+```bash
+# prepare the measurement, notice the single quotes so that bash does not expand the variable
+./compose.sh tgcs \
+  --iperf3='* | * | #start=$IPERF3_0_START -t 60 -u -b 10M' \
+  --iperf3='* | * | #start=$IPERF3_1_START -t 60 -u -b 10M -R'
+
+# run the traffic generators, pass the environment variable
+IPERF3_0_START="$(expr $(date -u +%s) + 30)" IPERF3_1_START="$(expr $(date -u +%s) + 45)" ./tg.sh
+```
+
+Comparison with similar features:
+
+* `--startup-delay` flag:
+  * It is a top-level flag passed to tgcs.ts script.
+  * It is realized as a `sleep` command in the `PREFIX.sh` bash script.
+  * It allows time for the servers to become ready, but does not ensure clients start at the same time.
+* `#start` flag:
+  * It is passed as the first client flag in a traffic flow flag, in supported traffic generator types only.
+  * It only affects traffic generator clients created by this traffic flow flag.
+  * It is realized as a `sleep` command within the client container.
+  * It helps ensure client programs start at the same time.
+    Once they start, they will establish control connections and, generally, immediately start transmission.
+* `--txstart-time` flag:
+  * It is only supported in iperf2 as a client flag, which is passed to the iperf2 client program.
+  * iperf2 clients will establish control connection immediately but delay transmission until the specified time.
 
 ### Subcommands of Generated bash Script
 

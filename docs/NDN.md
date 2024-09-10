@@ -47,5 +47,5 @@ Instead, you must manually start an ndnpingserver attached to the "server" NFD f
 
 See [NDN-DPDK](../ndndpdk/README.md) for how to select and launch NDN-DPDK as UPF.
 
-To use ndnping traffic generator with NDN-DPDK UPF, you must create a UDP face in NDN-DPDK forwarder pointing to the "service" NFD in the DN container and add a route on this face.
+To use ndnping traffic generator with NDN-DPDK UPF, you must create a UDP face in NDN-DPDK forwarder pointing to the "server" NFD in the DN container and add a route on this face.
 The `--ip-fixed` flag of netdef-compose command may be useful to ensure stable IP address assignments on N6 interfaces of NDN-UPF and DN containers, so that you can have a stable face locator for this face.

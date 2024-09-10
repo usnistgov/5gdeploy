@@ -1,4 +1,4 @@
-import { type LinkInfo } from "iproute";
+import type { LinkInfo } from "iproute";
 import { Minimatch } from "minimatch";
 import { sortBy } from "sort-by-typescript";
 import { collect, filter, flatMap, flatTransform, map, pipeline } from "streaming-iterables";
@@ -17,7 +17,7 @@ const args = Yargs()
   .option(ctxOptions)
   .option(tableOutputOptions)
   .option("net", {
-    defaultDescription: "network defined in the Compose file",
+    defaultDescription: "networks defined in the Compose file",
     desc: "selected networks (minimatch pattern, 'ALL' for all network interfaces including 'lo' and PDU sessions)",
     type: "string",
   })

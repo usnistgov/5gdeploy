@@ -1,7 +1,8 @@
 import * as shlex from "shlex";
 
+import * as compose from "../compose/mod.js";
 import { assert, codebaseRoot } from "../util/mod.js";
-import { Direction, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
+import { ClientStartOpt, Direction, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
 export const iperf2: TrafficGen = {
   determineDirection({ cFlags }) {
@@ -71,16 +72,21 @@ export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
     ];
   },
   clientDockerImage: "perfsonar/tools",
-  clientSetup(s, { group, port, dnIP, pduIP, cFlags }) {
-    s.command = [
-      "iperf3",
-      "--forceflush",
-      ...this.jsonFlag,
-      "-B", pduIP,
-      "-p", `${port}`,
-      "-c", dnIP,
-      ...cFlags,
-    ];
+  clientSetup(s, { port, dnIP, pduIP, cFlags }) {
+    const start = new ClientStartOpt(s);
+    cFlags = start.rewriteFlag(cFlags);
+    compose.setCommands(s, [
+      ...start.waitCommands(),
+      shlex.join([
+        "iperf3",
+        "--forceflush",
+        ...this.jsonFlag,
+        "-B", pduIP,
+        "-p", `${port}`,
+        "-c", dnIP,
+        ...cFlags,
+      ]),
+    ]);
   },
   statsExt: ".json",
   *statsCommands(prefix) {
@@ -138,14 +144,19 @@ export const owamp: TrafficGen & {
   clientDockerImage: "perfsonar/tools",
   clientBin: "owping",
   clientSetup(s, { prefix, group, port, dnIP, pduIP, cFlags }) {
+    const start = new ClientStartOpt(s);
+    cFlags = start.rewriteFlag(cFlags);
     cFlags = rewriteOutputFlag(s, prefix, group, port, cFlags, /^-([FT])$/, this.outputExt);
-    s.command = [
-      this.clientBin,
-      "-P", `${port + 1}-${port + this.nPorts - 1}`,
-      "-S", pduIP,
-      ...cFlags,
-      `${dnIP}:${port}`,
-    ];
+    compose.setCommands(s, [
+      ...start.waitCommands(),
+      shlex.join([
+        this.clientBin,
+        "-P", `${port + 1}-${port + this.nPorts - 1}`,
+        "-S", pduIP,
+        ...cFlags,
+        `${dnIP}:${port}`,
+      ]),
+    ]);
   },
   outputExt: ".owp",
   statsExt: ".log",
