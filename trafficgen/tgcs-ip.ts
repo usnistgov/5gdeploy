@@ -196,13 +196,18 @@ export const netperf: TrafficGen = {
   },
   clientDockerImage: "alectolytic/netperf",
   clientSetup(s, { port, dnIP, pduIP, cFlags }) {
-    s.command = [
-      "netperf",
-      "-H", `${dnIP},inet`,
-      "-L", `${pduIP},inet`,
-      "-p", `${port},${port + 1}`,
-      ...cFlags,
-    ];
+    const start = new ClientStartOpt(s);
+    cFlags = start.rewriteFlag(cFlags);
+    compose.setCommands(s, [
+      ...start.waitCommands(),
+      shlex.join([
+        "netperf",
+        "-H", `${dnIP},inet`,
+        "-L", `${pduIP},inet`,
+        "-p", `${port},${port + 1}`,
+        ...cFlags,
+      ]),
+    ], "ash");
   },
   statsExt: ".log",
 };
@@ -223,14 +228,20 @@ export const sockperf: TrafficGen = {
   },
   clientDockerImage: "pazaan/sockperf",
   clientSetup(s, { prefix, group, port, dnIP, pduIP, cFlags }) {
+    const start = new ClientStartOpt(s);
+    cFlags = start.rewriteFlag(cFlags);
     cFlags = rewriteOutputFlag(s, prefix, group, port, cFlags, /^--(full-log)$/, ".csv");
-    s.command = [
-      ...cFlags,
-      "-i", dnIP,
-      "-p", `${port}`,
-      "--client_ip", pduIP,
-      "--client_port", `${port}`,
-    ];
+    compose.setCommands(s, [
+      ...start.waitCommands(),
+      shlex.join([
+        "sockperf",
+        ...cFlags,
+        "-i", dnIP,
+        "-p", `${port}`,
+        "--client_ip", pduIP,
+        "--client_port", `${port}`,
+      ]),
+    ]);
   },
   statsExt: ".log",
 };

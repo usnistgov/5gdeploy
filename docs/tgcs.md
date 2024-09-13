@@ -168,6 +168,7 @@ To see the raw output, it's advised to pass either `-R` or `-v` flag to twping.
 ```
 
 Client flags are passed to `netperf`.
+`#start` may be passed as the first client flag for delayed client start, described in "advanced usage" section.
 Server flags are passed to `netserver`.
 
 The script cannot identify the traffic direction of each flow in the brief report.
@@ -187,6 +188,7 @@ Server flags are passed to `sockperf server`.
 
 Similar to OWAMP, the filename that follows `--full-log` is set to a file in `~/compose/20230601/PREFIX` directory, which can be analyzed later.
 
+The script cannot identify the traffic direction of each flow in the brief report.
 The script cannot gather summary information from the output.
 
 ## Advanced Usage
