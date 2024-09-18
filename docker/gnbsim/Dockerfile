@@ -1,6 +1,6 @@
-FROM golang:1.22-alpine3.20 AS build
+FROM golang:1.23-alpine3.20 AS build
 SHELL ["/bin/ash", "-c"]
-ADD https://github.com/omec-project/gnbsim/archive/4794c80c0dfaf865bec19509e1b349519108bb23.zip /gnbsim.zip
+ADD https://github.com/omec-project/gnbsim/archive/db4bb0dae95c876be2a61b56a30c14e40a040176.zip /gnbsim.zip
 
 RUN <<EOF
   set -euxo pipefail

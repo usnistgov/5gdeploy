@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine3.20 AS build
+FROM golang:1.23-alpine3.20 AS build
 SHELL ["/bin/ash", "-c"]
 ADD https://github.com/HewlettPackard/PacketRusher/archive/32a08fa9fb2d83b654628b5187a0244a66b737b2.zip /PacketRusher.zip
 
