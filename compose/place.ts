@@ -31,7 +31,7 @@ export const placeOptions = {
       return Array.from(lines, (line) => parsePlaceRule(line));
     },
     default: [],
-    desc: "PATTER@HOST(CPUSET), place containers on host and set CPU isolation",
+    desc: "PATTERN@HOST(CPUSET), place containers on host and set CPU isolation",
     nargs: 1,
     type: "string",
   },
