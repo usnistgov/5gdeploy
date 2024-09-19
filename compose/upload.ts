@@ -3,6 +3,7 @@ import path from "node:path";
 import * as compose from "../compose/mod.js";
 import type { ComposeFile } from "../types/mod.js";
 import { cmdOptions, cmdOutput, dockerode, file_io, Yargs } from "../util/mod.js";
+import { virtDockerImage } from "../virt/context.js";
 
 const args = Yargs()
   .option(cmdOptions)
@@ -20,14 +21,14 @@ const pullImages = new Set<string>();
 const pushImagesByHost: Array<compose.classifyByHost.Result & { pushImages: Set<string> }> = [];
 
 for (const hostServices of compose.classifyByHost(c).filter(({ host }) => !!host)) {
-  const isVM = hostServices.services.some((s) => !!compose.annotate(s, "vmname"));
-  const remoteImages = await dockerode.listImages(isVM ? undefined : "5gdeploy.localhost/*", hostServices.host);
+  const inVM = hostServices.services.some((s) => !!compose.annotate(s, "vmname") && s.image !== virtDockerImage);
+  const remoteImages = await dockerode.listImages(inVM ? undefined : "5gdeploy.localhost/*", hostServices.host);
   const pushImages = new Set<string>();
   for (const { image } of hostServices.services) {
     const localID = localImages.get(image);
     const remoteID = remoteImages.get(image);
     switch (true) {
-      case !(isVM || image.startsWith("5gdeploy.localhost/")):
+      case !(inVM || image.startsWith("5gdeploy.localhost/")):
       case remoteID === localID && !!localID:
       case !!remoteID && !localID: {
         break;

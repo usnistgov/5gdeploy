@@ -299,7 +299,7 @@ export class VirtComposeContext extends compose.ComposeContext {
   }
 }
 
-const virtDockerImage = "5gdeploy.localhost/virt";
+export const virtDockerImage = "5gdeploy.localhost/virt";
 
 const vmbuildVolume: ComposeVolume = {
   type: "volume",
