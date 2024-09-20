@@ -273,7 +273,6 @@ class UPBuilder extends CN5GBuilder {
     if (this.c.nfs.nrf) {
       this.c.nfs.nrf.host = compose.getIP(this.ctx.c.services.nrf!, "cp");
     }
-    this.c.upf!.remote_n6_gw = "127.0.0.1";
     this.c.upf!.smfs = this.ctx.gatherIPs("smf", "n4").map((host): CN5G.upf.SMF => ({ host }));
     this.c.nfs.smf!.host = this.c.upf!.smfs[0]!.host;
 
