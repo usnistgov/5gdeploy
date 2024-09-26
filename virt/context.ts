@@ -221,7 +221,7 @@ export class VirtComposeContext extends compose.ComposeContext {
       "-nodefaults", "-nographic", "-msg", "timestamp=on",
       "-chardev", "pty,id=charserial0", "-device", "isa-serial,chardev=charserial0,id=serial0", "-serial", "stdio",
       "-enable-kvm", "-machine", "accel=kvm,usb=off",
-      "-cpu", "host", "-smp", `${cores.length},sockets=1,cores=${cores.length},threads=1`, "-m", "8192",
+      "-cpu", "host,-vmx,-svm", "-smp", `${cores.length},sockets=1,cores=${cores.length},threads=1`, "-m", "8192",
       "-drive", "if=virtio,file=vm.qcow2",
     ];
     const qemuRedirects = [];
