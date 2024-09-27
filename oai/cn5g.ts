@@ -5,7 +5,7 @@ import sql from "sql-tagged-template-literal";
 
 import * as compose from "../compose/mod.js";
 import { makeUPFRoutes, NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { CN5G, ComposeService, N } from "../types/mod.js";
+import type { CN5G, ComposeFile, ComposeService, N } from "../types/mod.js";
 import { assert, file_io, hexPad } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
 import type { OAIOpts } from "./options.js";
@@ -236,10 +236,86 @@ class CPBuilder extends CN5GBuilder {
   }
 }
 
+class NWDAFBuilder extends CN5GBuilder {
+  declare protected c: never;
+  private tplC!: ComposeFile;
+  private ipRepl: Array<[string, string]> = [];
+
+  public async build(): Promise<void> {
+    this.tplC = await file_io.readYAML(path.join(oai_conf.composePath, "nwdaf/docker-compose-nwdaf-cn-http2.yaml")) as any;
+    this.ipRepl.push(
+      ["192.168.70.132", compose.getIP(this.ctx.c.services.amf!, "cp")],
+      ["192.168.70.133", compose.getIP(this.ctx.c.services.smf!, "cp")],
+    );
+
+    this.ctx.defineNetwork("nwdaf");
+    for (const ms of ["database", "sbi", "engine", "engine-ads", "nbi-analytics", "nbi-events", "nbi-ml", "nbi-gateway"]) {
+      await this.buildMicroservice(ms);
+    }
+    this.buildCLI();
+  }
+
+  private async buildMicroservice(ms: string): Promise<void> {
+    const tplS = this.tplC.services[`oai-nwdaf-${ms}`];
+    assert(!!tplS);
+    const s = this.ctx.defineService(
+      `nwdaf_${ms.replaceAll("-", "")}`,
+      tplS.image.startsWith("oai-nwdaf-") ? `oaisoftwarealliance/oai-nwdaf-${ms}:latest` : tplS.image,
+      ms === "sbi" ? ["cp", "nwdaf"] : ["nwdaf"],
+    );
+    if (ms === "sbi") {
+      this.ipRepl.push([compose.getIP(tplS, "public_net"), compose.getIP(s, "cp")]);
+    }
+    this.ipRepl.push([compose.getIP(tplS, "nwdaf_net"), compose.getIP(s, "nwdaf")]);
+
+    for (const [key, value] of Array.isArray(tplS.environment) ?
+      Array.from(tplS.environment, (line) => line.split("=") as [string, string]) :
+      Object.entries(tplS.environment)) {
+      s.environment[key] = this.replaceIPs(value);
+    }
+    if (ms.startsWith("engine")) {
+      s.depends_on.nwdaf_database = { condition: "service_started" };
+    }
+    if (ms === "sbi") {
+      compose.setCommands(s, [
+        ...compose.waitReachable("AMF and SMF", [
+          compose.getIP(this.ctx.c.services.amf!, "cp"),
+          compose.getIP(this.ctx.c.services.smf!, "cp"),
+        ], { mode: "tcp:8080" }),
+        "msg Starting NWDAF-SBI",
+        "exec ./oai-nwdaf-sbi",
+      ]);
+    }
+    if (ms === "nbi-gateway") {
+      s.environment.KONG_PROXY_LISTEN = "0.0.0.0:80";
+      const kong = await file_io.readText(path.join(oai_conf.composePath, "nwdaf/conf/kong.yml"));
+      await this.ctx.writeFile("cp-cfg/nbi-gateway.yaml", this.replaceIPs(kong), {
+        s,
+        target: "/kong/declarative/kong.yml",
+      });
+    }
+  }
+
+  private buildCLI(): void {
+    const s = this.ctx.defineService("nwdaf_cli", "5gdeploy.localhost/oai-nwdaf-cli", ["nwdaf"]);
+    s.extra_hosts["oai-nwdaf-nbi-gateway"] = compose.getIP(this.ctx.c.services.nwdaf_nbigateway!, "nwdaf");
+  }
+
+  private replaceIPs(value: string): string {
+    for (const [s, r] of this.ipRepl) {
+      value = value.replaceAll(`//${s}:`, `//${r}:`);
+    }
+    return value;
+  }
+}
+
 /** Build CP functions using OAI-CN5G. */
 export async function oaiCP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
   const b = new CPBuilder(ctx, opts);
   await b.build();
+  if (opts["oai-cn5g-nwdaf"]) {
+    await new NWDAFBuilder(ctx, opts).build();
+  }
 }
 
 class UPBuilder extends CN5GBuilder {

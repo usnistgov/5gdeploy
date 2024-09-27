@@ -17,6 +17,12 @@ export const oaiOptions = {
     group: "oai",
     type: "boolean",
   },
+  "oai-cn5g-nwdaf": {
+    default: false,
+    desc: "enable NWDAF in OAI-CN5G",
+    group: "oai",
+    type: "boolean",
+  },
   "oai-upf-workers": {
     default: 2,
     desc: "number of worker threads in OAI-CN5G-UPF or OAI-UPF-VPP",
