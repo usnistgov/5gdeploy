@@ -16,9 +16,9 @@ const args = Yargs()
         const cores = parseCpuset(place.cpuset ?? "0");
         assert(cores.length >= 2, `VM ${name} must have cpuset with at least 2 cores`);
         const networks = Array.from(tokens[2].split(","), (line1): VMNetwork => {
-          const m = /^(\w+)@([^@+]+)$/i.exec(line1.trim());
-          assert(m, `bad --vm.network ${line1}`);
-          return [m[1]!.toLowerCase(), m[2]!];
+          const tokens = line1.split("@");
+          assert(tokens.length === 2, `bad --vm.network ${line1}`);
+          return [tokens[0]!.toLowerCase(), tokens[1]!];
         });
         assert(networks.some(([net]) => net === "vmctrl"), `VM ${name} does not have vmctrl network`);
         return { name, cores, networks, place };

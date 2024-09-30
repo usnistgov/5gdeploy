@@ -51,17 +51,23 @@ The KVM guest would receive the same quantity of CPU cores, of which the first c
 
 ### Network Interfaces
 
-The network interfaces portion of `--vm` flag is a comma separated list where each item is a *guest netif definition* that consists of three parts:
+The network interfaces portion of `--vm` flag is a comma separated list where each item is a *guest netif definition* with one of these syntaxes:
 
-1. guest netif name
-2. `@` operator
-3. physical host netif
+* *guest-ifname*`@`*host-ifname* (MACVTAP)
+  * Example: `vmctrl@a4:bf:01:cc:75:97`
+* *guest-ifname*`@`*host-mac* (MACVTAP)
+  * Example: `vmctrl@enp26s0f1`
+* *guest-ifname*`@`*host-mac*`+pci=`*host-pci* (PCI passthrough)
+  * Example: `vmctrl@a4:bf:01:cc:75:97+pci=0000:1a:00.1`
 
-Each guest netif is mapped to a MACVTAP subinterface attached to the physical host netif.
 You can have up to 16 distinct guest netif names, across all KVM guests.
 
-The physical host netif may be specified as either a MAC address or an existing ifname.
-Note that if the MAC address is non-unique (e.g. there's both VLAN and non-VLAN netif), you should use the ifname.
+In MACVTAP mode, the guest netif is mapped to a MACVTAP subinterface attached to the physical host netif, which may be specified as either a MAC address or an existing ifname.
+If the host has multiple netifs with the same MAC address (e.g. there's both VLAN and non-VLAN netif), you should use the *host-ifname* syntax.
+
+In PCI passthrough mode, the PCI device of the Ethernet adapter is passed to the KVM guest for its exclusive use.
+Before launching the VM, you must enable IOMMU on the host and bind the PCI device to `vfio-pci` driver.
+Each PCI device can appear in only one guest netif definition, but you will be able to create additional MACVLAN subinterfaces within the KVM guest.
 
 ### Control Interface
 

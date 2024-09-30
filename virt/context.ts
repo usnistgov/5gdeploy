@@ -9,6 +9,8 @@ import { iterVM } from "./helper.js";
 
 export type VMNetwork = [net: string, hostNetif: string];
 
+const reHostNetif = /^((?:[\da-f]{2}:){5}[\da-f]{2})(\+pci=[\da-f]{4}(?::[\da-f]{2}){2}\.[\da-f])?$/i;
+
 export interface VMOptions {
   name: string;
   cores: readonly number[];
@@ -137,7 +139,11 @@ export class VirtComposeContext extends compose.ComposeContext {
 
   private makeNetplan({ networks }: VMContext, vm: ComposeService) {
     const ethernets: Record<string, unknown> = {};
-    for (const [net] of networks) {
+    for (const [net, hostNetif] of networks) {
+      const m = reHostNetif.exec(hostNetif);
+      if (m?.[2]) {
+        compose.annotate(vm, `mac_${net}`, m[1]!.toLowerCase());
+      }
       const [ip, macaddress] = compose.getIPMAC(vm, net);
       ethernets[net] = {
         "set-name": net,
@@ -173,7 +179,7 @@ export class VirtComposeContext extends compose.ComposeContext {
       // docker-.scope AllowedCPUs=1-127 would be ignored because some cores do not exist;
       // instead, systemd would allow Docker containers to use all cores. The actual cpuset for
       // each container should be set for each container. This approach allows reusing a prep'ed
-      // VM image even if the number of cores is changed.
+      // VM image even if the number of cores has changed.
     ];
 
     s.working_dir = "/vmrun";
@@ -214,14 +220,15 @@ export class VirtComposeContext extends compose.ComposeContext {
 
   private *makeRunCommands({ name, cores, networks }: VMContext, s: ComposeService): Iterable<string> {
     yield* scriptCleanup();
-    yield "YASU='yasu '$(stat -c %u vm.qcow2):$(stat -c %g /dev/kvm)";
+    yield "RUNAS=$(stat -c %u vm.qcow2):$(stat -c %g /dev/kvm)";
+    yield "YASU='yasu '$RUNAS";
 
     const qemuFlags = [
       "-name", name, "-qmp", "unix:./qmp,server,wait=off",
       "-nodefaults", "-nographic", "-msg", "timestamp=on",
       "-chardev", "pty,id=charserial0", "-device", "isa-serial,chardev=charserial0,id=serial0", "-serial", "stdio",
       "-enable-kvm", "-machine", "accel=kvm,usb=off",
-      "-cpu", "host,-vmx,-svm", "-smp", `${cores.length},sockets=1,cores=${cores.length},threads=1`, "-m", "8192",
+      "-cpu", "host,-vmx,-svm", "-smp", `${cores.length},sockets=1,cores=${cores.length},threads=1`, "-m", "4096",
       "-drive", "if=virtio,file=vm.qcow2",
     ];
     const qemuRedirects = [];
@@ -234,6 +241,14 @@ export class VirtComposeContext extends compose.ComposeContext {
       const netdev = `net-${shortMac}`;
       const tap = `vmtap-${shortMac}`;
       compose.disconnectNetif(this.c, s.container_name, net);
+
+      const m = reHostNetif.exec(hostNetif);
+      if (m?.[2]) {
+        s.ulimits = { memlock: 1024 ** 4 };
+        qemuFlags.push("-device", `vfio-pci,host=${m[2].slice(5).toLowerCase()}`);
+        continue;
+      }
+
       yield* makeMacvlan("macvtap", netif, mac, hostNetif, `${s.container_name}:${net}`);
       yield `IFS=: read MAJOR MINOR < <(cat /sys/devices/virtual/net/${netif}/tap*/dev)`;
       yield `mknod -m 0666 /dev/${tap} c $MAJOR $MINOR`;
@@ -252,7 +267,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     yield "  sleep 5";
     yield `  while [[ $(wc -l qemu-threads.tsv | cut -d' ' -f1) -ne ${cores.length} ]]; do`;
     yield "    sleep 1";
-    yield "    echo query-cpus-fast | $YASU qmp-shell ./qmp | jq -r '.[] | .[\"thread-id\"]' >qemu-threads.tsv";
+    yield "    echo query-cpus-fast | qmp-shell ./qmp | jq -r '.[] | .[\"thread-id\"]' >qemu-threads.tsv";
     yield "  done";
     yield `  $YASU awk ${shlex.quote(Array.from(cores,
       (core, i) => `NR==${1 + i} { system("taskset -pc ${core} " $1) }`,
@@ -262,7 +277,7 @@ export class VirtComposeContext extends compose.ComposeContext {
 
     yield "";
     yield "msg Starting QEMU";
-    yield `$YASU qemu-system-x86_64 ${
+    yield `qemu-system-x86_64 -runas $RUNAS ${
       shlex.join(qemuFlags)} ${qemuRedirects.join(" ")} &`;
     yield "wait $!";
   }
@@ -335,9 +350,12 @@ function applyLibguestfsCommon(s: ComposeService): void {
 }
 
 function* makeMacvlan(ifType: "macvlan" | "macvtap", netif: string, mac: string, hostNetif: string, desc: string): Iterable<string> {
-  if (/^(?:[\da-f]{2}:){5}[\da-f]{2}$/i.test(hostNetif)) {
-    yield `HOSTIF=$(ip -j link show | jq -r '.[] | select(.address=="${hostNetif.toLowerCase()}") | .ifname' | tail -1)`;
-    yield `[[ -n $HOSTIF ]] || die Host netif not found for ${hostNetif}`;
+  const m = reHostNetif.exec(hostNetif);
+  if (m) {
+    assert(!m[2]);
+    const hostMac = m[1]!.toLowerCase();
+    yield `HOSTIF=$(ip -j link show | jq -r '.[] | select(.address=="${hostMac}") | .ifname' | tail -1)`;
+    yield `[[ -n $HOSTIF ]] || die Host netif not found for ${hostMac}`;
   } else {
     yield `HOSTIF=${shlex.quote(hostNetif)}`;
   }

@@ -36,6 +36,7 @@ export interface ComposeService {
   stop_signal?: `SIG${string}`;
   privileged?: boolean;
   readonly cap_add: string[];
+  ulimits?: Record<string, number>;
   readonly devices: string[];
   readonly sysctls: Record<string, string | number>;
   readonly volumes: ComposeVolume[];

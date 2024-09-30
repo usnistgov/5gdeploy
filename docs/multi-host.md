@@ -145,11 +145,11 @@ The operator indicates what kind of network interface is put into the container:
 * The `~` operator records the MAC address of a container interface, but does not create the interface.
   * This is only usable in [NDN-DPDK UPF](../ndndpdk/README.md) configured with an Ethernet adapter with PCI driver.
 
-If a virtualization Compose context was loaded through `--use-vm` flag, the host interface MAC address portion can accept two additional formats:
+If a virtualization Compose context was loaded through `--use-vm` flag, the host interface MAC address portion can accept two additional syntaxes:
 
 * `vm-`*vmname*`:`*guestnetif*
-  * Use KVM guest *vmname*, guest netif *guestnetif*.
-  * This only works with `=` operator, because each netif in a KVM guest is a MACVTAP subinterface that does not allow additional MAC addresses.
+  * Use KVM guest *vmname*, guest netif *guestnetif*, which must be in MACVTAP mode.
+  * This only works with `=` operator, because a MACVTAP subinterface does not allow additional MAC addresses.
   * If multiple containers in a KVM guest needs to use the same netif, you can create multiple guest netifs attached to the same physical host netif, and then assign one guest netif to each container.
 * `vm-`*vmname*
   * Same as above, using network name (e.g. `n3`) as guest netif name.
