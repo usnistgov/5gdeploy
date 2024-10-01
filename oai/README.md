@@ -31,7 +31,7 @@ The default is gathered from oai-cn5g-fed repository checkout.
 The default is using NRF, which includes UPF discovery by SMF.
 
 `--oai-cn5g-nwdaf=true` enables Network Data Analytics Function (NWDAF).
-Currently only the SBI microservice works; other microservices are not working.
+NBI analytics endpoint is working; Machine Learning related microservices are not working.
 
 `--oai-upf-workers` specifies CPU cores reserved for each UPF.
 These should be used together with CPU isolation via `--place` flag.

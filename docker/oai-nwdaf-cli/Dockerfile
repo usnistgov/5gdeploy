@@ -1,19 +1,20 @@
 FROM python:3.10-alpine3.20
 SHELL ["/bin/ash", "-c"]
-ADD https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-nwdaf/-/archive/master/oai-cn5g-nwdaf-master.zip /nwdaf.zip
+ARG branch=master
+ADD https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-nwdaf/-/archive/$branch/oai-cn5g-nwdaf-$branch.zip?path=cli /nwdaf.zip
 
 RUN <<EOF
   set -euxo pipefail
   cd /
   unzip -n nwdaf.zip
   mv oai-cn5g-nwdaf-*/cli nwdaf-cli
+  rm -rf nwdaf.zip oai-cn5g-nwdaf-*
 EOF
 
 WORKDIR /nwdaf-cli
 
 RUN <<EOF
   set -euxo pipefail
-  pip install -r ./requirements.txt
+  apk add --no-cache jq moreutils
+  pip install --no-cache-dir -r ./requirements.txt
 EOF
-
-CMD ["tail", "-f"]

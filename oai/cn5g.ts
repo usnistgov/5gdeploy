@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 import sql from "sql-tagged-template-literal";
 
@@ -260,7 +261,7 @@ class NWDAFBuilder extends CN5GBuilder {
     assert(!!tplS);
     const s = this.ctx.defineService(
       `nwdaf_${ms.replaceAll("-", "")}`,
-      tplS.image.startsWith("oai-nwdaf-") ? `oaisoftwarealliance/oai-nwdaf-${ms}:latest` : tplS.image,
+      tplS.image.replace(/^oai-nwdaf-/, "5gdeploy.localhost/oai-nwdaf-"),
       ms === "sbi" ? ["cp", "nwdaf"] : ["nwdaf"],
     );
     if (ms === "sbi") {
@@ -299,6 +300,16 @@ class NWDAFBuilder extends CN5GBuilder {
   private buildCLI(): void {
     const s = this.ctx.defineService("nwdaf_cli", "5gdeploy.localhost/oai-nwdaf-cli", ["nwdaf"]);
     s.extra_hosts["oai-nwdaf-nbi-gateway"] = compose.getIP(this.ctx.c.services.nwdaf_nbigateway!, "nwdaf");
+
+    const nu = new URL("http://127.0.0.1:3000/notification");
+    nu.hostname = compose.getIP(s, "nwdaf");
+
+    compose.setCommands(s, [
+      "for F in examples/subscriptions/*.json; do",
+      `  jq --arg NU ${shlex.quote(nu.href)} '.notificationURI=$NU' $F | sponge $F`,
+      "done",
+      "tail -f",
+    ], "ash");
   }
 
   private replaceIPs(value: string): string {

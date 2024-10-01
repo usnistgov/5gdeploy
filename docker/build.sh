@@ -34,9 +34,36 @@ build_phoenix() {
   build_image phoenix
 }
 
+build_oai_nwdaf_microservice() {
+  local MS=$1
+  shift
+  docker build $PULL --progress=plain -t 5gdeploy.localhost/oai-nwdaf-$MS \
+    "$@" -f docker/Dockerfile.$MS \
+    https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-nwdaf.git#$BRANCH:components/oai-nwdaf-$MS
+}
+
+build_oai_nwdaf() {
+  local BRANCH=http2_server_support
+
+  for MS in engine nbi-analytics nbi-events nbi-ml sbi; do
+    build_oai_nwdaf_microservice $MS \
+      --build-arg BUILD_IMAGE=golang:1.23-alpine3.20 \
+      --build-arg TARGET_IMAGE=alpine:3.20
+  done
+
+  build_oai_nwdaf_microservice engine-ads
+
+  docker build $PULL --progress=plain -t 5gdeploy.localhost/oai-nwdaf-cli \
+    --build-arg branch=$BRANCH \
+    docker/oai-nwdaf-cli
+}
+
 case $D in
   phoenix)
     build_phoenix
+    ;;
+  oai-nwdaf)
+    build_oai_nwdaf
     ;;
   *)
     build_image $D
