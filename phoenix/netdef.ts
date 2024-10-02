@@ -44,6 +44,12 @@ export const phoenixOptions = {
     group: "phoenix",
     type: "boolean",
   },
+  "phoenix-upf-taskset": {
+    default: true,
+    desc: "configure CPU affinity for UPF worker threads",
+    group: "phoenix",
+    type: "boolean",
+  },
   "phoenix-upf-xdp": {
     default: false,
     desc: "enable XDP in UPF",
@@ -482,17 +488,22 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
     const nWorkers = this.opts["phoenix-upf-workers"];
     assert(nWorkers <= 8, "pfcp.so allows up to 8 threads");
 
-    const { s, nf, initCommands } = await this.defineService(ct, ["n4", "n3", "n6", "n9"], "5g/upf1.json");
-    compose.annotate(s, "cpus", nWorkers);
+    const peers = this.netdef.gatherUPFPeers(upf);
+    assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
+    assert(peers.N6IPv6.length === 0, "UPF does not support IPv6 DN");
+
+    const { s, nf, initCommands } = await this.defineService(ct, ([
+      ["n4", 1],
+      ["n3", peers.N3.length],
+      ["n9", peers.N9.length],
+      ["n6", peers.N6IPv4.length],
+    ] satisfies Array<[string, number]>).filter(([, cnt]) => cnt > 0).map(([net]) => net), "5g/upf1.json");
+    compose.annotate(s, "cpus", Number(this.opts["phoenix-upf-taskset"]) + nWorkers);
     for (const netif of ["all", "default"]) {
       s.sysctls[`net.ipv4.conf.${netif}.accept_local`] = 1;
       s.sysctls[`net.ipv4.conf.${netif}.rp_filter`] = 2;
     }
     s.devices.push("/dev/net/tun:/dev/net/tun");
-
-    const peers = this.netdef.gatherUPFPeers(upf);
-    assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
-    assert(peers.N6IPv6.length === 0, "UPF does not support IPv6 DN");
 
     nf.editModule("pfcp", ({ config }) => {
       assert(config.mode === "UP");
@@ -585,6 +596,9 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         "ip link set n6_tap up master br-eth",
       ] : []),
       ...makeUPFRoutes(this.ctx, peers),
+      ...(this.opts["phoenix-upf-taskset"] ? [
+        `/upf-taskset.sh ${nWorkers} &`,
+      ] : []),
     );
   }
 }
