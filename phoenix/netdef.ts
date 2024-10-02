@@ -7,7 +7,7 @@ import type { AnyIterable } from "streaming-iterables";
 import * as compose from "../compose/mod.js";
 import { importGrafanaDashboard, makeUPFRoutes, NetDef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
 import type { ComposeService, N, PH } from "../types/mod.js";
-import { assert, file_io, findByName, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { assert, file_io, findByName, type YargsInfer, YargsIntRange, type YargsOptions } from "../util/mod.js";
 import { NetworkFunction } from "./nf.js";
 
 const phoenixDockerImage = "5gdeploy.localhost/phoenix";
@@ -45,10 +45,13 @@ export const phoenixOptions = {
     type: "boolean",
   },
   "phoenix-upf-taskset": {
-    default: true,
-    desc: "configure CPU affinity for UPF worker threads",
+    ...YargsIntRange({
+      default: 1,
+      desc: "configure CPU affinity for UPF worker threads",
+      min: -1,
+      max: 1,
+    }),
     group: "phoenix",
-    type: "boolean",
   },
   "phoenix-upf-xdp": {
     default: false,
@@ -498,7 +501,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
       ["n9", peers.N9.length],
       ["n6", peers.N6IPv4.length],
     ] satisfies Array<[string, number]>).filter(([, cnt]) => cnt > 0).map(([net]) => net), "5g/upf1.json");
-    compose.annotate(s, "cpus", Number(this.opts["phoenix-upf-taskset"]) + nWorkers);
+    compose.annotate(s, "cpus", Number(this.opts["phoenix-upf-taskset"] !== 0) + nWorkers);
     for (const netif of ["all", "default"]) {
       s.sysctls[`net.ipv4.conf.${netif}.accept_local`] = 1;
       s.sysctls[`net.ipv4.conf.${netif}.rp_filter`] = 2;
@@ -596,9 +599,9 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         "ip link set n6_tap up master br-eth",
       ] : []),
       ...makeUPFRoutes(this.ctx, peers),
-      ...(this.opts["phoenix-upf-taskset"] ? [
-        `/upf-taskset.sh ${nWorkers} &`,
-      ] : []),
+      ...(this.opts["phoenix-upf-taskset"] === 0 ? [] : [
+        `/upf-taskset.sh ${this.opts["phoenix-upf-taskset"]} ${nWorkers} &`,
+      ]),
     );
   }
 }

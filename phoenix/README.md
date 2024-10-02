@@ -32,8 +32,12 @@ By default, N3 is in single\_thread mode, while N9 and N6 are in thread\_pool mo
 You can change them via `--phoenix-upf-single-worker-n3|n9|n6` flags.
 
 When used with [CPU isolation](../docs/multi-host.md), the UPF would request 1+*W* dedicated CPU cores, where *W* is the number of worker threads.
-Shortly after the UPF starts, CPU affinity is changed such that (1) each worker thread is assigned to a separate core (2) all non-worker threads in the UPF share the highest-numbered core.
-You may disable CPU affinity change with `--phoenix-upf-taskset=false` flag.
+Shortly after the UPF starts, CPU affinity is changed such that (1) each worker thread is assigned to a separate core (2) all non-worker threads in the UPF share the same core.
+To fine-tune or disable CPU affinity feature:
+
+* `--phoenix-upf-taskset=1` (default) selects the highest numbered core as the shared core.
+* `--phoenix-upf-taskset=-1` selects the lowest numbered core as the shared core.
+* `--phoenix-upf-taskset=0` disables CPU affinity.
 
 ### XDP Cleanup
 

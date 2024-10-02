@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-WORKERS=$1
+MODE=$1
+WORKERS=$2
 mkdir -p /tmp/upf-taskset
 cd /tmp/upf-taskset
 sleep 20
@@ -15,7 +16,7 @@ linecount() {
   wc -l $1 | cut -d' ' -f1
 }
 
-awk '$1=="Cpus_allowed_list:" { print $2 }' /proc/1/status | awk -vRS=',' -vFS='-' '
+awk '$1=="Cpus_allowed_list:" { printf "%s", $2 }' /proc/1/status | awk -vRS=',' -vFS='-' '
   NF==1 {
     print $1
   }
@@ -40,8 +41,18 @@ done
 msg Found $(linecount threads.tsv) UPF threads including $WORKERS forwarding workers
 cat threads.tsv
 
+AWKVARS=
+case $MODE in
+  1)
+    AWKVARS="-vA=0 -vS=$((1 + WORKERS))"
+    ;;
+  -1)
+    AWKVARS="-vA=1 -vS=1"
+    ;;
+esac
+
 msg Setting CPU affinity for UPF threads
-awk -vA=0 -vS=$((1 + WORKERS)) '
+awk $AWKVARS '
   FILENAME == "cores.tsv" {
     C[NR] = $1
     next
