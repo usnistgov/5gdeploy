@@ -31,13 +31,14 @@ The remaining worker threads are kept in a thread pool to serve traffic arriving
 By default, N3 is in single\_thread mode, while N9 and N6 are in thread\_pool mode (with 3 total worker threads, this effectively means N9 and N6 are sharing two worker threads in the thread pool).
 You can change them via `--phoenix-upf-single-worker-n3|n9|n6` flags.
 
-When used with [CPU isolation](../docs/multi-host.md), the UPF would request 1+*W* dedicated CPU cores, where *W* is the number of worker threads.
-Shortly after the UPF starts, CPU affinity is changed such that (1) each worker thread is assigned to a separate core (2) all non-worker threads in the UPF share the same core.
-To fine-tune or disable CPU affinity feature:
+When used with [CPU isolation](../docs/multi-host.md), CPU affinity is applied to UPF threads, such that (1) each worker thread handling user traffic is assigned to a separate core (2) all non-worker threads in the UPF share a set of shared cores.
+This means the UPF container would request *W*+*S* dedicated CPU cores, where *W* is the number of worker threads and *S* is the number of shared cores.
+This feature can be customized with these flags:
 
-* `--phoenix-upf-taskset=1` (default) selects the highest numbered core as the shared core.
-* `--phoenix-upf-taskset=-1` selects the lowest numbered core as the shared core.
-* `--phoenix-upf-taskset=0` disables CPU affinity.
+* `--phoenix-upf-taskset=shhi` (default) selects the highest-numbered core as shared core.
+* `--phoenix-upf-taskset=shlo` selects the lowest-numbered core as shared core.
+* `--phoenix-upf-taskset=shhi:`*S* or `--phoenix-upf-taskset=shlo:`*S* selects *S* highest/lowest-numbered cores as shared core.
+* `--phoenix-upf-taskset=none` disables CPU affinity.
 
 ### XDP Cleanup
 

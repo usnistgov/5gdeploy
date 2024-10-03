@@ -7,7 +7,7 @@ import type { AnyIterable } from "streaming-iterables";
 import * as compose from "../compose/mod.js";
 import { importGrafanaDashboard, makeUPFRoutes, NetDef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
 import type { ComposeService, N, PH } from "../types/mod.js";
-import { assert, file_io, findByName, type YargsInfer, YargsIntRange, type YargsOptions } from "../util/mod.js";
+import { assert, file_io, findByName, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { NetworkFunction } from "./nf.js";
 
 const phoenixDockerImage = "5gdeploy.localhost/phoenix";
@@ -44,15 +44,7 @@ export const phoenixOptions = {
     group: "phoenix",
     type: "boolean",
   },
-  "phoenix-upf-taskset": {
-    ...YargsIntRange({
-      default: 1,
-      desc: "configure CPU affinity for UPF worker threads",
-      min: -1,
-      max: 1,
-    }),
-    group: "phoenix",
-  },
+  "phoenix-upf-taskset": tasksetOption("UPF"),
   "phoenix-upf-xdp": {
     default: false,
     desc: "enable XDP in UPF",
@@ -65,6 +57,7 @@ export const phoenixOptions = {
     group: "phoenix",
     type: "number",
   },
+  "phoenix-gnb-taskset": tasksetOption("gNB"),
   "phoenix-ue-isolated": {
     array: true,
     default: [""],
@@ -75,6 +68,33 @@ export const phoenixOptions = {
   },
 } as const satisfies YargsOptions;
 type PhoenixOpts = YargsInfer<typeof phoenixOptions>;
+
+function tasksetOption(nf: string) {
+  return {
+    coerce(input: string): ["none" | "shhi" | "shlo", number] {
+      const [mode = "", count = "1"] = input.split(":");
+      assert(["none", "shhi", "shlo"].includes(mode), "bad --phoenix-*-taskset");
+      if (mode === "none") {
+        return [mode, 0];
+      }
+      const cnt = Number.parseInt(count, 10);
+      assert([1, 2, 3, 4].includes(cnt), "bad --phoenix-*-taskset");
+      return [mode, cnt] as any;
+    },
+    default: "shhi",
+    desc: `configure CPU affinity for ${nf} worker threads`,
+    group: "phoenix",
+    type: "string",
+  } as const;
+}
+
+function* tasksetScript(opt: PhoenixOpts["phoenix-upf-taskset"], nWorkers: number, workerPrefix: string): Iterable<string> {
+  const [mode, cnt] = opt;
+  if (mode === "none") {
+    return;
+  }
+  yield `/taskset.sh ${mode} ${cnt} ${workerPrefix} ${nWorkers} &`;
+}
 
 interface PhoenixServiceContext {
   s: ComposeService;
@@ -501,7 +521,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
       ["n9", peers.N9.length],
       ["n6", peers.N6IPv4.length],
     ] satisfies Array<[string, number]>).filter(([, cnt]) => cnt > 0).map(([net]) => net), "5g/upf1.json");
-    compose.annotate(s, "cpus", Number(this.opts["phoenix-upf-taskset"] !== 0) + nWorkers);
+    compose.annotate(s, "cpus", this.opts["phoenix-upf-taskset"][1] + nWorkers);
     for (const netif of ["all", "default"]) {
       s.sysctls[`net.ipv4.conf.${netif}.accept_local`] = 1;
       s.sysctls[`net.ipv4.conf.${netif}.rp_filter`] = 2;
@@ -599,9 +619,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         "ip link set n6_tap up master br-eth",
       ] : []),
       ...makeUPFRoutes(this.ctx, peers),
-      ...(this.opts["phoenix-upf-taskset"] === 0 ? [] : [
-        `/upf-taskset.sh ${this.opts["phoenix-upf-taskset"]} ${nWorkers} &`,
-      ]),
+      ...tasksetScript(this.opts["phoenix-upf-taskset"], nWorkers, "UPFSockFwd_"),
     );
   }
 }
@@ -624,7 +642,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     for (const [ct, gnb] of compose.suggestNames("gnb", this.ctx.netdef.gnbs)) {
       const { s, nf, initCommands } = await this.defineService(ct, ["air", "n2", "n3"], "5g/gnb1.json");
       s.sysctls["net.ipv4.ip_forward"] = 0;
-      compose.annotate(s, "cpus", nWorkers);
+      compose.annotate(s, "cpus", this.opts["phoenix-gnb-taskset"][1] + nWorkers);
 
       nf.editModule("gnb", ({ config }) => {
         Object.assign(config, this.plmn);
@@ -652,6 +670,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
       initCommands.push(
         "iptables -I OUTPUT -p icmp --icmp-type destination-unreachable -j DROP",
         ...compose.applyQoS(s),
+        ...tasksetScript(this.opts["phoenix-gnb-taskset"], nWorkers, "gnbUSockFwd"),
       );
     }
   }

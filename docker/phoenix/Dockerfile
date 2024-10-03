@@ -10,4 +10,4 @@ RUN <<EOF
   touch /executor-version.txt  # used by ue-tunnel-mgmt.sh
 EOF
 
-COPY --chmod=755 upf-taskset.sh /
+COPY --chmod=755 taskset.sh /
