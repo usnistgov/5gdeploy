@@ -31,7 +31,7 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
   compose.annotate(s, "cpus", 4);
   s.privileged = true;
 
-  const c = await oai_conf.loadLibconf<OAI.gnb.Config>(opts["oai-gnb-conf"]);
+  const c = await oai_conf.loadLibconf<OAI.gnb.Config>(opts["oai-gnb-conf"], ct);
   c.Active_gNBs = [gnb.name];
 
   assert(c.gNBs.length === 1);
@@ -125,7 +125,7 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
   // prevent IPv6 traffic from appearing on the PDU session netif.
   s.sysctls["net.ipv6.conf.default.disable_ipv6"] = 1;
 
-  const c = await oai_conf.loadLibconf<OAI.ue.Config>(opts["oai-ue-conf"]);
+  const c = await oai_conf.loadLibconf<OAI.ue.Config>(opts["oai-ue-conf"], ct);
   c.uicc0 = {
     imsi: sub.supi,
     nmc_size: NetDef.splitPLMN(ctx.network.plmn).mnc.length,

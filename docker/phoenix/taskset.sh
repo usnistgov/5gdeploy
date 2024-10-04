@@ -31,7 +31,7 @@ fi
 
 while ! [[ -f workers.tsv ]] || [[ $(wc -l <workers.tsv) -ne $WORKERS ]]; do
   sleep 1
-  ps Hww -o 'tid comm command' --no-headers | awk '
+  ps Hwwx -o 'tid comm command' --no-headers | awk '
     $3 != "/opt/phoenix/dist/bin/phoenix" { next }
     { print $1 " " $2 > "threads.tsv" }
     $2 ~ /^'$WORKERPREFIX'/ { print $1 " " $2 > "workers.tsv" }

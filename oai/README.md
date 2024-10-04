@@ -42,6 +42,7 @@ The default is using the userspace implementation.
 `--oai-gnb-conf` specifies template config file for gNB.
 `--oai-ue-conf` specifies template config file for UE.
 It's advised to use absolute paths for these options.
+If the scenario has multiple gNBs that require different config, `--oai-gnb-conf` may be specified as a directory that contains `gnb0.conf`, `gnb1.conf`, etc.
 
 ## RAN telnet
 
@@ -56,8 +57,9 @@ docker run -it --rm --network host str0ke/telnet $IP 9090
 
 ## USRP hardware
 
-`--oai-gnb-usrp=b2xx` enables USRP B2xx hardware in the gNB.
+`--oai-gnb-usrp=b2xx` enables USRP B2xx hardware in the gNB; this would disable all UE simulators.
 This should be used together with `--oai-gnb-conf` to import a config file with radio parameters.
+If there are multiple gNBs, you may specify `--oai-gnb-conf` as a directory so that each USRP can have different radio parameters.
 
 USRP firmware is mounted from `/usr/local/share/uhd/images` on the host machine.
 Run this command to download the firmware:
@@ -73,7 +75,9 @@ docker run --rm --entrypoint='' -e PYTHONUNBUFFERED=1 -v /usr/local/share/uhd/im
 It's mainly useful for finding out the difference between two gNB configuration files.
 
 ```bash
-$(env -C ~/5gdeploy corepack pnpm bin)/tsx ~/5gdeploy/oai/confdiff.ts A.conf B.conf
+alias confdiff="$(env -C ~/5gdeploy corepack pnpm bin)/tsx ~/5gdeploy/oai/confdiff.ts"
+
+confdiff A.conf B.conf
 ```
 
 The output is given in [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) format.

@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 
 import { execa } from "execa";
@@ -42,7 +43,11 @@ export async function getTaggedImageName(opts: OAIOpts, nf: string): Promise<str
 }
 
 /** Load OAI config from libconfig template file. */
-export async function loadLibconf<T extends {}>(filename: string): Promise<T & { save: () => Promise<string> }> {
+export async function loadLibconf<T extends {}>(filename: string, ct?: string): Promise<T & { save: () => Promise<string> }> {
+  const stat = await fs.stat(filename);
+  if (stat.isDirectory() && ct) {
+    filename = path.join(filename, `${ct}.conf`);
+  }
   let body = await file_io.readText(filename);
   body = body.replaceAll(/=\s*0+(\d+)\b/g, "= $1");
 
