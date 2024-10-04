@@ -160,7 +160,7 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
     ...compose.renameNetifs(s),
     "sleep 20",
     "msg Starting OpenAirInterface5G UE simulator",
-    "exec /opt/oai-nr-ue/bin/entrypoint.sh /opt/oai-nr-ue/bin/nr-uesoftmodem -O /opt/oai-nr-ue/etc/nr-ue.conf" +
+    "exec /opt/oai-nr-ue/bin/entrypoint.sh /opt/oai-nr-ue/bin/nr-uesoftmodem" +
     " -E --sa --telnetsrv --rfsim -r 106 --numerology 1 -C 3619200000",
   ]);
 }

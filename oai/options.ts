@@ -36,8 +36,7 @@ export const oaiOptions = {
     type: "boolean",
   },
   "oai-ran-tag": {
-    default: "2024.w35", // -O flag is broken since 2024.w36 and still broken as of 2024.w39
-    // defaultDescription: "gather from docker-compose-slicing-ransim.yaml",
+    defaultDescription: "gather from docker-compose-slicing-ransim.yaml",
     desc: "OpenAirInterface5G Docker image tag",
     group: "oai",
     type: "string",
