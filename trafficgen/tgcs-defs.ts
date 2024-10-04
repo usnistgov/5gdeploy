@@ -96,10 +96,12 @@ export function rewriteOutputFlag(s: ComposeService, prefix: string, group: stri
   return rFlags;
 }
 
+/** Handle #start= flag for delayed client start. */
 export class ClientStartOpt {
   constructor(private readonly s: ComposeService) {}
   private varname = "";
 
+  /** Delete #start= flag if it appears as the first client flag. */
   public rewriteFlag(flags: readonly string[]): string[] {
     const m = flags[0]?.match(/^#start=(\$\w+)$/);
     if (!m) {
@@ -109,6 +111,7 @@ export class ClientStartOpt {
     return flags.slice(1);
   }
 
+  /** Generate commands to wait until requested client start time. */
   public *waitCommands(): Iterable<string> {
     if (!this.varname) {
       return;

@@ -240,7 +240,7 @@ abstract class PhoenixScenarioBuilder {
     setProcessExporterRule(this.ctx, "phoenix",
       [{
         comm: ["phoenix"],
-        cmdline: [/-j [\w/]+\/(?<NF>\w+)\.json/],
+        cmdline: [/-j (?:[\w/]+\/)?(?<NF>\w+)\.json/],
         name: "phoenix:{{.Matches.NF}}",
       }],
       [{

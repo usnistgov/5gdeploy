@@ -208,11 +208,6 @@ export async function prometheus(ctx: NetDefComposeContext, opts: YargsInfer<typ
   ctx.finalize.push(() => b.finish());
 }
 
-function regexToString(re: RegExp): string {
-  // process-exporter is compiled with go@1.17.3 that does not support "(?<" syntax for named capture group.
-  return re.source.replaceAll("(?<", "(?P<");
-}
-
 /** Set process-exporter process_names and relabel_config rules. */
 export function setProcessExporterRule(
     ctx: NetDefComposeContext,
@@ -224,11 +219,11 @@ export function setProcessExporterRule(
   b.processExporterRules.set(key, [
     names.map((rule) => ({
       ...rule,
-      cmdline: rule.cmdline.map((re) => regexToString(re)),
+      cmdline: rule.cmdline.map((re) => re.source),
     })),
     relabel.map((rule) => ({
       ...rule,
-      regex: rule.regex && regexToString(rule.regex),
+      regex: rule.regex?.source,
     })),
   ]);
 }
