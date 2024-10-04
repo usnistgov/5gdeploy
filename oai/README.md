@@ -39,8 +39,8 @@ These should be used together with CPU isolation via `--place` flag.
 `--oai-upf-bpf=true` selects BPF datapath in CN5G UPF.
 The default is using the userspace implementation.
 
-`--oai-gnb-conf` specifies template config file for gNB.
-`--oai-ue-conf` specifies template config file for UE.
+`--oai-gnb-conf` specifies template config file for gNB (libconfig format only).
+`--oai-ue-conf` specifies template config file for UE (libconfig format only).
 It's advised to use absolute paths for these options.
 If the scenario has multiple gNBs that require different config, `--oai-gnb-conf` may be specified as a directory that contains `gnb0.conf`, `gnb1.conf`, etc.
 
@@ -71,13 +71,14 @@ docker run --rm --entrypoint='' -e PYTHONUNBUFFERED=1 -v /usr/local/share/uhd/im
 
 ## RAN configuration comparison
 
-`confdiff.ts` is a script to compare two libconf files.
+`confdiff.ts` is a script to compare two libconfig or YAML files.
 It's mainly useful for finding out the difference between two gNB configuration files.
 
 ```bash
 alias confdiff="$(env -C ~/5gdeploy corepack pnpm bin)/tsx ~/5gdeploy/oai/confdiff.ts"
 
 confdiff A.conf B.conf
+confdiff A.conf B.yaml
 ```
 
 The output is given in [JSON Patch](https://datatracker.ietf.org/doc/html/rfc6902) format.

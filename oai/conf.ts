@@ -42,7 +42,12 @@ export async function getTaggedImageName(opts: OAIOpts, nf: string): Promise<str
   return await compose.getTaggedImageName(path.resolve(composePath, filename), image) ?? `${image}:${dfltTag}`;
 }
 
-/** Load OAI config from libconfig template file. */
+/**
+ * Load OAI config from libconfig file.
+ * @param filename - Either a libconfig filename or a directory name.
+ * @param ct - If `filename` refers to a directory, use `${ct}.conf` in the directory.
+ * @returns - File content converted to JSON.
+ */
 export async function loadLibconf<T extends {}>(filename: string, ct?: string): Promise<T & { save: () => Promise<string> }> {
   const stat = await fs.stat(filename);
   if (stat.isDirectory() && ct) {

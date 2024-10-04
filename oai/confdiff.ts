@@ -4,6 +4,13 @@ import type { CommandModule } from "yargs";
 import { file_io, Yargs } from "../util/mod.js";
 import { loadLibconf } from "./conf.js";
 
+function loadLibconfOrYaml(filename: string): Promise<any> {
+  if (filename.endsWith(".yaml") || filename.endsWith(".json")) {
+    return file_io.readYAML(filename);
+  }
+  return loadLibconf(filename);
+}
+
 const command: CommandModule<{}, {
   out: string;
   a: string;
@@ -18,8 +25,8 @@ const command: CommandModule<{}, {
       .positional("b", { demandOption: true, normalize: true, type: "string" });
   },
   async handler({ a, b, out }) {
-    const fa = await loadLibconf(a);
-    const fb = await loadLibconf(b);
+    const fa = await loadLibconfOrYaml(a);
+    const fb = await loadLibconfOrYaml(b);
     const patch = fastJsonPatch.compare(fa, fb, true);
     await file_io.write(out, patch);
   },
