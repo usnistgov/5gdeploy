@@ -52,7 +52,7 @@ It generates a Compose context with multi-host deployment with these steps:
 
 6. The output is written as an annotated Compose file and a `compose.sh` script.
 
-    * In the Compose file, each network function is annotated with host and CPU core assignements.
+    * In the Compose file, each network function is annotated with host and CPU core assignments.
     * The `compose.sh` allows starting and stopping the Compose context at both *primary* and *secondary* hosts, invoked from the *primary* host.
 
 ## Bridges
@@ -150,7 +150,7 @@ If a virtualization Compose context was loaded through `--use-vm` flag, the host
 * `vm-`*vmname*`:`*guestnetif*
   * Use KVM guest *vmname*, guest netif *guestnetif*, which must be in MACVTAP mode.
   * This only works with `=` operator, because a MACVTAP subinterface does not allow additional MAC addresses.
-  * If multiple containers in a KVM guest needs to use the same netif, you can create multiple guest netifs attached to the same physical host netif, and then assign one guest netif to each container.
+  * If multiple containers in a KVM guest need to use the same netif, you can create multiple guest netifs attached to the same physical host netif, and then assign one guest netif to each container.
 * `vm-`*vmname*
   * Same as above, using network name (e.g. `n3`) as guest netif name.
 
@@ -171,8 +171,7 @@ Per initial testing, when VLAN ID is specified:
 ## Placement
 
 By default, if you simply run `docker compose up -d`, all network functions are started on the primary host.
-`--place=PATTERN@HOST` moves network functions matching pattern *PATTERN* to the Docker host *HOST*, specified as an IP address.
-If a virtualization Compose context was loaded through `--use-vm` flag, the *HOST* portion accepts `vm-`*vmname* format.
+`--place=PATTERN@HOST` moves network functions matching pattern *PATTERN* to the Docker host *HOST*.
 In the example diagram, gNBs and UEs are placed on *ran* host, UPFs and Data Networks are placed on *dn* host, everything else are placed on the *primary* host.
 These can be specified with command line flags like this:
 
@@ -185,6 +184,15 @@ The patterns should be written in [minimatch](https://www.npmjs.com/package/mini
 They are matched in the order they are specified.
 If a container name does not match any pattern, it stays on the primary host.
 The `bridge` container will always run on every host.
+
+The *HOST* portion has one of these forms:
+
+* IPv4 address, which should accept SSH connections on port 22.
+* A string identifier that is further resolved with `--ssh-uri` flag.
+  * Example: `--place="+(gnb*|ue*)@ran" --ssh-uri="ran = root@192.168.60.3:2222"`
+  * This is the only way to specify alternate SSH username and port number.
+* `vm-`*vmname*, if a virtualization Compose context has been loaded through `--use-vm` flag.
+  * Internally, this is realized by defining `--ssh-uri` flags.
 
 It is your responsibility to ensure Docker networks that span multiple hosts have a bridge connecting them.
 Otherwise, the 5G network probably will not work.
@@ -209,9 +217,9 @@ $(./compose.sh at ue1000) logs -f ue1000
 
 ## CPU Isolation
 
-It is possible to configure CPU isolation as part of the `--place` flag.
+CPU isolation is configurable as part of `--place` flags.
 `--place=PATTERN@HOST(CPUSET)` allocates CPU cores in *CPUSET* on *HOST* to network functions matching pattern *PATTERN*.
-To allocate CPU cores on the primary host, omit the `HOST` part and write `--place=PATTERN@(CPUSET)` only.
+To allocate CPU cores on the primary host, omit the *HOST* portion and write `--place=PATTERN@(CPUSET)` only.
 Example:
 
 ```text

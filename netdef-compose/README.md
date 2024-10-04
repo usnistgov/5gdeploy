@@ -117,7 +117,7 @@ The syntax looks like `--set-netem='n3 | gnb* | upf* | delay 10ms'`, where each 
 
 Note: the spaces around `|` are optional but they must be consistent.
 You can either have spaces around every `|` symbol (effectively `" | "` is the delimiter) or none of them.
-The minimatch patterns can container `|` symbol, only if the delimiter `|` symbols have spaces around them.
+The minimatch patterns can contain `|` symbol, only if the delimiter `|` symbols have spaces around them.
 
 ## Metrics Collection with Prometheus and Grafana
 
@@ -136,4 +136,4 @@ When used in a multi-host deployment:
 * Do not create a bridge for `meas` network.
 * Create bridges for all other networks joined by `prometheus` container.
 * Currently process-exporter is expected to be exposed on port 9256 of each host IP.
-  If the same IP has multiple hosts (e.g. virtual machines with different SSH ports) or the process-exporter port isn't exposed, this scrape target will not work.
+  If the same IP has multiple hosts (via `--ssh-uri` flag) or the process-exporter port isn't exposed, this scrape target will not work.

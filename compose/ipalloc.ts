@@ -14,7 +14,7 @@ export function ipAllocOptions(dfltSpace = "172.25.192.0/18") {
         return subnet;
       },
       default: dfltSpace,
-      desc: "Compose networks IP address space, /18 or larger",
+      desc: `Compose networks IP address space, /${minBitmask} or larger`,
       type: "string",
     },
     "ip-fixed": {

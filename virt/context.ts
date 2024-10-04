@@ -224,7 +224,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     yield "YASU='yasu '$RUNAS";
 
     const qemuFlags = [
-      "-name", name, "-qmp", "unix:./qmp,server,wait=off",
+      "-qmp", "unix:./qmp,server,wait=off",
       "-nodefaults", "-nographic", "-msg", "timestamp=on",
       "-chardev", "pty,id=charserial0", "-device", "isa-serial,chardev=charserial0,id=serial0", "-serial", "stdio",
       "-enable-kvm", "-machine", "accel=kvm,usb=off",
@@ -277,7 +277,7 @@ export class VirtComposeContext extends compose.ComposeContext {
 
     yield "";
     yield "msg Starting QEMU";
-    yield `qemu-system-x86_64 -runas $RUNAS ${
+    yield `qemu-system-x86_64 -name ${shlex.quote(name)} -runas $RUNAS ${
       shlex.join(qemuFlags)} ${qemuRedirects.join(" ")} &`;
     yield "wait $!";
   }

@@ -62,8 +62,8 @@ The network interfaces portion of `--vm` flag is a comma separated list where ea
 
 You can have up to 16 distinct guest netif names, across all KVM guests.
 
-In MACVTAP mode, the guest netif is mapped to a MACVTAP subinterface attached to the physical host netif, which may be specified as either a MAC address or an existing ifname.
-If the host has multiple netifs with the same MAC address (e.g. there's both VLAN and non-VLAN netif), you should use the *host-ifname* syntax.
+In MACVTAP mode, the guest netif is mapped to a MACVTAP subinterface attached to the physical host netif, which may be specified as either MAC address or ifname.
+If the host has multiple netifs with the same MAC address (e.g. a VLAN netif and a non-VLAN netif), you should use the *host-ifname* syntax.
 
 In PCI passthrough mode, the PCI device of the Ethernet adapter is passed to the KVM guest for its exclusive use.
 Before launching the VM, you must enable IOMMU on the host and bind the PCI device to `vfio-pci` driver.
@@ -166,9 +166,14 @@ The primary host can reach KVM guests through this subinterface.
 When this container is stopped, the subinterface is deleted.
 
 The `vm_`*vmname* container is started on the physical host intended for the KVM guest after the per-VM image has been built.
-In the host netns, it locates physical host netifs identified in guest netif definitions, and creates a MACVTAP subinterface attached to each.
-Each MACVTAP subinterface consists of a virtual netif in the host netns and an associated TAP device node.
-The virtual netif is left as is, with no IP addresses assigned.
-The container proceeds to launch QEMU process with the per-VM image as boot drive, where TAP devices for all netifs are passed as file descriptors.
-When the guest operating system starts, it recognizes each netif as a virtio network device, and configures these via netplan.
-When the `vm_`*vmname* container is stopped, the MACVTAP subinterfaces are deleted.
+It then processes guest netif definitions:
+
+* For each guest netif definition under MACVTAP mode, it locates the physical host netif and creates a MACVTAP subinterface attached to it.
+  The MACVTAP subinterface consists of a virtual netif in the host netns and an associated TAP device node.
+  The virtual netif is left as is, with no IP addresses assigned.
+  The TAP device node is passed to the QEMU process as a file descriptor, which would appear in the guest as a virtio network device.
+* For each guest netif definition under PCI passthrough mode, the PCI device is passed to the QEMU process via `vfio-pci` driver.
+
+The `vm_`*vmname* container proceeds to launch QEMU process with the per-VM image as boot drive, with network devices as described above.
+The guest operating system configures netifs via netplan, matching devices via their MAC addresses.
+When the container is stopped, the MACVTAP subinterfaces are deleted and the PCI devices are released.
