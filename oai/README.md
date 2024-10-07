@@ -69,6 +69,13 @@ docker run --rm --entrypoint='' -e PYTHONUNBUFFERED=1 -v /usr/local/share/uhd/im
   oaisoftwarealliance/oai-gnb:develop /opt/oai-gnb/bin/uhd_images_downloader.py
 ```
 
+Run this command to detect USRP devices:
+
+```bash
+docker run --rm --entrypoint='' --device /dev/bus/usb -v /usr/local/share/uhd/images:/usr/local/share/uhd/images:ro \
+  oaisoftwarealliance/oai-gnb:develop uhd_find_devices
+```
+
 ## RAN configuration comparison
 
 `confdiff.ts` is a script to compare two libconfig or YAML files.

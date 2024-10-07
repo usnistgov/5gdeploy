@@ -102,6 +102,10 @@ function enableUSRP(usrp: OAIOpts["oai-gnb-usrp"], s: ComposeService, softmodemA
   assert(usrp === "b2xx", `USRP ${usrp} is not supported`);
   softmodemArgs.push("-E", "--continuous-tx");
   s.volumes.push({
+    // /dev/bus/usb must be a bind volume and not in s.devices; putting this in s.devices would
+    // cause UHD to report "USB open failed: insufficient permissions" error when the USRP
+    // hardware is initialized for the first time after re-plugging, because UHD may reset the
+    // USRP hardware from high-speed to SuperSpeed, changing its inode device number
     type: "bind",
     source: "/dev/bus/usb",
     target: "/dev/bus/usb",
