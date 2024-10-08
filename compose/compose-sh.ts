@@ -106,6 +106,7 @@ function* makeHelp(help: typeof baseHelp): Iterable<string> {
     } else {
       yield `  ./compose.sh ${cmd}`;
     }
+
     if (typeof desc === "string") {
       yield `    ${desc}`;
     } else {
