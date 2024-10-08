@@ -71,6 +71,7 @@ const args = Yargs()
 
 const [c, netdef] = await loadCtx(args);
 const { prefix } = args;
+assert(/[a-z][\da-z]/.test(prefix), "--prefix shall be a letter followed by letters and digits");
 
 const output = compose.create();
 let nextPort = args.port;
@@ -158,15 +159,23 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield `STATS_DIR=$PWD/${prefix}/`;
   yield "ACT=${1:-}"; // eslint-disable-line no-template-curly-in-string
   yield "[[ -z $ACT ]] || shift";
+  yield "";
+
+  yield "delete_by_regex() {";
+  yield "  $1 ps --filter=\"name=$2\" -aq | xargs --no-run-if-empty $1 rm -f";
+  yield "}";
+  yield "";
 
   yield "if [[ -z $ACT ]]; then";
-  for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
+  for (const { hostDesc, dockerH } of compose.classifyByHost(output)) {
     yield `  msg Deleting old trafficgen servers and clients on ${hostDesc}`;
-    yield `  with_retry ${dockerH} rm -f ${names.join(" ")} 2>/dev/null`;
+    yield `  with_retry delete_by_regex ${shlex.quote(dockerH)} ${shlex.quote(`^${prefix}_`)} 2>/dev/null`;
   }
   yield "  rm -rf $STATS_DIR";
   yield "fi";
   yield "mkdir -p $STATS_DIR";
+  yield `cp $COMPOSE_CTX/${prefix}.tsv $STATS_DIR/setup.tsv`;
+  yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == servers ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_s"))) {
@@ -176,6 +185,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   }
   yield `  sleep ${(args["startup-delay"] / 1000).toFixed(3)}`;
   yield "fi";
+  yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_c"))) {
@@ -184,6 +194,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
       composeFilename} up -d ${names.join(" ")}`;
   }
   yield "fi";
+  yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == wait ]]; then";
   yield "  msg Waiting for trafficgen clients to finish";
@@ -191,6 +202,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
     yield `  echo ${s.container_name} $(${compose.makeDockerH(s)} wait ${s.container_name})`;
   }
   yield "fi";
+  yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == collect ]]; then";
   yield "  msg Gathering trafficgen statistics to $STATS_DIR";
@@ -204,15 +216,17 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
     yield `  ${compose.makeDockerH(s)} logs ${ct} >$\{STATS_DIR}${basename}-${ct.slice(-1)}${tg.statsExt}`;
   }
   yield "fi";
+  yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == stop ]]; then";
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
     yield `  msg Deleting trafficgen servers and clients on ${hostDesc}`;
     yield `  with_retry env COMPOSE_IGNORE_ORPHANS=1 ${dockerH} compose -f ${
       composeFilename} stop -t 2 ${names.join(" ")} >/dev/null`;
-    yield `  with_retry ${dockerH} rm -f ${names.join(" ")} >/dev/null`;
+    yield `  with_retry delete_by_regex ${shlex.quote(dockerH)} ${shlex.quote(`^${prefix}_`)} >/dev/null`;
   }
   yield "fi";
+  yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == stats ]]; then";
   yield "  cd $STATS_DIR";

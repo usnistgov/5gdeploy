@@ -36,7 +36,7 @@ Each traffic flow flag is processed separately, so that the same PDU session may
 
 Optional flags:
 
-* `--prefix` flag specifies container name prefix and result folder name.
+* `--prefix` flag specifies container name prefix and stats directory name.
   Default is "tg".
 * `--port` flag specifies the port number used by the first traffic generator.
   Default is 20000.
@@ -49,8 +49,9 @@ If there are fewer than expected traffic flows, please check that UEs are regist
 The outputs are:
 
 * Compose file `compose.PREFIX.yml`, which defines necessary traffic generator containers.
-* bash script `PREFIX.sh`, which runs traffic generator containers and saves statistics in `~/compose/20230601/PREFIX` directory.
+* bash script `PREFIX.sh`, which runs traffic generator containers and saves statistics in `~/compose/20230601/PREFIX` stats directory.
 * TSV file `PREFIX.tsv`, which has the same information as the brief report.
+  This is automatically copied into the stats directory as `setup.tsv`.
 
 ## iperf2
 
@@ -67,7 +68,7 @@ Server flags are passed to [iperf2 server](https://iperf2.sourceforge.io/iperf-m
 To use UDP mode, pass `-u` in both client flags and server flags; otherwise, it is TCP mode.
 It is an error to have UDP mode on one side and TCP mode on the other side.
 
-The text outputs of each iperf2 container are saved in `~/compose/20230601/PREFIX` directory.
+The text outputs of each iperf2 container are saved in the stats directory.
 You should not use the `--output` flag.
 The script shows a brief summary of iperf2 results, but it requires interval reports to be enabled (`-i` flag) and cannot handle bidirectional traffic.
 
@@ -107,7 +108,7 @@ Client flags are passed to iperf3 client.
 `#start` may be passed as the first client flag for delayed client start, described in "advanced usage" section.
 Server flags are not accepted.
 
-The JSON outputs of each iperf3 container are saved in `~/compose/20230601/PREFIX` directory.
+The JSON outputs of each iperf3 container are saved in the stats directory.
 The script shows a brief summary of iperf3 flows.
 
 ### iperf3 Text Output
@@ -119,7 +120,7 @@ If you want iperf3 text output instead of JSON output, use `--iperf3t` traffic f
 ./tg.sh
 ```
 
-The text outputs of each iperf3 container are saved in `~/compose/20230601/PREFIX` directory, but the script cannot gather overall statistics.
+The text outputs of each iperf3 container are saved in the stats directory, but the script cannot gather overall statistics.
 
 ## OWAMP and TWAMP
 
@@ -142,7 +143,7 @@ Server flags are not accepted.
 
 You can pass flags to owping/twping within the third part of traffic flow flags.
 `-F` and `-T` flags are handled specially: the filename that follows either flag is ignored.
-Instead, it is set to a file in `~/compose/20230601/PREFIX` directory.
+Instead, it is set to a file in the stats directory.
 
 OWAMP session files can be further analyzed with `owstats` command.
 
@@ -186,7 +187,7 @@ The script cannot gather summary information from the output.
 Client flags, starting with a subcommand such as `under-load`, are passed to `sockperf`.
 Server flags are passed to `sockperf server`.
 
-Similar to OWAMP, the filename that follows `--full-log` is set to a file in `~/compose/20230601/PREFIX` directory, which can be analyzed later.
+Similar to OWAMP, the filename that follows `--full-log` is set to a file in the stats directory, which can be analyzed later.
 
 The script cannot identify the traffic direction of each flow in the brief report.
 The script cannot gather summary information from the output.
@@ -274,6 +275,7 @@ Normally, you can run `PREFIX.sh` script without parameter, to execute all the s
 
 ```bash
 ./tg.sh
+# this would also clear the result directory
 ```
 
 The script has these steps / subcommands:
