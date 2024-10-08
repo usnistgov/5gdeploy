@@ -47,6 +47,8 @@ These combinations are verified to be compatible:
 * `--cp=phoenix --up=free5gc --ran=phoenix`
 * `--cp=phoenix --up=free5gc --ran=srsran`
 * `--cp=phoenix --up=free5gc --ran=ueransim`
+* `--cp=phoenix --up=open5gs --ran=packetrusher`
+* `--cp=phoenix --up=open5gs --ran=phoenix`
 * `--cp=phoenix --up=phoenix --ran=packetrusher` with `--phoenix-upf-xdp=false`
 * `--cp=phoenix --up=phoenix --ran=phoenix`
 * `--cp=phoenix --up=phoenix --ran=srsran` with `--phoenix-upf-xdp=false`

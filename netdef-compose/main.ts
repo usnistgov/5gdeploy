@@ -7,6 +7,7 @@ import { ndndpdkUP } from "../ndndpdk/upf.js";
 import { NetDef } from "../netdef/netdef.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { bessUP, gnbsimRAN } from "../omec/mod.js";
+import { o5UP } from "../open5gs/up.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { srsOptions, srsRAN } from "../srsran/mod.js";
@@ -33,6 +34,7 @@ const upProviders: Record<string, UpProvider> = {
   ndndpdk: ndndpdkUP,
   oai: oaiUP,
   "oai-vpp": oaiUPvpp,
+  open5gs: o5UP,
   phoenix: phoenixUP,
 };
 

@@ -88,11 +88,12 @@ export function setDNCommands(ctx: NetDefComposeContext): void {
 
 /**
  * Generate commands to configure routes for Data Networks in UPF.
+ * @param upfNetif - TUN/TAP netif of the UPF software, will create back-route to it.
  *
  * @remarks
  * This shall be called after {@link defineDNServices} and before {@link setDNCommands}.
  */
-export function* makeUPFRoutes(ctx: NetDefComposeContext, peers: NetDef.UPFPeers): Iterable<string> {
+export function* makeUPFRoutes(ctx: NetDefComposeContext, peers: NetDef.UPFPeers, upfNetif?: string): Iterable<string> {
   for (const dn of peers.N6IPv4) {
     const dnService = ctx.c.services[makeDNServiceName(ctx, dn)];
     const dest = new Netmask(dn.subnet!);
@@ -100,6 +101,9 @@ export function* makeUPFRoutes(ctx: NetDefComposeContext, peers: NetDef.UPFPeers
     yield `msg Adding routes for ${shlex.quote(`${dn.snssai}:${dn.dnn}`)} toward DN in table ${table}`;
     yield `ip rule add from ${dest} priority ${upfRouteRulePriority} table ${table}`;
     yield `ip route add default via ${dnService!.networks.n6!.ipv4_address} table ${table} metric ${dn.cost}`;
+    if (upfNetif) {
+      yield `ip route add ${dest} dev ${upfNetif} metric 0`;
+    }
   }
 
   yield "msg Listing IP rules";
