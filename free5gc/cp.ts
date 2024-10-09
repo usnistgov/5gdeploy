@@ -146,7 +146,7 @@ class F5CPBuilder {
     for (const { snssai, dnn } of sub.subscribedDN) {
       const dn = this.ctx.netdef.findDN(dnn, snssai);
       assert(dn);
-      const { sst, sd = "FFFFFF" } = NetDef.splitSNSSAI(snssai).hex;
+      const { sst, sd = "" } = NetDef.splitSNSSAI(snssai).hex;
       const key = `${sst}${sd}`.toLowerCase();
       const sessionType = dn.type.toUpperCase();
 

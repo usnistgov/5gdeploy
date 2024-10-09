@@ -5,7 +5,7 @@ import * as yaml from "js-yaml";
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
 import type { F5 } from "../types/mod.js";
-import { assert, file_io } from "../util/mod.js";
+import { file_io } from "../util/mod.js";
 
 /** Determine free5GC Docker image name with version tag. */
 export async function getTaggedImageName(nf: string): Promise<string> {
@@ -29,6 +29,5 @@ export function loadTemplate(tpl: string): Promise<unknown> {
 
 export function convertSNSSAI(input: string): F5.SNSSAI {
   const { sst, sd } = NetDef.splitSNSSAI(input).ih;
-  assert(!!sd, "free5GC does not support S-NSSAI without SD value");
-  return { sst, sd: sd.toLowerCase() };
+  return { sst, sd: sd?.toLowerCase() };
 }
