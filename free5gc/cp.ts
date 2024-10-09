@@ -82,9 +82,7 @@ class F5CPBuilder {
     const server = `http://${serverIP}:${serverPort}`;
 
     yield* scriptHead;
-    yield "msg Waiting for WebUI to become ready";
-    yield `with_retry nc -z ${serverIP} ${serverPort}`;
-    yield "sleep 1";
+    yield* compose.waitReachable("WebUI", [serverIP], { mode: `nc:${serverPort}`, sleep: 1 });
     yield "msg Requesting WebUI access token";
     yield `http --ignore-stdin -j POST ${server}/api/login username=admin password=free5gc | tee /login.json | jq .`;
     yield "TOKEN=\"$(jq -r .access_token /login.json)\"";

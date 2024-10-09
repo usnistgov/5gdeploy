@@ -105,6 +105,8 @@ export function* waitReachable(
       yield `with_retry ping -c 1 -W 0.5 ${ip} &>/dev/null`;
     } else if (mode.startsWith("tcp:")) {
       yield `with_retry bash -c ${shlex.quote(`>/dev/tcp/${ip}/${mode.slice(4)}`)} &>/dev/null`;
+    } else if (mode.startsWith("nc:")) {
+      yield `with_retry nc -z ${shlex.quote(ip)} ${mode.slice(3)} &>/dev/null`;
     }
   }
   yield `msg The ${noun} ${verb} now reachable`;
@@ -113,9 +115,14 @@ export function* waitReachable(
 export namespace waitReachable {
   export interface Options {
     /**
-     * Reachability test mode: ICMP ping or TCP connect.
+     * Reachability test mode:
+     * - ICMP ping
+     * - TCP connect, using bash
+     * - TCP connect, using netcat
+     *
+     * @defaultValue icmp
      */
-    mode?: "icmp" | `tcp:${number}`;
+    mode?: "icmp" | `tcp:${number}` | `nc:${number}`;
 
     /**
      * Sleep duration after IPs become reachable.
