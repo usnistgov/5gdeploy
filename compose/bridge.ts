@@ -166,6 +166,12 @@ export async function defineBridge(ctx: ComposeContext, opts: BridgeOpts): Promi
       target: "/var/run/docker.sock",
     });
   }
+
+  s.healthcheck = {
+    test: ["CMD", "test", "-f", healthyFile],
+    interval: "31s",
+    start_period: "30s",
+  };
 }
 
 function* generateScript(c: ComposeFile, opts: BridgeOpts, modes: Set<string>): Iterable<string> {
@@ -187,7 +193,12 @@ function* generateScript(c: ComposeFile, opts: BridgeOpts, modes: Set<string>): 
     yield "";
   }
 
+  yield "msg Setting healthy state";
+  yield `touch ${healthyFile}`;
+
   yield "msg Idling";
   yield "tail -f &";
   yield "wait $!";
 }
+
+const healthyFile = "/run/5gdeploy-bridge-is-healthy";
