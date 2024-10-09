@@ -391,11 +391,13 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         config.Topology.Link = this.netdef.dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
           const typeA = this.determineDataPathNodeType(nodeA);
           const typeB = this.determineDataPathNodeType(nodeB);
-          if (smf.nssai) {
-            const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
-            if (dn && !smf.nssai.includes(dn.snssai)) {
-              return [];
-            }
+          const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
+          if (dn && ((
+            smf.nssai && !smf.nssai.includes(dn.snssai) // DN not in SMF's NSSAI
+          ) || (
+            this.netdef.findDN(dn)!.type !== "IPv4" // Ethernet DN cannot appear in sdn_routing_topology because it has no N6
+          ))) {
+            return [];
           }
           return {
             weight: cost,

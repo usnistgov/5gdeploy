@@ -130,6 +130,7 @@ Run `./compose.sh web` in the Compose context folder to view access instructions
 Currently, scrape targets include:
 
 * Open5GCore network functions
+* Open5GS network functions
 * process-exporter on each host machine
   * gathering stats of Open5GCore processes
 
@@ -138,5 +139,5 @@ When used in a multi-host deployment:
 * Keep `prometheus` and `grafana` containers on the primary host.
 * Do not create a bridge for `meas` network.
 * Create bridges for all other networks joined by `prometheus` container.
-* Currently process-exporter is expected to be exposed on port 9256 of each host IP.
-  If the same IP has multiple hosts (via `--ssh-uri` flag) or the process-exporter port isn't exposed, this scrape target will not work.
+* process-exporter shall be exposed on port 9256 of each host IP.
+  If the same IP has multiple hosts (via `--ssh-uri` flag) or the port is blocked, this scrape target will not work.
