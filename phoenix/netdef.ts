@@ -144,7 +144,7 @@ abstract class PhoenixScenarioBuilder {
       initCommands,
       makeDatabase: async (tpl, d, append) => {
         d.database = ct;
-        d.hostname = this.ctx.gatherIPs("sql", "db")[0]!;
+        d.hostname = compose.getIP(this.ctx.c.services.sql!, "db");
         await this.ctx.writeFile(
           `${this.nfKind}-sql/${ct}.sql`,
           await compose.mysql.join(await this.loadDatabase(tpl, ct), append),
@@ -325,7 +325,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       return;
     }
 
-    const { nf, makeDatabase } = await this.defineService("nssf", ["cp"], "5g_nssf/nssf.json");
+    const { nf, makeDatabase } = await this.defineService("nssf", ["db", "cp"], "5g_nssf/nssf.json");
     await nf.editModule("nssf", async ({ config }) => {
       await makeDatabase("5g_nssf/sql/nssf_db.sql", config.database, this.makeNSSFDatabase());
     });
