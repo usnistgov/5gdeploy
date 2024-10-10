@@ -211,9 +211,11 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
     const group = compose.annotate(s, "tgcs_group")!;
     const port = compose.annotate(s, "tgcs_port")!;
     const dn = compose.annotate(s, "tgcs_dn")!;
+    const timestampFlag = compose.annotate(s, "tgcs_docker_timestamps") ? "-t" : "";
     const ct = s.container_name;
     const basename = tg.serverPerDN && ct.endsWith("s") ? `${group}-${dn}` : `${group}-${port}`;
-    yield `  ${compose.makeDockerH(s)} logs ${ct} >$\{STATS_DIR}${basename}-${ct.slice(-1)}${tg.statsExt}`;
+    yield `  ${compose.makeDockerH(s)} logs ${timestampFlag} ${
+      ct} >$\{STATS_DIR}${basename}-${ct.slice(-1)}${tg.statsExt}`;
   }
   yield "fi";
   yield "";

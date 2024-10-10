@@ -63,6 +63,16 @@ export interface TrafficGen {
   statsCommands?: (prefix: string) => Iterable<string>;
 }
 
+/** Mount /output volume. */
+export function mountOutputVolume(s: ComposeService, prefix: string): void {
+  s.volumes.push({
+    type: "bind",
+    source: `./${prefix}`,
+    target: "/output",
+    bind: { create_host_path: true },
+  });
+}
+
 /**
  * Rewrite trafficgen flags so that output files are placed in the output folder.
  * @param s - Compose service for trafficgen client or server.
@@ -86,12 +96,7 @@ export function rewriteOutputFlag(s: ComposeService, prefix: string, group: stri
   });
 
   if (hasOutput) {
-    s.volumes.push({
-      type: "bind",
-      source: `./${prefix}`,
-      target: "/output",
-      bind: { create_host_path: true },
-    });
+    mountOutputVolume(s, prefix);
   }
   return rFlags;
 }

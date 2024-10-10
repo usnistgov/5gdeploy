@@ -8,7 +8,7 @@ Some of these traffic generators are integrated as traffic flow flags of `./comp
 `--ns3http` traffic flow flag prepares [ns-3 3GPP HTTP applications](../docker/ns3http/README.md).
 
 ```bash
-./compose.sh tgcs --ns3http='internet | * | --stop-time=60s --clients=1 --ns3::ThreeGppHttpVariables::ReadingTimeMean=5s |'
+./compose.sh tgcs --ns3http='internet | * | --stop-time=60s --clients=1 --ns3::ThreeGppHttpVariables::ReadingTimeMean=5s'
 ./tg.sh
 ```
 

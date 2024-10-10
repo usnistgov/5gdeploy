@@ -4,7 +4,7 @@ import * as shlex from "shlex";
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
 import { scriptCleanup } from "../util/mod.js";
-import { Direction, type TrafficGen } from "./tgcs-defs.js";
+import { Direction, mountOutputVolume, type TrafficGen } from "./tgcs-defs.js";
 
 const rngSeed = Math.floor(Math.random() * 0x100000000);
 
@@ -14,10 +14,11 @@ function* iptablesInsertWithCleanup(table: string, chain: string, flags: string)
 }
 
 function setupNs3(
-    s: ComposeService, index: number, hostIP: string,
+    s: ComposeService, prefix: string, index: number, hostIP: string,
     ports: ReadonlyArray<`${"tcp" | "udp"}:${number}`>,
-    commandLine: readonly string[],
+    commandLine: readonly string[], nslog: string,
 ): void {
+  mountOutputVolume(s, prefix);
   s.cap_add.push("NET_ADMIN");
   s.devices.push("/dev/net/tun:/dev/net/tun");
 
@@ -64,7 +65,7 @@ function setupNs3(
       `--tap-ip=${tapIP}`,
       "--tap-mask=255.255.255.252",
       `--app-ip=${appIP}`,
-    ])} 2>&1 &`;
+    ])} 2>/output/${nslog}.nslog &`;
     yield "wait $!";
   })());
 }
@@ -76,14 +77,18 @@ export const ns3http: TrafficGen = {
   nPorts: 8,
   serverDockerImage: "5gdeploy.localhost/ns3http",
   serverPerDN: true,
-  serverSetup(s, { port, dnIP, sFlags }) {
-    setupNs3(s, port >> 3, dnIP, ["tcp:80"], ["ns3http", "--listen", ...sFlags]);
-    s.environment.NS_LOG = "ThreeGppHttpServer";
+  serverSetup(s, { prefix, group, port, dnIP, sFlags }) {
+    setupNs3(s, prefix, port >> 3, dnIP, ["tcp:80"], ["ns3http", "--listen", ...sFlags], `${group}-${port}-s`);
+    s.environment.NS_LOG = "ThreeGppHttpServer=level_info|prefix_time";
   },
   clientDockerImage: "5gdeploy.localhost/ns3http",
-  clientSetup(s, { port, dnIP, pduIP, cFlags }) {
-    setupNs3(s, port >> 3, pduIP, [], ["ns3http", `--connect=${dnIP}`, ...cFlags]);
-    s.environment.NS_LOG = "ThreeGppHttpClient";
+  clientSetup(s, { prefix, group, port, dnIP, pduIP, cFlags }) {
+    setupNs3(s, prefix, port >> 3, pduIP, [], ["ns3http", `--connect=${dnIP}`, ...cFlags], `${group}-${port}-c`);
+    s.environment.NS_LOG = "ThreeGppHttpClient=level_info|prefix_time";
   },
   statsExt: ".log",
+  *statsCommands() {
+    yield "msg Counting successfully received webpages";
+    yield "grep -Hc 'HttpClient \\w* --> READING' ns3http_*-*-c.nslog";
+  },
 };
