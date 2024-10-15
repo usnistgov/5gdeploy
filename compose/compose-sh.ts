@@ -33,8 +33,9 @@ export function* makeComposeSh(
   yield "  esac";
 
   yield "elif [[ $ACT == upload ]]; then";
-  yield "  $TSRUN/compose/upload.ts --dir=$COMPOSE_CTX";
-  yield `  ${path.join(import.meta.dirname, "../upload.sh")} $COMPOSE_CTX ${
+  // eslint-disable-next-line no-template-curly-in-string
+  yield "  $TSRUN/compose/upload.ts --dir=$COMPOSE_CTX --file=${1:-compose.yml}";
+  yield `  [[ -z $\{1:-} ]] && ${path.join(codebaseRoot, "upload.sh")} $COMPOSE_CTX ${
     hostServices.map(({ host }) => host).join(" ")}`;
 
   for (const [act, cmd, upNames, msg1, msg2] of ctActions) {

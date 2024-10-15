@@ -80,7 +80,7 @@ export function mountOutputVolume(s: ComposeService, prefix: string): void {
  * @param group - Flow group name.
  * @param port - Flow port number.
  * @param flags - Command line flags for client or server.
- * @param re - Regular expression to match output file flag name. It should have a capture group to identify the output file.
+ * @param re - Regular expression to match output file flag name. It should have a capture group to identify file kind.
  * @param ext - Output file extension.
  * @returns - Transformed flags.
  */

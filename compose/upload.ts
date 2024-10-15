@@ -12,9 +12,14 @@ const args = Yargs()
     desc: "Compose context directory",
     type: "string",
   })
+  .option("file", {
+    default: "compose.yml",
+    desc: "Compose filename",
+    type: "string",
+  })
   .parseSync();
 
-const c = await file_io.readYAML(path.join(args.dir, "compose.yml")) as ComposeFile;
+const c = await file_io.readYAML(path.join(args.dir, args.file)) as ComposeFile;
 
 const localImages = await dockerode.listImages(undefined);
 const pullImages = new Set<string>();

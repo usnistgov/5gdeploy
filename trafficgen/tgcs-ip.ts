@@ -1,6 +1,7 @@
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
+import type { ComposeService } from "../types/compose.js";
 import { assert, codebaseRoot } from "../util/mod.js";
 import { ClientStartOpt, Direction, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
@@ -212,36 +213,77 @@ export const netperf: TrafficGen = {
   statsExt: ".log",
 };
 
+function sockperfSetup(
+    s: ComposeService, prefix: string, group: string,
+    port: number, localIP: string, remoteIP: string,
+    flags: readonly string[],
+) {
+  const start = new ClientStartOpt(s);
+  let customFlags = start.rewriteFlag(flags);
+  customFlags = rewriteOutputFlag(s, prefix, group, port, customFlags, /^--(full-log)$/, ".csv");
+  const subcommand = customFlags.shift();
+  assert(subcommand, "sockperf subcommand missing");
+
+  const ipFlags = [
+    "-i", remoteIP,
+    "-p", `${port}`,
+    "--client_ip", localIP,
+    "--client_port", `${port}`,
+  ];
+  const prepCommands: string[] = [];
+
+  switch (subcommand) {
+    case "server": {
+      ipFlags[1] = localIP;
+      ipFlags.splice(4, 4);
+      break;
+    }
+    case "playback":
+    case "pb": {
+      ipFlags.splice(4, 4);
+      prepCommands.push(`ip -j route get ${remoteIP} from ${localIP} | jq -r${
+        " "}'.[] | ["ip","route","replace",.dst] + if .gateway then ["via",.gateway] else ["dev",.dev] end | @sh' | sh`);
+      s.cap_add.push("NET_ADMIN");
+
+      const dfIndex = customFlags.indexOf("--data-file");
+      assert(dfIndex >= 0 && dfIndex < customFlags.length - 1, "sockperf playback --data-file missing");
+      const dataFile = customFlags[dfIndex + 1]!;
+      s.volumes.push({
+        type: "bind",
+        source: dataFile,
+        target: dataFile,
+        read_only: true,
+      });
+      break;
+    }
+    default: {
+      break;
+    }
+  }
+
+  compose.setCommands(s, [
+    ...start.waitCommands(),
+    ...prepCommands,
+    shlex.join(["sockperf", subcommand, ...ipFlags, ...customFlags]),
+  ]);
+  compose.annotate(s, "tgcs_docker_wait", Number(subcommand !== "server"));
+}
+
 export const sockperf: TrafficGen = {
-  determineDirection() {
-    return Direction.bidir;
+  determineDirection({ cFlags }) {
+    if (cFlags.includes("server")) {
+      return Direction.dl;
+    }
+    return Direction.ul;
   },
   nPorts: 1,
-  serverDockerImage: "pazaan/sockperf",
-  serverSetup(s, { port, dnIP, sFlags }) {
-    s.command = [
-      "server",
-      "-i", dnIP,
-      "-p", `${port}`,
-      ...sFlags,
-    ];
+  serverDockerImage: "5gdeploy.localhost/sockperf",
+  serverSetup(s, { prefix, group, port, dnIP, pduIP, sFlags }) {
+    sockperfSetup(s, prefix, group, port, dnIP, pduIP, sFlags.length === 0 ? ["server"] : sFlags);
   },
-  clientDockerImage: "pazaan/sockperf",
+  clientDockerImage: "5gdeploy.localhost/sockperf",
   clientSetup(s, { prefix, group, port, dnIP, pduIP, cFlags }) {
-    const start = new ClientStartOpt(s);
-    cFlags = start.rewriteFlag(cFlags);
-    cFlags = rewriteOutputFlag(s, prefix, group, port, cFlags, /^--(full-log)$/, ".csv");
-    compose.setCommands(s, [
-      ...start.waitCommands(),
-      shlex.join([
-        "sockperf",
-        ...cFlags,
-        "-i", dnIP,
-        "-p", `${port}`,
-        "--client_ip", pduIP,
-        "--client_port", `${port}`,
-      ]),
-    ]);
+    sockperfSetup(s, prefix, group, port, pduIP, dnIP, cFlags);
   },
   statsExt: ".log",
 };

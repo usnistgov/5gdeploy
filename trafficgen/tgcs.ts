@@ -198,8 +198,22 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
 
   yield "if [[ -z $ACT ]] || [[ $ACT == wait ]]; then";
   yield "  msg Waiting for trafficgen clients to finish";
-  for (const s of Object.values(output.services).filter((s) => s.container_name.endsWith("_c"))) {
-    yield `  echo ${s.container_name} $(${compose.makeDockerH(s)} wait ${s.container_name})`;
+  for (const s of Object.values(output.services)) {
+    switch (compose.annotate(s, "tgcs_docker_wait")) {
+      default: { // eslint-disable-line default-case-last
+        if (s.container_name.endsWith("_s")) {
+          break;
+        }
+      }
+      // fallthrough
+      case "1": {
+        yield `  echo ${s.container_name} $(${compose.makeDockerH(s)} wait ${s.container_name})`;
+        break;
+      }
+      case "0": {
+        break;
+      }
+    }
   }
   yield "fi";
   yield "";
@@ -211,10 +225,10 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
     const group = compose.annotate(s, "tgcs_group")!;
     const port = compose.annotate(s, "tgcs_port")!;
     const dn = compose.annotate(s, "tgcs_dn")!;
-    const timestampFlag = compose.annotate(s, "tgcs_docker_timestamps") ? "-t" : "";
+    const timestampFlag = compose.annotate(s, "tgcs_docker_timestamps") ? " -t" : "";
     const ct = s.container_name;
     const basename = tg.serverPerDN && ct.endsWith("s") ? `${group}-${dn}` : `${group}-${port}`;
-    yield `  ${compose.makeDockerH(s)} logs ${timestampFlag} ${
+    yield `  ${compose.makeDockerH(s)} logs${timestampFlag} ${
       ct} >$\{STATS_DIR}${basename}-${ct.slice(-1)}${tg.statsExt}`;
   }
   yield "fi";

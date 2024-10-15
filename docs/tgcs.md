@@ -159,6 +159,9 @@ owstats -R ./tg/owamp_0-21000-T.owp
 There isn't a tool to analyze TWAMP session files.
 To see the raw output, it's advised to pass either `-R` or `-v` flag to twping.
 
+In a multi-host deployment, the session file is stored on the host where the container generating the file is placed, which might be a secondary host.
+The stats directories are at the same path on every host.
+
 ## Netperf
 
 `--netperf` traffic flow flag prepares a [netperf](https://hewlettpackard.github.io/netperf/doc/netperf.html) benchmark.
@@ -179,18 +182,52 @@ The script cannot gather summary information from the output.
 
 `--sockperf` traffic flow flag prepares a [sockperf](https://manpages.ubuntu.com/manpages/jammy/man1/sockperf.1.html) benchmark.
 
+Sockperf relies on a custom Docker image that is built on the primary host during installation.
+To transfer the image to secondary machines, run `./compose.sh upload compose.PREFIX.yml` before running `PREFIX.sh`.
+
+### Uplink Traffic
+
 ```bash
-./compose.sh tgcs --sockperf='internet | * | under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --reply-every 1 --mps 1000 | -g'
+./compose.sh tgcs --sockperf='internet | * | under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --reply-every 100 --mps 1000 | server -g'
 ./tg.sh
 ```
 
-Client flags, starting with a subcommand such as `under-load`, are passed to `sockperf`.
-Server flags are passed to `sockperf server`.
+Both client and server flags are passed to `sockperf`.
+Client flags should start with a subcommand such as `under-load` or `throughput`.
+Server flags should either be omitted or start with the `server` subcommand.
+`#start` may be passed as the first client flag for delayed client start, described in "advanced usage" section.
 
 Similar to OWAMP, the filename that follows `--full-log` is set to a file in the stats directory, which can be analyzed later.
 
-The script cannot identify the traffic direction of each flow in the brief report.
-The script cannot gather summary information from the output.
+### Downlink Traffic
+
+```bash
+./compose.sh tgcs --sockperf='internet | *
+  | #start=$SOCKPERF_S_START server -g
+  | #start=$SOCKPERF_C_START under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --reply-every 100 --mps 1000
+'
+SOCKPERF_S_START="$(expr $(date -u +%s) + 25)" SOCKPERF_C_START="$(expr $(date -u +%s) + 30)" ./tg.sh
+```
+
+Sockperf only supports unidirectional traffic from client to server.
+To achieve downlink traffic, it's necessary to run sockperf server in the UE netns and run sockperf client in the DN netns.
+In this case, "client" (UE netns) flags should start with the `server` subcommand, and "server" (DN netns) flags should start with a client subcommand such as `under-load` or `throughput`.
+You must use `#start` flag to start sockperf servers before sockperf clients.
+
+### Playback Mode
+
+```bash
+./compose.sh tgcs --sockperf='internet | * | playback --data-file '$HOME/gen1.csv' | server -g'
+
+./compose.sh tgcs --sockperf='internet | *
+  | #start=$SOCKPERF_S_START server -g
+  | #start=$SOCKPERF_C_START playback --data-file '$HOME/gen1.csv'
+'
+```
+
+Sockperf playback mode requires a `--data-file` input.
+This should be set to the absolute path of a file that exists on the host where the sockperf container would run.
+It would be bind-mounted into the container at the same path.
 
 ## Advanced Usage
 
