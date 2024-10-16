@@ -16,6 +16,7 @@ export function* makeComposeSh(
 ): Iterable<string> {
   yield "#!/bin/bash";
   yield* scriptHead;
+  yield `tsrun() { local CMD=$1; shift; $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/$CMD "$@"; }`;
   yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
   yield "COMPOSE_CTX=$PWD";
   yield "ACT=${1:-}"; // eslint-disable-line no-template-curly-in-string
@@ -32,7 +33,7 @@ export function* makeComposeSh(
   yield "  esac";
 
   yield "elif [[ $ACT == upload ]]; then";
-  yield `  $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/compose/upload.ts --dir=$COMPOSE_CTX`;
+  yield "  tsrun compose/upload.ts --dir=$COMPOSE_CTX";
   yield `  ${path.join(codebaseRoot, "upload.sh")} $COMPOSE_CTX ${
     hostServices.map(({ host }) => host).join(" ")}`;
 

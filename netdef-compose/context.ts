@@ -63,40 +63,40 @@ export class NetDefComposeContext extends compose.ComposeContext {
       *code() {
         yield "for UECT in $(docker ps --filter='name=^ue' --format='{{.Names}}' | sort -n); do";
         yield "  msg Invoking Open5GCore UE registration and PDU session establishment in $UECT";
-        yield "  $TSRUN/phoenix-rpc/main.ts --host=$UECT ue-register --dnn='*'";
+        yield "  tsrun phoenix-rpc/main.ts --host=$UECT ue-register --dnn='*'";
         yield "done";
       },
     }, {
       act: "linkstat",
       desc: "Gather netif counters.",
       *code() {
-        yield "$TSRUN/trafficgen/linkstat.ts --dir=$COMPOSE_CTX \"$@\"";
+        yield "tsrun trafficgen/linkstat.ts --dir=$COMPOSE_CTX \"$@\"";
       },
     }, {
       act: "list-pdu",
       desc: "List PDU sessions.",
       *code() {
-        yield "$TSRUN/trafficgen/list-pdu.ts --dir=$COMPOSE_CTX \"$@\"";
+        yield "tsrun trafficgen/list-pdu.ts --dir=$COMPOSE_CTX \"$@\"";
       },
     }, {
       act: "nmap",
       desc: "Run nmap ping scans from Data Network to UEs.",
       *code() {
-        yield "$TSRUN/trafficgen/nmap.ts --dir=$COMPOSE_CTX \"$@\"";
+        yield "tsrun trafficgen/nmap.ts --dir=$COMPOSE_CTX \"$@\"";
       },
     }, {
       act: "nfd",
       cmd: "nfd --dnn=DNN",
       desc: "Deploy NDN Forwarding Daemon (NFD) between Data Network and UEs.",
       *code() {
-        yield "$TSRUN/trafficgen/nfd.ts --dir=$COMPOSE_CTX \"$@\"";
+        yield "tsrun trafficgen/nfd.ts --dir=$COMPOSE_CTX \"$@\"";
       },
     }, {
       act: "tgcs",
       cmd: "tgcs FLAGS",
       desc: "Prepare client-server traffic generators.",
       *code() {
-        yield "$TSRUN/trafficgen/tgcs.ts --dir=$COMPOSE_CTX \"$@\"";
+        yield "tsrun trafficgen/tgcs.ts --dir=$COMPOSE_CTX \"$@\"";
       },
     });
   }

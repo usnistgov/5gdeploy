@@ -260,5 +260,22 @@ This mode would not work in a multi-UE container (e.g. UERANSIM) due to implemen
 
 ### Troubleshooting
 
-If you see "ERROR: _seqN > m_maxSequenceNo" in sockperf client logs, add `--no-rdtsc` to both server flags and client flags.
-See [Pitfalls of TSC usage](https://oliveryang.net/2015/09/pitfalls-of-TSC-usage/) for more information.
+During startup, `bind source path does not exist` for the playback file:
+
+* Did you upload the playback file to the secondary host where the sender would be running?
+
+During startup, `Error Get "http://5gdeploy.localhost/v2/"`:
+
+* Did you transfer the sockperf Docker image to secondary hosts?
+* `./tg.sh upload`
+
+During startup, `variable is not set. Defaulting to a blank string.`:
+
+* Did you specify the environment variables referenced in `#start` flags?
+
+After finishing, log contains `ERROR: _seqN > m_maxSequenceNo`:
+
+* Sockperf measures time with RDTSC intrinsic.
+* RDTSC may be unreliable on multi-socket systems and virtual machines, see [Pitfalls of TSC usage](https://oliveryang.net/2015/09/pitfalls-of-TSC-usage/).
+* To avoid this error, add `--no-rdtsc` to both server flags and client flags.
+* However, not using RDTSC would reduce performance.
