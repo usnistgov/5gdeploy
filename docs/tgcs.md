@@ -183,7 +183,7 @@ The script cannot gather summary information from the output.
 `--sockperf` traffic flow flag prepares a [sockperf](https://manpages.ubuntu.com/manpages/jammy/man1/sockperf.1.html) benchmark.
 
 Sockperf trafficgen uses a custom Docker image built on the primary host.
-To transfer the image to secondary hosts, run `./compose.sh upload compose.PREFIX.yml` before running `PREFIX.sh`.
+To transfer the image to secondary hosts, run `./PREFIX.sh upload` before the first run.
 
 ### Uplink Traffic
 
@@ -191,6 +191,8 @@ To transfer the image to secondary hosts, run `./compose.sh upload compose.PREFI
 ./compose.sh tgcs --sockperf='internet | * | under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --mps 1000 | server -g'
 ./compose.sh tgcs --sockperf='internet | * | ping-pong  --full-log x --full-rtt -t 30 -m 800 -b 1            | server -g'
 ./compose.sh tgcs --sockperf='internet | * | throughput --full-log x --full-rtt -t 30 -m 800 -b 1            | server -g'
+
+./tg.sh upload
 ./tg.sh
 ```
 
@@ -208,6 +210,8 @@ Similar to OWAMP, the filename that follows `--full-log` is set to a file in the
   | #start=$SOCKPERF_S_START server -g
   | #start=$SOCKPERF_C_START under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --mps 1000
 '
+
+./tg.sh upload
 SOCKPERF_S_START="$(expr $(date -u +%s) + 25)" SOCKPERF_C_START="$(expr $(date -u +%s) + 30)" ./tg.sh
 ```
 
@@ -253,3 +257,8 @@ In a multi-host deployment, this file must be present on the host that runs the 
 The playback file would be bind-mounted into the container at the same path so that it is readable by sockperf.
 
 This mode would not work in a multi-UE container (e.g. UERANSIM) due to implementation limitation (lack of `--client_ip` flag).
+
+### Troubleshooting
+
+If you see "ERROR: _seqN > m_maxSequenceNo" in sockperf client logs, add `--no-rdtsc` to both server flags and client flags.
+See [Pitfalls of TSC usage](https://oliveryang.net/2015/09/pitfalls-of-TSC-usage/) for more information.

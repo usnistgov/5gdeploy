@@ -9,7 +9,7 @@ import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
-import { assert, cmdOutput, file_io, splitVbar, Yargs } from "../util/mod.js";
+import { assert, cmdOutput, codebaseRoot, file_io, splitVbar, Yargs } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import type { TrafficGen, TrafficGenFlowContext } from "./tgcs-defs.js";
 import * as tg_ip from "./tgcs-ip.js";
@@ -166,6 +166,11 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "}";
   yield "";
 
+  yield "if [[ $ACT == upload ]]; then";
+  yield `  exec $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/compose/upload.ts --dir=$COMPOSE_CTX --file=${composeFilename}`;
+  yield "fi";
+  yield "";
+
   yield "if [[ -z $ACT ]]; then";
   for (const { hostDesc, dockerH } of compose.classifyByHost(output)) {
     yield `  msg Deleting old trafficgen servers and clients on ${hostDesc}`;
@@ -204,8 +209,8 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
         if (s.container_name.endsWith("_s")) {
           break;
         }
+        // fallthrough
       }
-      // fallthrough
       case "1": {
         yield `  echo ${s.container_name} $(${compose.makeDockerH(s)} wait ${s.container_name})`;
         break;

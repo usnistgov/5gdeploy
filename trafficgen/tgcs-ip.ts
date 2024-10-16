@@ -270,11 +270,8 @@ function sockperfSetup(
   compose.setCommands(s, [
     ...start.waitCommands(),
     ...prepCommands,
-    shlex.join(["sockperf", subcommand, ...ipFlags, "--no-rdtsc", ...customFlags]),
+    shlex.join(["sockperf", subcommand, ...ipFlags, ...customFlags]),
   ]);
-  // --no-rdtsc is added because RDTSC is unreliable in multi-socket systems, see
-  // "Pitfalls of TSC usage" https://oliveryang.net/2015/09/pitfalls-of-TSC-usage/
-  // Sockperf "ERROR: _seqN > m_maxSequenceNo" is caused by RDTSC usage.
 }
 
 export const sockperf: TrafficGen = {
