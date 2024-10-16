@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
@@ -236,6 +238,7 @@ function sockperfSetup(
     case "server": {
       ipFlags[1] = localIP;
       ipFlags.splice(4, 4);
+      compose.annotate(s, "tgcs_docker_wait", 0);
       break;
     }
     case "playback":
@@ -248,15 +251,18 @@ function sockperfSetup(
       const dfIndex = customFlags.indexOf("--data-file");
       assert(dfIndex >= 0 && dfIndex < customFlags.length - 1, "sockperf playback --data-file missing");
       const dataFile = customFlags[dfIndex + 1]!;
+      assert(path.isAbsolute(dataFile), "sockperf playback --data-file must have absolute path");
       s.volumes.push({
         type: "bind",
         source: dataFile,
         target: dataFile,
         read_only: true,
       });
-      break;
+      // fallthrough
     }
     default: {
+      compose.annotate(s, "cpus", 2);
+      compose.annotate(s, "tgcs_docker_wait", 1);
       break;
     }
   }
@@ -264,9 +270,11 @@ function sockperfSetup(
   compose.setCommands(s, [
     ...start.waitCommands(),
     ...prepCommands,
-    shlex.join(["sockperf", subcommand, ...ipFlags, ...customFlags]),
+    shlex.join(["sockperf", subcommand, ...ipFlags, "--no-rdtsc", ...customFlags]),
   ]);
-  compose.annotate(s, "tgcs_docker_wait", Number(subcommand !== "server"));
+  // --no-rdtsc is added because RDTSC is unreliable in multi-socket systems, see
+  // "Pitfalls of TSC usage" https://oliveryang.net/2015/09/pitfalls-of-TSC-usage/
+  // Sockperf "ERROR: _seqN > m_maxSequenceNo" is caused by RDTSC usage.
 }
 
 export const sockperf: TrafficGen = {
@@ -286,4 +294,14 @@ export const sockperf: TrafficGen = {
     sockperfSetup(s, prefix, group, port, pduIP, dnIP, cFlags);
   },
   statsExt: ".log",
+  *statsCommands() {
+    yield "msg Showing sockperf final results";
+    yield "for F in sockperf_*.log; do";
+    yield `  echo $F $(grep ${shlex.join([
+      "-Fe", "Summary: Message Rate is", // throughput
+      "-Fe", "[Valid Duration]", // ping-pong, playback
+      "-Fe", "Total Dropped/OOO", // server -g
+    ])} $F | tail -1 | sed 's|^sockperf: ||')`;
+    yield "done";
+  },
 };

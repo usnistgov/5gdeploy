@@ -70,11 +70,9 @@ export function splitVbar<Min extends number, Max extends number>(
     min: NonNegativeInteger<Min>,
     max: NonNegativeInteger<Max>,
 ): splitVbar.Result<Min, Max> {
-  const tokens = Array.from(
-    line.split(line.includes(" | ") ? " | " : "|"),
-    (token) => token.trim(),
-  );
-  assert(tokens.length >= min && tokens.length <= max, `bad ${joinVbar(name, tokens)}`);
+  const tokens = line.split(/\s\|\s/.test(line) ? /\s+\|\s+/ : /\s*\|\s*/);
+  assert(tokens.length >= min && tokens.length <= max,
+    `bad ${joinVbar(name, tokens)} (expecting ${min}~${max} parts)`);
   return tokens as any;
 }
 export namespace splitVbar {
