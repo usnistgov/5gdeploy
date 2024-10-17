@@ -1,3 +1,4 @@
+import * as shlex from "shlex";
 import type { PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
@@ -9,7 +10,7 @@ import { assert, hexPad } from "../util/mod.js";
 /** Build RAN functions using PacketRusher. */
 export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> {
   assert(ctx.network.gnbIdLength === 24, "only support 24-bit gNB ID");
-  for (const [gnb, sub] of NetDef.pairGnbUe(ctx.netdef)) {
+  for (const [gnb, sub] of NetDef.pairGnbUe(ctx.netdef, true)) {
     defineGnbUe(ctx, gnb, sub);
   }
 }
@@ -17,21 +18,31 @@ export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> 
 function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Subscriber): void {
   const s = ctx.defineService(gnb.name, "5gdeploy.localhost/packetrusher", ["n2", "n3"]);
   s.cap_add.push("NET_ADMIN");
-  s.devices.push("/dev/net/tun:/dev/net/tun");
   compose.annotate(s, "cpus", 1);
-  compose.annotate(s, "ue_supi", sub.supi);
-  dependOnGtp5g(s, ctx.c);
+  compose.annotate(s, "ue_supi", NetDef.listSUPIs(sub).join(","));
+  if (sub.count === 1) {
+    s.devices.push("/dev/net/tun:/dev/net/tun");
+    dependOnGtp5g(s, ctx.c);
+  }
 
   const c = makeConfigUpdate(ctx, gnb, sub);
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
+  const flags = [
+    `--config=${filename}`,
+    "multi-ue",
+    `-n=${sub.count}`,
+  ];
+  if (sub.count === 1) {
+    flags.push("-d", "-t", "--tunnel-vrf=false");
+  }
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
     ...compose.applyQoS(s, "ash"),
     "msg Preparing PacketRusher config",
     ...compose.mergeConfigFile(c, { base: "/config.base.yml", merged: filename }),
     "sleep 20",
-    "msg Starting PacketRusher",
-    `exec /packetrusher --config ${filename} multi-ue -n 1 -d -t --tunnel-vrf=false`,
+    `msg Starting PacketRusher ${sub.count === 1 ? "with 1 UE, tunnel enabled" : `with ${sub.count} UEs, tunnel disabled`}`,
+    `exec /packetrusher ${shlex.join(flags)}`,
   ], "ash");
 }
 
