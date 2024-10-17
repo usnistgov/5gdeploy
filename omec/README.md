@@ -6,5 +6,5 @@ This package offers these choices in the **netdef-compose** command:
 * `--ran=gnbsim`: [gNBSim](https://github.com/omec-project/gnbsim) RAN simulator
   * gNB can only connect to the first AMF
   * "deregister" profile: Registration + UE initiated PDU Session Establishment + User Data packets + Deregister
-* `--up=bess`: [BESS-UPF](https://github.com/omec-project/upf)
+* `--up=bess`: [BESS-UPF](https://github.com/omec-project/upf) v1.5.0
   * not working yet

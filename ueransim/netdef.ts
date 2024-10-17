@@ -43,6 +43,7 @@ class UeransimBuilder {
 
   private async buildGNB(ct: string, gnb: NetDef.GNB): Promise<void> {
     const s = this.ctx.defineService(ct, ueransimDockerImage, ["air", "n2", "n3"]);
+    compose.annotate(s, "cpus", 1);
 
     const c: PartialDeep<UERANSIM.gnb.Config> = {
       mcc: this.plmn.mcc,
@@ -80,6 +81,7 @@ class UeransimBuilder {
 
   private async buildUE(ct: string, sub: NetDef.Subscriber): Promise<void> {
     const s = this.ctx.defineService(ct, ueransimDockerImage, ["air"]);
+    compose.annotate(s, "cpus", 1);
     s.cap_add.push("NET_ADMIN");
     s.devices.push("/dev/net/tun:/dev/net/tun");
     compose.annotate(s, "ue_supi", NetDef.listSUPIs(sub).join(","));
