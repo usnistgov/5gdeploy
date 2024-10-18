@@ -20,7 +20,7 @@ export const ndnping: TrafficGen = {
     return Direction.dl;
   },
   nPorts: 1,
-  serverDockerImage: "ghcr.io/named-data/ndn-tools",
+  dockerImage: "ghcr.io/named-data/ndn-tools",
   serverPerDN: true,
   serverSetup(s, { output, prefix, sFlags, dnService }) {
     connectNfdUnix(output, s, dnService);
@@ -30,7 +30,6 @@ export const ndnping: TrafficGen = {
       `/${prefix}`,
     ];
   },
-  clientDockerImage: "ghcr.io/named-data/ndn-tools",
   clientSetup(s, { output, prefix, cFlags, ueService }) {
     connectNfdUnix(output, s, ueService);
     s.command = [

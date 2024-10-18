@@ -2,6 +2,7 @@
 
 Many traffic generators have a client-server architecture, including:
 
+* iperf2
 * iperf3
 * OWAMP and TWAMP
 * netperf
@@ -75,8 +76,7 @@ The script shows a brief summary of iperf2 results, but it requires interval rep
 ### One-way Latency (trip-times)
 
 The `--trip-times` client flag enables measurement of one-way latency.
-This requires a synchronized clock between client and server.
-It is safe to use when UE and DN containers are placed on the same host.
+This requires synchronized clock between client and server.
 
 ### Delayed TX Start
 
@@ -94,6 +94,23 @@ To use the `--txstart-time` client flag, you can set its value to a variable tha
 # run the traffic generators, pass the environment variable
 IPERF2_TXSTART="$(expr $(date -u +%s) + 30)" ./tg.sh
 ```
+
+Caution: iperf2 seems to emit erroneous results when `--txstart-time` and `-R` are used together.
+
+### iperf2 CSV Output
+
+If you want CSV output instead of text output, use `--iperf2csv` traffic flow flag in place of `--iperf2`.
+This requires a custom Docker image built from the unreleased iperf 2.2.1 branch.
+Run `./docker/build.sh iperf2` to build the image and run `./PREFIX.sh upload` to transfer the image to secondary hosts.
+
+```bash
+./compose.sh tgcs --iperf2csv='* | * | -e --trip-times -i 1 -t 10 -u -l 1200 -b 10M | -e -i 1 -u -l 1200'
+# upload custom Docker image before the first run, see notes above
+./tg.sh
+```
+
+The CSV outputs of each iperf2 container are saved in the stats directory, but the script cannot gather overall statistics.
+If you use bidirectional traffic, the CSV file may appear interleaved; it's advised to use unidirectional traffic only.
 
 ## iperf3
 

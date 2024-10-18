@@ -32,8 +32,12 @@ export interface TrafficGen {
   /** Number of TCP/UDP ports needed per traffic flow. */
   nPorts: number;
 
-  /** Server side Docker image. */
-  serverDockerImage: string;
+  /**
+   * Docker image.
+   *
+   * In case server and client require different Docker images, overwrite in clientSetup.
+   */
+  dockerImage: string;
 
   /**
    * If true, there's one server per Data Network.
@@ -43,9 +47,6 @@ export interface TrafficGen {
 
   /** Procedure to setup a server container. */
   serverSetup: (s: ComposeService, flow: TrafficGenFlowContext) => void;
-
-  /** Client side Docker image. */
-  clientDockerImage: string;
 
   /** Procedure to setup a client container. */
   clientSetup: (s: ComposeService, flow: TrafficGenFlowContext) => void;

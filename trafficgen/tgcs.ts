@@ -122,14 +122,14 @@ const table = await pipeline(
 
     const serverName = tg.serverPerDN ? `${prefix}_${tgid}_${dn}_s` : `${prefix}_${group}_${port}_s`;
     if (!output.services[serverName]) {
-      const server = compose.defineService(output, serverName, tg.serverDockerImage);
+      const server = compose.defineService(output, serverName, tg.dockerImage);
       compose.annotate(server, "cpus", 1);
       copyPlacementNetns(server, dnService);
       tg.serverSetup(server, tgFlow);
       services.push(server);
     }
 
-    const client = compose.defineService(output, `${prefix}_${group}_${port}_c`, tg.clientDockerImage);
+    const client = compose.defineService(output, `${prefix}_${group}_${port}_c`, tg.dockerImage);
     compose.annotate(client, "cpus", 1);
     copyPlacementNetns(client, ueService);
     tg.clientSetup(client, tgFlow);

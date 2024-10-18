@@ -7,7 +7,8 @@ import type { ComposeService } from "../types/compose.js";
 import { assert, codebaseRoot } from "../util/mod.js";
 import { ClientStartOpt, Direction, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
-export const iperf2: TrafficGen = {
+export const iperf2: TrafficGen & { csvFlag: readonly string[] } = {
+  csvFlag: [],
   determineDirection({ cFlags }) {
     for (const [flag, dir] of Object.entries<Direction>({
       "-d": Direction.bidir,
@@ -25,11 +26,12 @@ export const iperf2: TrafficGen = {
     return Direction.ul;
   },
   nPorts: 1,
-  serverDockerImage: "mlabbe/iperf:2.1.9-r0",
+  dockerImage: "mlabbe/iperf:2.1.9-r0",
   serverSetup(s, { port, dnIP, cFlags, sFlags }) {
     assert(cFlags.includes("-u") === sFlags.includes("-u"), "iperf2 client and server must be both in UDP mode or both in TCP mode");
     s.command = [
       "--utc",
+      ...this.csvFlag,
       "-B", dnIP,
       "-p", `${port}`,
       "-s",
@@ -37,10 +39,10 @@ export const iperf2: TrafficGen = {
     ];
     s.healthcheck = { disable: true };
   },
-  clientDockerImage: "mlabbe/iperf:2.1.9-r0",
   clientSetup(s, { port, dnIP, pduIP, cFlags }) {
     s.command = [
       "--utc",
+      ...this.csvFlag,
       "-B", pduIP,
       "-p", `${port}`,
       "-c", dnIP,
@@ -55,6 +57,14 @@ export const iperf2: TrafficGen = {
   },
 };
 
+export const iperf2csv: typeof iperf2 = {
+  ...iperf2,
+  csvFlag: ["-yC"],
+  dockerImage: "5gdeploy.localhost/iperf2",
+  statsExt: ".csv",
+  statsCommands: undefined,
+};
+
 export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
   jsonFlag: ["--json"],
   determineDirection({ cFlags }) {
@@ -62,7 +72,7 @@ export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
       cFlags.includes("-R") ? Direction.dl : Direction.ul;
   },
   nPorts: 1,
-  serverDockerImage: "perfsonar/tools",
+  dockerImage: "perfsonar/tools",
   serverSetup(s, { port, dnIP, sFlags }) {
     assert(sFlags.length === 0, "iperf3 server does not accept server flags");
     s.command = [
@@ -74,7 +84,6 @@ export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
       "-s",
     ];
   },
-  clientDockerImage: "perfsonar/tools",
   clientSetup(s, { port, dnIP, pduIP, cFlags }) {
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
@@ -132,7 +141,7 @@ export const owamp: TrafficGen & {
     return Direction.bidir;
   },
   nPorts: 5,
-  serverDockerImage: "perfsonar/tools",
+  dockerImage: "perfsonar/tools",
   serverBin: "owampd",
   serverSetup(s, { port, sFlags }) {
     assert(sFlags.length === 0, `${this.serverBin} does not accept server flags`);
@@ -144,7 +153,6 @@ export const owamp: TrafficGen & {
       "-S", `:${port}`,
     ];
   },
-  clientDockerImage: "perfsonar/tools",
   clientBin: "owping",
   clientSetup(s, { prefix, group, port, dnIP, pduIP, cFlags }) {
     const start = new ClientStartOpt(s);
@@ -187,7 +195,7 @@ export const netperf: TrafficGen = {
     return Direction.bidir;
   },
   nPorts: 2,
-  serverDockerImage: "alectolytic/netperf",
+  dockerImage: "alectolytic/netperf",
   serverSetup(s, { port, dnIP, sFlags }) {
     s.command = [
       "netserver",
@@ -197,7 +205,6 @@ export const netperf: TrafficGen = {
       ...sFlags,
     ];
   },
-  clientDockerImage: "alectolytic/netperf",
   clientSetup(s, { port, dnIP, pduIP, cFlags }) {
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
@@ -282,11 +289,10 @@ export const sockperf: TrafficGen = {
     return Direction.ul;
   },
   nPorts: 1,
-  serverDockerImage: "5gdeploy.localhost/sockperf",
+  dockerImage: "5gdeploy.localhost/sockperf",
   serverSetup(s, { prefix, group, port, dnIP, pduIP, sFlags }) {
     sockperfSetup(s, prefix, group, port, dnIP, pduIP, sFlags.length === 0 ? ["server"] : sFlags);
   },
-  clientDockerImage: "5gdeploy.localhost/sockperf",
   clientSetup(s, { prefix, group, port, dnIP, pduIP, cFlags }) {
     sockperfSetup(s, prefix, group, port, pduIP, dnIP, cFlags);
   },

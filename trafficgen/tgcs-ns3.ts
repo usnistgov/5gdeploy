@@ -75,13 +75,12 @@ export const ns3http: TrafficGen = {
     return Direction.dl;
   },
   nPorts: 8,
-  serverDockerImage: "5gdeploy.localhost/ns3http",
+  dockerImage: "5gdeploy.localhost/ns3http",
   serverPerDN: true,
   serverSetup(s, { prefix, group, port, dnIP, sFlags }) {
     setupNs3(s, prefix, port >> 3, dnIP, ["tcp:80"], ["ns3http", "--listen", ...sFlags], `${group}-${port}-s`);
     s.environment.NS_LOG = "ThreeGppHttpServer=level_info|prefix_time";
   },
-  clientDockerImage: "5gdeploy.localhost/ns3http",
   clientSetup(s, { prefix, group, port, dnIP, pduIP, cFlags }) {
     setupNs3(s, prefix, port >> 3, pduIP, [], ["ns3http", `--connect=${dnIP}`, ...cFlags], `${group}-${port}-c`);
     s.environment.NS_LOG = "ThreeGppHttpClient=level_info|prefix_time";
