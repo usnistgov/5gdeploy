@@ -4,7 +4,7 @@ import * as shlex from "shlex";
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, F5, N } from "../types/mod.js";
-import { assert, hexPad, scriptHead } from "../util/mod.js";
+import { assert, hexPad } from "../util/mod.js";
 import { convertSNSSAI, getTaggedImageName, loadTemplate } from "./conf.js";
 import type * as W from "./webconsole-openapi/models/index.js";
 
@@ -74,14 +74,16 @@ class F5CPBuilder {
     const webconsole = await import("./webconsole-openapi/models/index.js");
     const serverIP = compose.getIP(this.ctx.c.services.webui!, "mgmt");
     const s = this.ctx.defineService("webclient", "5gdeploy.localhost/free5gc-webclient", ["mgmt"]);
-    await compose.setCommandsFile(this.ctx, s, this.generateWebClientCommands(webconsole, serverIP), "cp-cfg/webclient.sh", "ash");
+    await compose.setCommandsFile(
+      this.ctx, s, this.generateWebClientCommands(webconsole, serverIP),
+      { shell: "ash", filename: "cp-cfg/webclient.sh" },
+    );
   }
 
   private *generateWebClientCommands(webconsole: typeof W, serverIP: string): Iterable<string> {
     const serverPort = 5000;
     const server = `http://${serverIP}:${serverPort}`;
 
-    yield* scriptHead;
     yield* compose.waitReachable("WebUI", [serverIP], { mode: `nc:${serverPort}`, sleep: 1 });
     yield "msg Requesting WebUI access token";
     yield `http --ignore-stdin -j POST ${server}/api/login username=admin password=free5gc | tee /login.json | jq .`;

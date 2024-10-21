@@ -22,7 +22,7 @@ export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
       "sleep 10",
       "msg Starting gNBSim",
       "exec /gnbsim --cfg /gnbsim.yaml",
-    ], "ash");
+    ], { shell: "ash" });
   }
 }
 

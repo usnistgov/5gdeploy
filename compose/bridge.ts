@@ -3,7 +3,7 @@ import { ip2long, Netmask } from "netmask";
 import * as shlex from "shlex";
 
 import type { ComposeFile } from "../types/mod.js";
-import { assert, scriptCleanup, scriptHead, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { assert, scriptCleanup, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate, disconnectNetif, ip2mac } from "./compose.js";
 import type { ComposeContext } from "./context.js";
 import { setCommandsFile } from "./snippets.js";
@@ -155,7 +155,7 @@ export async function defineBridge(ctx: ComposeContext, opts: BridgeOpts): Promi
   s.cap_add.push("NET_ADMIN");
 
   const modes = new Set<string>();
-  await setCommandsFile(ctx, s, generateScript(ctx.c, opts, modes), undefined, "ash");
+  await setCommandsFile(ctx, s, generateScript(ctx.c, opts, modes), { shell: "ash" });
 
   if (modes.has("eth")) {
     s.privileged = true;
@@ -175,7 +175,6 @@ export async function defineBridge(ctx: ComposeContext, opts: BridgeOpts): Promi
 }
 
 function* generateScript(c: ComposeFile, opts: BridgeOpts, modes: Set<string>): Iterable<string> {
-  yield* scriptHead;
   yield* scriptCleanup({ shell: "ash" });
   yield "";
 

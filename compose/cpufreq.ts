@@ -48,5 +48,5 @@ export function makeCpufreqService(c: ComposeContext, opts: YargsInfer<typeof cp
     "msg Idling",
     "tail -f &",
     "wait $!",
-  ], "ash");
+  ], { shell: "ash" });
 }

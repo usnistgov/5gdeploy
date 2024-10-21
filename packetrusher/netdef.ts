@@ -43,7 +43,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
     "sleep 20",
     `msg Starting PacketRusher ${sub.count === 1 ? "with 1 UE, tunnel enabled" : `with ${sub.count} UEs, tunnel disabled`}`,
     `exec /packetrusher ${shlex.join(flags)}`,
-  ], "ash");
+  ], { shell: "ash" });
 }
 
 function makeConfigUpdate(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Subscriber): PartialDeep<prush.Root> {

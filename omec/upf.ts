@@ -27,7 +27,7 @@ export async function bessUP(ctx: NetDefComposeContext, upf: N.UPF): Promise<voi
     ...compose.waitReachable("bessd", ["127.0.0.1"], { mode: "nc:10514", sleep: 15 }),
     "msg Starting pfcpiface",
     `exec pfcpiface -config /conf/${ct}.json`,
-  ], "ash");
+  ], { shell: "ash" });
   cfg.mountInto({ s: pfcpiface, target: `/conf/${ct}.json` });
 
   const bess = ctx.defineService(ct.replace(/^upf/, "upfbess"), `upf-epc-bess:${version}`, []);

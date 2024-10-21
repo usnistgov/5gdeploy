@@ -3,26 +3,60 @@ import path from "node:path";
 import * as shlex from "shlex";
 
 import type { ComposeService } from "../types/mod.js";
-import { assert, scriptHead } from "../util/mod.js";
+import { assert, scriptHead, scriptHeadStrict } from "../util/mod.js";
 import type { ComposeContext } from "./context.js";
 
 /**
  * Set commands on a service.
  * @param s - Compose service to edit.
  * @param commands - List of commands.
- * @param shell - Shell program. This should be set to `ash` for alpine based images.
  */
-export function setCommands(s: ComposeService, commands: Iterable<string>, shell = "bash"): void {
-  const joined = [...scriptHead, ...commands].join("\n").replaceAll("$", "$$$$");
+export function setCommands(s: ComposeService, commands: Iterable<string>, {
+  shell = "bash",
+  withScriptHead = true,
+}: setCommands.Options = {}): void {
+  const joined = [...(withScriptHead ? scriptHead : scriptHeadStrict), ...commands].join("\n").replaceAll("$", "$$$$");
   s.command = [`/bin/${shell}`, "-c", joined];
   s.entrypoint = [];
 }
+export namespace setCommands {
+  export interface Options {
+    /**
+     * Shell program.
+     * @defaultValue bash
+     */
+    shell?: "bash" | "ash";
 
-export async function setCommandsFile(ctx: ComposeContext, s: ComposeService, commands: Iterable<string>, filename?: string, shell = "bash"): Promise<void> {
-  filename ??= `${s.container_name}.sh`;
-  await ctx.writeFile(filename, commands, { s, target: "/action.sh" });
+    /**
+     * Whether to include common shell functions in `scriptHead`.
+     * @defaultValue true
+     */
+    withScriptHead?: boolean;
+  }
+}
+
+/**
+ * Set commands on a service via shell script file.
+ * @param s - Compose service to edit.
+ * @param commands - List of commands.
+ */
+export async function setCommandsFile(ctx: ComposeContext, s: ComposeService, commands: Iterable<string>, {
+  shell = "bash",
+  withScriptHead = true,
+  filename = `${s.container_name}.sh`,
+}: setCommandsFile.Options = {}): Promise<void> {
+  await ctx.writeFile(filename, [...(withScriptHead ? scriptHead : scriptHeadStrict), ...commands], { s, target: "/action.sh" });
   s.command = [`/bin/${shell}`, "/action.sh"];
   s.entrypoint = [];
+}
+export namespace setCommandsFile {
+  export interface Options extends setCommands.Options {
+    /**
+     * Script filename.
+     * @defaultValue container_name.sh
+     */
+    filename?: string;
+  }
 }
 
 /**

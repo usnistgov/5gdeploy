@@ -82,7 +82,7 @@ export function setDNCommands(ctx: NetDefComposeContext): void {
       ...compose.renameNetifs(s, { disableTxOffload: true }),
       ...makeDNRoutes(ctx, dn),
       "exec tail -f",
-    ], "ash");
+    ], { shell: "ash" });
   }
 }
 

@@ -97,7 +97,7 @@ export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
         "-c", sIP,
         ...cFlags,
       ]),
-    ]);
+    ], { withScriptHead: false });
   },
   statsExt: ".json",
   *statsCommands(prefix) {
@@ -166,7 +166,7 @@ export const owamp: TrafficGen & {
         ...cFlags,
         `${sIP}:${port}`,
       ]),
-    ]);
+    ], { withScriptHead: false });
   },
   outputExt: ".owp",
   statsExt: ".log",
@@ -216,7 +216,7 @@ export const netperf: TrafficGen = {
         "-p", `${port},${port + 1}`,
         ...cFlags,
       ]),
-    ], "ash");
+    ], { shell: "ash", withScriptHead: false });
   },
   statsExt: ".log",
 };
@@ -273,7 +273,7 @@ export const sockperf: TrafficGen = {
       ...ipCommands,
       ...start.waitCommands(),
       shlex.join(["sockperf", ...cFlags.toSpliced(1, 0, ...ipFlags)]),
-    ]);
+    ], { withScriptHead: false });
     compose.annotate(s, "cpus", 2);
   },
   statsExt: ".log",

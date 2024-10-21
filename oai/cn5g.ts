@@ -309,7 +309,7 @@ class NWDAFBuilder extends CN5GBuilder {
       `  jq --arg NU ${shlex.quote(nu.href)} '.notificationURI=$NU' $F | sponge $F`,
       "done",
       "tail -f",
-    ], "ash");
+    ], { shell: "ash" });
   }
 
   private replaceIPs(value: string): string {

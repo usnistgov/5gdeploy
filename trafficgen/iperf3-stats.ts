@@ -37,7 +37,7 @@ const table = (await pipeline(
     const dir = compose.annotate(s, "tgcs_dir")!;
     const ue = compose.annotate(s, "tgcs_ue")!;
 
-    let report: any;
+    let report: unknown;
     try {
       report = await file_io.readJSON(path.join(args.dir, args.prefix, `${group}-${port}-c.json`));
       validateReport(report);

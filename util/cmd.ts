@@ -9,9 +9,14 @@ import type { YargsInfer, YargsOptions } from "./yargs.js";
 
 export const codebaseRoot = path.join(import.meta.dirname, "..");
 
+/** Shell script heading with strict setting only. */
+export const scriptHeadStrict = [
+  "set -euo pipefail",
+];
+
 /** Shell script heading with common shell functions. */
 export const scriptHead = [
-  "set -euo pipefail",
+  ...scriptHeadStrict,
   "msg() { echo -ne \"\\e[35m[5gdeploy] \\e[94m\"; echo -n \"$*\"; echo -e \"\\e[0m\"; }",
   "die() { msg \"$*\"; exit 1; }",
   "with_retry() { while ! \"$@\"; do sleep 0.2; done }",
