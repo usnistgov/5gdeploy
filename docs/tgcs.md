@@ -122,7 +122,7 @@ If you use bidirectional traffic, the CSV file may appear interleaved; it's advi
 ```
 
 Client flags are passed to iperf3 client.
-`#start` may be passed as the first client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#start` client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
 Server flags are not accepted.
 
 The JSON outputs of each iperf3 container are saved in the stats directory.
@@ -153,7 +153,7 @@ The text outputs of each iperf3 container are saved in the stats directory, but 
 ```
 
 Client flags are passed to [owping](https://software.internet2.edu/owamp/owping.man.html) or twping.
-`#start` may be passed as the first client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#start` client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
 Server flags are not accepted.
 
 ### Session File
@@ -189,7 +189,7 @@ The stats directories are at the same path on every host.
 ```
 
 Client flags are passed to `netperf`.
-`#start` may be passed as the first client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#start` client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
 Server flags are passed to `netserver`.
 
 The script cannot identify the traffic direction of each flow in the brief report.
@@ -202,40 +202,30 @@ The script cannot gather summary information from the output.
 Sockperf trafficgen uses a custom Docker image built on the primary host.
 To transfer the image to secondary hosts, run `./PREFIX.sh upload` before the first run.
 
-### Uplink Traffic
-
 ```bash
-./compose.sh tgcs --sockperf='internet | * | under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --mps 1000 | server -g'
-./compose.sh tgcs --sockperf='internet | * | ping-pong  --full-log x --full-rtt -t 30 -m 800 -b 1            | server -g'
-./compose.sh tgcs --sockperf='internet | * | throughput --full-log x --full-rtt -t 30 -m 800 -b 1            | server -g'
+# uplink
+./compose.sh tgcs --sockperf='internet | * | under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --mps 1000 | -g'
+./compose.sh tgcs --sockperf='internet | * | ping-pong  --full-log x --full-rtt -t 30 -m 800 -b 1            | -g'
+./compose.sh tgcs --sockperf='internet | * | throughput --full-log x --full-rtt -t 30 -m 800 -b 1            | -g'
 
+# downlink
+./compose.sh tgcs --sockperf='internet | * | #R under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --mps 1000 | -g'
+
+# transfer Docker image
 ./tg.sh upload
+
+# run benchmark
 ./tg.sh
 ```
 
-Both client and server flags are passed to `sockperf`.
-Client flags should start with a subcommand such as `under-load` or `throughput`.
-Server flags should either be omitted or start with the `server` subcommand.
-`#start` may be passed as the first client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
-
-Similar to OWAMP, the filename that follows `--full-log` is set to a file in the stats directory, which can be analyzed later.
-
-### Downlink Traffic
-
-```bash
-./compose.sh tgcs --sockperf='internet | *
-  | #start=$SOCKPERF_S_START server -g
-  | #start=$SOCKPERF_C_START under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --mps 1000
-'
-
-./tg.sh upload
-SOCKPERF_S_START="$(expr $(date -u +%s) + 25)" SOCKPERF_C_START="$(expr $(date -u +%s) + 30)" ./tg.sh
-```
+Client flags, starting with a subcommand such as `under-load` or `throughput`, are passed to `sockperf`.
+Use `#start` client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Server flags are passed to `sockperf server`.
 
 Sockperf only supports unidirectional traffic from client to server.
-To achieve downlink traffic, it's necessary to run sockperf server in the UE netns and run sockperf client in the DN netns.
-In this case, "client" (UE netns) flags should start with the `server` subcommand, and "server" (DN netns) flags should start with a client subcommand such as `under-load` or `throughput`.
-You must use `#start` flag to start sockperf servers before sockperf clients.
+To achieve downlink traffic, use `#R` client flag for reverse direction, described in [advanced usage](tgcs-advanced.md).
+
+Similar to OWAMP, the filename that follows `--full-log` is set to a file in the stats directory, which can be analyzed later.
 
 ### Playback Mode
 
@@ -251,17 +241,8 @@ EOT
 # transfer playback file to secondary host, if necessary
 scp gen2.csv SECONDARY:$PWD/gen2.csv
 
-# prepare for uplink traffic
-./compose.sh tgcs --sockperf='internet | *
-  | playback --data-file '$PWD/gen2.csv' --full-log x --full-rtt
-  | server -g
-'
-
-# prepare for downlink traffic
-./compose.sh tgcs --sockperf='internet | *
-  | #start=$SOCKPERF_S_START server -g
-  | #start=$SOCKPERF_C_START playback --data-file '$PWD/gen2.csv' --full-log x --full-rtt
-'
+# prepare for uplink traffic; add '#R' client flag for downlink traffic
+./compose.sh tgcs --sockperf='internet | * | playback --data-file '$PWD/gen2.csv' --full-log x --full-rtt | -g'
 ```
 
 Sockperf playback mode requires a playback file as input.

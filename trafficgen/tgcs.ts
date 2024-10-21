@@ -11,7 +11,7 @@ import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
 import { assert, cmdOutput, codebaseRoot, file_io, splitVbar, Yargs } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
-import type { TrafficGen, TrafficGenFlowContext } from "./tgcs-defs.js";
+import { Direction, extractHashFlag, type TrafficGen, type TrafficGenFlowContext } from "./tgcs-defs.js";
 import * as tg_ip from "./tgcs-ip.js";
 import * as tg_ndn from "./tgcs-ndn.js";
 import * as tg_ns3 from "./tgcs-ns3.js";
@@ -70,8 +70,9 @@ const args = Yargs()
   .parseSync();
 
 const [c, netdef] = await loadCtx(args);
-const { prefix } = args;
-assert(/[a-z][\da-z]/.test(prefix), "--prefix shall be a letter followed by letters and digits");
+let { prefix } = args;
+assert(/^[a-z][\da-z]*$/i.test(prefix), "--prefix shall be a letter followed by letters and digits");
+prefix = prefix.toLowerCase();
 
 const output = compose.create();
 let nextPort = args.port;
@@ -102,6 +103,12 @@ const table = await pipeline(
   }) => {
     const port = nextPort;
     nextPort += tg.nPorts;
+
+    let isReversed: RegExpMatchArray | undefined | boolean;
+    [cFlags, isReversed] = extractHashFlag(cFlags, /^#r$/i);
+    isReversed = !!isReversed;
+    assert(!isReversed || !tg.serverPerDN, `${tgid} does not support #R flag`);
+
     const tgFlow: TrafficGenFlowContext = {
       c,
       output,
@@ -110,13 +117,18 @@ const table = await pipeline(
       port,
       dnIP,
       pduIP,
+      cIP: isReversed ? dnIP : pduIP,
       cFlags,
+      sIP: isReversed ? pduIP : dnIP,
       sFlags,
       dnService,
       ueService,
     };
     const dn = `${snssai}_${dnn}`;
-    const dir = tg.determineDirection(tgFlow);
+    let dir = tg.determineDirection(tgFlow);
+    if (isReversed) {
+      dir = Direction.reverse(dir);
+    }
 
     const services: ComposeService[] = [];
 
@@ -124,14 +136,14 @@ const table = await pipeline(
     if (!output.services[serverName]) {
       const server = compose.defineService(output, serverName, tg.dockerImage);
       compose.annotate(server, "cpus", 1);
-      copyPlacementNetns(server, dnService);
+      copyPlacementNetns(server, isReversed ? ueService : dnService);
       tg.serverSetup(server, tgFlow);
       services.push(server);
     }
 
     const client = compose.defineService(output, `${prefix}_${group}_${port}_c`, tg.dockerImage);
     compose.annotate(client, "cpus", 1);
-    copyPlacementNetns(client, ueService);
+    copyPlacementNetns(client, isReversed ? dnService : ueService);
     tg.clientSetup(client, tgFlow);
     services.push(client);
 
@@ -162,7 +174,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "";
 
   yield "delete_by_regex() {";
-  yield "  $1 ps --filter=\"name=$2\" -aq | xargs --no-run-if-empty $1 rm -f";
+  yield "  $1 ps --filter=\"name=$2\" -aq | xargs -r $1 rm -f";
   yield "}";
   yield "";
 
@@ -203,22 +215,8 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
 
   yield "if [[ -z $ACT ]] || [[ $ACT == wait ]]; then";
   yield "  msg Waiting for trafficgen clients to finish";
-  for (const s of Object.values(output.services)) {
-    switch (compose.annotate(s, "tgcs_docker_wait")) {
-      default: { // eslint-disable-line default-case-last
-        if (s.container_name.endsWith("_s")) {
-          break;
-        }
-        // fallthrough
-      }
-      case "1": {
-        yield `  echo ${s.container_name} $(${compose.makeDockerH(s)} wait ${s.container_name})`;
-        break;
-      }
-      case "0": {
-        break;
-      }
-    }
+  for (const s of Object.values(output.services).filter(({ container_name: ct }) => ct.endsWith("_c"))) {
+    yield `  echo ${s.container_name} $(${compose.makeDockerH(s)} wait ${s.container_name})`;
   }
   yield "fi";
   yield "";

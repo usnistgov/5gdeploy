@@ -8,6 +8,21 @@ export enum Direction {
   ul = "<UL",
   bidir = "<->",
 }
+export namespace Direction {
+  export function reverse(d: Direction): Direction {
+    switch (d) {
+      case Direction.dl: {
+        return Direction.ul;
+      }
+      case Direction.ul: {
+        return Direction.dl;
+      }
+      default: {
+        return d;
+      }
+    }
+  }
+}
 
 /** Traffic generator flow information. */
 export interface TrafficGenFlowContext {
@@ -18,7 +33,9 @@ export interface TrafficGenFlowContext {
   port: number;
   dnIP: string;
   pduIP: string;
+  cIP: string;
   cFlags: readonly string[];
+  sIP: string;
   sFlags: readonly string[];
   dnService: ReadonlyDeep<ComposeService>;
   ueService: ReadonlyDeep<ComposeService>;
@@ -102,19 +119,42 @@ export function rewriteOutputFlag(s: ComposeService, prefix: string, group: stri
   return rFlags;
 }
 
+/**
+ * Extract a flag that starts with '#'.
+ * @param flags - Input flags. #-flags must appear before other flags.
+ * @param re - RegExp to match the desired #-flag.
+ * @returns - Remaining flags with matched flag deleted; RegExp match result.
+ */
+export function extractHashFlag(flags: readonly string[], re: RegExp): [rflags: string[], m: RegExpMatchArray | undefined] {
+  for (const [i, flag] of flags.entries()) {
+    if (!flag.startsWith("#")) {
+      break;
+    }
+    const m = re.exec(flag);
+    if (m) {
+      return [flags.toSpliced(i, 1), m];
+    }
+  }
+
+  return [[...flags], undefined];
+}
+
 /** Handle #start= flag for delayed client start. */
 export class ClientStartOpt {
   constructor(private readonly s: ComposeService) {}
   private varname = "";
 
-  /** Delete #start= flag if it appears as the first client flag. */
+  /**
+   * Extract #start= flag.
+   * @param flags - Input flags.
+   * @returns - Remaining flags.
+   */
   public rewriteFlag(flags: readonly string[]): string[] {
-    const m = flags[0]?.match(/^#start=(\$\w+)$/);
-    if (!m) {
-      return [...flags];
+    const [rflags, m] = extractHashFlag(flags, /^#start=(\$\w+)$/);
+    if (m) {
+      this.varname = m[1]!;
     }
-    this.varname = m[1]!;
-    return flags.slice(1);
+    return rflags;
   }
 
   /** Generate commands to wait until requested client start time. */

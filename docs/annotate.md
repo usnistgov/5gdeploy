@@ -85,7 +85,3 @@ If the traffic generator requires multiple ports, this is the lowest port number
 If the traffic generator uses no ports (e.g. ndnping), this value is purely nominal.
 
 **tgcs\_docker\_timestamps** indicates that the traffic generator does not print timestamps, so that Docker Engine timestamps should be added.
-
-**tgcs\_docker\_wait** indicates whether the container should be waited for to determine traffic flow completion.
-Its value is either `0` or `1`.
-If unset, the container is waited for if its name ends with `_c`.

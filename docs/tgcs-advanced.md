@@ -46,7 +46,7 @@ For example:
 
 The `#start` client flag delays client start until an absolute timestamp.
 This flag is translated by tgcs script and not passed to the client program.
-It must be specified as the first client flag.
+It must be specified before other flags that do not start with `#` symbol.
 Its value must reference an environment variable that is resolved during `PREFIX.sh` invocation.
 
 Usage example:
@@ -76,6 +76,16 @@ Comparison with similar features:
 * `--txstart-time` flag:
   * It is only supported in iperf2 as a client flag, which is passed to the iperf2 client program.
   * iperf2 clients will establish control connection immediately but delay transmission until the specified time.
+
+## Reverse Direction
+
+The `#R` client flag reverses the traffic direction by placing the client in the DN netns and the server in the UE netns.
+This flag is translated by tgcs script and not passed to the client program.
+It must be specified before other flags that do not start with `#` symbol.
+
+This is supported on all [client-server traffic generators](tgcs.md) that have a separate server container per flow.
+See sockperf section for an example.
+If a traffic generator natively supports reverse mode (e.g. `iperf3 -r`), it's advised to use the native feature instead.
 
 ## Subcommands of Generated bash Script
 

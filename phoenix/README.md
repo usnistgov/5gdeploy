@@ -46,7 +46,7 @@ If (1) UPF is configured to use XDP data plane implementation (2) physical Ether
 To recover from this situation, either reboot the server, or run this command to manually unload all XDP programs:
 
 ```bash
-ip -j link | jq -r '.[] | select(.xdp) | .ifname' | xargs --no-run-if-empty -I{} \
+ip -j link | jq -r '.[] | select(.xdp) | .ifname' | xargs -r -I{} \
   sudo ip link set {} xdp off
 ```
 

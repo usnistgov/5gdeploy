@@ -3,7 +3,6 @@ import path from "node:path";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
-import type { ComposeService } from "../types/compose.js";
 import { assert, codebaseRoot } from "../util/mod.js";
 import { ClientStartOpt, Direction, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
@@ -27,25 +26,25 @@ export const iperf2: TrafficGen & { csvFlag: readonly string[] } = {
   },
   nPorts: 1,
   dockerImage: "mlabbe/iperf:2.1.9-r0",
-  serverSetup(s, { port, dnIP, cFlags, sFlags }) {
+  serverSetup(s, { port, sIP, cFlags, sFlags }) {
     assert(cFlags.includes("-u") === sFlags.includes("-u"), "iperf2 client and server must be both in UDP mode or both in TCP mode");
     s.command = [
       "--utc",
       ...this.csvFlag,
-      "-B", dnIP,
+      "-B", sIP,
       "-p", `${port}`,
       "-s",
       ...sFlags,
     ];
     s.healthcheck = { disable: true };
   },
-  clientSetup(s, { port, dnIP, pduIP, cFlags }) {
+  clientSetup(s, { port, sIP, cIP, cFlags }) {
     s.command = [
       "--utc",
       ...this.csvFlag,
-      "-B", pduIP,
+      "-B", cIP,
       "-p", `${port}`,
-      "-c", dnIP,
+      "-c", sIP,
       ...cFlags,
     ];
     s.healthcheck = { disable: true };
@@ -73,18 +72,18 @@ export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
   },
   nPorts: 1,
   dockerImage: "perfsonar/tools",
-  serverSetup(s, { port, dnIP, sFlags }) {
+  serverSetup(s, { port, sIP, sFlags }) {
     assert(sFlags.length === 0, "iperf3 server does not accept server flags");
     s.command = [
       "iperf3",
       "--forceflush",
       ...this.jsonFlag,
-      "-B", dnIP,
+      "-B", sIP,
       "-p", `${port}`,
       "-s",
     ];
   },
-  clientSetup(s, { port, dnIP, pduIP, cFlags }) {
+  clientSetup(s, { port, sIP, cIP, cFlags }) {
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
     compose.setCommands(s, [
@@ -93,9 +92,9 @@ export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
         "iperf3",
         "--forceflush",
         ...this.jsonFlag,
-        "-B", pduIP,
+        "-B", cIP,
         "-p", `${port}`,
-        "-c", dnIP,
+        "-c", sIP,
         ...cFlags,
       ]),
     ]);
@@ -154,7 +153,7 @@ export const owamp: TrafficGen & {
     ];
   },
   clientBin: "owping",
-  clientSetup(s, { prefix, group, port, dnIP, pduIP, cFlags }) {
+  clientSetup(s, { prefix, group, port, sIP, cIP, cFlags }) {
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
     cFlags = rewriteOutputFlag(s, prefix, group, port, cFlags, /^-([FT])$/, this.outputExt);
@@ -163,9 +162,9 @@ export const owamp: TrafficGen & {
       shlex.join([
         this.clientBin,
         "-P", `${port + 1}-${port + this.nPorts - 1}`,
-        "-S", pduIP,
+        "-S", cIP,
         ...cFlags,
-        `${dnIP}:${port}`,
+        `${sIP}:${port}`,
       ]),
     ]);
   },
@@ -196,24 +195,24 @@ export const netperf: TrafficGen = {
   },
   nPorts: 2,
   dockerImage: "alectolytic/netperf",
-  serverSetup(s, { port, dnIP, sFlags }) {
+  serverSetup(s, { port, sIP, sFlags }) {
     s.command = [
       "netserver",
       "-D",
-      "-L", `${dnIP},inet`,
+      "-L", `${sIP},inet`,
       "-p", `${port}`,
       ...sFlags,
     ];
   },
-  clientSetup(s, { port, dnIP, pduIP, cFlags }) {
+  clientSetup(s, { port, sIP, cIP, cFlags }) {
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
     compose.setCommands(s, [
       ...start.waitCommands(),
       shlex.join([
         "netperf",
-        "-H", `${dnIP},inet`,
-        "-L", `${pduIP},inet`,
+        "-H", `${sIP},inet`,
+        "-L", `${cIP},inet`,
         "-p", `${port},${port + 1}`,
         ...cFlags,
       ]),
@@ -221,65 +220,6 @@ export const netperf: TrafficGen = {
   },
   statsExt: ".log",
 };
-
-function sockperfSetup(
-    s: ComposeService, prefix: string, group: string,
-    port: number, localIP: string, remoteIP: string,
-    flags: readonly string[],
-) {
-  const start = new ClientStartOpt(s);
-  let customFlags = start.rewriteFlag(flags);
-  customFlags = rewriteOutputFlag(s, prefix, group, port, customFlags, /^--(full-log)$/, ".csv");
-  const subcommand = customFlags.shift();
-  assert(subcommand, "sockperf subcommand missing");
-
-  const ipFlags = [
-    "-i", remoteIP,
-    "-p", `${port}`,
-    "--client_ip", localIP,
-    "--client_port", `${port}`,
-  ];
-  const prepCommands: string[] = [];
-
-  switch (subcommand) {
-    case "server": {
-      ipFlags[1] = localIP;
-      ipFlags.splice(4, 4);
-      compose.annotate(s, "tgcs_docker_wait", 0);
-      break;
-    }
-    case "playback":
-    case "pb": {
-      ipFlags.splice(4, 4);
-      prepCommands.push(`ip -j route get ${remoteIP} from ${localIP} | jq -r${
-        " "}'.[] | ["ip","route","replace",.dst] + if .gateway then ["via",.gateway] else ["dev",.dev] end | @sh' | sh`);
-      s.cap_add.push("NET_ADMIN");
-
-      const dfIndex = customFlags.indexOf("--data-file");
-      assert(dfIndex >= 0 && dfIndex < customFlags.length - 1, "sockperf playback --data-file missing");
-      const dataFile = customFlags[dfIndex + 1]!;
-      assert(path.isAbsolute(dataFile), "sockperf playback --data-file must have absolute path");
-      s.volumes.push({
-        type: "bind",
-        source: dataFile,
-        target: dataFile,
-        read_only: true,
-      });
-      // fallthrough
-    }
-    default: {
-      compose.annotate(s, "cpus", 2);
-      compose.annotate(s, "tgcs_docker_wait", 1);
-      break;
-    }
-  }
-
-  compose.setCommands(s, [
-    ...start.waitCommands(),
-    ...prepCommands,
-    shlex.join(["sockperf", subcommand, ...ipFlags, ...customFlags]),
-  ]);
-}
 
 export const sockperf: TrafficGen = {
   determineDirection({ cFlags }) {
@@ -290,11 +230,51 @@ export const sockperf: TrafficGen = {
   },
   nPorts: 1,
   dockerImage: "5gdeploy.localhost/sockperf",
-  serverSetup(s, { prefix, group, port, dnIP, pduIP, sFlags }) {
-    sockperfSetup(s, prefix, group, port, dnIP, pduIP, sFlags.length === 0 ? ["server"] : sFlags);
+  serverSetup(s, { port, sIP, sFlags }) {
+    s.command = [
+      "sockperf", "server",
+      "-i", sIP,
+      "-p", `${port}`,
+      ...sFlags,
+    ];
   },
-  clientSetup(s, { prefix, group, port, dnIP, pduIP, cFlags }) {
-    sockperfSetup(s, prefix, group, port, pduIP, dnIP, cFlags);
+  clientSetup(s, { prefix, group, port, sIP, cIP, cFlags }) {
+    const start = new ClientStartOpt(s);
+    cFlags = start.rewriteFlag(cFlags);
+    cFlags = rewriteOutputFlag(s, prefix, group, port, cFlags, /^--(full-log)$/, ".csv");
+
+    const ipFlags = [
+      "-i", sIP,
+      "-p", `${port}`,
+      "--client_ip", cIP,
+      "--client_port", `${port}`,
+    ];
+    const ipCommands: string[] = [];
+
+    if (["playback", "pb"].includes(cFlags[0]!)) {
+      ipFlags.splice(4, 4);
+      ipCommands.push(`ip -j route get ${sIP} from ${cIP} | jq -r${
+        " "}'.[] | ["ip","route","replace",.dst] + if .gateway then ["via",.gateway] else ["dev",.dev] end | @sh' | sh`);
+      s.cap_add.push("NET_ADMIN");
+
+      const dfIndex = cFlags.indexOf("--data-file");
+      assert(dfIndex >= 0 && dfIndex < cFlags.length - 1, "sockperf playback --data-file missing");
+      const dataFile = cFlags[dfIndex + 1]!;
+      assert(path.isAbsolute(dataFile), "sockperf playback --data-file must have absolute path");
+      s.volumes.push({
+        type: "bind",
+        source: dataFile,
+        target: dataFile,
+        read_only: true,
+      });
+    }
+
+    compose.setCommands(s, [
+      ...ipCommands,
+      ...start.waitCommands(),
+      shlex.join(["sockperf", ...cFlags.toSpliced(1, 0, ...ipFlags)]),
+    ]);
+    compose.annotate(s, "cpus", 2);
   },
   statsExt: ".log",
   *statsCommands() {
