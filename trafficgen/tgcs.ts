@@ -62,6 +62,11 @@ const args = Yargs()
     desc: "wait duration (milliseconds) between starting servers and starting clients",
     type: "number",
   })
+  .option("t0-delay", {
+    default: 30000,
+    desc: "$TGCS_T0 timestamp after clients start (milliseconds)",
+    type: "number",
+  })
   .option(compose.placeOptions)
   .option(Object.fromEntries(Array.from(
     Object.keys(trafficGenerators),
@@ -76,6 +81,7 @@ prefix = prefix.toLowerCase();
 
 const output = compose.create();
 let nextPort = args.port;
+let hasT0 = false;
 const table = await pipeline(
   () => gatherPduSessions(c, netdef),
   flatTransform(16, function*(ctx) {
@@ -146,6 +152,7 @@ const table = await pipeline(
     copyPlacementNetns(client, isReversed ? dnService : ueService);
     tg.clientSetup(client, tgFlow);
     services.push(client);
+    hasT0 ||= !!client.environment.TGCS_T0;
 
     for (const s of services) {
       compose.annotate(s, "tgcs_tgid", tgid);
@@ -169,6 +176,9 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
   yield "COMPOSE_CTX=$PWD";
   yield `STATS_DIR=$PWD/${prefix}/`;
+  if (hasT0) {
+    yield "export TGCS_T0=0"; // suppress "variable is not set" warning in non-client step
+  }
   yield "ACT=${1:-}"; // eslint-disable-line no-template-curly-in-string
   yield "[[ -z $ACT ]] || shift";
   yield "";
@@ -205,6 +215,10 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
+  if (hasT0) {
+    yield `  TGCS_T0=$(echo $(date -u +%s.%N) ${args["t0-delay"]} | awk '{ printf "%0.9f", $1 + $2/1000 }')`;
+    yield "  msg \\$TGCS_T0 is set to $TGCS_T0";
+  }
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_c"))) {
     yield `  msg Starting trafficgen clients on ${hostDesc}`;
     yield `  with_retry env COMPOSE_IGNORE_ORPHANS=1 ${dockerH} compose -f ${

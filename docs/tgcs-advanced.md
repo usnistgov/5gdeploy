@@ -47,18 +47,35 @@ For example:
 The `#start` client flag delays client start until an absolute timestamp.
 This flag is translated by tgcs script and not passed to the client program.
 It must be specified before other flags that do not start with `#` symbol.
-Its value must reference an environment variable that is resolved during `PREFIX.sh` invocation.
+This is only supported in a subset of traffic generator types, mentioned in their descriptions.
 
-Usage example:
+The value of `#start` client flag may be an environment variable that is resolved to an **absolute timestamp** during `PREFIX.sh` execution.
+For example:
 
 ```bash
 # prepare the measurement, notice the single quotes so that bash does not expand the variable
 ./compose.sh tgcs \
-  --iperf3='* | * | #start=$IPERF3_0_START -t 60 -u -b 10M' \
-  --iperf3='* | * | #start=$IPERF3_1_START -t 60 -u -b 10M -R'
+  --iperf3='internet | * | #start=$IPERF3_0_START -t 60 -u -b 10M' \
+  --iperf3='internet | * | #start=$IPERF3_1_START -t 60 -u -b 10M -R'
 
 # run the traffic generators, pass the environment variable
 IPERF3_0_START="$(expr $(date -u +%s) + 30)" IPERF3_1_START="$(expr $(date -u +%s) + 45)" ./tg.sh
+# if you forget to pass the environment variable, you would see warning:
+#   variable is not set. Defaulting to a blank string.
+```
+
+The value of `#start` client flag may also be a **relative timestamp**, written as a `+`*t* where *t* is a floating point number.
+This is resolved at runtime to be `$TGCS_T0 + `*t*, where `$TGCS_T0` is 30 seconds since starting clients (adjustable with `--t0-delay` flag).
+For example:
+
+```bash
+# prepare the measurement
+./compose.sh tgcs \
+  --iperf3='internet | * | #start=+0  -t 60 -u -b 10M' \
+  --iperf3='internet | * | #start=+15 -t 60 -u -b 10M -R'
+
+# run the traffic generators
+./tg.sh
 ```
 
 Comparison with similar features:

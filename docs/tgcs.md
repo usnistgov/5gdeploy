@@ -59,7 +59,7 @@ The outputs are:
 `--iperf2` traffic flow flag prepares throughput measurement using [iperf2](https://iperf2.sourceforge.io/).
 
 ```bash
-./compose.sh tgcs --iperf2='* | * | -e -i 1 -t 10 -u -l 1200 -b 10M | -e -i 1 -u -l 1200'
+./compose.sh tgcs --iperf2='internet | * | -e -i 1 -t 10 -u -l 1200 -b 10M | -e -i 1 -u -l 1200'
 ./tg.sh
 ```
 
@@ -89,7 +89,7 @@ To use the `--txstart-time` client flag, you can set its value to a variable tha
 ```bash
 # prepare the measurement, notice the single quotes so that bash does not expand the variable
 ./compose.sh tgcs \
-  --iperf2='* | * | -e -i 1 -t 60 -u -l 1200 -b 10M --txstart-time $IPERF2_TXSTART | -e -i 1 -u -l 1200'
+  --iperf2='internet | * | -e -i 1 -t 60 -u -l 1200 -b 10M --txstart-time $IPERF2_TXSTART | -e -i 1 -u -l 1200'
 
 # run the traffic generators, pass the environment variable
 IPERF2_TXSTART="$(expr $(date -u +%s) + 30)" ./tg.sh
@@ -104,7 +104,7 @@ This requires a custom Docker image built from the unreleased iperf 2.2.1 branch
 Run `./docker/build.sh iperf2` to build the image and run `./PREFIX.sh upload` to transfer the image to secondary hosts.
 
 ```bash
-./compose.sh tgcs --iperf2csv='* | * | -e --trip-times -i 1 -t 10 -u -l 1200 -b 10M | -e -i 1 -u -l 1200'
+./compose.sh tgcs --iperf2csv='internet | * | -e --trip-times -i 1 -t 10 -u -l 1200 -b 10M | -e -i 1 -u -l 1200'
 # upload custom Docker image before the first run, see notes above
 ./tg.sh
 ```
@@ -117,7 +117,7 @@ If you use bidirectional traffic, the CSV file may appear interleaved; it's advi
 `--iperf3` traffic flow flag prepares throughput measurement using [iperf3](https://software.es.net/iperf/).
 
 ```bash
-./compose.sh tgcs --iperf3='* | * | -t 60 -u -b 10M' --iperf3='* | * | -t 60 -u -b 10M -R'
+./compose.sh tgcs --iperf3='internet | * | -t 60 -u -b 10M' --iperf3='internet | * | -t 60 -u -b 10M -R'
 ./tg.sh
 ```
 
@@ -133,7 +133,7 @@ The script shows a brief summary of iperf3 flows.
 If you want iperf3 text output instead of JSON output, use `--iperf3t` traffic flow flag in place of `--iperf3`.
 
 ```bash
-./compose.sh tgcs --iperf3t='* | * | -t 60 -u -b 10M' --iperf3t='* | * | -t 60 -u -b 10M -R'
+./compose.sh tgcs --iperf3t='internet | * | -t 60 -u -b 10M' --iperf3t='internet | * | -t 60 -u -b 10M -R'
 ./tg.sh
 ```
 
@@ -266,10 +266,6 @@ During startup, `Error Get "http://5gdeploy.localhost/v2/"`:
 
 * Did you transfer the sockperf Docker image to secondary hosts?
 * `./tg.sh upload`
-
-During startup, `variable is not set. Defaulting to a blank string.`:
-
-* Did you specify the environment variables referenced in `#start` flags?
 
 After finishing, log contains `ERROR: _seqN > m_maxSequenceNo`:
 

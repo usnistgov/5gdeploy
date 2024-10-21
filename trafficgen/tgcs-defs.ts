@@ -142,7 +142,7 @@ export function extractHashFlag(flags: readonly string[], re: RegExp): [rflags: 
 /** Handle #start= flag for delayed client start. */
 export class ClientStartOpt {
   constructor(private readonly s: ComposeService) {}
-  private varname = "";
+  private expr = "";
 
   /**
    * Extract #start= flag.
@@ -150,19 +150,24 @@ export class ClientStartOpt {
    * @returns - Remaining flags.
    */
   public rewriteFlag(flags: readonly string[]): string[] {
-    const [rflags, m] = extractHashFlag(flags, /^#start=(\$\w+)$/);
+    const [rflags, m] = extractHashFlag(flags, /^#start=(\$\w+|\+[.\d]+)$/);
     if (m) {
-      this.varname = m[1]!;
+      this.expr = m[1]!;
     }
     return rflags;
   }
 
   /** Generate commands to wait until requested client start time. */
   public *waitCommands(): Iterable<string> {
-    if (!this.varname) {
-      return;
+    if (this.expr.startsWith("$")) {
+      this.s.environment[this.expr.slice(1)] = this.expr;
+      yield `echo $(date -u +%s.%N) ${this.expr} | awk '{ d = $2 - $1; if (d > 0) { system(sprintf("sleep %0.9f", d)) } }'`;
     }
-    this.s.environment[this.varname.slice(1)] = this.varname;
-    yield `echo ${this.varname} $(date -u +%s.%N) | awk '{ d = $1 - $2; if (d > 0) { system("sleep " d) } }'`;
+
+    if (this.expr.startsWith("+")) {
+      this.s.environment.TGCS_T0 = "$TGCS_T0";
+      const t = Number.parseFloat(this.expr);
+      yield `echo $(date -u +%s.%N) $TGCS_T0 ${t.toFixed(3)} | awk '{ d = $2 + $3 - $1; if (d > 0) { system(sprintf("sleep %0.9f", d)) } }'`;
+    }
   }
 }
