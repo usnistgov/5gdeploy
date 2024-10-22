@@ -31,14 +31,18 @@ export interface TrafficGenFlowContext {
   prefix: string;
   group: string;
   port: number;
-  dnIP: string;
-  pduIP: string;
-  cIP: string;
-  cFlags: readonly string[];
-  sIP: string;
-  sFlags: readonly string[];
   dnService: ReadonlyDeep<ComposeService>;
   ueService: ReadonlyDeep<ComposeService>;
+  dnIP: string;
+  pduIP: string;
+  cService: ReadonlyDeep<ComposeService>;
+  cNetif: string;
+  cIP: string;
+  cFlags: readonly string[];
+  sService: ReadonlyDeep<ComposeService>;
+  sNetif: string;
+  sIP: string;
+  sFlags: readonly string[];
 }
 
 /** Traffic generator application. */

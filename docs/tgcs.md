@@ -273,3 +273,30 @@ After finishing, log contains `ERROR: _seqN > m_maxSequenceNo`:
 * RDTSC may be unreliable on multi-socket systems and virtual machines, see [Pitfalls of TSC usage](https://oliveryang.net/2015/09/pitfalls-of-TSC-usage/).
 * To avoid this error, add `--no-rdtsc` to both server flags and client flags.
 * However, not using RDTSC would reduce performance.
+
+## D-ITG
+
+`--itg` traffic flow flag prepares a [D-ITG](https://traffic.comics.unina.it/software/ITG/manual/) benchmark.
+
+```bash
+# single-flow mode
+./compose.sh tgcs --itg='internet | * | -t 30000 -C 3000 -c 1200'
+
+# multi-flow mode
+./compose.sh tgcs --itg='internet | * | #f=5 -t 30000 -O 3000 -u 800 1200'
+```
+
+Client flags are passed to [`ITGSend`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00042000000000000000) command.
+Use `#start` client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#R` client flag for reverse direction, described in [advanced usage](tgcs-advanced.md).
+Use `#f` client flag to send multiple flows from the each client, up to 39 flows.
+Server flags are not accepted.
+
+Packet-level logs on both client and server are always saved in the stats directory.
+They can be further analyzed with [`ITGDec`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00045000000000000000) command.
+
+```bash
+alias ITGDec='docker run --rm --mount type=bind,source=$(pwd),target=/data -w /data jjq52021/ditg ITGDec'
+
+ITGDec tg/itg_0-20000-s.itg -v -c 1000 tg/itg_0-20000-s.c.tsv
+```

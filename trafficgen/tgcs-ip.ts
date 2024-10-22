@@ -4,7 +4,7 @@ import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
 import { assert, codebaseRoot } from "../util/mod.js";
-import { ClientStartOpt, Direction, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
+import { ClientStartOpt, Direction, extractHashFlag, mountOutputVolume, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
 export const iperf2: TrafficGen & { csvFlag: readonly string[] } = {
   csvFlag: [],
@@ -287,4 +287,68 @@ export const sockperf: TrafficGen = {
     ])} $F | tail -1 | sed 's|^sockperf: ||')`;
     yield "done";
   },
+};
+
+export const itg: TrafficGen = {
+  determineDirection() {
+    return Direction.ul;
+  },
+  nPorts: 40,
+  dockerImage: "jjq52021/ditg",
+  serverSetup(s, { prefix, port, sNetif }) {
+    compose.setCommands(s, [
+      "msg Starting ITGRecv",
+      shlex.join([
+        "ITGRecv",
+        "-Sp", `${port}`,
+        "-Si", "mgmt",
+        "-i", sNetif,
+      ]),
+    ]);
+    mountOutputVolume(s, prefix);
+    compose.annotate(s, "tgcs_docker_timestamps", 1);
+  },
+  clientSetup(s, { prefix, group, port, cService, cIP, cFlags, sService, sIP }) {
+    const start = new ClientStartOpt(s);
+    cFlags = start.rewriteFlag(cFlags);
+
+    let nFlows: RegExpMatchArray | undefined | number;
+    [cFlags, nFlows] = extractHashFlag(cFlags, /^#f=(\d+)$/);
+    nFlows = nFlows ? Number.parseInt(nFlows[1]!, 10) : 1;
+    assert(nFlows >= 1 && nFlows < 40, "#f must be between 1 and 39");
+
+    const ipFlags = [
+      "-Sda", compose.getIP(sService, "mgmt"),
+      "-Ssa", compose.getIP(cService, "mgmt"),
+      "-a", `::ffff:${sIP}`,
+      "-sa", `::ffff:${cIP}`,
+    ];
+    const flows: string[] = [];
+    for (let i = 1; i <= nFlows; ++i) {
+      flows.push(shlex.join([
+        ...ipFlags,
+        "-Sdp", `${port}`,
+        "-rp", `${port + i}`,
+        "-sp", `${port + i}`,
+        ...cFlags,
+      ]));
+    }
+
+    compose.setCommands(s, [
+      "msg Creating multi-flow script",
+      `echo ${shlex.quote(flows.join("\n"))} | tee /multi-flow.txt`,
+      ...start.waitCommands(),
+      "msg Starting ITGSend",
+      shlex.join([
+        "ITGSend",
+        "/multi-flow.txt",
+        "-l", `/output/${group}-${port}-c.itg`,
+        "-x", `/output/${group}-${port}-s.itg`,
+      ]),
+    ]);
+    mountOutputVolume(s, prefix);
+    compose.annotate(s, "cpus", 2);
+    compose.annotate(s, "tgcs_docker_timestamps", 1);
+  },
+  statsExt: ".log",
 };

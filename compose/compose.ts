@@ -1,6 +1,6 @@
 import stringify from "json-stringify-deterministic";
 import { ip2long, Netmask } from "netmask";
-import type { ConditionalKeys } from "type-fest";
+import type { ConditionalKeys, ReadonlyDeep } from "type-fest";
 
 import type { ComposeFile, ComposeNamedVolume, ComposeNetwork, ComposePort, ComposeService, ComposeVolume } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
@@ -212,7 +212,7 @@ function createService(name: string, image: string): ComposeService {
  *
  * @see `docs/annotate.md` has a list of annotations used in the codebase.
  */
-export function annotate(s: ComposeService, key: string): string | undefined;
+export function annotate(s: ReadonlyDeep<ComposeService>, key: string): string | undefined;
 
 /**
  * Set service annotation.
@@ -222,7 +222,7 @@ export function annotate(s: ComposeService, key: string): string | undefined;
  */
 export function annotate(s: ComposeService, key: string, value: string | number): ComposeService;
 
-export function annotate(s: ComposeService, key: string, value?: string | number) {
+export function annotate(s: any, key: string, value?: string | number) {
   key = `5gdeploy.${key}`;
   if (value === undefined) {
     return s.annotations?.[key];
@@ -301,7 +301,7 @@ export function disconnectNetif(c: ComposeFile, ct: string, net: string): string
  * Retrieve IPv4 address.
  * @throws Error - Netif does not exist.
  */
-export function getIP(s: ComposeService, net: string): string {
+export function getIP(s: ReadonlyDeep<ComposeService>, net: string): string {
   const ip = annotate(s, `ip_${net}`) ?? s.networks[net]?.ipv4_address;
   assert(ip, `netif ${s.container_name}:${net} missing`);
   return ip;

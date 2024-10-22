@@ -80,7 +80,7 @@ class UeransimBuilder {
   }
 
   private async buildUE(ct: string, sub: NetDef.Subscriber): Promise<void> {
-    const s = this.ctx.defineService(ct, ueransimDockerImage, ["air"]);
+    const s = this.ctx.defineService(ct, ueransimDockerImage, ["mgmt", "air"]);
     compose.annotate(s, "cpus", 1);
     s.cap_add.push("NET_ADMIN");
     s.devices.push("/dev/net/tun:/dev/net/tun");

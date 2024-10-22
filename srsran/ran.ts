@@ -45,7 +45,7 @@ class RANBuilder {
 
   private async buildZmq(): Promise<void> {
     for (const [gnb, sub] of NetDef.pairGnbUe(this.ctx.netdef)) {
-      const ue = this.ctx.defineService(gnb.name.replace("gnb", "ue"), ueDockerImage, ["air"]);
+      const ue = this.ctx.defineService(gnb.name.replace("gnb", "ue"), ueDockerImage, ["mgmt", "air"]);
       const gnbIP = await this.buildGNBzmq(gnb, compose.getIP(ue, "air"));
       this.buildUE(ue, sub, gnbIP);
     }
