@@ -78,6 +78,8 @@ For example:
 ./tg.sh
 ```
 
+![tgcs delayed client start timing diagram](tgcs-start.svg)
+
 Comparison with similar features:
 
 * `--startup-delay` flag:

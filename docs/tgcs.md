@@ -30,10 +30,10 @@ Each flag value consists of four parts, separated by `|` character:
 4. a sequence of server flags
 
 The command gathers information about currently connected PDU sessions (same as `list-pdu` subcommand), matches the DNN and SUPI against the patterns in traffic flow flags, and defines a pair of client and server for each matched PDU sessions.
-The client shares a netns with the UE container; the server shares a netns with the DN container.
+Normally, the client shares a netns with the UE container, and the server shares a netns with the DN container; it's possible to reverse the direction as described in [advanced usage](tgcs-advanced.md).
 Each traffic flow flag is processed separately, so that the same PDU session may match multiple flags and create multiple pairs of clients and servers.
 
-![client-server traffic generators](tgcs.svg)
+![topology diagram with client-server traffic generators](tgcs-topo.svg)
 
 Optional flags:
 
@@ -223,7 +223,7 @@ Use `#start` client flag for delayed client start, described in [advanced usage]
 Server flags are passed to `sockperf server`.
 
 Sockperf only supports unidirectional traffic from client to server.
-To achieve downlink traffic, use `#R` client flag for reverse direction, described in [advanced usage](tgcs-advanced.md).
+To achieve downlink traffic, use `#R` client flag for reverse the direction, described in [advanced usage](tgcs-advanced.md).
 
 Similar to OWAMP, the filename that follows `--full-log` is set to a file in the stats directory, which can be analyzed later.
 

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="100" style="background:#ffffff;">
+  <g transform="translate(20 0)">
+    <text x="-10" y="10" font-size="12">start server</text>
+    <text x="-10" y="20" font-size="12">containers/procs</text>
+    <line y1="25" y2="100" stroke="#85144b"/>
+    <line x2="100" y1="40" y2="40" stroke="#39cccc"/>
+    <text x="2" y="50" font-size="10">--startup-delay</text>
+  </g>
+  <g transform="translate(120 0)">
+    <text x="-10" y="10" font-size="12">start client</text>
+    <text x="-10" y="20" font-size="12">containers</text>
+    <line y1="25" y2="100" stroke="#85144b"/>
+    <line x2="100" y1="60" y2="60" stroke="#39cccc"/>
+    <text x="2" y="70" font-size="10">--t0-delay</text>
+  </g>
+  <g transform="translate(220 0)">
+    <text x="-10" y="20" font-size="12">$TGCS_T0</text>
+    <line y1="25" y2="100" stroke="#85144b"/>
+    <line x2="100" y1="40" y2="40" stroke="#39cccc"/>
+    <text x="2" y="50" font-size="10">#start=+N</text>
+    <text x="2" y="60" font-size="10">(relative timestamp)</text>
+  </g>
+  <g transform="translate(320 0)">
+    <text x="-10" y="10" font-size="12">start client</text>
+    <text x="-10" y="20" font-size="12">processes</text>
+    <line y1="25" y2="100" stroke="#85144b"/>
+    <text x="2" y="35" font-size="10">#start=$VARNAME</text>
+    <text x="2" y="45" font-size="10">(absolute timestamp)</text>
+    <line x2="110" y1="70" y2="70" stroke="#39cccc"/>
+    <text x="2" y="80" font-size="10">iperf2: --txdelay-time</text>
+    <text x="2" y="90" font-size="10">others: ASAP</text>
+  </g>
+  <g transform="translate(430 0)">
+    <text x="-10" y="10" font-size="12">start packet</text>
+    <text x="-10" y="20" font-size="12">transmission</text>
+    <line y1="25" y2="100" stroke="#85144b"/>
+    <text x="2" y="35" font-size="10">iperf2 only</text>
+    <text x="2" y="45" font-size="10">--txstart-time</text>
+  </g>
+</svg>
