@@ -22,6 +22,11 @@ export const scriptHead = [
   "with_retry() { while ! \"$@\"; do sleep 0.2; done }",
 ];
 
+/** bash tsrun() function. */
+export const scriptHeadTsrun = [
+  `tsrun() { local CMD=$1; shift; $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/$CMD "$@"; }`,
+];
+
 /**
  * Shell script cleanup trap.
  *

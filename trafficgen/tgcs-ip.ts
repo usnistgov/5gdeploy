@@ -17,6 +17,14 @@ function handleTextOutputFlag(
   return [rflags, !!wantText];
 }
 
+function* iperfStats(prefix: string): Iterable<string> {
+  yield "if [[ ${HAVE_IPERF_STATS:-0} -eq 0 ]]; then"; // eslint-disable-line no-template-curly-in-string
+  yield "  HAVE_IPERF_STATS=1";
+  yield `  msg Gathering iperf2/iperf3 statistics table to ${prefix}/iperf.tsv`;
+  yield `  tsrun trafficgen/iperf-stats.ts --dir=$COMPOSE_CTX --prefix=${prefix}`;
+  yield "fi";
+}
+
 export const iperf2: TrafficGen = {
   determineDirection({ cFlags }) {
     for (const [flag, dir] of Object.entries<Direction>({
@@ -62,7 +70,8 @@ export const iperf2: TrafficGen = {
       ...cFlags,
     ];
   },
-  *statsCommands() {
+  *statsCommands(prefix) {
+    yield* iperfStats(prefix);
     yield "msg Showing iperf2 final results from iperf2 text output";
     yield `find -name 'iperf2_*.log' | xargs -r awk -f ${codebaseRoot}/trafficgen/iperf2-stats.awk`;
   },
@@ -108,9 +117,7 @@ export const iperf3: TrafficGen = {
     ], { withScriptHead: false });
   },
   *statsCommands(prefix) {
-    yield `msg Gathering iperf3 statistics table to ${prefix}/iperf3.tsv`;
-    yield `$(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/iperf3-stats.ts ` +
-      `--dir=$COMPOSE_CTX --prefix=${prefix}`;
+    yield* iperfStats(prefix);
   },
 };
 
@@ -307,7 +314,7 @@ export const itg: TrafficGen = {
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
 
-    let nFlows: RegExpMatchArray | undefined | number;
+    let nFlows: extractHashFlag.Match | number;
     [cFlags, nFlows] = extractHashFlag(cFlags, /^#f=(\d+)$/);
     nFlows = nFlows ? Number.parseInt(nFlows[1]!, 10) : 1;
     assert(nFlows >= 1 && nFlows < 40, "#f must be between 1 and 39");

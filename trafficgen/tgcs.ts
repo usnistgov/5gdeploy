@@ -9,7 +9,7 @@ import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
-import { assert, cmdOutput, codebaseRoot, file_io, splitVbar, Yargs, type YargsOpt } from "../util/mod.js";
+import { assert, cmdOutput, codebaseRoot, file_io, scriptHeadTsrun, splitVbar, Yargs, type YargsOpt } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import { Direction, extractHashFlag, type TrafficGen, type TrafficGenFlowContext } from "./tgcs-defs.js";
 import * as tg_ip from "./tgcs-ip.js";
@@ -112,7 +112,7 @@ const table = await pipeline(
     const port = nextPort;
     nextPort += tg.nPorts;
 
-    let isReversed: RegExpMatchArray | undefined | boolean;
+    let isReversed: extractHashFlag.Match | boolean;
     [cFlags, isReversed] = extractHashFlag(cFlags, /^#r$/i);
     isReversed = !!isReversed;
     assert(!isReversed || !tg.serverPerDN, `${tgid} does not support #R flag`);
@@ -179,6 +179,7 @@ const composeFilename = `compose.${prefix}.yml`;
 await file_io.write(path.join(args.dir, composeFilename), output);
 
 await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
+  yield* scriptHeadTsrun;
   yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
   yield "COMPOSE_CTX=$PWD";
   yield `STATS_DIR=$PWD/${prefix}/`;

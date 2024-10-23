@@ -5,7 +5,7 @@ import * as shlex from "shlex";
 import type { Arrayable, SetOptional } from "type-fest";
 
 import type { ComposeFile } from "../types/mod.js";
-import { assert, codebaseRoot, scriptHead } from "../util/mod.js";
+import { assert, codebaseRoot, scriptHead, scriptHeadTsrun } from "../util/mod.js";
 import { annotate } from "./compose.js";
 import { classifyByHost } from "./place.js";
 
@@ -16,7 +16,7 @@ export function* makeComposeSh(
 ): Iterable<string> {
   yield "#!/bin/bash";
   yield* scriptHead;
-  yield `tsrun() { local CMD=$1; shift; $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/$CMD "$@"; }`;
+  yield* scriptHeadTsrun;
   yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
   yield "COMPOSE_CTX=$PWD";
   yield "ACT=${1:-}"; // eslint-disable-line no-template-curly-in-string
