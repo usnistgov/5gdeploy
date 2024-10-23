@@ -33,6 +33,10 @@ The command gathers information about currently connected PDU sessions (same as 
 Normally, the client shares a netns with the UE container, and the server shares a netns with the DN container; it's possible to reverse the direction as described in [advanced usage](tgcs-advanced.md).
 Each traffic flow flag is processed separately, so that the same PDU session may match multiple flags and create multiple pairs of clients and servers.
 
+Several traffic generators can recognize special client/server flags that start with `#` symbol.
+These are translated by tgcs script and not passed to the traffic generator program.
+They must be specified before other flags that do not start with `#` symbol.
+
 ![topology diagram with client-server traffic generators](tgcs-topo.svg)
 
 Optional flags:
@@ -58,25 +62,39 @@ The outputs are:
 
 `--iperf2` traffic flow flag prepares throughput measurement using [iperf2](https://iperf2.sourceforge.io/).
 
+This requires uses a custom Docker image built on the primary host.
+To transfer the image to secondary hosts, run `./PREFIX.sh upload` before the first run.
+
 ```bash
-./compose.sh tgcs --iperf2='internet | * | -e -i 1 -t 10 -u -l 1200 -b 10M | -e -i 1 -u -l 1200'
+# prepare benchmark script
+./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1200 -b 10M | -i 1 -u -l 1200'
+
+# add '#text' client flag for text output
+./compose.sh tgcs --iperf2='internet | * | #text -t 60 -i 1 -u -l 1200 -b 10M | -i 1 -u -l 1200'
+
+# measure one-way latency with --trip-times
+./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1200 -b 10M --trip-times | -i 1 -u -l 1200'
+
+# upload custom Docker image before the first run, see notes above
+./tg.sh upload
+
+# run benchmark
 ./tg.sh
 ```
 
 Client flags are passed to [iperf2 client](https://iperf2.sourceforge.io/iperf-manpage.html#lbAG).
 Server flags are passed to [iperf2 server](https://iperf2.sourceforge.io/iperf-manpage.html#lbAF).
+The `-e` flag for "enhanced output" is always included and need not be specified.
 
-To use UDP mode, pass `-u` in both client flags and server flags; otherwise, it is TCP mode.
-It is an error to have UDP mode on one side and TCP mode on the other side.
+To use UDP traffic, pass `-u` in both client flags and server flags; otherwise, it is TCP traffic.
+It is an error to set UDP traffic on one side and TCP traffic on the other side.
 
-The text outputs of each iperf2 container are saved in the stats directory.
-You should not use the `--output` flag.
-The script shows a brief summary of iperf2 results, but it requires interval reports to be enabled (`-i` flag) and cannot handle bidirectional traffic.
+The `-yC` flag for CSV output is included by default.
+To obtain text output instead, add `#text` in client flags.
+In either case, you should specify `-i` flag to enable interval reports.
 
-### One-way Latency (trip-times)
-
-The `--trip-times` client flag enables measurement of one-way latency.
-This requires synchronized clock between client and server.
+The outputs of each iperf2 container are saved in the stats directory.
+The script shows a brief summary of iperf2 flows that have text output.
 
 ### Delayed TX Start
 
@@ -88,36 +106,28 @@ To use the `--txstart-time` client flag, you can set its value to a variable tha
 
 ```bash
 # prepare the measurement, notice the single quotes so that bash does not expand the variable
-./compose.sh tgcs \
-  --iperf2='internet | * | -e -i 1 -t 60 -u -l 1200 -b 10M --txstart-time $IPERF2_TXSTART | -e -i 1 -u -l 1200'
+./compose.sh tgcs --iperf2='internet | *
+  | -t 60 -i 1 -u -l 1200 -b 10M --txstart-time $IPERF2_TXSTART
+  | -i 1 -u -l 1200
+'
 
 # run the traffic generators, pass the environment variable
 IPERF2_TXSTART="$(expr $(date -u +%s) + 30)" ./tg.sh
 ```
-
-Caution: iperf2 seems to emit erroneous results when `--txstart-time` and `-R` are used together.
-
-### iperf2 CSV Output
-
-If you want CSV output instead of text output, use `--iperf2csv` traffic flow flag in place of `--iperf2`.
-This requires a custom Docker image built from the unreleased iperf 2.2.1 branch.
-Run `./docker/build.sh iperf2` to build the image and run `./PREFIX.sh upload` to transfer the image to secondary hosts.
-
-```bash
-./compose.sh tgcs --iperf2csv='internet | * | -e --trip-times -i 1 -t 10 -u -l 1200 -b 10M | -e -i 1 -u -l 1200'
-# upload custom Docker image before the first run, see notes above
-./tg.sh
-```
-
-The CSV outputs of each iperf2 container are saved in the stats directory, but the script cannot gather overall statistics.
-If you use bidirectional traffic, the CSV file may appear interleaved; it's advised to use unidirectional traffic only.
 
 ## iperf3
 
 `--iperf3` traffic flow flag prepares throughput measurement using [iperf3](https://software.es.net/iperf/).
 
 ```bash
-./compose.sh tgcs --iperf3='internet | * | -t 60 -u -b 10M' --iperf3='internet | * | -t 60 -u -b 10M -R'
+# prepare benchmark script
+./compose.sh tgcs --iperf3='internet | * | -t 60 -u -l 1200 -b 10M'
+./compose.sh tgcs --iperf3='internet | * | -t 60 -u -l 1200 -b 10M -R'
+
+# add '#text' client flag for text output
+./compose.sh tgcs --iperf3='internet | * | #text -t 60 -u -l 1200 -b 10M --bidir'
+
+# run benchmark
 ./tg.sh
 ```
 
@@ -125,19 +135,11 @@ Client flags are passed to iperf3 client.
 Use `#start` client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
 Server flags are not accepted.
 
-The JSON outputs of each iperf3 container are saved in the stats directory.
-The script shows a brief summary of iperf3 flows.
+The `--json` flag for JSON output is included by default.
+To obtain text output instead, add `#text` in client flags.
 
-### iperf3 Text Output
-
-If you want iperf3 text output instead of JSON output, use `--iperf3t` traffic flow flag in place of `--iperf3`.
-
-```bash
-./compose.sh tgcs --iperf3t='internet | * | -t 60 -u -b 10M' --iperf3t='internet | * | -t 60 -u -b 10M -R'
-./tg.sh
-```
-
-The text outputs of each iperf3 container are saved in the stats directory, but the script cannot gather overall statistics.
+The outputs of each iperf3 container are saved in the stats directory.
+The script shows a brief summary of iperf3 flows that have JSON output.
 
 ## OWAMP and TWAMP
 
@@ -199,19 +201,19 @@ The script cannot gather summary information from the output.
 
 `--sockperf` traffic flow flag prepares a [sockperf](https://manpages.ubuntu.com/manpages/jammy/man1/sockperf.1.html) benchmark.
 
-Sockperf trafficgen uses a custom Docker image built on the primary host.
+This requires uses a custom Docker image built on the primary host.
 To transfer the image to secondary hosts, run `./PREFIX.sh upload` before the first run.
 
 ```bash
-# uplink
+# prepare benchmark script for uplink traffic
 ./compose.sh tgcs --sockperf='internet | * | under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --mps 1000 | -g'
 ./compose.sh tgcs --sockperf='internet | * | ping-pong  --full-log x --full-rtt -t 30 -m 800 -b 1            | -g'
 ./compose.sh tgcs --sockperf='internet | * | throughput --full-log x --full-rtt -t 30 -m 800 -b 1            | -g'
 
-# downlink
+# prepare benchmark script for downlink traffic
 ./compose.sh tgcs --sockperf='internet | * | #R under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --mps 1000 | -g'
 
-# transfer Docker image
+# upload custom Docker image before the first run, see notes above
 ./tg.sh upload
 
 # run benchmark

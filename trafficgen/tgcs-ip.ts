@@ -3,11 +3,21 @@ import path from "node:path";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
+import type { ComposeService } from "../types/mod.js";
 import { assert, codebaseRoot } from "../util/mod.js";
 import { ClientStartOpt, Direction, extractHashFlag, mountOutputVolume, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
-export const iperf2: TrafficGen & { csvFlag: readonly string[] } = {
-  csvFlag: [],
+function handleTextOutputFlag(
+    s: ComposeService, flags: readonly string[], nonTextStatsExt: string,
+): [rflags: string[], wantText: boolean] {
+  const [rflags, wantText] = extractHashFlag(flags, /^#text$/);
+  if (!wantText) {
+    compose.annotate(s, "tgcs_stats_ext", nonTextStatsExt);
+  }
+  return [rflags, !!wantText];
+}
+
+export const iperf2: TrafficGen = {
   determineDirection({ cFlags }) {
     for (const [flag, dir] of Object.entries<Direction>({
       "-d": Direction.bidir,
@@ -25,73 +35,71 @@ export const iperf2: TrafficGen & { csvFlag: readonly string[] } = {
     return Direction.ul;
   },
   nPorts: 1,
-  dockerImage: "mlabbe/iperf:2.1.9-r0",
+  dockerImage: "5gdeploy.localhost/iperf2",
   serverSetup(s, { port, sIP, cFlags, sFlags }) {
     assert(cFlags.includes("-u") === sFlags.includes("-u"), "iperf2 client and server must be both in UDP mode or both in TCP mode");
+    const [, wantText] = handleTextOutputFlag(s, cFlags, ".csv");
     s.command = [
+      ...(wantText ? [] : ["-yC"]),
+      "-e",
       "--utc",
-      ...this.csvFlag,
       "-B", sIP,
       "-p", `${port}`,
       "-s",
       ...sFlags,
     ];
-    s.healthcheck = { disable: true };
   },
   clientSetup(s, { port, sIP, cIP, cFlags }) {
+    let wantText: boolean;
+    [cFlags, wantText] = handleTextOutputFlag(s, cFlags, ".csv");
     s.command = [
+      ...(wantText ? [] : ["-yC"]),
+      "-e",
       "--utc",
-      ...this.csvFlag,
       "-B", cIP,
       "-p", `${port}`,
       "-c", sIP,
       ...cFlags,
     ];
-    s.healthcheck = { disable: true };
   },
-  statsExt: ".log",
   *statsCommands() {
     yield "msg Showing iperf2 final results from iperf2 text output";
-    yield `awk -f ${codebaseRoot}/trafficgen/iperf2-stats.awk iperf2_*.log`;
+    yield `find -name 'iperf2_*.log' | xargs -r awk -f ${codebaseRoot}/trafficgen/iperf2-stats.awk`;
   },
 };
 
-export const iperf2csv: typeof iperf2 = {
-  ...iperf2,
-  csvFlag: ["-yC"],
-  dockerImage: "5gdeploy.localhost/iperf2",
-  statsExt: ".csv",
-  statsCommands: undefined,
-};
-
-export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
-  jsonFlag: ["--json"],
+export const iperf3: TrafficGen = {
   determineDirection({ cFlags }) {
     return cFlags.includes("--bidir") ? Direction.bidir :
       cFlags.includes("-R") ? Direction.dl : Direction.ul;
   },
   nPorts: 1,
   dockerImage: "perfsonar/tools",
-  serverSetup(s, { port, sIP, sFlags }) {
+  serverSetup(s, { port, sIP, cFlags, sFlags }) {
     assert(sFlags.length === 0, "iperf3 server does not accept server flags");
+    const [, wantText] = handleTextOutputFlag(s, cFlags, ".json");
+
     s.command = [
       "iperf3",
+      ...(wantText ? [] : ["--json"]),
       "--forceflush",
-      ...this.jsonFlag,
       "-B", sIP,
       "-p", `${port}`,
       "-s",
     ];
   },
   clientSetup(s, { port, sIP, cIP, cFlags }) {
+    let wantText: boolean;
+    [cFlags, wantText] = handleTextOutputFlag(s, cFlags, ".json");
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
+
     compose.setCommands(s, [
       ...start.waitCommands(),
       shlex.join([
         "iperf3",
+        ...(wantText ? [] : ["--json"]),
         "--forceflush",
-        ...this.jsonFlag,
         "-B", cIP,
         "-p", `${port}`,
         "-c", sIP,
@@ -99,21 +107,10 @@ export const iperf3: TrafficGen & { jsonFlag: readonly string[] } = {
       ]),
     ], { withScriptHead: false });
   },
-  statsExt: ".json",
   *statsCommands(prefix) {
     yield `msg Gathering iperf3 statistics table to ${prefix}/iperf3.tsv`;
     yield `$(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/trafficgen/iperf3-stats.ts ` +
       `--dir=$COMPOSE_CTX --prefix=${prefix}`;
-  },
-};
-
-export const iperf3t: typeof iperf3 = {
-  ...iperf3,
-  jsonFlag: [],
-  statsExt: ".log",
-  *statsCommands() {
-    yield "msg Showing iperf3 final results from iperf3 text output";
-    yield "grep -w receiver iperf3t_*-*-c.log";
   },
 };
 
@@ -169,7 +166,6 @@ export const owamp: TrafficGen & {
     ], { withScriptHead: false });
   },
   outputExt: ".owp",
-  statsExt: ".log",
   statsGrep: "one-way (delay|jitter)",
   *statsCommands() {
     yield `msg Showing ${this.tgid} final results from ${this.clientBin} text output`;
@@ -218,7 +214,6 @@ export const netperf: TrafficGen = {
       ]),
     ], { shell: "ash", withScriptHead: false });
   },
-  statsExt: ".log",
 };
 
 export const sockperf: TrafficGen = {
@@ -276,7 +271,6 @@ export const sockperf: TrafficGen = {
     ], { withScriptHead: false });
     compose.annotate(s, "cpus", 2);
   },
-  statsExt: ".log",
   *statsCommands() {
     yield "msg Showing sockperf final results";
     yield "for F in sockperf_*.log; do";
@@ -290,6 +284,7 @@ export const sockperf: TrafficGen = {
 };
 
 export const itg: TrafficGen = {
+  name: "D-ITG",
   determineDirection() {
     return Direction.ul;
   },
@@ -350,5 +345,4 @@ export const itg: TrafficGen = {
     compose.annotate(s, "cpus", 2);
     compose.annotate(s, "tgcs_docker_timestamps", 1);
   },
-  statsExt: ".log",
 };

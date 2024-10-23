@@ -47,6 +47,9 @@ export interface TrafficGenFlowContext {
 
 /** Traffic generator application. */
 export interface TrafficGen {
+  /** Traffic generator name. */
+  name?: string;
+
   /** Determine traffic direction, upstream or downstream. */
   determineDirection: (flow: TrafficGenFlowContext) => Direction;
 
@@ -71,12 +74,6 @@ export interface TrafficGen {
 
   /** Procedure to setup a client container. */
   clientSetup: (s: ComposeService, flow: TrafficGenFlowContext) => void;
-
-  /**
-   * Filename extension for statistics from `docker logs`.
-   * This should start with ".".
-   */
-  statsExt: string;
 
   /**
    * bash commands to tally statistics and show on the console.
@@ -129,7 +126,7 @@ export function rewriteOutputFlag(s: ComposeService, prefix: string, group: stri
  * @param re - RegExp to match the desired #-flag.
  * @returns - Remaining flags with matched flag deleted; RegExp match result.
  */
-export function extractHashFlag(flags: readonly string[], re: RegExp): [rflags: string[], m: RegExpMatchArray | undefined] {
+export function extractHashFlag(flags: readonly string[], re: RegExp): [rflags: string[], m: extractHashFlag.Match] {
   for (const [i, flag] of flags.entries()) {
     if (!flag.startsWith("#")) {
       break;
@@ -141,6 +138,9 @@ export function extractHashFlag(flags: readonly string[], re: RegExp): [rflags: 
   }
 
   return [[...flags], undefined];
+}
+export namespace extractHashFlag {
+  export type Match = RegExpMatchArray | undefined;
 }
 
 /** Handle #start= flag for delayed client start. */

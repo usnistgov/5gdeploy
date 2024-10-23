@@ -84,4 +84,7 @@ Its value is one of `DL>`, `<UL`, `<->`.
 If the traffic generator requires multiple ports, this is the lowest port number.
 If the traffic generator uses no ports (e.g. ndnping), this value is purely nominal.
 
+**tgcs\_stats\_ext** is the file extension of saved container logs.
+Default is ".log".
+
 **tgcs\_docker\_timestamps** indicates that the traffic generator does not print timestamps, so that Docker Engine timestamps should be added.

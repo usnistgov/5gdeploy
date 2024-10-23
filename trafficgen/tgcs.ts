@@ -9,7 +9,7 @@ import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
-import { assert, cmdOutput, codebaseRoot, file_io, splitVbar, Yargs } from "../util/mod.js";
+import { assert, cmdOutput, codebaseRoot, file_io, splitVbar, Yargs, type YargsOpt } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import { Direction, extractHashFlag, type TrafficGen, type TrafficGenFlowContext } from "./tgcs-defs.js";
 import * as tg_ip from "./tgcs-ip.js";
@@ -39,10 +39,11 @@ function makeOption(tgid: string) {
         };
       });
     },
-    desc: `define ${tgid} flows`,
+    desc: `define ${trafficGenerators[tgid as keyof typeof trafficGenerators].name ?? tgid} flows`,
+    group: "Flow Definitions:",
     nargs: 1,
     type: "string",
-  } as const;
+  } as const satisfies YargsOpt;
 }
 
 const args = Yargs()
@@ -247,11 +248,12 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
     const group = compose.annotate(s, "tgcs_group")!;
     const port = compose.annotate(s, "tgcs_port")!;
     const dn = compose.annotate(s, "tgcs_dn")!;
+    const statsExt = compose.annotate(s, "tgcs_stats_ext") ?? ".log";
     const timestampFlag = compose.annotate(s, "tgcs_docker_timestamps") ? " -t" : "";
     const ct = s.container_name;
-    const basename = tg.serverPerDN && ct.endsWith("s") ? `${group}-${dn}` : `${group}-${port}`;
+    const basename = tg.serverPerDN && ct.endsWith("_s") ? `${group}-${dn}` : `${group}-${port}`;
     yield `  ${compose.makeDockerH(s)} logs${timestampFlag} ${
-      ct} >$\{STATS_DIR}${basename}-${ct.slice(-1)}${tg.statsExt}`;
+      ct} >$\{STATS_DIR}${basename}-${ct.slice(-1)}${statsExt}`;
   }
   yield "fi";
   yield "";

@@ -27,8 +27,9 @@ const args = Yargs()
 const c = await file_io.readYAML(path.join(args.dir, `compose.${args.prefix}.yml`)) as ComposeFile;
 const table = (await pipeline(
   () => Object.values(c.services).filter((s) =>
+    s.container_name.endsWith("_c") &&
     compose.annotate(s, "tgcs_tgid") === "iperf3" &&
-    s.container_name.endsWith("_c"),
+    compose.annotate(s, "tgcs_stats_ext") === ".json",
   ),
   parallelMap(16, async (s): Promise<Array<Array<string | number>>> => {
     const group = compose.annotate(s, "tgcs_group")!;

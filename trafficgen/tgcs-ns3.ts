@@ -71,6 +71,7 @@ function setupNs3(
 }
 
 export const ns3http: TrafficGen = {
+  name: "ns-3 3GPP HTTP Application",
   determineDirection() {
     return Direction.dl;
   },
@@ -85,7 +86,6 @@ export const ns3http: TrafficGen = {
     setupNs3(s, prefix, port >> 3, cIP, [], ["ns3http", `--connect=${sIP}`, ...cFlags], `${group}-${port}-c`);
     s.environment.NS_LOG = "ThreeGppHttpClient=level_info|prefix_time";
   },
-  statsExt: ".log",
   *statsCommands() {
     yield "msg Counting successfully received webpages";
     yield "grep -Hc 'HttpClient \\w* --> READING' ns3http_*-*-c.nslog";

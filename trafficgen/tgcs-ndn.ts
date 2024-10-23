@@ -38,7 +38,6 @@ export const ndnping: TrafficGen = {
       `/${prefix}`,
     ];
   },
-  statsExt: ".log",
   *statsCommands() {
     yield "msg Showing ndnping final results from ndnping text output";
     yield "grep -wE 'packets transmitted|rtt min' ndnping_*-*-c.log";
