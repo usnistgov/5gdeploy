@@ -27,22 +27,21 @@ const table: Array<Array<string | number>> = [];
 
 const parsers: Record<string, (filename: string, group: string, dn: string, dir: Direction, ue: string, port: number) => Promise<boolean>> = {
   "iperf2.csv": async (filename, group, dn, dir, ue, port) => {
-    let sFilename = filename;
-    let rFilename = filename.replace(/-c.csv$/, "-s.csv");
-    switch (dir) {
-      case Direction.bidir: {
-        return false;
-      }
-      case Direction.dl: {
-        [sFilename, rFilename] = [rFilename, sFilename];
-        break;
-      }
+    if (dir === Direction.bidir) {
+      return false;
     }
+    const clientReport = await file_io.readTable(
+      filename, { columns: true },
+    ) as Array<Record<string, string>>;
+    const serverReport = await file_io.readTable(
+      filename.replace(/-c.csv$/, "-s.csv"),
+      { columns: true },
+    ) as Array<Record<string, string>>;
 
-    const sReport = await file_io.readTable(sFilename, { columns: true }) as Array<Record<string, string>>;
-    const rReport = await file_io.readTable(rFilename, { columns: true }) as Array<Record<string, string>>;
-    const sFinal = sReport.at(-1) ?? {};
-    const rFinal = rReport.at(-1) ?? {};
+    const clientFinal = clientReport.at(-1) ?? {};
+    const serverFinal = serverReport.at(-1) ?? {};
+    const [sFinal, rFinal] = clientFinal.writecnt !== undefined && serverFinal.readcnt !== undefined ?
+      [clientFinal, serverFinal] : [serverFinal, clientFinal];
     if (!(
       sFinal.transferid === rFinal.transferid &&
       sFinal.srcaddress === rFinal.srcaddress && sFinal.srcport === rFinal.srcport &&
@@ -62,7 +61,7 @@ const parsers: Record<string, (filename: string, group: string, dn: string, dir:
       "_",
       Number.parseFloat(sFinal.speed ?? "NaN") / 1e6,
       Number.parseFloat(rFinal.speed ?? "NaN") / 1e6,
-      rFinal.ttavg === undefined ? "_" : Number.parseFloat(rFinal.ttavg),
+      Number.parseInt(rFinal.ttcnt ?? "0", 10) > 0 ? Number.parseFloat(rFinal.ttavg ?? "NaN") : "_",
     ]);
 
     return true;
@@ -84,7 +83,7 @@ const parsers: Record<string, (filename: string, group: string, dn: string, dir:
       table.push([
         group,
         dn,
-        row.sender ? Direction.ul : Direction.dl,
+        row.sender ? Direction.ul : Direction.dl, // XXX incompatible with #R reverse direction
         ue,
         port,
         row.sender ? cpu.host_total : cpu.remote_total,

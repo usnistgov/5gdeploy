@@ -33,7 +33,7 @@ The command gathers information about currently connected PDU sessions (same as 
 Normally, the client shares a netns with the UE container, and the server shares a netns with the DN container; it's possible to reverse the direction as described in [advanced usage](tgcs-advanced.md).
 Each traffic flow flag is processed separately, so that the same PDU session may match multiple flags and create multiple pairs of clients and servers.
 
-Several traffic generators can recognize special client/server flags that start with `#` symbol.
+Several traffic generators can recognize preprocessor flags that start with `#` symbol.
 These are translated by tgcs script and not passed to the traffic generator program.
 They must be specified before other flags that do not start with `#` symbol.
 
@@ -94,11 +94,16 @@ To use UDP traffic, pass `-u` in both client flags and server flags; otherwise, 
 It is an error to set UDP traffic on one side and TCP traffic on the other side.
 
 The `-yC` flag for CSV output is included by default.
-To obtain text output instead, add `#text` in client flags.
+To obtain text output instead, add `#text` preprocessor flag.
 In either case, you should specify `-i` flag to enable interval reports.
 
+Use `-P` client flag to send multiple parallel flows from the each client.
+If you observe CPU bottleneck when using this flag, consider adding `#cpus` preprocessor flag to increase CPU allocation, described in [advanced usage](tgcs-advanced.md).
+The `-P` flag is incompatible with `-R` flag, but you can use `#R` preprocessor flag to reverse direction, described in [advanced usage](tgcs-advanced.md).
+
 The outputs of each iperf2 container are saved in the stats directory.
-The script shows a brief summary of iperf2 flows that have text output.
+The script shows a table of iperf2 flows that have CSV output, together with iperf3 flows that have JSON output.
+The script also shows a brief summary of iperf2 flows that have text output.
 
 ### Delayed TX Start
 
@@ -136,14 +141,14 @@ IPERF2_TXSTART="$(expr $(date -u +%s) + 30)" ./tg.sh
 ```
 
 Client flags are passed to iperf3 client.
-Use `#start` client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
 Server flags are not accepted.
 
 The `--json` flag for JSON output is included by default.
-To obtain text output instead, add `#text` in client flags.
+To obtain text output instead, add `#text` preprocessor flag.
 
 The outputs of each iperf3 container are saved in the stats directory.
-The script shows a brief summary of iperf3 flows that have JSON output.
+The script shows a table of iperf3 flows that have JSON output, together with iperf2 flows that have CSV output.
 
 ## OWAMP and TWAMP
 
@@ -159,7 +164,7 @@ The script shows a brief summary of iperf3 flows that have JSON output.
 ```
 
 Client flags are passed to [owping](https://software.internet2.edu/owamp/owping.man.html) or twping.
-Use `#start` client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
 Server flags are not accepted.
 
 ### Session File
@@ -195,7 +200,7 @@ The stats directories are at the same path on every host.
 ```
 
 Client flags are passed to `netperf`.
-Use `#start` client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
 Server flags are passed to `netserver`.
 
 The script cannot identify the traffic direction of each flow in the brief report.
@@ -225,11 +230,11 @@ To transfer the image to secondary hosts, run `./PREFIX.sh upload` before the fi
 ```
 
 Client flags, starting with a subcommand such as `under-load` or `throughput`, are passed to `sockperf`.
-Use `#start` client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
 Server flags are passed to `sockperf server`.
 
 Sockperf only supports unidirectional traffic from client to server.
-To achieve downlink traffic, use `#R` client flag for reverse the direction, described in [advanced usage](tgcs-advanced.md).
+To achieve downlink traffic, use `#R` preprocessor flag for reverse direction, described in [advanced usage](tgcs-advanced.md).
 
 Similar to OWAMP, the filename that follows `--full-log` is set to a file in the stats directory, which can be analyzed later.
 
@@ -293,9 +298,9 @@ After finishing, log contains `ERROR: _seqN > m_maxSequenceNo`:
 ```
 
 Client flags are passed to [`ITGSend`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00042000000000000000) command.
-Use `#start` client flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
-Use `#R` client flag for reverse direction, described in [advanced usage](tgcs-advanced.md).
-Use `#f` client flag to send multiple flows from the each client, up to 39 flows.
+Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#R` preprocessor flag for reverse direction, described in [advanced usage](tgcs-advanced.md).
+Use `#f` preprocessor flag to send multiple parallel flows from the each client, up to 39 flows.
 Server flags are not accepted.
 
 Packet-level logs on both client and server are always saved in the stats directory.

@@ -117,6 +117,10 @@ const table = await pipeline(
     const port = nextPort;
     nextPort += tg.nPorts;
 
+    let cCpus; let sCpus: extractHashFlag.Match;
+    [cFlags, cCpus] = extractHashFlag(cFlags, /^#cpus=(\d+)$/);
+    [sFlags, sCpus] = extractHashFlag(sFlags, /^#cpus=(\d+)$/);
+
     let isReversed: extractHashFlag.Match | boolean;
     [cFlags, isReversed] = extractHashFlag(cFlags, /^#r$/i);
     isReversed = !!isReversed;
@@ -155,6 +159,9 @@ const table = await pipeline(
       compose.annotate(server, "cpus", 1);
       copyPlacementNetns(server, isReversed ? ueService : dnService);
       tg.serverSetup(server, tgFlow);
+      if (sCpus) {
+        compose.annotate(server, "cpus", Number.parseInt(sCpus[1]!, 10));
+      }
       services.push(server);
     }
 
@@ -163,6 +170,9 @@ const table = await pipeline(
     copyPlacementNetns(client, isReversed ? dnService : ueService);
     tg.clientSetup(client, tgFlow);
     services.push(client);
+    if (cCpus) {
+      compose.annotate(client, "cpus", Number.parseInt(cCpus[1]!, 10));
+    }
     hasT0 ||= !!client.environment.TGCS_T0;
 
     for (const s of services) {
@@ -242,7 +252,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "if [[ -z $ACT ]] || [[ $ACT == wait ]]; then";
   const waitTimeout = `${args["wait-timeout"]}s`;
   yield `  msg Waiting for trafficgen clients to finish with ${waitTimeout.replace(/^0s$/, "infinite")} timeout`;
-  yield `  timeout ${waitTimeout} bash -c ${shlex.quote(Array.from(
+  yield `  timeout --foreground ${waitTimeout} bash -c ${shlex.quote(Array.from(
     Object.values(output.services).filter(({ container_name: ct }) => ct.endsWith("_c")),
     (s) => `echo ${s.container_name} $(${compose.makeDockerH(s)} wait ${s.container_name})`,
   ).join("\n"))} || msg Timeout exceeded, results may be incorrect`;

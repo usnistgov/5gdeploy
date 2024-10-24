@@ -21,6 +21,19 @@ Normally, [netdef-compose](../netdef-compose/README.md) assigns a dedicated CPU 
 When you are assigning explicit cpuset to traffic generators, dedicated CPU cores become unnecessary for DN containers and for UE containers where the UE process does not participate in user plane traffic.
 You can turn off these assignments with `--dn-workers=0 --phoenix-ue-isolated=NONE`.
 
+Each traffic generator container is assigned either 1 or 2 dedicated CPU cores, depending on the traffic generator.
+You can use `place-report.sh` script to view the assignments.
+To change the quantity, add `#cpus=` client or server flag.
+This flag is translated by tgcs script and not passed to the client program.
+It must be specified before other flags that do not start with `#` symbol.
+
+```bash
+~/5gdeploy/compose/place-report.sh compose.tg.yml
+
+./compose.sh tgcs --iperf3='internet | * | #cpus=2 -t 60 -u -b 10M -P 2 | #cpus=2' \
+  --place='*_c@(12-15)' --place='*_s@192.168.60.3(16-19)'
+```
+
 ## Independent Measurement Sets
 
 Normally, `./compose.sh tgcs` prepares a measurement set that contains one or more traffic generators of either same or different types.
@@ -44,12 +57,10 @@ For example:
 
 ## Delayed Client Start
 
-The `#start` client flag delays client start until an absolute timestamp.
-This flag is translated by tgcs script and not passed to the client program.
-It must be specified before other flags that do not start with `#` symbol.
+The `#start` preprocessor flag delays client start until an absolute timestamp.
 This is only supported in a subset of traffic generator types, mentioned in their descriptions.
 
-The value of `#start` client flag may be an environment variable that is resolved to an **absolute timestamp** during `PREFIX.sh` execution.
+The value of `#start` preprocessor flag may be an environment variable that is resolved to an **absolute timestamp** during `PREFIX.sh` execution.
 For example:
 
 ```bash
@@ -64,7 +75,7 @@ IPERF3_0_START="$(expr $(date -u +%s) + 30)" IPERF3_1_START="$(expr $(date -u +%
 #   variable is not set. Defaulting to a blank string.
 ```
 
-The value of `#start` client flag may also be a **relative timestamp**, written as a `+`*t* where *t* is a floating point number.
+The value of `#start` preprocessor flag may also be a **relative timestamp**, written as a `+`*t* where *t* is a floating point number.
 This is resolved at runtime to be `$TGCS_T0 + `*t*, where `$TGCS_T0` is 30 seconds since starting clients (adjustable with `--t0-delay` flag).
 For example:
 
@@ -86,7 +97,7 @@ Comparison with similar features:
   * It is a top-level flag passed to tgcs.ts script.
   * It is realized as a `sleep` command in the `PREFIX.sh` bash script.
   * It allows time for the servers to become ready, but does not ensure clients start at the same time.
-* `#start` flag:
+* `#start` preprocessor flag:
   * It is passed as the first client flag in a traffic flow flag, in supported traffic generator types only.
   * It only affects traffic generator clients created by this traffic flow flag.
   * It is realized as a `sleep` command within the client container.
@@ -98,13 +109,13 @@ Comparison with similar features:
 
 ## Reverse Direction
 
-The `#R` client flag reverses the traffic direction by placing the client in the DN netns and the server in the UE netns.
-This flag is translated by tgcs script and not passed to the client program.
-It must be specified before other flags that do not start with `#` symbol.
+The `#R` preprocessor flag reverses the traffic direction by placing the client in the DN netns and the server in the UE netns.
 
-This is supported on all [client-server traffic generators](tgcs.md) that have a separate server container per flow.
+This is supported on all [client-server traffic generators](tgcs.md) that have per-flow server containers.
 See sockperf section for an example.
+
 If a traffic generator natively supports reverse mode (e.g. `iperf3 -r`), it's advised to use the native feature instead.
+Using `#R` preprocessor flag may cause `iperf-stats.ts` to report incorrect traffic direction when analyzing iperf3 JSON output.
 
 ## Subcommands of Generated bash Script
 

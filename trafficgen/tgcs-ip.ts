@@ -45,7 +45,7 @@ export const iperf2: TrafficGen = {
   nPorts: 1,
   dockerImage: "5gdeploy.localhost/iperf2",
   serverSetup(s, { port, sIP, cFlags, sFlags }) {
-    assert(cFlags.includes("-u") === sFlags.includes("-u"), "iperf2 client and server must be both in UDP mode or both in TCP mode");
+    assert(cFlags.includes("-u") === sFlags.includes("-u"), "iperf2 client and server must both use UDP traffic or both use TCP traffic");
     const [, wantText] = handleTextOutputFlag(s, cFlags, ".csv");
     s.command = [
       ...(wantText ? [] : ["-yC"]),
