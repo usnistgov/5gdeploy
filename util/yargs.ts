@@ -57,6 +57,18 @@ export namespace YargsIntRange {
   }
 }
 
+/** Partial YargsOpt that accepts non-negative floating pointer number. */
+export const YargsFloatNonNegative = {
+  array: false,
+  coerce(n: number): number {
+    if (!Number.isFinite(n) || n < 0) {
+      throw new RangeError(`${this.desc} must be non-negative`);
+    }
+    return n;
+  },
+  type: "number",
+} satisfies YargsOpt;
+
 /**
  * Split vertical-bar separated flag input.
  * @param name - Flag name without leading "--".

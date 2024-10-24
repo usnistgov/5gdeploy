@@ -46,7 +46,11 @@ Optional flags:
 * `--port` flag specifies the port number used by the first traffic generator.
   Default is 20000.
 * `--startup-delay` flag specifies wait duration between starting server containers and starting client containers.
-  Default is 5000 i.e. 5 seconds.
+  Default is 5 seconds.
+* `--t0-delay` flag sets `$TGCS_T0` timestamp variable, described in [advanced usage](tgcs-advanced.md).
+  Default is 30 seconds since starting client containers.
+* `--wait-timeout` flag sets a timeout while waiting for clients to finish.
+  Default is 3600 seconds since client containers have started.
 
 The command prints a brief report on the matched PDU sessions and traffic flows.
 If there are fewer than expected traffic flows, please check that UEs are registered and PDU sessions have been established.

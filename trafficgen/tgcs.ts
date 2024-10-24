@@ -9,7 +9,7 @@ import { collect, flatTransform, map, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
-import { assert, cmdOutput, codebaseRoot, file_io, scriptHeadTsrun, splitVbar, Yargs, type YargsOpt } from "../util/mod.js";
+import { assert, cmdOutput, codebaseRoot, file_io, scriptHeadTsrun, splitVbar, Yargs, YargsFloatNonNegative, type YargsOpt } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import { Direction, extractHashFlag, type TrafficGen, type TrafficGenFlowContext } from "./tgcs-defs.js";
 import * as tg_ip from "./tgcs-ip.js";
@@ -59,14 +59,19 @@ const args = Yargs()
     type: "number",
   })
   .option("startup-delay", {
-    default: 5000,
-    desc: "wait duration (milliseconds) between starting servers and starting clients",
-    type: "number",
+    default: 5,
+    desc: "sleep duration (seconds) between starting servers and starting clients",
+    ...YargsFloatNonNegative,
   })
   .option("t0-delay", {
-    default: 30000,
-    desc: "$TGCS_T0 timestamp after clients start (milliseconds)",
-    type: "number",
+    default: 30,
+    desc: "$TGCS_T0 timestamp after clients start (seconds)",
+    ...YargsFloatNonNegative,
+  })
+  .option("wait-timeout", {
+    default: 3600,
+    desc: "timeout waiting for clients to finish (seconds), zero means infinite",
+    ...YargsFloatNonNegative,
   })
   .option(compose.placeOptions)
   .option(Object.fromEntries(Array.from(
@@ -217,13 +222,13 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
     yield `  with_retry env COMPOSE_IGNORE_ORPHANS=1 ${dockerH} compose -f ${
       composeFilename} up -d ${names.join(" ")}`;
   }
-  yield `  sleep ${(args["startup-delay"] / 1000).toFixed(3)}`;
+  yield `  sleep ${args["startup-delay"]}`;
   yield "fi";
   yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
   if (hasT0) {
-    yield `  TGCS_T0=$(echo $(date -u +%s.%N) ${args["t0-delay"]} | awk '{ printf "%0.9f", $1 + $2/1000 }')`;
+    yield `  TGCS_T0=$(echo $(date -u +%s.%N) ${args["t0-delay"]} | awk '{ printf "%0.9f", $1 + $2 }')`;
     yield "  msg \\$TGCS_T0 is set to $TGCS_T0";
   }
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_c"))) {
@@ -235,10 +240,12 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == wait ]]; then";
-  yield "  msg Waiting for trafficgen clients to finish";
-  for (const s of Object.values(output.services).filter(({ container_name: ct }) => ct.endsWith("_c"))) {
-    yield `  echo ${s.container_name} $(${compose.makeDockerH(s)} wait ${s.container_name})`;
-  }
+  const waitTimeout = `${args["wait-timeout"]}s`;
+  yield `  msg Waiting for trafficgen clients to finish with ${waitTimeout.replace(/^0s$/, "infinite")} timeout`;
+  yield `  timeout ${waitTimeout} bash -c ${shlex.quote(Array.from(
+    Object.values(output.services).filter(({ container_name: ct }) => ct.endsWith("_c")),
+    (s) => `echo ${s.container_name} $(${compose.makeDockerH(s)} wait ${s.container_name})`,
+  ).join("\n"))} || msg Timeout exceeded, results may be incorrect`;
   yield "fi";
   yield "";
 
