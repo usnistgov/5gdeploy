@@ -78,7 +78,7 @@ For example:
 ./tg.sh
 ```
 
-![tgcs delayed client start timing diagram](tgcs-start.svg)
+![tgcs delayed client start timing diagram](tgcs-timing.svg)
 
 Comparison with similar features:
 

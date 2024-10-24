@@ -49,7 +49,7 @@ Optional flags:
   Default is 5 seconds.
 * `--t0-delay` flag sets `$TGCS_T0` timestamp variable, described in [advanced usage](tgcs-advanced.md).
   Default is 30 seconds since starting client containers.
-* `--wait-timeout` flag sets a timeout while waiting for clients to finish.
+* `--wait-timeout` flag sets a timeout while waiting for clients to finish, see timing diagram in [advanced usage](tgcs-advanced.md).
   Default is 3600 seconds since client containers have started.
 
 The command prints a brief report on the matched PDU sessions and traffic flows.

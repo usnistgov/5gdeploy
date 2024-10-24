@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="700" height="125" style="background:#ffffff;">
+  <g transform="translate(20 0)">
+    <text x="-10" y="10" font-size="12">start server</text>
+    <text x="-10" y="20" font-size="12">containers</text>
+    <text x="-10" y="30" font-size="12">and processes</text>
+    <line y1="35" y2="125" stroke="#85144b" stroke-width="2"/>
+    <line x2="80" y1="60" y2="60" stroke="#0074d9"/>
+    <text x="2" y="70" font-size="10" fill="#0074d9">--startup-delay</text>
+  </g>
+  <g transform="translate(100 0)">
+    <text x="-10" y="10" font-size="12">start client</text>
+    <text x="-10" y="20" font-size="12">containers</text>
+    <line y1="25" y2="125" stroke="#85144b" stroke-width="2"/>
+    <line x2="80" y1="50" y2="50" stroke="#0074d9"/>
+    <text x="2" y="60" font-size="10" fill="#0074d9">--t0-delay</text>
+    <line x2="180" y1="80" y2="80" stroke="#3d9970"/>
+    <text x="2" y="90" font-size="10" fill="#3d9970">ASAP without #start</text>
+    <line x2="470" y1="110" y2="110" stroke="#ff851b"/>
+    <text x="2" y="120" font-size="10" fill="#ff851b">--wait-timeout</text>
+  </g>
+  <g transform="translate(180 0)">
+    <text x="-10" y="20" font-size="12">$TGCS_T0</text>
+    <line y1="25" y2="70" stroke="#85144b" stroke-width="2"/>
+    <line x2="100" y1="40" y2="40" stroke="#0074d9"/>
+    <text x="2" y="50" font-size="10" fill="#0074d9">#start=+N</text>
+    <text x="2" y="60" font-size="10" fill="#0074d9">(relative timestamp)</text>
+  </g>
+  <g transform="translate(280 0)">
+    <text x="-10" y="10" font-size="12">start client</text>
+    <text x="-10" y="20" font-size="12">processes</text>
+    <line y1="25" y2="100" stroke="#85144b" stroke-width="2"/>
+    <text x="2" y="35" font-size="10" fill="#85144b">#start=$VARNAME</text>
+    <text x="2" y="45" font-size="10" fill="#85144b">(absolute timestamp)</text>
+    <line x2="120" y1="70" y2="70" stroke="#0074d9" stroke-dasharray="5,5"/>
+    <line x2="120" y1="70" y2="70" stroke="#3d9970" stroke-dasharray="5,5" stroke-dashoffset="5"/>
+    <text x="2" y="80" font-size="10" fill="#0074d9">iperf2 --txdelay-time</text>
+    <text x="2" y="90" font-size="10" fill="#3d9970">otherwise ASAP</text>
+  </g>
+  <g transform="translate(400 0)">
+    <text x="-10" y="10" font-size="12">start packet</text>
+    <text x="-10" y="20" font-size="12">transmission</text>
+    <line y1="25" y2="100" stroke="#85144b" stroke-width="2"/>
+    <text x="2" y="35" font-size="10" fill="#85144b">iperf2 --txstart-time</text>
+    <line x2="100" y1="60" y2="60" stroke="#0074d9"/>
+    <text x="2" y="70" font-size="10" fill="#0074d9">iperf2/3 -t</text>
+    <text x="2" y="80" font-size="10" fill="#0074d9">or similar flags</text>
+  </g>
+  <g transform="translate(500 0)">
+    <text x="-10" y="10" font-size="12">finish client</text>
+    <text x="-10" y="20" font-size="12">processes</text>
+    <line y1="25" y2="100" stroke="#85144b" stroke-width="2"/>
+    <line x2="70" y1="40" y2="40" stroke="#3d9970"/>
+    <text x="2" y="50" font-size="10" fill="#3d9970">ASAP</text>
+  </g>
+  <g transform="translate(570 0)">
+    <text x="-10" y="10" font-size="12">stop client</text>
+    <text x="-10" y="20" font-size="12">containers</text>
+    <line y1="25" y2="125" stroke="#85144b" stroke-width="2"/>
+    <line x2="70" y1="50" y2="50" stroke="#3d9970"/>
+    <text x="2" y="60" font-size="10" fill="#3d9970">ASAP</text>
+  </g>
+  <g transform="translate(640 0)">
+    <text x="-10" y="10" font-size="12">stop server</text>
+    <text x="-10" y="20" font-size="12">containers</text>
+    <line y1="25" y2="125" stroke="#85144b" stroke-width="2"/>
+  </g>
+</svg>
