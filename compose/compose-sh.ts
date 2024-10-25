@@ -5,7 +5,7 @@ import * as shlex from "shlex";
 import type { Arrayable, SetOptional } from "type-fest";
 
 import type { ComposeFile } from "../types/mod.js";
-import { assert, codebaseRoot, scriptHead, scriptHeadTsrun } from "../util/mod.js";
+import { assert, codebaseRoot, scriptHead, tsrun } from "../util/mod.js";
 import { annotate } from "./compose.js";
 import { classifyByHost } from "./place.js";
 
@@ -16,7 +16,6 @@ export function* makeComposeSh(
 ): Iterable<string> {
   yield "#!/bin/bash";
   yield* scriptHead;
-  yield* scriptHeadTsrun;
   yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
   yield "COMPOSE_CTX=$PWD";
   yield "ACT=${1:-}"; // eslint-disable-line no-template-curly-in-string
@@ -33,7 +32,7 @@ export function* makeComposeSh(
   yield "  esac";
 
   yield "elif [[ $ACT == upload ]]; then";
-  yield "  tsrun compose/upload.ts --dir=$COMPOSE_CTX";
+  yield `  ${tsrun("compose/upload.ts")} --dir=$COMPOSE_CTX`;
   yield `  ${path.join(codebaseRoot, "upload.sh")} $COMPOSE_CTX ${
     hostServices.map(({ host }) => host).join(" ")}`;
 

@@ -5,11 +5,11 @@ import DefaultMap from "mnemonist/default-map.js";
 import oblMap from "obliterator/map.js";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
-import { collect, flatTransform, map, pipeline } from "streaming-iterables";
+import { collect, flatMap, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
-import { assert, cmdOutput, codebaseRoot, file_io, scriptHeadTsrun, splitVbar, Yargs, YargsFloatNonNegative, type YargsOpt } from "../util/mod.js";
+import { assert, cmdOutput, file_io, splitVbar, tsrun, Yargs, YargsFloatNonNegative, type YargsOpt } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import { Direction, extractHashFlag, type TrafficGen, type TrafficGenFlowContext } from "./tgcs-defs.js";
 import * as tg_ip from "./tgcs-ip.js";
@@ -85,12 +85,9 @@ let { prefix } = args;
 assert(/^[a-z][\da-z]*$/i.test(prefix), "--prefix shall be a letter followed by letters and digits");
 prefix = prefix.toLowerCase();
 
-const output = compose.create();
-let nextPort = args.port;
-let hasT0 = false;
-const table = await pipeline(
+const tgFlows = await pipeline(
   () => gatherPduSessions(c, netdef),
-  flatTransform(16, function*(ctx) {
+  flatMap(function*(ctx) {
     const { sub: { supi }, dn: { dnn } } = ctx;
     for (const [tgid, tg] of Object.entries(trafficGenerators) as Iterable<[keyof typeof trafficGenerators, TrafficGen]>) {
       for (const [index, { dnPattern, uePattern, cFlags, sFlags }] of (args[tgid] ?? []).entries()) {
@@ -100,101 +97,106 @@ const table = await pipeline(
       }
     }
   }),
-  map(({
-    sub: { supi },
-    ueService,
-    dn: { snssai, dnn },
-    dnService,
-    dnIP,
-    pduIP,
-    pduNetif,
-    tgid,
-    tg,
-    group,
-    cFlags,
-    sFlags,
-  }) => {
-    const port = nextPort;
-    nextPort += tg.nPorts;
-
-    let cCpus; let sCpus: extractHashFlag.Match;
-    [cFlags, cCpus] = extractHashFlag(cFlags, /^#cpus=(\d+)$/);
-    [sFlags, sCpus] = extractHashFlag(sFlags, /^#cpus=(\d+)$/);
-
-    let isReversed: extractHashFlag.Match | boolean;
-    [cFlags, isReversed] = extractHashFlag(cFlags, /^#r$/i);
-    isReversed = !!isReversed;
-    assert(!isReversed || !tg.serverPerDN, `${tgid} does not support #R flag`);
-
-    const tgFlow: TrafficGenFlowContext = {
-      c,
-      output,
-      prefix,
-      group,
-      port,
-      dnService,
-      ueService,
-      dnIP,
-      pduIP,
-      cService: isReversed ? dnService : ueService,
-      cNetif: isReversed ? "n6" : pduNetif,
-      cIP: isReversed ? dnIP : pduIP,
-      cFlags,
-      sService: isReversed ? ueService : dnService,
-      sNetif: isReversed ? pduNetif : "n6",
-      sIP: isReversed ? pduIP : dnIP,
-      sFlags,
-    };
-    const dn = `${snssai}_${dnn}`;
-    let dir = tg.determineDirection(tgFlow);
-    if (isReversed) {
-      dir = Direction.reverse(dir);
-    }
-
-    const services: ComposeService[] = [];
-
-    const serverName = tg.serverPerDN ? `${prefix}_${tgid}_${dn}_s` : `${prefix}_${group}_${port}_s`;
-    if (!output.services[serverName]) {
-      const server = compose.defineService(output, serverName, tg.dockerImage);
-      compose.annotate(server, "cpus", 1);
-      copyPlacementNetns(server, isReversed ? ueService : dnService);
-      tg.serverSetup(server, tgFlow);
-      if (sCpus) {
-        compose.annotate(server, "cpus", Number.parseInt(sCpus[1]!, 10));
-      }
-      services.push(server);
-    }
-
-    const client = compose.defineService(output, `${prefix}_${group}_${port}_c`, tg.dockerImage);
-    compose.annotate(client, "cpus", 1);
-    copyPlacementNetns(client, isReversed ? dnService : ueService);
-    tg.clientSetup(client, tgFlow);
-    services.push(client);
-    if (cCpus) {
-      compose.annotate(client, "cpus", Number.parseInt(cCpus[1]!, 10));
-    }
-    hasT0 ||= !!client.environment.TGCS_T0;
-
-    for (const s of services) {
-      compose.annotate(s, "tgcs_tgid", tgid);
-      compose.annotate(s, "tgcs_group", group);
-      compose.annotate(s, "tgcs_dn", dn);
-      compose.annotate(s, "tgcs_ue", supi);
-      compose.annotate(s, "tgcs_dir", dir);
-      compose.annotate(s, "tgcs_port", port);
-    }
-
-    return [group, dn, dir, supi, port];
-  }),
   collect,
 );
+assert(tgFlows.length > 0, "No traffic generator defined, are the PDU sessions created?");
+tgFlows.sort(sortBy("group", "dn.dnn", "sub.supi"));
+
+const output = compose.create();
+let nextPort = args.port;
+let hasT0 = false;
+const table: Array<Array<string | number>> = [];
+for (let {
+  sub: { supi },
+  ueService,
+  dn: { snssai, dnn },
+  dnService,
+  dnIP,
+  pduIP,
+  pduNetif,
+  tgid,
+  tg,
+  group,
+  cFlags,
+  sFlags,
+} of tgFlows) {
+  const port = nextPort;
+  nextPort += tg.nPorts;
+  let isReversed: extractHashFlag.Match | boolean;
+  [cFlags, isReversed] = extractHashFlag(cFlags, /^#r$/i);
+  isReversed = !!isReversed;
+  assert(!isReversed || !tg.serverPerDN, `${tgid} does not support #R flag`);
+  let cCpus: extractHashFlag.Match;
+  [cFlags, cCpus] = extractHashFlag(cFlags, /^#cpus=(\d+)$/);
+  let sCpus: extractHashFlag.Match;
+  [sFlags, sCpus] = extractHashFlag(sFlags, /^#cpus=(\d+)$/);
+
+  const tgFlow: TrafficGenFlowContext = {
+    c,
+    output,
+    prefix,
+    group,
+    port,
+    dnService,
+    ueService,
+    dnIP,
+    pduIP,
+    cService: isReversed ? dnService : ueService,
+    cNetif: isReversed ? "n6" : pduNetif,
+    cIP: isReversed ? dnIP : pduIP,
+    cFlags,
+    sService: isReversed ? ueService : dnService,
+    sNetif: isReversed ? pduNetif : "n6",
+    sIP: isReversed ? pduIP : dnIP,
+    sFlags,
+  };
+  const dn = `${snssai}_${dnn}`;
+  let dir = tg.determineDirection(tgFlow);
+  if (isReversed) {
+    dir = Direction.reverse(dir);
+  }
+
+  const services: ComposeService[] = [];
+
+  const serverName = tg.serverPerDN ? `${prefix}_${tgid}_${dn}_s` : `${prefix}_${group}_${port}_s`;
+  if (!output.services[serverName]) {
+    const server = compose.defineService(output, serverName, tg.dockerImage);
+    compose.annotate(server, "cpus", 1);
+    copyPlacementNetns(server, isReversed ? ueService : dnService);
+    tg.serverSetup(server, tgFlow);
+    if (sCpus) {
+      compose.annotate(server, "cpus", Number.parseInt(sCpus[1]!, 10));
+    }
+    services.push(server);
+  }
+
+  const client = compose.defineService(output, `${prefix}_${group}_${port}_c`, tg.dockerImage);
+  compose.annotate(client, "cpus", 1);
+  copyPlacementNetns(client, isReversed ? dnService : ueService);
+  tg.clientSetup(client, tgFlow);
+  services.push(client);
+  if (cCpus) {
+    compose.annotate(client, "cpus", Number.parseInt(cCpus[1]!, 10));
+  }
+  hasT0 ||= !!client.environment.TGCS_T0;
+
+  for (const s of services) {
+    compose.annotate(s, "tgcs_tgid", tgid);
+    compose.annotate(s, "tgcs_group", group);
+    compose.annotate(s, "tgcs_dn", dn);
+    compose.annotate(s, "tgcs_ue", supi);
+    compose.annotate(s, "tgcs_dir", dir);
+    compose.annotate(s, "tgcs_port", port);
+  }
+
+  table.push([group, dn, dir, supi, port]);
+}
 
 compose.place(output, { ...args, "place-match-host": true });
 const composeFilename = `compose.${prefix}.yml`;
 await file_io.write(path.join(args.dir, composeFilename), output);
 
 await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
-  yield* scriptHeadTsrun;
   yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
   yield "COMPOSE_CTX=$PWD";
   yield `STATS_DIR=$PWD/${prefix}/`;
@@ -211,7 +213,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "";
 
   yield "if [[ $ACT == upload ]]; then";
-  yield `  exec $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/compose/upload.ts --dir=$COMPOSE_CTX --file=${composeFilename}`;
+  yield `  exec ${tsrun("compose/upload.ts")} --dir=$COMPOSE_CTX --file=${composeFilename}`;
   yield "fi";
   yield "";
 
@@ -301,8 +303,6 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "fi";
 })());
 
-assert(table.length > 0, "No traffic generator defined, are the PDU sessions created?");
-table.sort(sortBy("0", "1", "2", "3"));
 const counts = new DefaultMap<string, [cnt: number, group: string]>((group: string) => [0, group]);
 for (const row of table) {
   const group = row[0]! as string;

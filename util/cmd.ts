@@ -22,10 +22,13 @@ export const scriptHead = [
   "with_retry() { while ! \"$@\"; do sleep 0.2; done }",
 ];
 
-/** bash tsrun() function. */
-export const scriptHeadTsrun = [
-  `tsrun() { local CMD=$1; shift; $(env -C ${codebaseRoot} corepack pnpm bin)/tsx ${codebaseRoot}/$CMD "$@"; }`,
-];
+/** Execute TypeScript file from shell. */
+export function tsrun(scriptFilename: string): string {
+  return shlex.join([
+    path.join(codebaseRoot, "node_modules/.bin/tsx"),
+    path.join(codebaseRoot, scriptFilename),
+  ]);
+}
 
 /**
  * Shell script cleanup trap.

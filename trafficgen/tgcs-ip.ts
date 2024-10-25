@@ -4,7 +4,7 @@ import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
-import { assert, codebaseRoot } from "../util/mod.js";
+import { assert, codebaseRoot, tsrun } from "../util/mod.js";
 import { ClientStartOpt, Direction, extractHashFlag, mountOutputVolume, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
 function handleTextOutputFlag(
@@ -21,7 +21,7 @@ function* iperfStats(prefix: string): Iterable<string> {
   yield "if [[ ${HAVE_IPERF_STATS:-0} -eq 0 ]]; then"; // eslint-disable-line no-template-curly-in-string
   yield "  HAVE_IPERF_STATS=1";
   yield `  msg Gathering iperf2/iperf3 statistics table to ${prefix}/iperf.tsv`;
-  yield `  tsrun trafficgen/iperf-stats.ts --dir=$COMPOSE_CTX --prefix=${prefix}`;
+  yield `  ${tsrun("trafficgen/iperf-stats.ts")} --dir=$COMPOSE_CTX --prefix=${prefix}`;
   yield "fi";
 }
 
