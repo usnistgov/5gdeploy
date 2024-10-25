@@ -4,7 +4,7 @@ import * as shlex from "shlex";
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
 import { scriptCleanup } from "../util/mod.js";
-import { Direction, mountOutputVolume, type TrafficGen } from "./tgcs-defs.js";
+import { Direction, mountOutputVolume, type TrafficGen, type TrafficGenFlowContext } from "./tgcs-defs.js";
 
 const rngSeed = Math.floor(Math.random() * 0x100000000);
 
@@ -14,10 +14,14 @@ function* iptablesInsertWithCleanup(table: string, chain: string, flags: string)
 }
 
 function setupNs3(
-    s: ComposeService, prefix: string, index: number, hostIP: string,
+    s: ComposeService, flow: TrafficGenFlowContext, hostIP: string,
     ports: ReadonlyArray<`${"tcp" | "udp"}:${number}`>,
-    commandLine: readonly string[], nslog: string,
+    commandLine: readonly string[],
 ): void {
+  const { prefix, group, port } = flow;
+  flow.nPorts = 1 << 3; // request 8 ports so that index is unique 13-bit number
+  const index = port >> 3;
+
   mountOutputVolume(s, prefix);
   s.cap_add.push("NET_ADMIN");
   s.devices.push("/dev/net/tun:/dev/net/tun");
@@ -65,7 +69,7 @@ function setupNs3(
       `--tap-ip=${tapIP}`,
       "--tap-mask=255.255.255.252",
       `--app-ip=${appIP}`,
-    ])} 2>/output/${nslog}.nslog &`;
+    ])} 2>/output/${group}-${port}-${s.container_name.at(-1)}.nslog &`;
     yield "wait $!";
   })());
 }
@@ -75,15 +79,16 @@ export const ns3http: TrafficGen = {
   determineDirection() {
     return Direction.dl;
   },
-  nPorts: 8,
   dockerImage: "5gdeploy.localhost/ns3http",
   serverPerDN: true,
-  serverSetup(s, { prefix, group, port, sIP, sFlags }) {
-    setupNs3(s, prefix, port >> 3, sIP, ["tcp:80"], ["ns3http", "--listen", ...sFlags], `${group}-${port}-s`);
+  serverSetup(s, flow) {
+    const { sIP, sFlags } = flow;
+    setupNs3(s, flow, sIP, ["tcp:80"], ["ns3http", "--listen", ...sFlags]);
     s.environment.NS_LOG = "ThreeGppHttpServer=level_info|prefix_time";
   },
-  clientSetup(s, { prefix, group, port, sIP, cIP, cFlags }) {
-    setupNs3(s, prefix, port >> 3, cIP, [], ["ns3http", `--connect=${sIP}`, ...cFlags], `${group}-${port}-c`);
+  clientSetup(s, flow) {
+    const { sIP, cIP, cFlags } = flow;
+    setupNs3(s, flow, cIP, [], ["ns3http", `--connect=${sIP}`, ...cFlags]);
     s.environment.NS_LOG = "ThreeGppHttpClient=level_info|prefix_time";
   },
   *statsCommands() {

@@ -142,7 +142,7 @@ function findPduIP(
 }
 
 /** Copy host, cpuset, join network namespace. */
-export function copyPlacementNetns(target: ComposeService, source: ComposeService): void {
+export function copyPlacementNetns(target: ComposeService, source: ReadonlyDeep<ComposeService>): void {
   compose.annotate(target, "host", compose.annotate(source, "host") ?? "");
   target.cpuset = source.cpuset;
   target.network_mode = `container:${source.container_name}`;

@@ -19,35 +19,48 @@ export namespace Direction {
 
 /** Traffic generator flow information. */
 export interface TrafficGenFlowContext {
-  c: ComposeFile;
-  output: ComposeFile;
-  prefix: string;
-  group: string;
-  port: number;
-  dnService: ReadonlyDeep<ComposeService>;
-  ueService: ReadonlyDeep<ComposeService>;
-  dnIP: string;
-  pduIP: string;
-  cService: ReadonlyDeep<ComposeService>;
-  cNetif: string;
-  cIP: string;
-  cFlags: readonly string[];
-  sService: ReadonlyDeep<ComposeService>;
-  sNetif: string;
-  sIP: string;
-  sFlags: readonly string[];
+  /** Scenario Compose file. */
+  readonly c: ComposeFile;
+  /** Traffic generator Compose file. */
+  readonly output: ComposeFile;
+  /** Container name prefix, aka stats folder name. */
+  readonly prefix: string;
+  /** Group name, tgid + "_" + number. */
+  readonly group: string;
+  /** Base port number. */
+  readonly port: number;
+  /**
+   * How many ports needed, initially 1.
+   * If more ports are needed, overwrite in clientSetup.
+   */
+  nPorts: number;
+
+  /** Client service, UE or DN. */
+  readonly cService: ReadonlyDeep<ComposeService>;
+  /** Client netif name. */
+  readonly cNetif: string;
+  /** Client bind IP. */
+  readonly cIP: string;
+  /** Client program flags. */
+  readonly cFlags: readonly string[];
+
+  /** Service service, DN or UE. */
+  readonly sService: ReadonlyDeep<ComposeService>;
+  /** Service netif name. */
+  readonly sNetif: string;
+  /** Service bind IP. */
+  readonly sIP: string;
+  /** Service program flags. */
+  readonly sFlags: readonly string[];
 }
 
 /** Traffic generator application. */
 export interface TrafficGen {
-  /** Traffic generator name. */
+  /** Descriptive name. */
   name?: string;
 
   /** Determine traffic direction, upstream or downstream. */
   determineDirection: (flow: TrafficGenFlowContext) => Direction;
-
-  /** Number of TCP/UDP ports needed per traffic flow. */
-  nPorts: number;
 
   /**
    * Docker image.

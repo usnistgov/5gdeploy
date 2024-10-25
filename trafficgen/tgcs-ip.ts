@@ -42,7 +42,6 @@ export const iperf2: TrafficGen = {
     }
     return Direction.ul;
   },
-  nPorts: 1,
   dockerImage: "5gdeploy.localhost/iperf2",
   serverSetup(s, { port, sIP, cFlags, sFlags }) {
     assert(cFlags.includes("-u") === sFlags.includes("-u"), "iperf2 client and server must both use UDP traffic or both use TCP traffic");
@@ -82,7 +81,6 @@ export const iperf3: TrafficGen = {
     return cFlags.includes("--bidir") ? Direction.bidir :
       cFlags.includes("-R") ? Direction.dl : Direction.ul;
   },
-  nPorts: 1,
   dockerImage: "perfsonar/tools",
   serverSetup(s, { port, sIP, cFlags, sFlags }) {
     assert(sFlags.length === 0, "iperf3 server does not accept server flags");
@@ -143,21 +141,22 @@ export const owamp: TrafficGen & {
     }
     return Direction.bidir;
   },
-  nPorts: 5,
   dockerImage: "perfsonar/tools",
   serverBin: "owampd",
-  serverSetup(s, { port, sFlags }) {
+  serverSetup(s, flow) {
+    flow.nPorts = 5;
+    const { port, nPorts, sFlags } = flow;
     assert(sFlags.length === 0, `${this.serverBin} does not accept server flags`);
     s.command = [
       this.serverBin,
       "-f",
       "-Z",
-      "-P", `${port + 1}-${port + this.nPorts - 1}`,
+      "-P", `${port + 1}-${port + nPorts - 1}`,
       "-S", `:${port}`,
     ];
   },
   clientBin: "owping",
-  clientSetup(s, { prefix, group, port, sIP, cIP, cFlags }) {
+  clientSetup(s, { prefix, group, port, nPorts, sIP, cIP, cFlags }) {
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
     cFlags = rewriteOutputFlag(s, prefix, group, port, cFlags, /^-([FT])$/, this.outputExt);
@@ -165,7 +164,7 @@ export const owamp: TrafficGen & {
       ...start.waitCommands(),
       shlex.join([
         this.clientBin,
-        "-P", `${port + 1}-${port + this.nPorts - 1}`,
+        "-P", `${port + 1}-${port + nPorts - 1}`,
         "-S", cIP,
         ...cFlags,
         `${sIP}:${port}`,
@@ -196,7 +195,6 @@ export const netperf: TrafficGen = {
   determineDirection() {
     return Direction.bidir;
   },
-  nPorts: 2,
   dockerImage: "alectolytic/netperf",
   serverSetup(s, { port, sIP, sFlags }) {
     s.command = [
@@ -207,9 +205,13 @@ export const netperf: TrafficGen = {
       ...sFlags,
     ];
   },
-  clientSetup(s, { port, sIP, cIP, cFlags }) {
+  clientSetup(s, flow) {
+    let { port, sIP, cIP, cFlags } = flow;
+    flow.nPorts = 2;
+
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
+
     compose.setCommands(s, [
       ...start.waitCommands(),
       shlex.join([
@@ -230,7 +232,6 @@ export const sockperf: TrafficGen = {
     }
     return Direction.ul;
   },
-  nPorts: 1,
   dockerImage: "5gdeploy.localhost/sockperf",
   serverSetup(s, { port, sIP, sFlags }) {
     s.command = [
@@ -295,7 +296,6 @@ export const itg: TrafficGen = {
   determineDirection() {
     return Direction.ul;
   },
-  nPorts: 40,
   dockerImage: "jjq52021/ditg",
   serverSetup(s, { prefix, port, sNetif }) {
     s.entrypoint = [];
@@ -309,14 +309,15 @@ export const itg: TrafficGen = {
     compose.annotate(s, "tgcs_docker_timestamps", 1);
     compose.annotate(s, "tgcs_docker_logerr", 1);
   },
-  clientSetup(s, { prefix, group, port, cService, cIP, cFlags, sService, sIP }) {
+  clientSetup(s, flow) {
+    let { prefix, group, port, cService, cIP, cFlags, sService, sIP } = flow;
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
 
     let nFlows: extractHashFlag.Match | number;
     [cFlags, nFlows] = extractHashFlag(cFlags, /^#flows=(\d+)$/);
     nFlows = nFlows ? Number.parseInt(nFlows[1]!, 10) : 1;
-    assert(nFlows >= 1 && nFlows < 40, "#flows must be between 1 and 39");
+    flow.nPorts = nFlows + 1;
 
     const ipFlags = [
       "-Sda", compose.getIP(sService, "mgmt"),

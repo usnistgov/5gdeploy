@@ -19,19 +19,18 @@ export const ndnping: TrafficGen = {
   determineDirection() {
     return Direction.dl;
   },
-  nPorts: 1,
   dockerImage: "ghcr.io/named-data/ndn-tools",
   serverPerDN: true,
-  serverSetup(s, { output, prefix, sFlags, dnService }) {
-    connectNfdUnix(output, s, dnService);
+  serverSetup(s, { output, prefix, sService, sFlags }) {
+    connectNfdUnix(output, s, sService);
     s.command = [
       "ndnpingserver",
       ...sFlags,
       `/${prefix}`,
     ];
   },
-  clientSetup(s, { output, prefix, cFlags, ueService }) {
-    connectNfdUnix(output, s, ueService);
+  clientSetup(s, { output, prefix, cService, cFlags }) {
+    connectNfdUnix(output, s, cService);
     s.command = [
       "ndnping",
       ...cFlags,

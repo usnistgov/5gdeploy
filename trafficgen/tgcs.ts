@@ -121,7 +121,6 @@ for (let {
   sFlags,
 } of tgFlows) {
   const port = nextPort;
-  nextPort += tg.nPorts;
   let isReversed: extractHashFlag.Match | boolean;
   [cFlags, isReversed] = extractHashFlag(cFlags, /^#r$/i);
   isReversed = !!isReversed;
@@ -137,17 +136,23 @@ for (let {
     prefix,
     group,
     port,
-    dnService,
-    ueService,
-    dnIP,
-    pduIP,
-    cService: isReversed ? dnService : ueService,
-    cNetif: isReversed ? "n6" : pduNetif,
-    cIP: isReversed ? dnIP : pduIP,
+    nPorts: 1,
+    ...(isReversed ? {
+      cService: dnService,
+      cNetif: "n6",
+      cIP: dnIP,
+      sService: ueService,
+      sNetif: pduNetif,
+      sIP: pduIP,
+    } : {
+      cService: ueService,
+      cNetif: pduNetif,
+      cIP: pduIP,
+      sService: dnService,
+      sNetif: "n6",
+      sIP: dnIP,
+    }),
     cFlags,
-    sService: isReversed ? ueService : dnService,
-    sNetif: isReversed ? pduNetif : "n6",
-    sIP: isReversed ? pduIP : dnIP,
     sFlags,
   };
   const dn = `${snssai}_${dnn}`;
@@ -162,7 +167,7 @@ for (let {
   if (!output.services[serverName]) {
     const server = compose.defineService(output, serverName, tg.dockerImage);
     compose.annotate(server, "cpus", 1);
-    copyPlacementNetns(server, isReversed ? ueService : dnService);
+    copyPlacementNetns(server, tgFlow.sService);
     tg.serverSetup(server, tgFlow);
     if (sCpus) {
       compose.annotate(server, "cpus", Number.parseInt(sCpus[1]!, 10));
@@ -172,7 +177,7 @@ for (let {
 
   const client = compose.defineService(output, `${prefix}_${group}_${port}_c`, tg.dockerImage);
   compose.annotate(client, "cpus", 1);
-  copyPlacementNetns(client, isReversed ? dnService : ueService);
+  copyPlacementNetns(client, tgFlow.cService);
   tg.clientSetup(client, tgFlow);
   services.push(client);
   if (cCpus) {
@@ -190,6 +195,7 @@ for (let {
   }
 
   table.push([group, dn, dir, supi, port]);
+  nextPort += tgFlow.nPorts;
 }
 
 compose.place(output, { ...args, "place-match-host": true });

@@ -142,7 +142,6 @@ IPERF2_TXSTART="$(expr $(date -u +%s) + 30)" ./tg.sh
 
 Client flags are passed to iperf3 client.
 Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
-Server flags are not accepted.
 
 The `--json` flag for JSON output is included by default.
 To obtain text output instead, add `#text` preprocessor flag.
@@ -165,7 +164,6 @@ The script shows a table of iperf3 flows that have JSON output, together with ip
 
 Client flags are passed to [owping](https://software.internet2.edu/owamp/owping.man.html) or twping.
 Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
-Server flags are not accepted.
 
 ### Session File
 
@@ -293,19 +291,19 @@ After finishing, log contains `ERROR: _seqN > m_maxSequenceNo`:
 # single-flow mode
 ./compose.sh tgcs --itg='internet | * | -t 30000 -C 3000 -c 1200'
 
-# multi-flow mode
+# multi-flow mode with same characteristics
 ./compose.sh tgcs --itg='internet | * | #cpus=2 #flows=16 -t 30000 -O 3000 -u 800 1200 | #cpus=1'
 ```
 
 Client flags are passed to [`ITGSend`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00042000000000000000) command.
 Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
 Use `#R` preprocessor flag for reverse direction, described in [advanced usage](tgcs-advanced.md).
-Use `#flows` preprocessor flag to send multiple parallel flows from the each client, up to 39 flows.
-Server flags are not accepted.
+Use `#flows` preprocessor flag to send multiple parallel flows from the each client.
+Apart from preprocessor flags, all ITGSend flags except log\_opts and address+port are permitted.
 
-Each client and server container requests one dedicated CPU core by default.
+Each client/server container requests one dedicated CPU core by default.
 If you are sending many flows, it's recommended to have one CPU core per 10 flows on the client side and one CPU core per 20 flows on the server side, to avoid CPU bottleneck.
-Use `#cpus` preprocessor flag to request dedicated CPU cores, described in [advanced usage](tgcs-advanced.md).
+Use `#cpus` preprocessor flag to request dedicated CPU cores, separately for clients and servers, described in [advanced usage](tgcs-advanced.md).
 
 Packet-level logs on both client and server are always saved in the stats directory.
 They can be further analyzed with [`ITGDec`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00045000000000000000) command.
