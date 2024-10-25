@@ -88,3 +88,5 @@ If the traffic generator uses no ports (e.g. ndnping), this value is purely nomi
 Default is ".log".
 
 **tgcs\_docker\_timestamps** indicates that the traffic generator does not print timestamps, so that Docker Engine timestamps should be added.
+
+**tgcs\_docker\_logerr** indicates that stderr should be captured as part of container logs instead of printed on the console.

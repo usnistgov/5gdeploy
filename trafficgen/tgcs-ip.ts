@@ -298,29 +298,29 @@ export const itg: TrafficGen = {
   nPorts: 40,
   dockerImage: "jjq52021/ditg",
   serverSetup(s, { prefix, port, sNetif }) {
-    compose.setCommands(s, [
-      "msg Starting ITGRecv",
-      shlex.join([
-        "ITGRecv",
-        "-Sp", `${port}`,
-        "-Si", "mgmt",
-        "-i", sNetif,
-      ]),
-    ]);
+    s.entrypoint = [];
+    s.command = [
+      "ITGRecv",
+      "-Sp", `${port}`,
+      "-Si", "mgmt",
+      "-i", sNetif,
+    ];
     mountOutputVolume(s, prefix);
     compose.annotate(s, "tgcs_docker_timestamps", 1);
+    compose.annotate(s, "tgcs_docker_logerr", 1);
   },
   clientSetup(s, { prefix, group, port, cService, cIP, cFlags, sService, sIP }) {
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
 
     let nFlows: extractHashFlag.Match | number;
-    [cFlags, nFlows] = extractHashFlag(cFlags, /^#f=(\d+)$/);
+    [cFlags, nFlows] = extractHashFlag(cFlags, /^#flows=(\d+)$/);
     nFlows = nFlows ? Number.parseInt(nFlows[1]!, 10) : 1;
-    assert(nFlows >= 1 && nFlows < 40, "#f must be between 1 and 39");
+    assert(nFlows >= 1 && nFlows < 40, "#flows must be between 1 and 39");
 
     const ipFlags = [
       "-Sda", compose.getIP(sService, "mgmt"),
+      "-Sdp", `${port}`,
       "-Ssa", compose.getIP(cService, "mgmt"),
       "-a", `::ffff:${sIP}`,
       "-sa", `::ffff:${cIP}`,
@@ -329,7 +329,6 @@ export const itg: TrafficGen = {
     for (let i = 1; i <= nFlows; ++i) {
       flows.push(shlex.join([
         ...ipFlags,
-        "-Sdp", `${port}`,
         "-rp", `${port + i}`,
         "-sp", `${port + i}`,
         ...cFlags,
@@ -349,7 +348,6 @@ export const itg: TrafficGen = {
       ]),
     ]);
     mountOutputVolume(s, prefix);
-    compose.annotate(s, "cpus", 2);
     compose.annotate(s, "tgcs_docker_timestamps", 1);
   },
 };

@@ -10,17 +10,10 @@ export enum Direction {
 }
 export namespace Direction {
   export function reverse(d: Direction): Direction {
-    switch (d) {
-      case Direction.dl: {
-        return Direction.ul;
-      }
-      case Direction.ul: {
-        return Direction.dl;
-      }
-      default: {
-        return d;
-      }
-    }
+    return ({ // eslint-disable-line @typescript-eslint/consistent-type-assertions
+      [Direction.dl]: Direction.ul,
+      [Direction.ul]: Direction.dl,
+    } as Partial<Record<Direction, Direction>>)[d] ?? d;
   }
 }
 

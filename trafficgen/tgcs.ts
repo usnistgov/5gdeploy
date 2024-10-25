@@ -270,10 +270,11 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
     const dn = compose.annotate(s, "tgcs_dn")!;
     const statsExt = compose.annotate(s, "tgcs_stats_ext") ?? ".log";
     const timestampFlag = compose.annotate(s, "tgcs_docker_timestamps") ? " -t" : "";
+    const logerrPipe = compose.annotate(s, "tgcs_docker_logerr") ? "&>" : ">";
     const ct = s.container_name;
     const basename = tg.serverPerDN && ct.endsWith("_s") ? `${group}-${dn}` : `${group}-${port}`;
     yield `  ${compose.makeDockerH(s)} logs${timestampFlag} ${
-      ct} >$\{STATS_DIR}${basename}-${ct.slice(-1)}${statsExt}`;
+      ct} ${logerrPipe}$\{STATS_DIR}${basename}-${ct.slice(-1)}${statsExt}`;
   }
   yield "fi";
   yield "";
@@ -296,7 +297,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
     } else if (tg.statsCommands) {
       yield* oblMap(tg.statsCommands(prefix), (line) => `  ${line}`);
     } else {
-      yield `  msg ${tgid} statistics analysis is not supported`;
+      yield `  msg ${tg.name ?? tgid} statistics analysis is not supported`;
     }
   }
   yield "  cd $COMPOSE_CTX";
