@@ -103,7 +103,7 @@ export class VirtComposeContext extends compose.ComposeContext {
         "--delete", "/etc/ssh/ssh_host_*",
         "--run-command", "curl -fsLS https://get.docker.com | bash",
         "--copy-in", "daemon.json:/etc/docker/",
-        "--copy-in", "/gtp5g:/",
+        "--copy-in", "/gtp5g.zip:/",
         "--firstboot", "/gtp5g-load.sh",
       ])}`,
       "msg base.qcow2 built successfully",
@@ -334,6 +334,7 @@ const install = [
   "linux-headers-amd64",
   "make",
   "netplan.io",
+  "unzip",
   "wireshark-common",
 ];
 
