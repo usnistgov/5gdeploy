@@ -31,7 +31,7 @@ export interface TrafficGenFlowContext {
   readonly port: number;
   /**
    * How many ports needed, initially 1.
-   * If more ports are needed, overwrite in clientSetup.
+   * If more ports are needed, overwrite in serverSetup or clientSetup.
    */
   nPorts: number;
 

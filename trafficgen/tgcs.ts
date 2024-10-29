@@ -81,9 +81,8 @@ const args = Yargs()
   .parseSync();
 
 const [c, netdef] = await loadCtx(args);
-let { prefix } = args;
-assert(/^[a-z][\da-z]*$/i.test(prefix), "--prefix shall be a letter followed by letters and digits");
-prefix = prefix.toLowerCase();
+const { prefix } = args;
+assert(/^[a-z][\da-z]*$/.test(prefix), "--prefix shall be a lower-case letter followed by letters and digits");
 
 const tgFlows = await pipeline(
   () => gatherPduSessions(c, netdef),
@@ -322,5 +321,5 @@ const tTable = file_io.toTable(
   ["group", "snssai_dnn", "dir", "supi", "port"],
   table,
 );
-await file_io.write(path.join(args.dir, `${args.prefix}.tsv`), tTable.tsv);
+await file_io.write(path.join(args.dir, `${prefix}.tsv`), tTable.tsv);
 await file_io.write("-", tTable.tui);

@@ -226,10 +226,7 @@ export const netperf: TrafficGen = {
 };
 
 export const sockperf: TrafficGen = {
-  determineDirection({ cFlags }) {
-    if (cFlags.includes("server")) {
-      return Direction.dl;
-    }
+  determineDirection() {
     return Direction.ul;
   },
   dockerImage: "5gdeploy.localhost/sockperf",
@@ -255,7 +252,7 @@ export const sockperf: TrafficGen = {
     const ipCommands: string[] = [];
 
     if (["playback", "pb"].includes(cFlags[0]!)) {
-      ipFlags.splice(4, 4);
+      ipFlags.splice(4, 4); // https://github.com/Mellanox/sockperf/issues/234
       ipCommands.push(`ip -j route get ${sIP} from ${cIP} | jq -r${
         " "}'.[] | ["ip","route","replace",.dst] + if .gateway then ["via",.gateway] else ["dev",.dev] end | @sh' | sh`);
       s.cap_add.push("NET_ADMIN");
