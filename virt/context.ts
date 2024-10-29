@@ -330,6 +330,7 @@ const uninstall = [
 
 const install = [
   "curl",
+  "ethtool",
   "htop",
   "linux-headers-amd64",
   "make",
