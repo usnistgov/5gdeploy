@@ -1,18 +1,29 @@
 
+import { sortBy } from "sort-by-typescript";
+
 import type { N } from "../../types/mod.js";
 import { assert, decPad } from "../../util/mod.js";
 
 export function addUEsPerGNB(network: N.Network, firstSUPI: string, total: number, subscribedNSSAI: N.SubscriberSNSSAI[]): void {
   const nGNBs = network.gnbs.length;
   assert(nGNBs >= 1);
+  const gnbs = Array.from(network.gnbs, (gnb): [string, number] => [
+    gnb.name!,
+    network.subscribers.filter((sub) => sub.gnbs!.includes(gnb.name!)).reduce((cnt, sub) => cnt + sub.count!, 0),
+  ]);
+  gnbs.sort(sortBy("1", "0"));
+
   const each = Math.ceil(total / nGNBs);
   let supi = BigInt(firstSUPI);
-  for (let i = 0; i < nGNBs && total > 0; ++i) {
+  for (const [gnb] of gnbs) {
+    if (total === 0) {
+      break;
+    }
     network.subscribers.push({
       supi: decPad(supi, 15),
       count: Math.min(each, total),
       subscribedNSSAI,
-      gnbs: [network.gnbs[i]!.name!],
+      gnbs: [gnb],
     });
     total -= each;
     supi += BigInt(each);
