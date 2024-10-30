@@ -73,6 +73,11 @@ const args = Yargs()
     desc: "timeout waiting for clients to finish (seconds), zero means infinite",
     ...YargsFloatNonNegative,
   })
+  .option("move-to-primary", {
+    default: false,
+    desc: "move stats folder to primary host",
+    type: "boolean",
+  })
   .option(compose.placeOptions)
   .option(Object.fromEntries(Array.from(
     Object.keys(trafficGenerators),
@@ -201,7 +206,7 @@ compose.place(output, { ...args, "place-match-host": true });
 const composeFilename = `compose.${prefix}.yml`;
 await file_io.write(path.join(args.dir, composeFilename), output);
 
-await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
+await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() { // eslint-disable-line complexity
   yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
   yield "COMPOSE_CTX=$PWD";
   yield `STATS_DIR=$PWD/${prefix}/`;
@@ -285,11 +290,26 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() {
   yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == stop ]]; then";
-  for (const { hostDesc, dockerH, names } of compose.classifyByHost(output)) {
+  for (const { host, hostDesc, dockerH, names, services } of compose.classifyByHost(output)) {
     yield `  msg Deleting trafficgen servers and clients on ${hostDesc}`;
     yield `  with_retry env COMPOSE_IGNORE_ORPHANS=1 ${dockerH} compose -f ${
       composeFilename} stop -t 2 ${names.join(" ")} >/dev/null`;
     yield `  with_retry delete_by_regex ${shlex.quote(dockerH)} ${shlex.quote(`^${prefix}_`)} >/dev/null`;
+    if (host && args["move-to-primary"] && services.some((s) => s.volumes.some((volume) => volume.target === "/output"))) {
+      yield `  msg Moving $STATS_DIR from ${hostDesc} to primary`;
+      yield `  docker run --rm --network host -v ~/.ssh/id_ed25519:/sshkey:ro -v $STATS_DIR:/target${
+        " "}rclone/rclone move :sftp:$STATS_DIR /target ${shlex.join([
+        "--transfers=2",
+        "--inplace",
+        ...compose.makeRcloneSftpFlags(host),
+        ...(host.startsWith("root@") ? [] : ["--sftp-server-command=sudo /usr/lib/openssh/sftp-server"]),
+        "--log-level=ERROR",
+      ])}`;
+    }
+  }
+  if (args["move-to-primary"] && Object.values(output.services).some((s) => s.volumes.some((volume) => volume.target === "/output"))) {
+    yield "  msg Running chmod on $STATS_DIR";
+    yield "  sudo chown -R $(id -un):$(id -gn) $STATS_DIR";
   }
   yield "fi";
   yield "";

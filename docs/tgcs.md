@@ -51,6 +51,9 @@ Optional flags:
   Default is 30 seconds since starting client containers.
 * `--wait-timeout` flag sets a timeout while waiting for clients to finish, see timing diagram in [advanced usage](tgcs-advanced.md).
   Default is 3600 seconds since client containers have started.
+* `--move-to-primary` flag moves the stats directory from secondary hosts to the primary host.
+  Duplicate files will be overwritten.
+  Default is false.
 
 The command prints a brief report on the matched PDU sessions and traffic flows.
 If there are fewer than expected traffic flows, please check that UEs are registered and PDU sessions have been established.
@@ -306,6 +309,7 @@ If you are sending many flows, it's recommended to have one CPU core per 10 flow
 Use `#cpus` preprocessor flag to request dedicated CPU cores, separately for clients and servers, described in [advanced usage](tgcs-advanced.md).
 
 Packet-level logs on both client and server are always saved in the stats directory.
+Use the `--move-to-primary` flag, described in basic usage section, if they need to be transferred to the primary host.
 They can be further analyzed with [`ITGDec`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00045000000000000000) command.
 
 ```bash

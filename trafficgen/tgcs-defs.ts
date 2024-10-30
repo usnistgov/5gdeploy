@@ -1,6 +1,6 @@
 import type { ReadonlyDeep } from "type-fest";
 
-import type { ComposeFile, ComposeService } from "../types/mod.js";
+import type { ComposeFile, ComposeService, ComposeVolume } from "../types/mod.js";
 
 /** Traffic direction. */
 export enum Direction {
@@ -89,13 +89,15 @@ export interface TrafficGen {
 }
 
 /** Mount /output volume. */
-export function mountOutputVolume(s: ComposeService, prefix: string): void {
-  s.volumes.push({
+export function mountOutputVolume(s: ComposeService, prefix: string): ComposeVolume {
+  const volume: ComposeVolume = {
     type: "bind",
     source: `./${prefix}`,
     target: "/output",
     bind: { create_host_path: true },
-  });
+  };
+  s.volumes.push(volume);
+  return volume;
 }
 
 /**

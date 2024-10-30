@@ -1,3 +1,5 @@
+import os from "node:os";
+
 import { Minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
 import { sortBy } from "sort-by-typescript";
@@ -151,6 +153,18 @@ export function makeDockerH(host: string | ComposeService | undefined): string {
     return "docker";
   }
   return `docker -H ssh://${host}`;
+}
+
+/** Build rclone SFTP backend options. */
+export function makeRcloneSftpFlags(host: string): string[] {
+  assert(!!host);
+  const u = new URL(`ssh://${host}`);
+  return [
+    `--sftp-user=${u.username || os.userInfo().username}`,
+    `--sftp-host=${u.hostname}`,
+    ...(u.port ? [`--sftp-port=${u.port}`] : []),
+    "--sftp-key-file=/sshkey",
+  ];
 }
 
 /**
