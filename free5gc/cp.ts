@@ -278,10 +278,13 @@ class F5CPBuilder {
       }];
       c.supportDnnList = network.dataNetworks.map((dn) => dn.dnn);
 
-      s.command = [
-        "./amf",
-        "-c", await this.saveConfig(s, `cp-cfg/${ct}.yaml`, "amfcfg.yaml", amfcfg),
-      ];
+      compose.setCommands(s, [
+        ...compose.renameNetifs(s),
+        shlex.join([
+          "./amf",
+          "-c", await this.saveConfig(s, `cp-cfg/${ct}.yaml`, "amfcfg.yaml", amfcfg),
+        ]),
+      ], { shell: "ash" });
     }
   }
 
@@ -289,7 +292,7 @@ class F5CPBuilder {
     const { network, netdef } = this.ctx;
     const upi = this.buildSMFupi();
     for (const [ct, smf] of compose.suggestNames("smf", netdef.smfs)) {
-      const [s, smfcfg] = await this.defineService<F5.smf.Configuration>(ct, ["cp", "n2", "n4"]);
+      const [s, smfcfg] = await this.defineService<F5.smf.Configuration>(ct, ["cp", "n4"]);
       const uerouting = await loadTemplate("uerouting");
 
       const c = smfcfg.configuration;
@@ -313,11 +316,14 @@ class F5CPBuilder {
       delete c.urrThreshold;
       c.nwInstFqdnEncoding = true;
 
-      s.command = [
-        "./smf",
-        "-c", await this.saveConfig(s, `cp-cfg/${ct}.yaml`, "smfcfg.yaml", smfcfg),
-        "-u", await this.saveConfig(s, `cp-cfg/${ct}.uerouting.yaml`, "uerouting.yaml", uerouting),
-      ];
+      compose.setCommands(s, [
+        ...compose.renameNetifs(s),
+        shlex.join([
+          "./smf",
+          "-c", await this.saveConfig(s, `cp-cfg/${ct}.yaml`, "smfcfg.yaml", smfcfg),
+          "-u", await this.saveConfig(s, `cp-cfg/${ct}.uerouting.yaml`, "uerouting.yaml", uerouting),
+        ]),
+      ], { shell: "ash" });
     }
   }
 
