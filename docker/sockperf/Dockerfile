@@ -1,6 +1,6 @@
 FROM ryozitn/sockperf:3.10 AS sockperf
 
-FROM debian:bookworm-slim
+FROM debian:bookworm
 SHELL ["/bin/bash", "-c"]
 
 RUN <<EOF

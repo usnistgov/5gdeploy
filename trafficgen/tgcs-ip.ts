@@ -3,19 +3,8 @@ import path from "node:path";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
-import type { ComposeService } from "../types/mod.js";
 import { assert, codebaseRoot, tsrun } from "../util/mod.js";
-import { ClientStartOpt, Direction, extractHashFlag, mountOutputVolume, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
-
-function handleTextOutputFlag(
-    s: ComposeService, flags: readonly string[], nonTextStatsExt: string,
-): [rflags: string[], wantText: boolean] {
-  const [rflags, wantText] = extractHashFlag(flags, /^#text$/);
-  if (!wantText) {
-    compose.annotate(s, "tgcs_stats_ext", nonTextStatsExt);
-  }
-  return [rflags, !!wantText];
-}
+import { ClientStartOpt, Direction, extractHashFlag, handleTextOutputFlag, mountOutputVolume, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
 function* iperfStats(prefix: string): Iterable<string> {
   yield "if [[ ${HAVE_IPERF_STATS:-0} -eq 0 ]]; then"; // eslint-disable-line no-template-curly-in-string
@@ -59,6 +48,16 @@ export const iperf2: TrafficGen = {
   clientSetup(s, { port, sIP, cIP, cFlags }) {
     let wantText: boolean;
     [cFlags, wantText] = handleTextOutputFlag(s, cFlags, ".csv");
+
+    let needShell = false;
+    const txstartIndex = cFlags.indexOf("--txstart-time");
+    let txstartValue: string | undefined;
+    if (txstartIndex >= 0 && (txstartValue = cFlags[txstartIndex + 1])?.startsWith("+")) {
+      needShell = true;
+      s.environment.TGCS_T0 = "$TGCS_T0";
+      cFlags = cFlags.toSpliced(txstartIndex, 2, "--txstart-time", `$(echo $TGCS_T0 ${txstartValue} | awk '{ print $1 + $2 }')`);
+    }
+
     s.command = [
       ...(wantText ? [] : ["-yC"]),
       "-e",
@@ -68,6 +67,9 @@ export const iperf2: TrafficGen = {
       "-c", sIP,
       ...cFlags,
     ];
+    if (needShell) {
+      compose.setCommands(s, [["iperf", ...s.command].join(" ")], { withScriptHead: false });
+    }
   },
   *statsCommands(prefix) {
     yield* iperfStats(prefix);

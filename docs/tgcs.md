@@ -74,13 +74,13 @@ To transfer the image to secondary hosts, run `./PREFIX.sh upload` before the fi
 
 ```bash
 # prepare benchmark script
-./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1200 -b 10M | -i 1 -u -l 1200'
+./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10M | -i 1 -u -l 1250'
 
 # add '#text' client flag for text output
-./compose.sh tgcs --iperf2='internet | * | #text -t 60 -i 1 -u -l 1200 -b 10M | -i 1 -u -l 1200'
+./compose.sh tgcs --iperf2='internet | * | #text -t 60 -i 1 -u -l 1250 -b 10M | -i 1 -u -l 1250'
 
 # measure one-way latency with --trip-times
-./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1200 -b 10M --trip-times | -i 1 -u -l 1200'
+./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10M --trip-times | -i 1 -u -l 1250'
 
 # upload custom Docker image before the first run, see notes above
 ./tg.sh upload
@@ -114,18 +114,30 @@ The `--txdelay-time` client flag delays TX by several seconds.
 The `--txstart-time` client flag delays TX start until an absolute timestamp.
 These flags reduces the probability of control connection failure due to network congestion.
 
-To use the `--txstart-time` client flag, you can set its value to a variable that is interpolated by Docker Compose at runtime.
+To use the `--txstart-time` client flag, you can set its value to an environment variable that contains an **absolute timestamp**, which must be passed at runtime.
 
 ```bash
 # prepare the measurement, notice the single quotes so that bash does not expand the variable
-./compose.sh tgcs --iperf2='internet | *
-  | -t 60 -i 1 -u -l 1200 -b 10M --txstart-time $IPERF2_TXSTART
-  | -i 1 -u -l 1200
-'
+./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10M --txstart-time $IPERF2_TXSTART | -i 1 -u -l 1250'
 
 # run the traffic generators, pass the environment variable
 IPERF2_TXSTART="$(expr $(date -u +%s) + 30)" ./tg.sh
 ```
+
+You can also set this flag to a **relative timestamp** (starting with `+` sign), to specify a timestamp relative to `$TGCS_T0`, described in [advanced usage](tgcs-advanced.md).
+This is translated by tgcs script to an absolute timestamp as expected by iperf2.
+
+```bash
+# prepare the measurement, notice the single quotes so that bash does not expand the variable
+./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10M --txstart-time +5 | -i 1 -u -l 1250'
+
+# run the traffic generators
+./tg.sh
+```
+
+These flags are incompatible with `--trip-times` latency measurement.
+It would cause "WARN: ignore --trip-times because client didn't provide valid start timestamp within 600 seconds of now" error.
+You can workaround this with `#start` preprocessor flag, described in [advanced usage](tgcs-advanced.md).
 
 ## iperf3
 
@@ -133,11 +145,11 @@ IPERF2_TXSTART="$(expr $(date -u +%s) + 30)" ./tg.sh
 
 ```bash
 # prepare benchmark script
-./compose.sh tgcs --iperf3='internet | * | -t 60 -u -l 1200 -b 10M'
-./compose.sh tgcs --iperf3='internet | * | -t 60 -u -l 1200 -b 10M -R'
+./compose.sh tgcs --iperf3='internet | * | -t 60 -u -l 1250 -b 10M'
+./compose.sh tgcs --iperf3='internet | * | -t 60 -u -l 1250 -b 10M -R'
 
 # add '#text' client flag for text output
-./compose.sh tgcs --iperf3='internet | * | #text -t 60 -u -l 1200 -b 10M --bidir'
+./compose.sh tgcs --iperf3='internet | * | #text -t 60 -u -l 1250 -b 10M --bidir'
 
 # run benchmark
 ./tg.sh
@@ -292,10 +304,10 @@ After finishing, log contains `ERROR: _seqN > m_maxSequenceNo`:
 
 ```bash
 # single-flow mode
-./compose.sh tgcs --itg='internet | * | -t 30000 -C 3000 -c 1200'
+./compose.sh tgcs --itg='internet | * | -t 30000 -C 3000 -c 1250'
 
 # multi-flow mode with same characteristics
-./compose.sh tgcs --itg='internet | * | #cpus=2 #flows=16 -t 30000 -O 3000 -u 800 1200 | #cpus=1'
+./compose.sh tgcs --itg='internet | * | #cpus=2 #flows=16 -t 30000 -O 3000 -c 1250 | #cpus=1'
 ```
 
 Client flags are passed to [`ITGSend`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00042000000000000000) command.

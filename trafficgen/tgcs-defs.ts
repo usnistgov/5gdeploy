@@ -1,5 +1,6 @@
 import type { ReadonlyDeep } from "type-fest";
 
+import * as compose from "../compose/mod.js";
 import type { ComposeFile, ComposeService, ComposeVolume } from "../types/mod.js";
 
 /** Traffic direction. */
@@ -182,4 +183,15 @@ export class ClientStartOpt {
       yield `echo $(date -u +%s.%N) $TGCS_T0 ${t.toFixed(3)} | awk '{ d = $2 + $3 - $1; if (d > 0) { system(sprintf("sleep %0.9f", d)) } }'`;
     }
   }
+}
+
+/** Handle #text flag and save "docker logs" file extension. */
+export function handleTextOutputFlag(
+    s: ComposeService, flags: readonly string[], nonTextStatsExt: string,
+): [rflags: string[], wantText: boolean] {
+  const [rflags, wantText] = extractHashFlag(flags, /^#text$/);
+  if (!wantText) {
+    compose.annotate(s, "tgcs_stats_ext", nonTextStatsExt);
+  }
+  return [rflags, !!wantText];
 }

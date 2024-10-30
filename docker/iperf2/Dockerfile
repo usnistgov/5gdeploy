@@ -11,7 +11,7 @@ RUN <<EOF
   make install DESTDIR=/target
 EOF
 
-FROM gcr.io/distroless/cc-debian12
+FROM debian:bookworm
 SHELL ["/bin/bash", "-c"]
 COPY --from=build /target/ /
 ENTRYPOINT ["/usr/local/bin/iperf"]

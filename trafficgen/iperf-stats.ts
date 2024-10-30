@@ -111,7 +111,7 @@ for (const s of Object.values(c.services).filter(({ container_name: ct }) => /_i
     path.join(args.dir, args.prefix, `${group}-${port}-c${statsExt}`),
     group, dn, dir, ue, port,
   )) {
-    table.push([group, dn, dir, ue, port, Number.NaN, Number.NaN, Number.NaN, Number.NaN]);
+    table.push([group, dn, dir, ue, port, Number.NaN, Number.NaN, Number.NaN, Number.NaN, Number.NaN]);
   }
 }
 table.sort(sortBy("0", "1", "2", "3", "4"));
