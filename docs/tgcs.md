@@ -128,16 +128,16 @@ You can also set this flag to a **relative timestamp** (starting with `+` sign),
 This is translated by tgcs script to an absolute timestamp as expected by iperf2.
 
 ```bash
-# prepare the measurement, notice the single quotes so that bash does not expand the variable
+# prepare the measurement
 ./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10M --txstart-time +5 | -i 1 -u -l 1250'
 
 # run the traffic generators
 ./tg.sh
 ```
 
-These flags are incompatible with `--trip-times` latency measurement.
-It would cause "WARN: ignore --trip-times because client didn't provide valid start timestamp within 600 seconds of now" error.
-You can workaround this with `#start` preprocessor flag, described in [delayed client start](tgcs-advanced.md).
+When using `--trip-times` latency measurement, the start timestamp must be within 600 seconds from client process startup.
+Otherwise, it would cause "WARN: ignore --trip-times because client didn't provide valid start timestamp within 600 seconds of now" error.
+If you need longer start delay, you can combine this with `#start` preprocessor flag, described in [delayed client start](tgcs-advanced.md).
 
 ## iperf3
 

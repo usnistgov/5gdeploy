@@ -255,7 +255,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() { // eslint-di
 
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
   if (Object.values(output.services).some((s) => s.environment.TGCS_T0)) {
-    yield `  TGCS_T0=$(echo $(date -u +%s.%N) ${args["t0-delay"]} | awk '{ printf "%0.9f", $1 + $2 }')`;
+    yield `  TGCS_T0=$(echo $(date -u +%s.%N) ${args["t0-delay"]} | awk '{ printf "%0.9f", $1+$2 }')`;
     yield "  msg \\$TGCS_T0 is set to $TGCS_T0";
   }
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_c"))) {

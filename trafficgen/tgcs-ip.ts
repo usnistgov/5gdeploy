@@ -55,7 +55,7 @@ export const iperf2: TrafficGen = {
     let txstartValue: string | undefined;
     if (txstartIndex >= 0 && (txstartValue = cFlags[txstartIndex + 1])?.startsWith("+")) {
       s.environment.TGCS_T0 = "$TGCS_T0";
-      cFlags = cFlags.toSpliced(txstartIndex, 2, "--txstart-time", `$(echo $TGCS_T0 ${txstartValue} | awk '{ print $1 + $2 }')`);
+      cFlags = cFlags.toSpliced(txstartIndex, 2, "--txstart-time", `$(echo $TGCS_T0 ${txstartValue} | awk '{ printf "%0.9f", $1+$2 }')`);
     }
 
     compose.setCommands(s, [
