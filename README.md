@@ -3,6 +3,8 @@
 **5gdeploy** is a set of scripts to deploy and control 5G network.
 It is primarily useful for running an emulated 5G network in Docker Compose environment.
 
+![5gdeploy logo](docs/5gdeploy-logo.svg)
+
 This software is in early development.
 Features are being added gradually.
 Breaking changes and force pushes may happen frequently.

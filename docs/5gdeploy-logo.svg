@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="55%" style="stop-color:#fe9528"/>
+      <stop offset="70%" style="stop-color:#0f62a4"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="100" height="100" rx="10" ry="10" fill="url(#grad1)"/>
+  <text x="50" y="85" text-anchor="middle" fill="#ffffff" style="font:20px sans-serif">5gdeploy</text>
+  <polyline transform="translate(30,12)" points="
+    -10,40 0,0 10,40
+    8,35 -7,30 6,25 -4,20 3,15 -2,10 2,5
+  " fill="none" stroke="#222222" stroke-width="2"/>
+  <path transform="translate(45,20)" d="
+    M 0,0 A 2,5,180,0,1,0,10
+    M 5,0 A 2,5,180,0,1,5,10
+    M 10,0 A 2,5,180,0,1,10,10
+  " fill="none" stroke="#222222" stroke-width="1"/>
+  <g transform="translate(65,12)">
+    <rect x="0" y="0" width="20" height="40" rx="3" ry="3" fill="#702c68"/>
+    <rect x="3" y="3" width="14" height="28" rx="2" ry="2" fill="#eeeeee"/>
+    <circle cx="10" cy="35" r="2" fill="#eeeeee"/>
+  </g>
+</svg>
