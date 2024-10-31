@@ -37,6 +37,8 @@ export interface ComposeService {
   privileged?: boolean;
   readonly cap_add: string[];
   ulimits?: Record<string, number>;
+  cpuset?: string;
+  logging?: ComposeLogging;
   readonly devices: string[];
   readonly sysctls: Record<string, string | number>;
   readonly volumes: ComposeVolume[];
@@ -46,9 +48,19 @@ export interface ComposeService {
   readonly networks: Record<string, ComposeNetif>;
   readonly ports: ComposePort[];
   readonly extra_hosts: Record<string, string>;
-  cpuset?: string;
   healthcheck?: ComposeHealthCheck | { disable: true };
   depends_on: Record<string, ComposeDependency>;
+}
+
+/** Compose service logging options. */
+export interface ComposeLogging {
+  driver: "local";
+  options: {
+    mode?: "blocking" | "non-blocking";
+    "max-buffer-size"?: `${number}m`;
+    "max-size": `${number}m`;
+    "max-file": number;
+  };
 }
 
 /** Compose service volume. */

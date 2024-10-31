@@ -30,7 +30,7 @@ Each flag value consists of four parts, separated by `|` character:
 4. a sequence of server flags
 
 The command gathers information about currently connected PDU sessions (same as `list-pdu` subcommand), matches the DNN and SUPI against the patterns in traffic flow flags, and defines a pair of client and server for each matched PDU sessions.
-Normally, the client shares a netns with the UE container, and the server shares a netns with the DN container; it's possible to reverse the direction as described in [advanced usage](tgcs-advanced.md).
+Normally, the client shares a netns with the UE container, and the server shares a netns with the DN container; it's possible to reverse the direction as described in [reverse direction](tgcs-advanced.md).
 Each traffic flow flag is processed separately, so that the same PDU session may match multiple flags and create multiple pairs of clients and servers.
 
 Several traffic generators can recognize preprocessor flags that start with `#` symbol.
@@ -47,9 +47,9 @@ Optional flags:
   Default is 20000.
 * `--startup-delay` flag specifies wait duration between starting server containers and starting client containers.
   Default is 5 seconds.
-* `--t0-delay` flag sets `$TGCS_T0` timestamp variable, described in [advanced usage](tgcs-advanced.md).
+* `--t0-delay` flag sets `$TGCS_T0` timestamp variable, described in [delayed client start](tgcs-advanced.md).
   Default is 30 seconds since starting client containers.
-* `--wait-timeout` flag sets a timeout while waiting for clients to finish, see timing diagram in [advanced usage](tgcs-advanced.md).
+* `--wait-timeout` flag sets a timeout while waiting for clients to finish, see timing diagram in [delayed client start](tgcs-advanced.md).
   Default is 3600 seconds since client containers have started.
 * `--move-to-primary` flag moves the stats directory from secondary hosts to the primary host.
   Duplicate files will be overwritten.
@@ -101,8 +101,8 @@ To obtain text output instead, add `#text` preprocessor flag.
 In either case, you should specify `-i` flag to enable interval reports.
 
 Use `-P` client flag to send multiple parallel flows from the each client.
-If you observe CPU bottleneck when using this flag, consider adding `#cpus` preprocessor flag to increase CPU allocation, described in [advanced usage](tgcs-advanced.md).
-The `-P` flag is incompatible with `-R` flag, but you can use `#R` preprocessor flag to reverse direction, described in [advanced usage](tgcs-advanced.md).
+If you observe CPU bottleneck when using this flag, consider adding `#cpus` preprocessor flag to increase CPU allocation, described in [CPU allocation](tgcs-advanced.md).
+The `-P` flag is incompatible with `-R` flag, but you can use `#R` preprocessor flag to reverse direction, described in [reverse direction](tgcs-advanced.md).
 
 The outputs of each iperf2 container are saved in the stats directory.
 The script shows a table of iperf2 flows that have CSV output, together with iperf3 flows that have JSON output.
@@ -124,7 +124,7 @@ To use the `--txstart-time` client flag, you can set its value to an environment
 IPERF2_TXSTART="$(expr $(date -u +%s) + 30)" ./tg.sh
 ```
 
-You can also set this flag to a **relative timestamp** (starting with `+` sign), to specify a timestamp relative to `$TGCS_T0`, described in [advanced usage](tgcs-advanced.md).
+You can also set this flag to a **relative timestamp** (starting with `+` sign), to specify a timestamp relative to `$TGCS_T0`, described in [delayed client start](tgcs-advanced.md).
 This is translated by tgcs script to an absolute timestamp as expected by iperf2.
 
 ```bash
@@ -137,7 +137,7 @@ This is translated by tgcs script to an absolute timestamp as expected by iperf2
 
 These flags are incompatible with `--trip-times` latency measurement.
 It would cause "WARN: ignore --trip-times because client didn't provide valid start timestamp within 600 seconds of now" error.
-You can workaround this with `#start` preprocessor flag, described in [advanced usage](tgcs-advanced.md).
+You can workaround this with `#start` preprocessor flag, described in [delayed client start](tgcs-advanced.md).
 
 ## iperf3
 
@@ -156,7 +156,7 @@ You can workaround this with `#start` preprocessor flag, described in [advanced 
 ```
 
 Client flags are passed to iperf3 client.
-Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#start` preprocessor flag for delayed client start, described in [delayed client start](tgcs-advanced.md).
 
 The `--json` flag for JSON output is included by default.
 To obtain text output instead, add `#text` preprocessor flag.
@@ -178,7 +178,7 @@ The script shows a table of iperf3 flows that have JSON output, together with ip
 ```
 
 Client flags are passed to [owping](https://software.internet2.edu/owamp/owping.man.html) or twping.
-Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#start` preprocessor flag for delayed client start, described in [delayed client start](tgcs-advanced.md).
 
 ### Session File
 
@@ -192,7 +192,7 @@ OWAMP session files can be further analyzed with `owstats` command.
 ./compose.sh tgcs --port=21000 --owamp='internet | *1000 | -F x -T x'
 ./tg.sh
 
-alias owstats='docker run --rm --mount type=bind,source=$(pwd),target=/data,readonly=true -w /data perfsonar/tools owstats'
+alias owstats='docker run --rm --network none --cap-drop ALL --mount type=bind,source=$(pwd),target=/data,readonly=true -w /data perfsonar/tools owstats'
 owstats -R ./tg/owamp_0-21000-F.owp
 owstats -R ./tg/owamp_0-21000-T.owp
 ```
@@ -213,7 +213,7 @@ The stats directories are at the same path on every host.
 ```
 
 Client flags are passed to `netperf`.
-Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#start` preprocessor flag for delayed client start, described in [delayed client start](tgcs-advanced.md).
 Server flags are passed to `netserver`.
 
 The script cannot identify the traffic direction of each flow in the brief report.
@@ -228,12 +228,12 @@ To transfer the image to secondary hosts, run `./PREFIX.sh upload` before the fi
 
 ```bash
 # prepare benchmark script for uplink traffic
-./compose.sh tgcs --sockperf='internet | * | under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --mps 1000 | -g'
-./compose.sh tgcs --sockperf='internet | * | ping-pong  --full-log x --full-rtt -t 30 -m 800 -b 1            | -g'
-./compose.sh tgcs --sockperf='internet | * | throughput --full-log x --full-rtt -t 30 -m 800 -b 1            | -g'
+./compose.sh tgcs --sockperf='internet | * | under-load --full-log x -t 30 -m 800 -b 1 --mps 1000 | -g'
+./compose.sh tgcs --sockperf='internet | * | ping-pong  --full-log x -t 30 -m 800 -b 1            | -g'
+./compose.sh tgcs --sockperf='internet | * | throughput              -t 30 -m 800 -b 1            | -g'
 
 # prepare benchmark script for downlink traffic
-./compose.sh tgcs --sockperf='internet | * | #R under-load --full-log x --full-rtt -t 30 -m 800 -b 1 --mps 1000 | -g'
+./compose.sh tgcs --sockperf='internet | * | #R under-load --full-log x -t 30 -m 800 -b 1 --mps 1000 | -g'
 
 # upload custom Docker image before the first run, see notes above
 ./tg.sh upload
@@ -243,11 +243,11 @@ To transfer the image to secondary hosts, run `./PREFIX.sh upload` before the fi
 ```
 
 Client flags, starting with a subcommand such as `under-load` or `throughput`, are passed to `sockperf`.
-Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
+Use `#start` preprocessor flag for delayed client start, described in [delayed client start](tgcs-advanced.md).
 Server flags are passed to `sockperf server`.
 
 Sockperf only supports unidirectional traffic from client to server.
-To achieve downlink traffic, use `#R` preprocessor flag for reverse direction, described in [advanced usage](tgcs-advanced.md).
+To achieve downlink traffic, use `#R` preprocessor flag for reverse direction, described in [reverse direction](tgcs-advanced.md).
 
 Similar to OWAMP, the filename that follows `--full-log` is set to a file in the stats directory, which can be analyzed later.
 
@@ -311,21 +311,21 @@ After finishing, log contains `ERROR: _seqN > m_maxSequenceNo`:
 ```
 
 Client flags are passed to [`ITGSend`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00042000000000000000) command.
-Use `#start` preprocessor flag for delayed client start, described in [advanced usage](tgcs-advanced.md).
-Use `#R` preprocessor flag for reverse direction, described in [advanced usage](tgcs-advanced.md).
+Use `#start` preprocessor flag for delayed client start, described in [delayed client start](tgcs-advanced.md).
+Use `#R` preprocessor flag for reverse direction, described in [reverse direction](tgcs-advanced.md).
 Use `#flows` preprocessor flag to send multiple parallel flows from the each client.
 Apart from preprocessor flags, all ITGSend flags except log\_opts and address+port are permitted.
 
 Each client/server container requests one dedicated CPU core by default.
 If you are sending many flows, it's recommended to have one CPU core per 10 flows on the client side and one CPU core per 20 flows on the server side, to avoid CPU bottleneck.
-Use `#cpus` preprocessor flag to request dedicated CPU cores, separately for clients and servers, described in [advanced usage](tgcs-advanced.md).
+Use `#cpus` preprocessor flag to request dedicated CPU cores, separately for clients and servers, described in [CPU allocation](tgcs-advanced.md).
 
 Packet-level logs on both client and server are always saved in the stats directory.
 Use the `--move-to-primary` flag, described in basic usage section, if they need to be transferred to the primary host.
 They can be further analyzed with [`ITGDec`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00045000000000000000) command.
 
 ```bash
-alias ITGDec='docker run --rm --mount type=bind,source=$(pwd),target=/data -w /data jjq52021/ditg ITGDec'
+alias ITGDec='docker run --rm --network none --mount type=bind,source=$(pwd),target=/data -w /data jjq52021/ditg ITGDec'
 
-ITGDec tg/itg_0-20000-s.itg -v -c 1000 tg/itg_0-20000-s.c.tsv
+ITGDec tg/itg_0-20000-s.itg -v | sed -n '/TOTAL/,// p'
 ```

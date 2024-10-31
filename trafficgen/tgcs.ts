@@ -108,7 +108,6 @@ tgFlows.sort(sortBy("group", "dn.dnn", "sub.supi"));
 
 const output = compose.create();
 let nextPort = args.port;
-let hasT0 = false;
 const table: Array<Array<string | number>> = [];
 for (let {
   sub: { supi },
@@ -187,7 +186,6 @@ for (let {
   if (cCpus) {
     compose.annotate(client, "cpus", Number.parseInt(cCpus[1]!, 10));
   }
-  hasT0 ||= !!client.environment.TGCS_T0;
 
   for (const s of services) {
     compose.annotate(s, "tgcs_tgid", tgid);
@@ -196,6 +194,15 @@ for (let {
     compose.annotate(s, "tgcs_ue", supi);
     compose.annotate(s, "tgcs_dir", dir);
     compose.annotate(s, "tgcs_port", port);
+    s.logging = {
+      driver: "local",
+      options: {
+        mode: "non-blocking",
+        "max-buffer-size": "4m",
+        "max-size": "200m",
+        "max-file": 5,
+      },
+    };
   }
 
   table.push([group, dn, dir, supi, port]);
@@ -210,9 +217,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() { // eslint-di
   yield "cd \"$(dirname \"${BASH_SOURCE[0]}\")\""; // eslint-disable-line no-template-curly-in-string
   yield "COMPOSE_CTX=$PWD";
   yield `STATS_DIR=$PWD/${prefix}/`;
-  if (hasT0) {
-    yield "export TGCS_T0=0"; // suppress "variable is not set" warning in non-client step
-  }
+  yield "export TGCS_T0=0"; // suppress "variable is not set" warning in non-client step
   yield "ACT=${1:-}"; // eslint-disable-line no-template-curly-in-string
   yield "[[ -z $ACT ]] || shift";
   yield "";
@@ -249,7 +254,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() { // eslint-di
   yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
-  if (hasT0) {
+  if (Object.values(output.services).some((s) => s.environment.TGCS_T0)) {
     yield `  TGCS_T0=$(echo $(date -u +%s.%N) ${args["t0-delay"]} | awk '{ printf "%0.9f", $1 + $2 }')`;
     yield "  msg \\$TGCS_T0 is set to $TGCS_T0";
   }
@@ -267,7 +272,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() { // eslint-di
   yield `  timeout --foreground ${waitTimeout} bash -c ${shlex.quote(Array.from(
     Object.values(output.services).filter(({ container_name: ct }) => ct.endsWith("_c")),
     (s) => `echo ${s.container_name} $(${compose.makeDockerH(s)} wait ${s.container_name})`,
-  ).join("\n"))} || msg Timeout exceeded, results may be incorrect`;
+  ).join("\n"))} || msg Timeout exceeded, results may be incomplete`;
   yield "fi";
   yield "";
 

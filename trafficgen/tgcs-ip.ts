@@ -48,28 +48,29 @@ export const iperf2: TrafficGen = {
   clientSetup(s, { port, sIP, cIP, cFlags }) {
     let wantText: boolean;
     [cFlags, wantText] = handleTextOutputFlag(s, cFlags, ".csv");
+    const start = new ClientStartOpt(s);
+    cFlags = start.rewriteFlag(cFlags);
 
-    let needShell = false;
     const txstartIndex = cFlags.indexOf("--txstart-time");
     let txstartValue: string | undefined;
     if (txstartIndex >= 0 && (txstartValue = cFlags[txstartIndex + 1])?.startsWith("+")) {
-      needShell = true;
       s.environment.TGCS_T0 = "$TGCS_T0";
       cFlags = cFlags.toSpliced(txstartIndex, 2, "--txstart-time", `$(echo $TGCS_T0 ${txstartValue} | awk '{ print $1 + $2 }')`);
     }
 
-    s.command = [
-      ...(wantText ? [] : ["-yC"]),
-      "-e",
-      "--utc",
-      "-B", cIP,
-      "-p", `${port}`,
-      "-c", sIP,
-      ...cFlags,
-    ];
-    if (needShell) {
-      compose.setCommands(s, [["iperf", ...s.command].join(" ")], { withScriptHead: false });
-    }
+    compose.setCommands(s, [
+      ...start.waitCommands(),
+      [
+        "iperf",
+        ...(wantText ? [] : ["-yC"]),
+        "-e",
+        "--utc",
+        "-B", cIP,
+        "-p", `${port}`,
+        "-c", sIP,
+        ...cFlags,
+      ].join(" "), // .join() instead of shlex.join(), so that --txstart-time retains its environ or awk expression
+    ], { withScriptHead: false });
   },
   *statsCommands(prefix) {
     yield* iperfStats(prefix);
