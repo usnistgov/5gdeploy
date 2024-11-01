@@ -123,15 +123,19 @@ export async function write(filename: string, body: unknown): Promise<void> {
   if (typeof body === "string" || body instanceof Uint8Array) {
     //
   } else if (filename.endsWith(".sh") && (
-    !!(body as Iterable<string>)[Symbol.iterator] ||
-    !!(body as AsyncIterable<string>)[Symbol.asyncIterator]
+    typeof (body as Iterable<string>)[Symbol.iterator] === "function" ||
+    typeof (body as AsyncIterable<string>)[Symbol.asyncIterator] === "function"
   )) {
     body = (await collect(body as AnyIterable<string>)).join("\n");
   } else if (filename.endsWith(".yaml") || filename.endsWith(".yml")) {
-    const yamlOpts: yaml.DumpOptions = { lineWidth: -1, noRefs: true, sortKeys: true };
-    if (!filename.includes("compose.")) {
-      yamlOpts.forceQuotes = true;
-    }
+    const yamlOpts: yaml.DumpOptions = {
+      lineWidth: -1,
+      noRefs: true,
+      sortKeys: true,
+      // for Compose file: don't force quotes, to make multi-line shell scripts more readable
+      // for other YAML files: force quotes, to distinguish string and number/boolean types
+      forceQuotes: !path.basename(filename).startsWith("compose."),
+    };
     body = yaml.dump(body, yamlOpts);
   } else {
     body = stringify(body, { space: "  " });

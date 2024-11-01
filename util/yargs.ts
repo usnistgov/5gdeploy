@@ -93,6 +93,7 @@ export namespace splitVbar {
     LessThan<Min, 1> extends true ? [] : [...Result<Subtract<Min, 1>, Subtract<Max, 1>>, string];
 }
 
+/** Join vertical-bar separated flag input. */
 export function joinVbar(name: string, tokens: readonly string[]): string {
   return `--${name}=${shlex.quote(tokens.join(" | "))}`;
 }

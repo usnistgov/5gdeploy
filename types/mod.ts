@@ -10,6 +10,9 @@ export * as IPERF3 from "./iperf3.js";
 /** 5gdeploy NetDef related types. */
 export * as N from "./netdef.js";
 
+/** Open5GS related types. */
+export * as O5G from "./open5gs.js";
+
 /** OpenAirInterface related types. */
 export * as OAI from "./oai.js";
 

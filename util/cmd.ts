@@ -62,6 +62,7 @@ export namespace scriptCleanup {
   }
 }
 
+/** Yargs options for {@link cmdOutput}. */
 export const cmdOptions = {
   cmdout: {
     desc: "save command line to file",

@@ -34,6 +34,7 @@ export interface ComposeService {
   stdin_open?: boolean;
   tty?: boolean;
   stop_signal?: `SIG${string}`;
+  user?: string;
   privileged?: boolean;
   readonly cap_add: string[];
   ulimits?: Record<string, number>;
