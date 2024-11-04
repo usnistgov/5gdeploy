@@ -66,8 +66,9 @@ In MACVTAP mode, the guest netif is mapped to a MACVTAP subinterface attached to
 If the host has multiple netifs with the same MAC address (e.g. a VLAN netif and a non-VLAN netif), you should use the *host-ifname* syntax.
 
 In PCI passthrough mode, the PCI device of the Ethernet adapter is passed to the KVM guest for its exclusive use.
-Before launching the VM, you must enable IOMMU on the host and bind the PCI device to `vfio-pci` driver.
+Before launching the VM, you must enable IOMMU on the host.
 Each PCI device can appear in only one guest netif definition, but you will be able to create additional MACVLAN subinterfaces within the KVM guest.
+Device binding to `vfio-pci` driver is performed automatically; after stopping the VM, you may need to manually re-bind the device to kernel driver before it can be used in the host.
 
 ### Control Interface
 

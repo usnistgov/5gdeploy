@@ -9,6 +9,14 @@ import { iterVM } from "./helper.js";
 
 export type VMNetwork = [net: string, hostNetif: string];
 
+/**
+ * RegExp for guest netif definition after `@` symbol.
+ *
+ * @remarks
+ * - !m: host netif name.
+ * - m[1]: host MAC address.
+ * - m[2]: host PCI device with "+pci=" prefix.
+ */
 const reHostNetif = /^((?:[\da-f]{2}:){5}[\da-f]{2})(\+pci=[\da-f]{4}(?::[\da-f]{2}){2}\.[\da-f])?$/i;
 
 export interface VMOptions {
@@ -221,7 +229,6 @@ export class VirtComposeContext extends compose.ComposeContext {
   private *makeRunCommands({ name, cores, networks }: VMContext, s: ComposeService): Iterable<string> {
     yield* scriptCleanup();
     yield "RUNAS=$(stat -c %u vm.qcow2):$(stat -c %g /dev/kvm)";
-    yield "YASU='yasu '$RUNAS";
 
     const qemuFlags = [
       "-qmp", "unix:./qmp,server,wait=off",
@@ -233,6 +240,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     ];
     const qemuRedirects = [];
     let fd = 3;
+    let hasDevbind = false;
     for (const [net, hostNetif] of networks) {
       yield "";
       const [, mac] = compose.getIPMAC(s, net);
@@ -244,8 +252,12 @@ export class VirtComposeContext extends compose.ComposeContext {
 
       const m = reHostNetif.exec(hostNetif);
       if (m?.[2]) {
+        const pci = m[2].slice(5).toLowerCase();
+        hasDevbind = true;
+        yield `msg Binding ${pci} to vfio-pci driver`;
+        yield `dpdk-devbind.py -b vfio-pci ${pci}`;
         s.ulimits = { memlock: 1024 ** 4 };
-        qemuFlags.push("-device", `vfio-pci,host=${m[2].slice(5).toLowerCase()}`);
+        qemuFlags.push("-device", `vfio-pci,host=${pci}`);
         continue;
       }
 
@@ -260,6 +272,13 @@ export class VirtComposeContext extends compose.ComposeContext {
       ++fd;
     }
 
+    if (hasDevbind) {
+      yield "";
+      yield "msg Listing PCI driver bindings";
+      yield "dpdk-devbind.py --status-dev net";
+      mountLibModules(s);
+    }
+
     yield "";
     yield "rm -f ./qmp";
     yield ": >qemu-threads.tsv";
@@ -269,7 +288,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     yield "    sleep 1";
     yield "    echo query-cpus-fast | qmp-shell ./qmp | jq -r '.[] | .[\"thread-id\"]' >qemu-threads.tsv";
     yield "  done";
-    yield `  $YASU awk ${shlex.quote(Array.from(cores,
+    yield `  yasu $RUNAS awk ${shlex.quote(Array.from(cores,
       (core, i) => `NR==${1 + i} { system("taskset -pc ${core} " $1) }`,
     ).join("\n"))} qemu-threads.tsv`;
     yield "}";
@@ -339,14 +358,18 @@ const install = [
   "wireshark-common",
 ];
 
-function applyLibguestfsCommon(s: ComposeService): void {
-  s.devices.push("/dev/kvm:/dev/kvm");
+function mountLibModules(s: ComposeService): void {
   s.volumes.push({
     type: "bind",
     source: "/lib/modules",
     target: "/lib/modules",
     read_only: true,
   });
+}
+
+function applyLibguestfsCommon(s: ComposeService): void {
+  s.devices.push("/dev/kvm:/dev/kvm");
+  mountLibModules(s);
   s.environment.LIBGUESTFS_DEBUG = "1";
   s.environment.SUPERMIN_KERNEL = "/vmbuild/vmlinuz";
 }
