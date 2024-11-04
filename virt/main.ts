@@ -68,4 +68,5 @@ for (const vm of args.vm) {
 
 compose.makeCpufreqService(ctx, args, "virt_cpufreq");
 compose.place(ctx.c, { ...args, place: placeRules });
+ctx.createSriov();
 await ctx.finalSave();

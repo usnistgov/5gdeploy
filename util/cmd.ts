@@ -60,6 +60,13 @@ export namespace scriptCleanup {
     shell?: string;
     signals?: readonly string[];
   }
+
+  /** Shell script snippet that prints "Idling" and waits for cleanup. */
+  export const idling = [
+    "msg Idling",
+    "tail -f &",
+    "wait $!",
+  ];
 }
 
 /** Yargs options for {@link cmdOutput}. */

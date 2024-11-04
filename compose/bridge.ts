@@ -195,9 +195,7 @@ function* generateScript(c: ComposeFile, opts: BridgeOpts, modes: Set<string>): 
   yield "msg Setting healthy state";
   yield `touch ${healthyFile}`;
 
-  yield "msg Idling";
-  yield "tail -f &";
-  yield "wait $!";
+  yield* scriptCleanup.idling;
 }
 
 const healthyFile = "/run/5gdeploy-bridge-is-healthy";

@@ -4,6 +4,7 @@ import * as yaml from "js-yaml";
 import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
+import { sortBy } from "sort-by-typescript";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService, ComposeVolume } from "../types/mod.js";
@@ -38,6 +39,7 @@ export class VirtComposeContext extends compose.ComposeContext {
   public authorizedKeys = "";
   private kern?: ComposeService;
   private base?: ComposeService;
+  private readonly vmSriovVfs = new Map<string, DefaultMap<string, string[]>>();
 
   public createCtrlif(hostNetif: string): void {
     const vmctrl = new Netmask(this.defineNetwork("vmctrl"));
@@ -46,14 +48,27 @@ export class VirtComposeContext extends compose.ComposeContext {
     const s = this.defineService("virt_ctrlif", virtDockerImage, []);
     s.network_mode = "host";
     s.cap_add.push("NET_ADMIN");
-    compose.setCommands(s, (function*() {
-      yield* scriptCleanup();
-      yield* makeMacvlan("macvtap", "vmctrl", compose.ip2mac(ip), hostNetif, "vmctrl");
-      yield `ip addr replace ${ip}/24 dev vmctrl`;
-      yield "msg Idling";
-      yield "tail -f &";
-      yield "wait $!";
-    })());
+    this.finalize.push(() => {
+      const { services } = this.c;
+      compose.setCommands(s, (function*() {
+        yield* scriptCleanup();
+        yield* makeMacvlan("macvtap", "vmctrl", compose.ip2mac(ip), hostNetif, "vmctrl");
+        yield `msg Assigning vmctrl primary IP address ${ip}`;
+        yield `ip addr replace ${ip}/24 dev vmctrl`;
+
+        yield "msg Setting static ARP entries";
+        for (const s of Object.values(services)) {
+          if (!compose.annotate(s, "ip_vmctrl")) {
+            continue;
+          }
+          const [ip, mac] = compose.getIPMAC(s, "vmctrl");
+          yield `ip neigh replace ${ip} lladdr ${mac} nud noarp dev vmctrl`;
+        }
+        yield "ip neigh show dev vmctrl nud all";
+
+        yield* scriptCleanup.idling;
+      })());
+    });
   }
 
   private createKern(): ComposeService {
@@ -281,24 +296,20 @@ export class VirtComposeContext extends compose.ComposeContext {
       ++fd;
     }
 
-    for (const [pci, vfs] of sriovVfs) {
-      yield "";
-      yield `msg Creating PCI Virtual Functions on ${pci}`;
-      const sysPci = path.join("/sys/bus/pci/devices", pci);
-      yield `echo 0 >${sysPci}/sriov_numvfs`;
-      yield `echo 0 >${sysPci}/sriov_drivers_autoprobe`;
-      yield `echo ${vfs.length} >${sysPci}/sriov_numvfs`;
-      yield `PF=$(basename $(readlink -f ${sysPci}/net/* | head -1))`;
-      yield "VFS=''";
-      for (const [i, mac] of vfs.entries()) {
-        yield `ip link set $PF vf ${i} mac ${mac}`;
-        yield `VF=$(basename $(readlink -f ${sysPci}/virtfn${i}))`;
-        yield "VFS=$VFS' '$VF";
-        yield `VF${mac.replaceAll(":", "")}=$VF`;
+    if (sriovVfs.size > 0) {
+      this.vmSriovVfs.set(name, sriovVfs);
+      for (const [pci, vfs] of sriovVfs) {
+        const sysPci = path.join("/sys/bus/pci/devices", pci);
+        yield `PFNIC=$(basename $(readlink -f ${sysPci}/net/* | head -1))`;
+        yield "LINK=$(ip -j link show $PFNIC)";
+        for (const mac of vfs.values()) {
+          yield `VF=$(echo $LINK | jq -r ${shlex.quote(
+            `.[].vfinfo_list[] | select(.address=="${mac}") | .vf`,
+          )})`;
+          yield `VF${mac.replaceAll(":", "")}=$(basename $(readlink -f ${sysPci}/virtfn$VF))`;
+        }
+        yield "unset PFNIC LINK VF";
       }
-      yield "dpdk-devbind.py -b vfio-pci $VFS";
-      yield "unset PF VF VFS";
-      yield `CLEANUPS=$CLEANUPS"; echo 0 >${sysPci}/sriov_numvfs"`;
     }
 
     if (hasDevbind) {
@@ -335,6 +346,73 @@ export class VirtComposeContext extends compose.ComposeContext {
     yield `qemu-system-x86_64 -name ${shlex.quote(name)} -runas $RUNAS ${
       shlex.join(qemuFlags)} ${qemuRedirects.join(" ")} &`;
     yield "wait $!";
+  }
+
+  public createSriov(): void {
+    const healthyFile = "/run/5gdeploy-sriov-is-healthy";
+
+    const hostSriovVfs = new DefaultMap<string, DefaultMap<string, string[]>>(() => new DefaultMap(() => []));
+    for (const [name, sriovVfs] of this.vmSriovVfs) {
+      const vm = this.c.services[`vm_${name}`]!;
+      const agg = hostSriovVfs.get(compose.annotate(vm, "host") ?? "");
+      for (const [pci, vfs] of sriovVfs) {
+        agg.get(pci).push(...vfs);
+      }
+    }
+
+    let index = 0;
+    for (const [host, sriovVfs] of hostSriovVfs) {
+      const s = this.defineService(`virt_sriov${index++}`, virtDockerImage, []);
+      s.network_mode = "host";
+      s.privileged = true;
+      mountLibModules(s);
+      s.healthcheck = {
+        test: ["CMD", "test", "-f", healthyFile],
+        interval: "31s",
+        start_period: "30s",
+      };
+
+      compose.annotate(s, "only_if_needed", 1);
+      compose.setCommands(s, (function*() {
+        yield* scriptCleanup();
+
+        for (const [pci, vfs] of sriovVfs) {
+          vfs.sort(sortBy());
+          const sysPci = path.join("/sys/bus/pci/devices", pci);
+          yield "";
+          yield `msg Creating PCI Virtual Functions on ${pci}`;
+          yield `if [[ $(cat ${sysPci}/sriov_numvfs) -ne ${vfs.length} ]]; then`;
+          yield `  echo 0 >${sysPci}/sriov_numvfs`;
+          yield `  echo 0 >${sysPci}/sriov_drivers_autoprobe`;
+          yield `  echo ${vfs.length} >${sysPci}/sriov_numvfs`;
+          yield "fi";
+          yield `CLEANUPS=$CLEANUPS"; echo 0 >${sysPci}/sriov_numvfs"`;
+          yield `PFNIC=$(basename $(readlink -f ${sysPci}/net/* | head -1))`;
+          yield "VFS=''";
+          for (const [i, mac] of vfs.entries()) {
+            yield `ip link set $PFNIC vf ${i} mac ${mac}`;
+            yield `VFS=$VFS' '$(basename $(readlink -f ${sysPci}/virtfn${i}))`;
+          }
+          yield "dpdk-devbind.py -b vfio-pci $VFS";
+          yield "ip link show $PFNIC";
+          yield "unset PFNIC VF VFS";
+        }
+
+        yield "msg Setting healthy state";
+        yield `touch ${healthyFile}`;
+
+        yield* scriptCleanup.idling;
+      })());
+
+      for (const name of this.vmSriovVfs.keys()) {
+        const vm = this.c.services[`vm_${name}`]!;
+        if (compose.annotate(vm, "host") ?? host === "") {
+          vm.depends_on[s.container_name] = {
+            condition: "service_healthy",
+          };
+        }
+      }
+    }
   }
 
   protected override makeComposeSh(): Iterable<string> {
