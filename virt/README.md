@@ -59,6 +59,8 @@ The network interfaces portion of `--vm` flag is a comma separated list where ea
   * Example: `vmctrl@enp26s0f1`
 * *guest-ifname*`@`*host-mac*`+pci=`*host-pci* (PCI passthrough)
   * Example: `vmctrl@a4:bf:01:cc:75:97+pci=0000:1a:00.1`
+* *guest-ifname*`@VF+pci=`*host-pci* (PCI Virtual Function)
+  * Example: `vmctrl@VF+pci=0000:1a:00.1`
 
 You can have up to 16 distinct guest netif names, across all KVM guests.
 
@@ -69,6 +71,10 @@ In PCI passthrough mode, the PCI device of the Ethernet adapter is passed to the
 Before launching the VM, you must enable IOMMU on the host.
 Each PCI device can appear in only one guest netif definition, but you will be able to create additional MACVLAN subinterfaces within the KVM guest.
 Device binding to `vfio-pci` driver is performed automatically; after stopping the VM, you may need to manually re-bind the device to kernel driver before it can be used in the host.
+
+In PCI Virtual Function mode, a number of Virtual Functions (VFs) are created on the PCI device and these VFs are passed to the KVM guest, but the Physical Function (PF) remains on the host.
+Before launching the VM, you must enable IOMMU on the host, and bind the PF to its usual kernel driver.
+Currently, each PF can appear in only one guest, but it may appear in multiple guest netif definitions.
 
 ### Control Interface
 

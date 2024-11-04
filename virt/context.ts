@@ -1,4 +1,7 @@
+import path from "node:path";
+
 import * as yaml from "js-yaml";
+import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
 
@@ -14,10 +17,10 @@ export type VMNetwork = [net: string, hostNetif: string];
  *
  * @remarks
  * - !m: host netif name.
- * - m[1]: host MAC address.
+ * - m[1]: host MAC address or "VF".
  * - m[2]: host PCI device with "+pci=" prefix.
  */
-const reHostNetif = /^((?:[\da-f]{2}:){5}[\da-f]{2})(\+pci=[\da-f]{4}(?::[\da-f]{2}){2}\.[\da-f])?$/i;
+const reHostNetif = /^((?:[\da-f]{2}:){5}[\da-f]{2}|vf)(\+pci=[\da-f]{4}(?::[\da-f]{2}){2}\.[\da-f])?$/i;
 
 export interface VMOptions {
   name: string;
@@ -149,7 +152,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     const ethernets: Record<string, unknown> = {};
     for (const [net, hostNetif] of networks) {
       const m = reHostNetif.exec(hostNetif);
-      if (m?.[2]) {
+      if (m?.[2] && m[1]!.toUpperCase() !== "VF") {
         compose.annotate(vm, `mac_${net}`, m[1]!.toLowerCase());
       }
       const [ip, macaddress] = compose.getIPMAC(vm, net);
@@ -230,7 +233,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     yield* scriptCleanup();
     yield "RUNAS=$(stat -c %u vm.qcow2):$(stat -c %g /dev/kvm)";
 
-    const qemuFlags = [
+    const qemuFlags = [ // shlex-escaped flags
       "-qmp", "unix:./qmp,server,wait=off",
       "-nodefaults", "-nographic", "-msg", "timestamp=on",
       "-chardev", "pty,id=charserial0", "-device", "isa-serial,chardev=charserial0,id=serial0", "-serial", "stdio",
@@ -238,11 +241,11 @@ export class VirtComposeContext extends compose.ComposeContext {
       "-cpu", "host,-vmx,-svm", "-smp", `${cores.length},sockets=1,cores=${cores.length},threads=1`, "-m", "4096",
       "-drive", "if=virtio,file=vm.qcow2",
     ];
-    const qemuRedirects = [];
+    const qemuRedirects = []; // unescaped flags + shell redirects
     let fd = 3;
     let hasDevbind = false;
+    const sriovVfs = new DefaultMap<string, string[]>(() => []);
     for (const [net, hostNetif] of networks) {
-      yield "";
       const [, mac] = compose.getIPMAC(s, net);
       const shortMac = mac.replaceAll(":", "");
       const netif = `vm-${shortMac}`;
@@ -254,13 +257,19 @@ export class VirtComposeContext extends compose.ComposeContext {
       if (m?.[2]) {
         const pci = m[2].slice(5).toLowerCase();
         hasDevbind = true;
-        yield `msg Binding ${pci} to vfio-pci driver`;
-        yield `dpdk-devbind.py -b vfio-pci ${pci}`;
-        s.ulimits = { memlock: 1024 ** 4 };
-        qemuFlags.push("-device", `vfio-pci,host=${pci}`);
+        if (m[1]!.toUpperCase() === "VF") {
+          sriovVfs.get(pci).push(mac);
+          qemuRedirects.unshift("-device", `vfio-pci,host=$VF${shortMac}`);
+        } else {
+          yield "";
+          yield `msg Binding ${pci} to vfio-pci driver`;
+          yield `dpdk-devbind.py -b vfio-pci ${pci}`;
+          qemuFlags.push("-device", `vfio-pci,host=${pci}`);
+        }
         continue;
       }
 
+      yield "";
       yield* makeMacvlan("macvtap", netif, mac, hostNetif, `${s.container_name}:${net}`);
       yield `IFS=: read MAJOR MINOR < <(cat /sys/devices/virtual/net/${netif}/tap*/dev)`;
       yield `mknod -m 0666 /dev/${tap} c $MAJOR $MINOR`;
@@ -272,11 +281,38 @@ export class VirtComposeContext extends compose.ComposeContext {
       ++fd;
     }
 
+    for (const [pci, vfs] of sriovVfs) {
+      yield "";
+      yield `msg Creating PCI Virtual Functions on ${pci}`;
+      const sysPci = path.join("/sys/bus/pci/devices", pci);
+      yield `echo 0 >${sysPci}/sriov_numvfs`;
+      yield `echo 0 >${sysPci}/sriov_drivers_autoprobe`;
+      yield `echo ${vfs.length} >${sysPci}/sriov_numvfs`;
+      yield `PF=$(basename $(readlink -f ${sysPci}/net/* | head -1))`;
+      yield "VFS=''";
+      for (const [i, mac] of vfs.entries()) {
+        yield `ip link set $PF vf ${i} mac ${mac}`;
+        yield `VF=$(basename $(readlink -f ${sysPci}/virtfn${i}))`;
+        yield "VFS=$VFS' '$VF";
+        yield `VF${mac.replaceAll(":", "")}=$VF`;
+      }
+      yield "dpdk-devbind.py -b vfio-pci $VFS";
+      yield "unset PF VF VFS";
+      yield `CLEANUPS=$CLEANUPS"; echo 0 >${sysPci}/sriov_numvfs"`;
+    }
+
     if (hasDevbind) {
+      s.ulimits = { memlock: 1024 ** 4 };
       yield "";
       yield "msg Listing PCI driver bindings";
       yield "dpdk-devbind.py --status-dev net";
       mountLibModules(s);
+      s.volumes.push({
+        // s.privileged is insufficient for seeing newly probed devices in the container
+        type: "bind",
+        source: "/dev/vfio",
+        target: "/dev/vfio",
+      });
     }
 
     yield "";
