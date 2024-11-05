@@ -9,7 +9,7 @@ import { sortBy } from "sort-by-typescript";
 import * as compose from "../compose/mod.js";
 import type { ComposeService, ComposeVolume } from "../types/mod.js";
 import { assert, scriptCleanup, setupCpuIsolation } from "../util/mod.js";
-import { iterVM } from "./helper.js";
+import { iterVm } from "./middleware.js";
 
 export type VMNetwork = [net: string, hostNetif: string];
 
@@ -425,7 +425,7 @@ export class VirtComposeContext extends compose.ComposeContext {
         yield "VMNAME=${1:-}"; // eslint-disable-line no-template-curly-in-string
         yield "if [[ -n $VMNAME ]]; then shift; fi";
         yield "case $VMNAME in";
-        for (const [s, name] of iterVM(self.c)) {
+        for (const [s, name] of iterVm(self.c)) {
           yield `  ${name}) exec ssh root@${compose.getIP(s, "vmctrl")} "$@";;`;
         }
         yield "  *) die VM not found;;";
@@ -435,8 +435,8 @@ export class VirtComposeContext extends compose.ComposeContext {
       act: "keyscan",
       desc: "Update known_hosts with SSH host keys.",
       *code() {
-        yield "[[ -f ~/.ssh/known_hosts ]] || touch ~/.ssh/known_hosts";
-        for (const [s, name] of iterVM(self.c)) {
+        yield "touch ~/.ssh/known_hosts";
+        for (const [s, name] of iterVm(self.c)) {
           const ip = compose.getIP(s, "vmctrl");
           yield `msg Updating known_hosts for ${name} at ${ip}`;
           yield `ssh-keygen -R ${ip}`;

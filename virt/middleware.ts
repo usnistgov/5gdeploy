@@ -3,9 +3,8 @@ import path from "node:path";
 import type { WritableDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import type { ComposeFile } from "../types/mod.js";
+import type { ComposeFile, ComposeService } from "../types/mod.js";
 import { assert, file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
-import { iterVM } from "./helper.js";
 
 /** Yargs options definition for placing Compose services onto virtual machines. */
 export const useVmOptions = {
@@ -30,7 +29,7 @@ export const useVmOptions = {
  * With this middleware, --place flags and Ethernet bridges can refer to virtual machines by name.
  *
  * In a --place flag, a VM can be referred as "vm-name" in place of its vmctrl IP address.
- * This is achieved by defining an SSH URI for the "vm-upf1" host.
+ * This is achieved by defining an SSH URI for the "vm-name" host.
  *
  * In a --bridge flag for Ethernet bridge, a VM interface can be referred as "vm-name" or "vm-name:netif".
  * "netif" defaults for the bridge network name.
@@ -44,7 +43,7 @@ YargsInfer<typeof compose.placeOptions> & YargsInfer<typeof compose.bridgeOption
   }
   const c = await file_io.readYAML(path.join(args["use-vm"], "compose.yml")) as ComposeFile;
 
-  for (const [s, name] of iterVM(c)) {
+  for (const [s, name] of iterVm(c)) {
     const ip = compose.getIP(s, "vmctrl");
     const sshUri = `root@${ip}`;
     (args["ssh-uri"] ??= {})[`vm-${name}`] = sshUri;
@@ -73,5 +72,11 @@ export function annotateVm(c: ComposeFile, args: YargsInfer<typeof useVmOptions>
   }
   for (const s of compose.listByAnnotation(c, "host", (host) => !!args["vm-list"]![host])) {
     compose.annotate(s, "vmname", args["vm-list"][compose.annotate(s, "host")!]!);
+  }
+}
+
+export function* iterVm(c: ComposeFile): Iterable<[s: ComposeService, name: string]> {
+  for (const s of compose.listByAnnotation(c, "vmname")) {
+    yield [s, compose.annotate(s, "vmname")!];
   }
 }
