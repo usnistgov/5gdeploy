@@ -66,7 +66,7 @@ export interface ComposeLogging {
 
 /** Compose service volume. */
 export interface ComposeVolume {
-  type: "bind" | "volume";
+  type: "bind" | "volume" | "tmpfs";
   source: string;
   target: string;
   read_only?: boolean;

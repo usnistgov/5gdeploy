@@ -6,6 +6,7 @@ import * as f5_conf from "./conf.js";
 /** Build free5GC UPF. */
 export async function f5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void> {
   const s = ctx.defineService(upf.name, await f5_conf.getTaggedImageName("upf"), ["n4", "n6", "n3", "n9"]);
+  f5_conf.mountTmpfsVolumes(s);
   const peers = ctx.netdef.gatherUPFPeers(upf);
   compose.setCommands(s, [
     ...compose.renameNetifs(s),

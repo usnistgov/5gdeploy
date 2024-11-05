@@ -5,7 +5,7 @@ import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, F5, N } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
-import { convertSNSSAI, getTaggedImageName, loadTemplate } from "./conf.js";
+import { convertSNSSAI, getTaggedImageName, loadTemplate, mountTmpfsVolumes } from "./conf.js";
 import type * as W from "./webconsole-openapi/models/index.js";
 
 /** Build CP functions using free5GC. */
@@ -421,6 +421,7 @@ class F5CPBuilder {
   private async defineService<C extends F5.SBI>(ct: string, nets: readonly string[]): Promise<[s: ComposeService, cfg: F5.Root<C>]> {
     const nf = compose.nameToNf(ct);
     const s = this.ctx.defineService(ct, await getTaggedImageName(nf), nets);
+    mountTmpfsVolumes(s);
     s.stop_signal = "SIGQUIT";
     s.environment.GIN_MODE = "release";
 

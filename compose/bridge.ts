@@ -139,11 +139,7 @@ const bridgeModes: Record<string, (c: ComposeFile, net: string, tokens: readonly
   eth: buildEthernet,
 };
 
-/**
- * Define a bridge container.
- * @param ctx - Compose context.
- * @param bridgeArgs - Command line `--bridge` arguments.
- */
+/** Define a bridge container. */
 export async function defineBridge(ctx: ComposeContext, opts: BridgeOpts): Promise<void> {
   if (!opts.bridge) {
     return;

@@ -1,4 +1,4 @@
-import type { ComposeFile } from "../types/compose.js";
+import type { ComposeFile } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 
 /**

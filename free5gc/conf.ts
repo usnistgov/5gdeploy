@@ -4,7 +4,7 @@ import * as yaml from "js-yaml";
 
 import * as compose from "../compose/mod.js";
 import { NetDef } from "../netdef/netdef.js";
-import type { F5 } from "../types/mod.js";
+import type { ComposeService, F5 } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 
 /** Determine free5GC Docker image name with version tag. */
@@ -30,4 +30,16 @@ export function loadTemplate(tpl: string): Promise<unknown> {
 export function convertSNSSAI(input: string): F5.SNSSAI {
   const { sst, sd } = NetDef.splitSNSSAI(input).ih;
   return { sst, sd: sd?.toLowerCase() };
+}
+
+export function mountTmpfsVolumes(s: ComposeService): void {
+  s.volumes.push({
+    type: "tmpfs",
+    source: "",
+    target: "/free5gc/config",
+  }, {
+    type: "tmpfs",
+    source: "",
+    target: "/free5gc/cert",
+  });
 }
