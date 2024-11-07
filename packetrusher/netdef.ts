@@ -17,6 +17,7 @@ export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> 
 
 function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Subscriber): void {
   const s = ctx.defineService(gnb.name, "5gdeploy.localhost/packetrusher", ["mgmt", "n2", "n3"]);
+  s.stop_signal = "SIGINT";
   s.cap_add.push("NET_ADMIN");
   compose.annotate(s, "cpus", 1);
   compose.annotate(s, "ue_supi", NetDef.listSUPIs(sub).join(","));
