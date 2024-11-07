@@ -29,7 +29,6 @@ class F5CPBuilder {
     await this.buildNRF();
     await this.buildWebUI();
     await this.buildWebClient();
-    await this.buildCHF();
     await this.buildUDR();
     await this.buildUDM();
     await this.buildAUSF();
@@ -190,20 +189,6 @@ class F5CPBuilder {
     }
 
     return j;
-  }
-
-  private async buildCHF(): Promise<void> {
-    const [s, chfcfg] = await this.defineService<F5.chf.Configuration>("chf", ["db", "cp"]);
-    const c = chfcfg.configuration;
-    c.mongodb.url = this.mongoUrl.toString();
-    c.cgf.hostIPv4 = compose.getIP(this.ctx.c.services.webui!, "cp");
-    c.abmfDiameter.hostIPv4 = compose.getIP(s, "cp");
-    c.rfDiameter.hostIPv4 = compose.getIP(s, "cp");
-
-    s.command = [
-      "./chf",
-      "-c", await this.saveConfig(s, "cp-cfg/chf.yaml", "chfcfg.yaml", chfcfg),
-    ];
   }
 
   private async buildUDR(): Promise<void> {
