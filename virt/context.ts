@@ -121,6 +121,7 @@ export class VirtComposeContext extends compose.ComposeContext {
         "--size", "20G",
         "--format", "qcow2",
         "-o", "base.qcow2",
+        "--append-line", "/etc/inputrc:set enable-bracketed-paste off",
         "--run-command", "apt-mark hold grub-pc",
         "--uninstall", uninstall.join(","),
         "--update",
