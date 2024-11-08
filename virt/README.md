@@ -46,7 +46,7 @@ The placement portion of `--vm` flag adopts a similar syntax as the multi-host `
 It has a physical host IP address, followed by a cpuset within parentheses.
 Both portions are mandatory.
 
-The cpuset must contain at least two CPU cores, preferably on the same NUMA socket.
+The cpuset should have one or more cores, preferably on the same NUMA socket.
 The KVM guest would receive the same quantity of CPU cores, of which the first core is unreserved and all other cores are reserved for Docker containers only.
 
 ### Network Interfaces
@@ -186,6 +186,7 @@ It then processes guest netif definitions:
   The TAP device node is passed to the QEMU process as a file descriptor, which would appear in the guest as a virtio network device.
 * For each guest netif definition under PCI passthrough mode, the PCI device is passed to the QEMU process via `vfio-pci` driver.
 
-The `vm_`*vmname* container proceeds to launch QEMU process with the per-VM image as boot drive, with network devices as described above.
+The `vm_`*vmname* container proceeds to launch QEMU process using the per-VM image as boot drive, with network devices as described above.
+CPU affinity for guest CPU threads is configured via QEMU Machine Protocol.
 The guest operating system configures netifs via netplan, matching devices via their MAC addresses.
 When the container is stopped, the MACVTAP subinterfaces are deleted and the PCI devices are released.

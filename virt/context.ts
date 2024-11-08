@@ -205,8 +205,8 @@ export class VirtComposeContext extends compose.ComposeContext {
       ...setupCpuIsolation("0", "1-127"),
       // docker-.scope AllowedCPUs=1-127 would be ignored because some cores do not exist;
       // instead, systemd would allow Docker containers to use all cores. The actual cpuset for
-      // each container should be set for each container. This approach allows reusing a prep'ed
-      // VM image even if the number of cores has changed.
+      // each container should be set for each container. This approach avoids having to
+      // re-prepare the VM image just to change the quantity of cores.
     ];
 
     s.working_dir = "/vmrun";

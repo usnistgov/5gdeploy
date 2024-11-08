@@ -13,8 +13,8 @@ const args = Yargs()
         const tokens = splitVbar("--vm", line, 3, 3);
         const name = tokens[0];
         const place = compose.parsePlaceRule(`vm_${name}@${tokens[1]}`);
-        const cores = parseCpuset(place.cpuset ?? "0");
-        assert(cores.length >= 2, `VM ${name} must have cpuset with at least 2 cores`);
+        assert(place.cpuset, `VM ${name} must have cpuset`);
+        const cores = parseCpuset(place.cpuset);
         const networks = Array.from(tokens[2].split(","), (line1): VMNetwork => {
           const tokens = line1.split("@");
           assert(tokens.length === 2, `bad --vm.network ${line1}`);
