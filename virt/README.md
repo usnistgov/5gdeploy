@@ -73,10 +73,9 @@ Each PCI device can appear in only one guest netif definition, but you will be a
 Device binding to `vfio-pci` driver is performed automatically; after stopping the VM, you may need to manually re-bind the device to kernel driver before it can be used in the host.
 
 In SR-IOV mode, a number of Virtual Functions (VFs) are created on the PCI device and these VFs are passed to the KVM guest, while the Physical Function (PF) remains on the host.
-Before launching the VM, you must enable IOMMU on the host, and bind the PF to its usual kernel driver.
+Before launching the VM, you must [enable IOMMU on the host](https://wiki.archlinux.org/title/PCI_passthrough_via_OVMF#Setting_up_IOMMU), and bind the PF to its usual kernel driver; for mlx5 devices, you must also [enable SR-IOV in the firmware](https://enterprise-support.nvidia.com/s/article/HowTo-Configure-SR-IOV-for-ConnectX-4-ConnectX-5-ConnectX-6-with-KVM-Ethernet#jive_content_id_I_Enable_SRIOV_on_the_Firmware).
 Each PF may appear in one or more guest netif definitions across one or more KVM guests, as long as the total VF quantity does not exceed PF hardware limits.
 There cannot be any other VFs not used by 5gdeploy, as those will be deleted during initialization.
-This feature is currently only tested with i40e + iavf drivers.
 
 ### Control Interface
 
