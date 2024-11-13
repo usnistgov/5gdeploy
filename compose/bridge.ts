@@ -1,6 +1,7 @@
 import { minimatch } from "minimatch";
 import { ip2long, Netmask } from "netmask";
 import * as shlex from "shlex";
+import type { Except } from "type-fest";
 
 import type { ComposeFile } from "../types/mod.js";
 import { assert, scriptCleanup, type YargsInfer, type YargsOptions } from "../util/mod.js";
@@ -64,24 +65,49 @@ function* buildVxlan(c: ComposeFile, net: string, ips: readonly string[], netInd
   }
 }
 
+interface EthDef {
+  ct: string;
+  op: "=" | "@" | "~";
+  hostif: string;
+  vlan?: number;
+  rss?: {
+    start: number;
+    equal: number;
+    input: "s" | "d";
+  };
+}
+
 function* parseEthDef(
     c: ComposeFile, net: string, tokens: readonly string[],
-): Iterable<[ct: string, op: "=" | "@" | "~", hostif: string, vlan: number | undefined]> {
+): Iterable<EthDef> {
   const cts = new Set(Object.keys(c.services).filter((ct) => c.services[ct]!.networks[net]));
   for (const token of tokens) {
-    const m = /([=@~])((?:[\da-f]{2}:){5}[\da-f]{2})(\+vlan\d+)?$/i.exec(token);
+    const m = /([=@~])((?:[\da-f]{2}:){5}[\da-f]{2})(?:\+vlan(\d+))?(?:\+rss(\d+)\/(\d+)([sd]))?$/i.exec(token);
     assert(m, `invalid parameter ${token}`);
-    const op = m[1]! as "=" | "@";
-    const hostif = m[2]!.toLowerCase();
+    const def: Except<EthDef, "ct"> = {
+      op: m[1]! as "=" | "@",
+      hostif: m[2]!.toLowerCase(),
+      vlan: m[3] ? Number.parseInt(m[3], 10) : undefined,
+    };
+    assert(def.vlan === undefined || (def.vlan >= 1 && def.vlan < 4095), "bad VLAN ID");
+
+    if (m[6]) {
+      assert(def.op === "=", "+rss only allowed with direct-phys");
+      def.rss = {
+        start: Number.parseInt(m[4]!, 10),
+        equal: Number.parseInt(m[5]!, 10),
+        input: m[6] as "s" | "d",
+      };
+      assert([1, 2, 4, 8, 16].includes(def.rss.equal), "+rss expects 1, 2, 4, 8, or 16 queues");
+    }
+
     const pattern = token.slice(0, -m[0].length);
     const matched = minimatch.match(Array.from(cts), pattern);
-    const vlan = m[3] ? Number.parseInt(m[3].slice(5), 10) : undefined;
     assert(matched.length > 0, `${pattern} does not match any container on br-${net}`);
-    assert(op === "@" || matched.length === 1, `${pattern} matches multiple containers (${
+    assert(def.op === "@" || matched.length === 1, `${pattern} matches multiple containers (${
       matched.join(", ")}) on br-${net} reusing a physical interface`);
-    assert(vlan === undefined || (vlan >= 1 && vlan < 4095), "bad VLAN ID");
     for (const ct of matched) {
-      yield [ct, op, hostif, vlan];
+      yield { ct, ...def };
       cts.delete(ct);
     }
   }
@@ -92,7 +118,7 @@ function* parseEthDef(
 function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]): Iterable<string> {
   yield `msg Setting up Ethernet adapters for br-${net}`;
   const cidr = new Netmask(c.networks[net]!.ipam.config[0]!.subnet).bitmask;
-  for (const [ct, op, hostif, vlan] of parseEthDef(c, net, tokens)) {
+  for (const { ct, op, hostif, vlan, rss } of parseEthDef(c, net, tokens)) {
     const ip = disconnectNetif(c, ct, net);
     const vlanDesc = vlan ? ` VLAN ${vlan}` : "";
     const vlanFlag = vlan ? `@${vlan}` : "";
@@ -112,6 +138,11 @@ function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]):
         annotate(c.services[ct]!, `mac_${net}`, hostif);
         yield `      msg Using physical interface ${hostif}${vlanDesc} as ${ct}:${net}`;
         yield `      pipework --direct-phys mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${vlanFlag}`;
+        if (rss) {
+          yield `      msg Setting Toeplitz hash function on ${ct}:${net}`;
+          yield `      ip netns exec $(basename $(docker inspect ${ct} --format='{{.NetworkSettings.SandboxKey}}'))${
+            " "}toeplitz.sh ${net} ${rss.start} ${rss.equal} ${rss.input}`;
+        }
         break;
       }
       case "@": {
@@ -160,6 +191,14 @@ export async function defineBridge(ctx: ComposeContext, opts: BridgeOpts): Promi
       type: "bind",
       source: "/var/run/docker.sock",
       target: "/var/run/docker.sock",
+    }, {
+      type: "bind",
+      source: "/var/run/docker/netns",
+      target: "/var/run/netns",
+      bind: {
+        propagation: "shared",
+        create_host_path: true,
+      },
     });
   }
 

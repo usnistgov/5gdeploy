@@ -118,7 +118,7 @@ In the example diagram, there are one Ethernet bridge for N3 networks, shown in 
 It can be created with command line flags like this:
 
 ```text
---bridge='n3,eth,gnb0=02:00:00:03:00:10,gnb1=02:00:00:03:00:11,upf0=02:00:00:03:00:20+vlan3,upf1=02:00:00:03:00:21+vlan3'
+--bridge='n3,eth,gnb0=02:00:00:03:00:10,gnb1=02:00:00:03:00:11,upf0=02:00:00:03:00:20+vlan3+rss0/2s,upf1=02:00:00:03:00:21+vlan3+rss2/2s'
 ```
 
 After "eth", each parameter consists of:
@@ -128,7 +128,7 @@ After "eth", each parameter consists of:
 2. An operator symbol, explained below.
 3. A host interface MAC address.
 4. VLAN ID (optional).
-   This should be written as "+vlan" followed by an integer between 1 and 4094.
+5. Receive Side Scaling setting (optional).
 
 The operator indicates what kind of network interface is put into the container:
 
@@ -143,7 +143,7 @@ The operator indicates what kind of network interface is put into the container:
   * Currently this uses MACVLAN "bridge" mode, so that traffic between two containers on the same host interface is switched internally in the Ethernet adapter and does not appear on the external Ethernet switch.
   * This does not work if the host interface is itself a PCI Virtual Function that allows only one MAC address.
 * The `~` operator records the MAC address of a container interface, but does not create the interface.
-  * This is only usable in [NDN-DPDK UPF](../ndndpdk/README.md) configured with an Ethernet adapter with PCI driver.
+  * This is only usable in [NDN-DPDK UPF](../ndndpdk/README.md) configured with an Ethernet adapter using PCI driver.
 
 If a virtualization Compose context was loaded through `--use-vm` flag, the host interface MAC address portion can accept two additional syntaxes:
 
@@ -158,6 +158,9 @@ Bridge configuration scripts will locate the host interface and invoke [pipework
 The specified host interface MAC address must exist on the host machine where you start the relevant network function.
 Otherwise, pipework will fail with error message "no host interface matched".
 
+#### VLAN ID
+
+VLAN ID should be written as "+vlan" followed by an integer between 1 and 4094.
 When VLAN ID is specified, the host interface name should be no longer than 10 characters.
 pipework will append VLAN ID after the host interface name to form the VLAN interface name, which cannot exceed 15 characters.
 If this is violated, iproute2 will fail with error message "name not a valid ifname".
@@ -167,6 +170,37 @@ Per initial testing, when VLAN ID is specified:
 * With `=` operator, each hostif + VLAN ID combination can only be used with a single container.
 * With `@` operator, pipework completes but the containers cannot communicate.
 * VLAN ID with KVM guest is untested.
+
+#### Receive Side Scaling
+
+Receive Side Scaling setting is only allowed with `=` operator.
+It consists of:
+
+1. "+rss" string.
+2. Start queue number *S*.
+3. "/" symbol.
+4. Queue quantity *E*, which must be 1, 2, 4, 8, or 16.
+5. RSS hash input mode, either "s" (source IPv4 address) or "d" (destination IPv4 address).
+
+Bridge configuration scripts will configure Toeplitz hash function on the network interface so that RX packets are distributed into the *E* queues starting from queue-*S*.
+The hash key is selected such that any *E* consecutive source/destination IP addresses are distributed to *E* distinct queues.
+For example, assuming gNBs / UPFs / PDU sessions are assigned consecutive IP addresses, a possible arrangement to achieve balanced distribution is:
+
+* UPF N3 could have +rss=*S*/*E*s, where *E* is a divisor of gNB quantity.
+* DN N6 could have +rss=*S*/*E*s, where *E* is a divisor of per-DN UE quantity.
+* UPF N6 could have +rss=*S*/*E*d, where *E* is a divisor of per-DN UE quantity.
+* gNB N3 could have +rss=*S*/*E*s, where *E* is a divisor of UPF quantity.
+
+Host NICs are not configured automatically.
+If desired, they can be manually configured like this:
+
+```bash
+#                             netif S E input
+docker exec bridge toeplitz.sh eth1 4 4 s
+docker exec bridge toeplitz.sh eth2 8 4 d
+```
+
+Changing this setting would affect all MACVLAN subinterfaces attached to the host NIC.
 
 ## Placement
 

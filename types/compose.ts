@@ -71,6 +71,7 @@ export interface ComposeVolume {
   target: string;
   read_only?: boolean;
   bind?: {
+    propagation?: "shared";
     create_host_path?: boolean;
   };
 }
