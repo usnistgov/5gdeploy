@@ -407,7 +407,7 @@ export class VirtComposeContext extends compose.ComposeContext {
 
       for (const name of this.vmSriovVfs.keys()) {
         const vm = this.c.services[`vm_${name}`]!;
-        if (compose.annotate(vm, "host") ?? host === "") {
+        if (compose.annotate(vm, "host") === host) {
           vm.depends_on[s.container_name] = {
             condition: "service_healthy",
           };
