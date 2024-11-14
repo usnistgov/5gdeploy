@@ -191,16 +191,22 @@ For example, assuming gNBs / UPFs / PDU sessions are assigned consecutive IP add
 * UPF N6 could have +rss=*S*/*E*d, where *E* is a divisor of per-DN UE quantity.
 * gNB N3 could have +rss=*S*/*E*s, where *E* is a divisor of UPF quantity.
 
-Host NICs are not configured automatically.
-If desired, they can be manually configured like this:
+Host NICs are not configured automatically, but they can be manually configured using the `toeplitz.sh` script embedded in the bridge container.
+Note that changing RSS setting on a host NIC would affect all attached MACVLAN subinterfaces.
+The same script supports changing container NIC RSS rules at runtime, as an alternative of writing "+rss" as part of bridge parameter.
 
 ```bash
 #                             netif S E input
 docker exec bridge toeplitz.sh eth1 4 4 s
-docker exec bridge toeplitz.sh eth2 8 4 d
-```
+docker exec bridge toeplitz.sh eth2 6 2 d
 
-Changing this setting would affect all MACVLAN subinterfaces attached to the host NIC.
+#                             ct:netif S E input
+docker exec bridge toeplitz.sh upf1:n3 8 2 s
+
+# revert to default state
+docker exec bridge toeplitz.sh eth1    reset
+docker exec bridge toeplitz.sh upf1:n3 reset
+```
 
 ## Placement
 

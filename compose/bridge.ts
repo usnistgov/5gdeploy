@@ -140,8 +140,7 @@ function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]):
         yield `      pipework --direct-phys mac:${hostif} -i ${net} ${ct} ${ip}/${cidr} ${vlanFlag}`;
         if (rss) {
           yield `      msg Setting Toeplitz hash function on ${ct}:${net}`;
-          yield `      ip netns exec $(basename $(docker inspect ${ct} --format='{{.NetworkSettings.SandboxKey}}'))${
-            " "}toeplitz.sh ${net} ${rss.start} ${rss.equal} ${rss.input}`;
+          yield `      toeplitz.sh ${ct}:${net} ${rss.start} ${rss.equal} ${rss.input}`;
         }
         break;
       }
