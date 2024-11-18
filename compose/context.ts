@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { Arrayable, Promisable } from "type-fest";
+import type { Arrayable, EmptyObject, Promisable } from "type-fest";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
@@ -79,9 +79,9 @@ export class ComposeContext {
    */
   public async writeFile(
       filename: string, body: unknown,
-      mountAsVolume?: ComposeContext.FileVolumeOptions,
+      opts: ComposeContext.WriteFileOptions = {},
   ): Promise<ComposeContext.WriteFileResult> {
-    await file_io.write(path.resolve(this.out, filename), body);
+    await file_io.write(path.resolve(this.out, filename), body, opts);
 
     const result: ComposeContext.WriteFileResult = {
       mountInto({ s, target }) {
@@ -94,8 +94,8 @@ export class ComposeContext {
       },
     };
 
-    if (mountAsVolume) {
-      result.mountInto(mountAsVolume);
+    if ((opts as ComposeContext.FileVolumeOptions).s) {
+      result.mountInto(opts as ComposeContext.FileVolumeOptions);
     }
 
     return result;
@@ -118,6 +118,8 @@ export class ComposeContext {
   }
 }
 export namespace ComposeContext {
+  export type WriteFileOptions = file_io.write.Options & (FileVolumeOptions | EmptyObject);
+
   /** Options to mount file as volume. */
   export interface FileVolumeOptions {
     /** Add a bind mount to the container. */

@@ -106,7 +106,7 @@ export async function saveQoS(ctx: ComposeContext, opts: QoSOpts): Promise<void>
   if (!Object.values(ctx.c.services).some((s) => hasQoSVolume(s))) {
     return;
   }
-  await ctx.writeFile(qosVolume.source, generateScript(ctx.c, opts));
+  await ctx.writeFile(qosVolume.source, generateScript(ctx.c, opts), { executable: false });
 }
 
 function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {

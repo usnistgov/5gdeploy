@@ -2,7 +2,7 @@
 set -euo pipefail
 NETIF=$1
 
-ETHTOOL='ethtool'
+ETHTOOL=ethtool
 if [[ $NETIF == *:* ]]; then
   CT=${NETIF%:*}
   NETIF=${NETIF#*:}
@@ -22,9 +22,9 @@ START=$2
 EQUAL=$3
 INPUT=$4
 
-if [[ $INPUT == 's' ]]; then
+if [[ $INPUT == s ]]; then
   HKEY40=00:00:00:00:00:00:00:$(printf %02x $EQUAL):00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
-elif [[ $INPUT == 'd' ]]; then
+elif [[ $INPUT == d ]]; then
   HKEY40=00:00:00:00:00:00:00:00:00:00:00:$(printf %02x $EQUAL):00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
 fi
 HKEY52=$HKEY40:00:00:00:00:00:00:00:00:00:00:00:00

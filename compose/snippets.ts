@@ -45,7 +45,11 @@ export async function setCommandsFile(ctx: ComposeContext, s: ComposeService, co
   withScriptHead = true,
   filename = `${s.container_name}.sh`,
 }: setCommandsFile.Options = {}): Promise<void> {
-  await ctx.writeFile(filename, [...(withScriptHead ? scriptHead : scriptHeadStrict), ...commands], { s, target: "/action.sh" });
+  await ctx.writeFile(
+    filename,
+    [...(withScriptHead ? scriptHead : scriptHeadStrict), ...commands],
+    { executable: false, s, target: "/action.sh" },
+  );
   s.command = [`/bin/${shell}`, "/action.sh"];
   s.entrypoint = [];
 }

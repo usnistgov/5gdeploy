@@ -110,7 +110,7 @@ export namespace readTable {
  * Parent directories are created automatically.
  * File is set to executable when filename ends with ".sh".
  */
-export async function write(filename: string, body: unknown): Promise<void> {
+export async function write(filename: string, body: unknown, { executable }: write.Options = {}): Promise<void> {
   while (typeof (body as Partial<write.Saver>).save === "function") {
     body = await (body as write.Saver).save();
   }
@@ -151,11 +151,19 @@ export async function write(filename: string, body: unknown): Promise<void> {
 
   await fs.mkdir(path.dirname(filename), { recursive: true });
   await fs.writeFile(filename, body as string | Uint8Array);
-  if (filename.endsWith(".sh")) {
+  if (executable ?? filename.endsWith(".sh")) {
     await fs.chmod(filename, 0o755);
   }
 }
 export namespace write {
+  export interface Options {
+    /**
+     * Whether to chmod as executable.
+     * @defaultValue true for *.sh, false otherwise.
+     */
+    executable?: boolean;
+  }
+
   /** When passed as `body`, the return value of `body.save()` is used as body. */
   export interface Saver {
     save: () => Promisable<unknown>;
@@ -184,7 +192,7 @@ export function toTable(
       return csvStringify(table as any[], {
         delimiter: "\t",
         header: true,
-        columns: columns as string[],
+        columns,
       });
     },
     get tui() {
