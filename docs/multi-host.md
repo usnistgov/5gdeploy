@@ -179,8 +179,8 @@ It consists of:
 1. "+rss" string.
 2. Start queue number *S*.
 3. "/" symbol.
-4. Queue quantity *E*, which must be 1, 2, 4, 8, or 16.
-5. RSS hash input mode, either "s" (source IPv4 address) or "d" (destination IPv4 address).
+4. Queue quantity *E*, one of: 1, 2, 4, 8, 16.
+5. RSS hash input mode, one of: "s" - source IPv4 address, "d" - destination IPv4 address, "f" - source TCP/UDP port, "n" - destination TCP/UDP port.
 
 Bridge configuration scripts will configure Toeplitz hash function on the network interface so that RX packets are distributed into the *E* queues starting from queue-*S*.
 The hash key is selected such that any *E* consecutive source/destination IP addresses are distributed to *E* distinct queues.

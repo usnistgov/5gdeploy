@@ -22,11 +22,21 @@ START=$2
 EQUAL=$3
 INPUT=$4
 
-if [[ $INPUT == s ]]; then
-  HKEY40=00:00:00:00:00:00:00:$(printf %02x $EQUAL):00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
-elif [[ $INPUT == d ]]; then
-  HKEY40=00:00:00:00:00:00:00:00:00:00:00:$(printf %02x $EQUAL):00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00
-fi
+HKEY40=$(echo | awk -vINPUT=$INPUT -vEQUAL=$EQUAL -vOFS=: '
+  {
+    for (i = 1; i <= 40; ++i) {
+      $i = "00"
+    }
+    N = sprintf("%02x", EQUAL)
+  }
+  INPUT == "s" { $8  = N }
+  INPUT == "d" { $12 = N }
+  INPUT == "f" { $14 = N }
+  INPUT == "n" { $16 = N }
+  {
+    print
+  }
+')
 HKEY52=$HKEY40:00:00:00:00:00:00:00:00:00:00:00:00
 
 $ETHTOOL -K $NETIF lro off ntuple on rxhash on

@@ -45,6 +45,9 @@ Optional flags:
   Default is "tg".
 * `--port` flag specifies the port number used by the first traffic generator.
   Default is 20000.
+* `--ports-per-flow` flag specifies how many port numbers are allocated to each traffic generator.
+  This allows precise control over the port numbers, for use with [Receive Side Scaling](multi-host.md) with RSS hash input mode "f" or "n".
+  Default is unset.
 * `--startup-delay` flag specifies wait duration between starting server containers and starting client containers.
   Default is 5 seconds.
 * `--t0-delay` flag sets `$TGCS_T0` timestamp variable, described in [delayed client start](tgcs-advanced.md).

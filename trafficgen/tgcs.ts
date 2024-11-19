@@ -58,6 +58,10 @@ const args = Yargs()
     desc: "starting port number",
     type: "number",
   })
+  .option("ports-per-flow", {
+    desc: "how many ports allocated to each flow",
+    type: "number",
+  })
   .option("startup-delay", {
     default: 5,
     desc: "sleep duration (seconds) between starting servers and starting clients",
@@ -86,7 +90,7 @@ const args = Yargs()
   .parseSync();
 
 const [c, netdef] = await loadCtx(args);
-const { prefix } = args;
+const { prefix, "ports-per-flow": nPortsPerFlow } = args;
 assert(/^[a-z][\da-z]*$/.test(prefix), "--prefix shall be a lower-case letter followed by letters and digits");
 
 const tgFlows = await pipeline(
@@ -206,7 +210,13 @@ for (let {
   }
 
   table.push([group, dn, dir, supi, port]);
-  nextPort += tgFlow.nPorts;
+  if (nPortsPerFlow) {
+    assert(tgFlow.nPorts <= nPortsPerFlow,
+      `flow ${group},${dn},${supi} needs ${tgFlow.nPorts} ports but only ${nPortsPerFlow} is allowed`);
+    nextPort += nPortsPerFlow;
+  } else {
+    nextPort += tgFlow.nPorts;
+  }
 }
 
 compose.place(output, { ...args, "place-match-host": true });
