@@ -6,7 +6,7 @@ ETHTOOL=ethtool
 if [[ $NETIF == *:* ]]; then
   CT=${NETIF%:*}
   NETIF=${NETIF#*:}
-  ETHTOOL="ip netns exec $(basename $(docker inspect $CT --format='{{.NetworkSettings.SandboxKey}}')) ethtool"
+  ETHTOOL="$(ctns.sh $CT) ethtool"
 fi
 
 if [[ $2 == reset ]]; then
