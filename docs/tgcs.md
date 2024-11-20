@@ -105,7 +105,13 @@ In either case, you should specify `-i` flag to enable interval reports.
 
 Use `-P` client flag to send multiple parallel flows from the each client.
 If you observe CPU bottleneck when using this flag, consider adding `#cpus` preprocessor flag to increase CPU allocation, described in [CPU allocation](tgcs-advanced.md).
-The `-P` flag is incompatible with `-R` flag, but you can use `#R` preprocessor flag to reverse direction, described in [reverse direction](tgcs-advanced.md).
+By default, the client uses TCP/UDP ports randomly assigned by the operating system.
+Add `-B :+`*r* to assign sequential ports to the client, where the first port is server port plus *r*; this implicitly adds `--incr-srcport` flag.
+Other use of `-B` flag and other `--incr-*` flags are disallowed.
+
+By default, the traffic is in uplink direction from UE to Data Network.
+To send downlink traffic from Data Network to UE, use `#R` preprocessor flag to reverse direction, described in [reverse direction](tgcs-advanced.md).
+The iperf2 `-R` flag is also permitted, but it suffers from certain compatibility issues with other iperf2 flags and is not recommended.
 
 The outputs of each iperf2 container are saved in the stats directory.
 The script shows a table of iperf2 flows that have CSV output, together with iperf3 flows that have JSON output.

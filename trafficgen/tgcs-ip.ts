@@ -45,11 +45,28 @@ export const iperf2: TrafficGen = {
       ...sFlags,
     ];
   },
-  clientSetup(s, { port, sIP, cIP, cFlags }) {
+  clientSetup(s, flow) {
+    let { port, sIP, cIP, cFlags } = flow;
     let wantText: boolean;
     [cFlags, wantText] = handleTextOutputFlag(s, cFlags, ".csv");
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
+
+    const parallelIndex = Math.max(cFlags.indexOf("-P"), cFlags.indexOf("--parallel"));
+    let nParallel = 1;
+    if (parallelIndex >= 0) {
+      nParallel = Number.parseInt(cFlags[parallelIndex + 1]!, 10);
+    }
+
+    let bindPort: number | undefined;
+    const bindIndex = Math.max(cFlags.indexOf("-B"), cFlags.indexOf("--bind"));
+    let bindValue: string | undefined;
+    if (bindIndex >= 0 && (bindValue = cFlags[bindIndex + 1])?.startsWith(":+")) {
+      const bindPortRel = Number.parseInt(bindValue.slice(1), 10);
+      bindPort = port + bindPortRel;
+      flow.nPorts = bindPortRel + nParallel;
+      cFlags = cFlags.toSpliced(bindIndex, 2, "--incr-srcport");
+    }
 
     const txstartIndex = cFlags.indexOf("--txstart-time");
     let txstartValue: string | undefined;
@@ -65,7 +82,7 @@ export const iperf2: TrafficGen = {
         ...(wantText ? [] : ["-yC"]),
         "-e",
         "--utc",
-        "-B", cIP,
+        "-B", bindPort ? `${cIP}:${bindPort}` : cIP,
         "-p", `${port}`,
         "-c", sIP,
         ...cFlags,
