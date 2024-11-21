@@ -10,6 +10,7 @@ export async function f5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void>
   const peers = ctx.netdef.gatherUPFPeers(upf);
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
+    ...compose.applyQoS(s),
     ...makeUPFRoutes(ctx, peers),
     "msg Starting free5GC UPF",
     "exec ./upf -c ./config/upfcfg.yaml",
