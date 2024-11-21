@@ -55,9 +55,12 @@ namespace iperf2csv {
         ttavgs.push(rRow.ttavg);
       }
     }
+    if (ttavgs.length === 0) {
+      return undefined;
+    }
     ttavgs.sort((a, b) => a - b);
-    const medianIndex = Math.floor(ttavgs.length / 2);
-    return ttavgs.length === 0 ? undefined : ttavgs.length % 2 === 0 ? (ttavgs[medianIndex]! + ttavgs[medianIndex + 1]!) / 2 : ttavgs[medianIndex]!;
+    const medianIndex = Math.floor((ttavgs.length - 1) / 2);
+    return ttavgs.length % 2 === 0 ? (ttavgs[medianIndex]! + ttavgs[medianIndex + 1]!) / 2 : ttavgs[medianIndex]!;
   }
 }
 
