@@ -3,16 +3,8 @@ import path from "node:path";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
-import { assert, codebaseRoot, tsrun } from "../util/mod.js";
+import { assert, tsrun } from "../util/mod.js";
 import { ClientStartOpt, Direction, extractHashFlag, handleTextOutputFlag, mountOutputVolume, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
-
-function* iperfStats(prefix: string): Iterable<string> {
-  yield "if [[ ${HAVE_IPERF_STATS:-0} -eq 0 ]]; then"; // eslint-disable-line no-template-curly-in-string
-  yield "  HAVE_IPERF_STATS=1";
-  yield `  msg Gathering iperf2/iperf3 statistics table to ${prefix}/iperf.tsv`;
-  yield `  ${tsrun("trafficgen/iperf-stats.ts")} --dir=$COMPOSE_CTX --prefix=${prefix}`;
-  yield "fi";
-}
 
 export const iperf2: TrafficGen = {
   determineDirection({ cFlags }) {
@@ -90,9 +82,11 @@ export const iperf2: TrafficGen = {
     ], { withScriptHead: false });
   },
   *statsCommands(prefix) {
-    yield* iperfStats(prefix);
-    yield "msg Showing iperf2 final results from iperf2 text output";
-    yield `find -name 'iperf2_*.log' | xargs -r awk -f ${codebaseRoot}/trafficgen/iperf2-stats.awk`;
+    yield "if [[ ${HAVE_IPERF_STATS:-0} -eq 0 ]]; then"; // eslint-disable-line no-template-curly-in-string
+    yield "  HAVE_IPERF_STATS=1";
+    yield `  msg Gathering iperf2/iperf3 statistics table to ${prefix}/iperf.tsv`;
+    yield `  ${tsrun("trafficgen/iperf-stats.ts")} --dir=$COMPOSE_CTX --prefix=${prefix}`;
+    yield "fi";
   },
 };
 
@@ -134,9 +128,7 @@ export const iperf3: TrafficGen = {
       ]),
     ], { withScriptHead: false });
   },
-  *statsCommands(prefix) {
-    yield* iperfStats(prefix);
-  },
+  statsCommands: iperf2.statsCommands,
 };
 
 export const owamp: TrafficGen & {

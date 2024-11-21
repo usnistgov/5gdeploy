@@ -82,6 +82,7 @@ export namespace readYAML {
  */
 export async function readTable(filename: string, opts: readTable.Options = {}): Promise<unknown> {
   return csvParse(await readText(filename, opts), {
+    cast: opts.cast ?? false,
     columns: opts.columns ?? false,
     comment: "#",
     delimiter: [",", "\t", ...Array.from({ length: 64 }, (x, i) => " ".repeat(64 - i))],
@@ -90,7 +91,7 @@ export async function readTable(filename: string, opts: readTable.Options = {}):
   });
 }
 export namespace readTable {
-  export interface Options extends readText.Options, Pick<csvParser.Options, "columns"> {
+  export interface Options extends readText.Options, Pick<csvParser.Options, "cast" | "columns"> {
   }
 }
 

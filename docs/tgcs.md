@@ -115,7 +115,7 @@ The iperf2 `-R` flag is also permitted, but it suffers from certain compatibilit
 
 The outputs of each iperf2 container are saved in the stats directory.
 The script shows a table of iperf2 flows that have CSV output, together with iperf3 flows that have JSON output.
-The script also shows a brief summary of iperf2 flows that have text output.
+Latency column is available with `--trip-times` client flag; it is the median when there are multiple flows specified via `-P` flag.
 
 ### Delayed TX Start
 

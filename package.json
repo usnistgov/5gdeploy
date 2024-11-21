@@ -13,10 +13,10 @@
     "typecheck": "tsc",
     "virt": "tsx ./virt/main.ts"
   },
-  "packageManager": "pnpm@9.13.2+sha512.88c9c3864450350e65a33587ab801acf946d7c814ed1134da4a924f6df5a2120fd36b46aab68f7cd1d413149112d53c7db3a4136624cfd00ff1846a0c6cef48a",
+  "packageManager": "pnpm@9.14.2+sha512.6e2baf77d06b9362294152c851c4f278ede37ab1eba3a55fda317a4a17b209f4dbb973fb250a77abc463a341fcb1f17f17cfa24091c4eb319cda0d9b84278387",
   "dependencies": {
     "@nodelib/fs.walk": "^2.0.0",
-    "@segment/ajv-human-errors": "^2.14.0",
+    "@segment/ajv-human-errors": "^2.14.1",
     "@types/dockerode": "^3.3.32",
     "@types/js-yaml": "^4.0.9",
     "@types/netmask": "^2.0.5",
@@ -25,7 +25,7 @@
     "@types/yargs": "^17.0.33",
     "ajv": "^8.17.1",
     "as-table": "^1.0.55",
-    "csv": "^6.3.10",
+    "csv": "^6.3.11",
     "dockerode": "^4.0.2",
     "execa": "^9.5.1",
     "fast-json-patch": "^3.1.1",

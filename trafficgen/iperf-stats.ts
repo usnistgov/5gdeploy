@@ -3,14 +3,65 @@ import path from "node:path";
 import DefaultMap from "mnemonist/default-map.js";
 import map from "obliterator/map.js";
 import { sortBy } from "sort-by-typescript";
+import { type SetRequired } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import iperf3Schema from "../types/iperf3.schema.json";
 import type { ComposeFile, IPERF3 } from "../types/mod.js";
-import { file_io, makeSchemaValidator, Yargs } from "../util/mod.js";
+import { assert, file_io, makeSchemaValidator, Yargs } from "../util/mod.js";
 import { Direction } from "./tgcs-defs.js";
 
-const validateReport: (input: unknown) => asserts input is IPERF3.Report = makeSchemaValidator<IPERF3.Report>(iperf3Schema);
+namespace iperf2csv {
+  const requiredCols = ["transferid", "speed", "istart", "iend"] as const;
+  const intCols = ["transferid", "speed", "writecnt", "readcnt", "ttcnt"] as const;
+  const floatCols = ["istart", "iend", "ttavg", "ttmin", "ttmax", "ttsdev"] as const;
+
+  export type Row = Record<string, string> & SetRequired<
+  Partial<Record<typeof intCols[number] | typeof floatCols[number], number>>,
+  typeof requiredCols[number]>;
+
+  export async function readTable(filename: string): Promise<Row[]> {
+    const table = await file_io.readTable(filename, {
+      cast(value, { column }) {
+        if (intCols.includes(column as any)) {
+          return Number.parseInt(value, 10);
+        }
+        if (floatCols.includes(column as any)) {
+          return Number.parseFloat(value);
+        }
+        return value;
+      },
+      columns: true,
+    }) as Row[];
+    assert(table.length > 0, "empty CSV");
+    for (const col of requiredCols) {
+      assert(table[0]![col] !== undefined, `missing column ${col}`);
+    }
+    return table;
+  }
+
+  export function gatherLatency(rReport: readonly Row[]): number | undefined {
+    const rFinal = rReport.at(-1)!;
+    if (rFinal.transferid > 0) {
+      return rFinal.ttavg;
+    }
+    if (rFinal.ttcnt !== -1) {
+      return undefined;
+    }
+    const ttavgs: number[] = [];
+    for (const rRow of rReport) {
+      if (rRow.istart === rFinal.istart && rRow.iend === rFinal.iend && rRow.transferid > 0 &&
+        (rRow.ttcnt ?? 0) > 0 && rRow.ttavg !== undefined) {
+        ttavgs.push(rRow.ttavg);
+      }
+    }
+    ttavgs.sort((a, b) => a - b);
+    const medianIndex = Math.floor(ttavgs.length / 2);
+    return ttavgs.length === 0 ? undefined : ttavgs.length % 2 === 0 ? (ttavgs[medianIndex]! + ttavgs[medianIndex + 1]!) / 2 : ttavgs[medianIndex]!;
+  }
+}
+
+const iperf3Validate: (input: unknown) => asserts input is IPERF3.Report = makeSchemaValidator<IPERF3.Report>(iperf3Schema);
 
 const args = Yargs()
   .option("dir", {
@@ -30,24 +81,21 @@ const parsers: Record<string, (filename: string, group: string, dn: string, dir:
     if (dir === Direction.bidir) {
       return false;
     }
-    const clientReport = await file_io.readTable(
-      filename, { columns: true },
-    ) as Array<Record<string, string>>;
-    const serverReport = await file_io.readTable(
-      filename.replace(/-c.csv$/, "-s.csv"),
-      { columns: true },
-    ) as Array<Record<string, string>>;
-
-    const clientFinal = clientReport.at(-1) ?? {};
-    const serverFinal = serverReport.at(-1) ?? {};
-    const [sFinal, rFinal] = clientFinal.writecnt !== undefined && serverFinal.readcnt !== undefined ?
-      [clientFinal, serverFinal] : [serverFinal, clientFinal];
-    if (!(
-      sFinal.transferid === rFinal.transferid &&
-      sFinal.srcaddress === rFinal.srcaddress && sFinal.srcport === rFinal.srcport &&
-      sFinal.dstaddr === rFinal.dstaddr && sFinal.dstport === rFinal.dstport &&
-      sFinal.writecnt !== undefined && rFinal.readcnt !== undefined
-    )) {
+    let clientReport: iperf2csv.Row[];
+    let serverReport: iperf2csv.Row[];
+    try {
+      [clientReport, serverReport] = await Promise.all([
+        iperf2csv.readTable(filename),
+        iperf2csv.readTable(filename.replace(/-c.csv$/, "-s.csv")),
+      ]);
+    } catch {
+      return false;
+    }
+    const [sReport, rReport] = clientReport[0]!.writecnt !== undefined && serverReport[0]!.readcnt !== undefined ?
+      [clientReport, serverReport] : [serverReport, clientReport];
+    const sFinal = sReport.at(-1)!;
+    const rFinal = rReport.at(-1)!;
+    if (sFinal.transferid !== rFinal.transferid || sFinal.writecnt === undefined || rFinal.readcnt === undefined) {
       return false;
     }
 
@@ -59,9 +107,9 @@ const parsers: Record<string, (filename: string, group: string, dn: string, dir:
       port,
       "_",
       "_",
-      Number.parseFloat(sFinal.speed ?? "NaN") / 1e6,
-      Number.parseFloat(rFinal.speed ?? "NaN") / 1e6,
-      Number.parseInt(rFinal.ttcnt ?? "0", 10) > 0 ? Number.parseFloat(rFinal.ttavg ?? "NaN") : "_",
+      (sFinal.speed ?? 0) / 1e6,
+      (rFinal.speed ?? 0) / 1e6,
+      iperf2csv.gatherLatency(rReport) ?? "_",
     ]);
 
     return true;
@@ -69,7 +117,7 @@ const parsers: Record<string, (filename: string, group: string, dn: string, dir:
   "iperf3.json": async (filename, group, dn, dir, ue, port) => {
     const report = await file_io.readJSON(filename);
     try {
-      validateReport(report);
+      iperf3Validate(report);
     } catch {
       return false;
     }
