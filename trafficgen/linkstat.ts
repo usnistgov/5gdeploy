@@ -3,12 +3,11 @@ import type { LinkInfo } from "iproute";
 import { Minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
 import { sortBy } from "sort-by-typescript";
-import { collect, filter, flatMap, flatTransform, map, pipeline } from "streaming-iterables";
+import { collect, flatMap, flatTransform, map, pipeline } from "streaming-iterables";
 import type { SetOptional } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import type { ComposeService } from "../types/mod.js";
-import { dockerode, file_io, Yargs } from "../util/mod.js";
+import { dockerode, file_io, splitVbar, Yargs } from "../util/mod.js";
 import { ctxOptions, loadCtx, tableOutput, tableOutputOptions } from "./common.js";
 
 type LinkInfo64 = SetOptional<LinkInfo, "stats"> & {
@@ -18,19 +17,11 @@ type LinkInfo64 = SetOptional<LinkInfo, "stats"> & {
 const args = Yargs()
   .option(ctxOptions)
   .option(tableOutputOptions)
-  .option("ct", {
-    default: "*",
-    desc: "selected containers (minimatch pattern)",
-    type: "string",
-  })
-  .option("net", {
-    defaultDescription: "networks defined in the Compose file",
-    desc: "selected networks (minimatch pattern, 'ALL' for all network interfaces including 'lo' and PDU sessions)",
-    type: "string",
-  })
-  .option("queues", {
-    default: "NEVER",
-    desc: "selected networks to obtain queue counters",
+  .option("link", {
+    array: true,
+    default: ["*|*"],
+    desc: "link matcher and options",
+    nargs: 1,
     type: "string",
   })
   .option("sort-by", {
@@ -43,49 +34,77 @@ const args = Yargs()
 
 const [c] = await loadCtx(args);
 
-function ctnsExec(s: ComposeService, command: readonly string[]): Promise<dockerode.execCommand.Result> {
-  let containerName = s.container_name;
-  if (c.services.bridge) {
-    containerName = "bridge";
-    command = ["ctns.sh", s.container_name, ...command];
+const netnsRules = new DefaultMap<string, Array<{
+  net: Minimatch;
+  ethStats: boolean;
+}>>(() => []);
+for (const line of args.link) {
+  const [ct, net, opts = ""] = splitVbar("link", line, 2, 3);
+  const rule = {
+    net: new Minimatch(net),
+    ethStats: opts.includes("#eth"),
+  };
+  if (ct.startsWith("host:")) {
+    netnsRules.get(`/${ct.slice(5)}`).push(rule);
+  } else if (ct.startsWith("host-of:")) {
+    const ctP = new Minimatch(ct.slice(8));
+    for (const s of Object.values(c.services)) {
+      if (ctP.match(s.container_name)) {
+        netnsRules.get(`/${compose.annotate(s, "host") ?? ""}`).push(rule);
+      }
+    }
+  } else {
+    const ctP = new Minimatch(ct);
+    for (const s of Object.values(c.services)) {
+      if (!compose.annotate(s, "every_host") && s.network_mode === undefined && ctP.match(s.container_name)) {
+        netnsRules.get(s.container_name).push(rule);
+      }
+    }
   }
-  const ct = dockerode.getContainer(containerName, compose.annotate(s, "host"));
-  return dockerode.execCommand(ct, command);
 }
 
-const ctMatcher = new Minimatch(args.ct);
-
-let networksMatcher: (net: string) => boolean;
-if (args.net) {
-  const networksPattern = new Minimatch(args.net.replace(/^ALL$/, "*"));
-  networksMatcher = (net) => networksPattern.match(net);
-} else {
-  networksMatcher = (net) => !!c.networks[net];
+function ctnsExec(ct: string, command: readonly string[]): Promise<dockerode.execCommand.Result> {
+  let host: string | undefined;
+  if (ct.startsWith("/")) {
+    host = ct.slice(1);
+    ct = "bridge";
+  } else {
+    host = compose.annotate(c.services[ct]!, "host");
+    if (c.services.bridge) {
+      command = ["ctns.sh", ct, ...command];
+      ct = "bridge";
+    }
+  }
+  return dockerode.execCommand(dockerode.getContainer(ct, host), command);
 }
-
-const queuesMatcher = new Minimatch(args.queues);
 
 const table = await pipeline(
-  () => Object.values(c.services),
-  filter((s: ComposeService) => !compose.annotate(s, "every_host") &&
-   ctMatcher.match(s.container_name) && s.network_mode === undefined),
-  flatTransform(16, async function*(s) {
+  () => netnsRules.entries(),
+  flatTransform(16, async function*([ct, rules]) {
     try {
-      const exec = await ctnsExec(s, ["ip", "-j", "-s", "link", "show"]);
+      const exec = await ctnsExec(ct, ["ip", "-j", "-s", "link", "show"]);
       const links = JSON.parse(exec.stdout) as LinkInfo64[];
-      yield { s, links };
+      yield { ct, links, rules };
     } catch {}
   }),
-  flatTransform(16, async function*({ s, links }) {
+  flatTransform(16, async function*({ ct, links, rules }) {
     for (const { ifname, stats64, stats = stats64, txqlen } of links) {
-      if (!stats || !networksMatcher(ifname)) {
+      let wantStats = false;
+      let wantEthStats = false;
+      for (const { net, ethStats } of rules) {
+        if (net.match(ifname)) {
+          wantStats ||= true;
+          wantEthStats ||= ethStats;
+        }
+      }
+      if (!wantStats || !stats) {
         continue;
       }
 
-      let ethStats: ReadonlyArray<[string, number]> | undefined;
       // every physical NIC has a non-zero txqlen value; dummy/bridge NIC does not have this field
-      if (queuesMatcher.match(ifname) && txqlen) {
-        const exec = await ctnsExec(s, ["ethtool", "-S", ifname]);
+      let ethStats: ReadonlyArray<[string, number]> | undefined;
+      if (txqlen && wantEthStats) {
+        const exec = await ctnsExec(ct, ["ethtool", "-S", ifname]);
         ethStats = csvParse(exec.stdout, {
           cast(value, { column }) {
             switch (column) {
@@ -105,7 +124,7 @@ const table = await pipeline(
         });
       }
 
-      yield { ct: s.container_name, ifname, stats, ethStats };
+      yield { ct, ifname, stats, ethStats };
     }
   }),
   flatMap(function*({ ct, ifname, stats, ethStats = [] }) {

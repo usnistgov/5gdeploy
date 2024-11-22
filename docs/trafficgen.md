@@ -7,6 +7,7 @@ They can be invoked in a Compose context directory (e.g. `~/compose/20230601`), 
 
 `./compose.sh linkstat` command prints a table or writes a TSV document that lists network interface counters.
 The information is gathered by executing `ip -s link show` in each container's network namespace, either through the bridge container on a multi-host deployment or in the target container itself.
+If NIC queue counters are requested, it is gathered through `ethtool -S` command.
 
 By default, the output is an aligned textual table.
 You can set `--out=FILENAME` flag to write to a TSV output file.
@@ -14,28 +15,27 @@ You can set `--out=-.tsv` flag to print the TSV document to the console.
 
 The table shows network interfaces within each container (across all hosts, in case of a multi-host deployment).
 Each row has container name, network interface name, NIC queue number, RX packet counter, and TX packet counter.
-The sort order may be adjusted with either `--sort-by=ct` or `--sort-by=net` flag.
+The sort order may be changed with either `--sort-by=ct` or `--sort-by=net` flag.
 
-By default, the table includes all services defined in the Compose file that have their own network namespaces.
-You can specify `--ct=PATTERN` flag with a minimatch pattern to change which container names are included.
-For example, `--ct='+(ue|gnb|upf|dn_)*'` selects dataplane related containers.
+By default, the table includes all services defined in the Compose file that have their own network namespaces and all network interfaces in these services, but excludes NIC queue counters.
+You can specify `--link='CT-PATTERN | NET-PATTERN | OPTS'` (repeatable) to change what's included:
 
-By default, the table only includes the networks defined in the Compose file.
-You can specify `--net=PATTERN` flag with a minimatch pattern to change which network interfaces are included.
-For example, `--net=n[369]` selects n3, n6, and n9 interfaces.
-To show all network interfaces (including "lo" and PDU sessions), use `--net=ALL` flag.
-
-Per NIC queue counters can be obtained from PCI Ethernet adapters that support `ethtool -S` command.
-You can specify `--queues=PATTERN` flag with a minimatch pattern to select these network interfaces.
+* *CT-PATTERN* is either:
+  * a minimatch pattern that matches the container name;
+  * "host:" followed by a host IP address, to gather information from a host machine;
+  * "host-of:" followed by a minimatch pattern that matches the container name, to gather information from the host machines running these containers.
+* *NET-PATTERN* is a minimatch pattern that matches the network interface name.
+* *OPTS* (optional) may contain:
+  * "#eth" requests NIC queue counters, supported on PCI Ethernet adapters only.
 
 Each packet counter is an accumulative value since the network interface was added.
 Typically, you should run this command once before starting traffic generators, and again after stopping traffic generators, and then calculate the difference between the two counter readings on the same network interface.
 Depending on the scenario topology and traffic flows you executed, it may be possible to determine whether the traffic flows were sent over the expected network interfaces, and whether packet loss has occurred either within a network function or on the network links between two network functions.
 
 ```bash
-./compose.sh linkstat --ct='+(ue|gnb|upf|dn_)*' --net='+(pdu*|val*|air|n3|n6)' --queues='+(n3|n6)' --out=linkstat0.tsv
+./compose.sh linkstat --link='gnb*|n3' --link='upf*|n[36]|#eth' --link='dn_*|n6' --out=linkstat0.tsv
 ./tg.sh
-./compose.sh linkstat --ct='+(ue|gnb|upf|dn_)*' --net='+(pdu*|val*|air|n3|n6)' --queues='+(n3|n6)' --out=linkstat1.tsv
+./compose.sh linkstat --link='gnb*|n3' --link='upf*|n[36]|#eth' --link='dn_*|n6' --out=linkstat1.tsv
 paste linkstat0.tsv linkstat1.tsv | awk '
   NR==1 { NF=5; print }
   $1==$6 && $2==$7 && $3==$8 { print $1, $2, $3, $9-$4, $10-$5 }
