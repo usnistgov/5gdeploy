@@ -6,7 +6,7 @@
 
 To setup a single-host deployment or the *primary* host of a multi-host deployment, these should be installed:
 
-* Node.js 20.x
+* Node.js 22.x
 * Docker Engine
 * APT packages:
   * `httpie jq`: used in bash scripts
@@ -26,9 +26,9 @@ sudo DEBIAN_FRONTEND=noninteractive apt install -y httpie jq python3-libconf wir
 sudo adduser $(id -un) wireshark
 sudo snap install yq
 
-# install Node.js 20.x
+# install Node.js 22.x
 http --ignore-stdin GET https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
+echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
 sudo apt update
 sudo DEBIAN_FRONTEND=noninteractive apt install -y nodejs
 
