@@ -1,5 +1,7 @@
+import { parse as csvParse } from "csv/sync";
 import type { LinkInfo } from "iproute";
 import { Minimatch } from "minimatch";
+import DefaultMap from "mnemonist/default-map.js";
 import { sortBy } from "sort-by-typescript";
 import { collect, filter, flatMap, flatTransform, map, pipeline } from "streaming-iterables";
 import type { SetOptional } from "type-fest";
@@ -26,6 +28,11 @@ const args = Yargs()
     desc: "selected networks (minimatch pattern, 'ALL' for all network interfaces including 'lo' and PDU sessions)",
     type: "string",
   })
+  .option("queues", {
+    default: "NEVER",
+    desc: "selected networks to obtain queue counters",
+    type: "string",
+  })
   .option("sort-by", {
     choices: ["ct", "net"],
     default: "ct",
@@ -49,14 +56,14 @@ function ctnsExec(s: ComposeService, command: readonly string[]): Promise<docker
 const ctMatcher = new Minimatch(args.ct);
 
 let networksMatcher: (net: string) => boolean;
-if (args.net === undefined) {
-  networksMatcher = (net) => !!c.networks[net];
-} else if (args.net === "ALL") {
-  networksMatcher = () => true;
-} else {
-  const networksPattern = new Minimatch(args.net);
+if (args.net) {
+  const networksPattern = new Minimatch(args.net.replace(/^ALL$/, "*"));
   networksMatcher = (net) => networksPattern.match(net);
+} else {
+  networksMatcher = (net) => !!c.networks[net];
 }
+
+const queuesMatcher = new Minimatch(args.queues);
 
 const table = await pipeline(
   () => Object.values(c.services),
@@ -66,15 +73,62 @@ const table = await pipeline(
     try {
       const exec = await ctnsExec(s, ["ip", "-j", "-s", "link", "show"]);
       const links = JSON.parse(exec.stdout) as LinkInfo64[];
-      yield { ct: s.container_name, links };
+      yield { s, links };
     } catch {}
   }),
-  flatMap(function*({ ct, links }) {
-    for (const link of links) {
-      const stats = link.stats ?? link.stats64;
-      if (stats && networksMatcher(link.ifname)) {
-        yield { row: [ct, link.ifname, stats.rx.packets, stats.tx.packets] };
+  flatTransform(16, async function*({ s, links }) {
+    for (const { ifname, stats64, stats = stats64, txqlen } of links) {
+      if (!stats || !networksMatcher(ifname)) {
+        continue;
       }
+
+      let ethStats: ReadonlyArray<[string, number]> | undefined;
+      // every physical NIC has a non-zero txqlen value; dummy/bridge NIC does not have this field
+      if (queuesMatcher.match(ifname) && txqlen) {
+        const exec = await ctnsExec(s, ["ethtool", "-S", ifname]);
+        ethStats = csvParse(exec.stdout, {
+          cast(value, { column }) {
+            switch (column) {
+              case 0: {
+                return value.replace(/:$/, "");
+              }
+              case 1: {
+                return Number.parseInt(value, 10);
+              }
+            }
+            return value;
+          },
+          delimiter: ":",
+          trim: true,
+          ltrim: true,
+          rtrim: true,
+        });
+      }
+
+      yield { ct: s.container_name, ifname, stats, ethStats };
+    }
+  }),
+  flatMap(function*({ ct, ifname, stats, ethStats = [] }) {
+    yield { row: [ct, ifname, "_", stats.rx.packets, stats.tx.packets] };
+
+    const queues = new DefaultMap<number, [number, number]>(() => [Number.NaN, Number.NaN]);
+    for (const [index, regex] of [
+      [0, /^rx-?(\d+)[_.]packets$/],
+      [1, /^tx-?(\d+)[_.]packets$/],
+    ] as const) {
+      for (const [cnt, value] of ethStats) {
+        const m = cnt.match(regex);
+        if (m) {
+          queues.get(Number.parseInt(m[1]!, 10))[index] = value;
+        }
+      }
+    }
+    for (let q = 0; ; ++q) {
+      const tuple = queues.peek(q);
+      if (!tuple || tuple.some((v) => Number.isNaN(v))) {
+        break;
+      }
+      yield { row: [ct, ifname, q, ...tuple] };
     }
   }),
   map(({ row }) => row),
@@ -82,16 +136,16 @@ const table = await pipeline(
 );
 switch (args["sort-by"]) {
   case "ct": {
-    table.sort(sortBy("0", "1"));
+    table.sort(sortBy("0", "1", "2"));
     break;
   }
   case "net": {
-    table.sort(sortBy("1", "0"));
+    table.sort(sortBy("1", "0", "2"));
     break;
   }
 }
 
 await tableOutput(args, file_io.toTable(
-  ["ct", "net", "rx-pkts", "tx-pkts"],
+  ["ct", "net", "queue", "rx-pkts", "tx-pkts"],
   table,
 ));

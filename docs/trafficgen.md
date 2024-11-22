@@ -13,7 +13,7 @@ You can set `--out=FILENAME` flag to write to a TSV output file.
 You can set `--out=-.tsv` flag to print the TSV document to the console.
 
 The table shows network interfaces within each container (across all hosts, in case of a multi-host deployment).
-Each row has container name, network interface name, RX packet counter, and TX packet counter.
+Each row has container name, network interface name, NIC queue number, RX packet counter, and TX packet counter.
 The sort order may be adjusted with either `--sort-by=ct` or `--sort-by=net` flag.
 
 By default, the table includes all services defined in the Compose file that have their own network namespaces.
@@ -25,9 +25,22 @@ You can specify `--net=PATTERN` flag with a minimatch pattern to change which ne
 For example, `--net=n[369]` selects n3, n6, and n9 interfaces.
 To show all network interfaces (including "lo" and PDU sessions), use `--net=ALL` flag.
 
+Per NIC queue counters can be obtained from PCI Ethernet adapters that support `ethtool -S` command.
+You can specify `--queues=PATTERN` flag with a minimatch pattern to select these network interfaces.
+
 Each packet counter is an accumulative value since the network interface was added.
 Typically, you should run this command once before starting traffic generators, and again after stopping traffic generators, and then calculate the difference between the two counter readings on the same network interface.
 Depending on the scenario topology and traffic flows you executed, it may be possible to determine whether the traffic flows were sent over the expected network interfaces, and whether packet loss has occurred either within a network function or on the network links between two network functions.
+
+```bash
+./compose.sh linkstat --ct='+(ue|gnb|upf|dn_)*' --net='+(pdu*|val*|air|n3|n6)' --queues='+(n3|n6)' --out=linkstat0.tsv
+./tg.sh
+./compose.sh linkstat --ct='+(ue|gnb|upf|dn_)*' --net='+(pdu*|val*|air|n3|n6)' --queues='+(n3|n6)' --out=linkstat1.tsv
+paste linkstat0.tsv linkstat1.tsv | awk '
+  NR==1 { NF=5; print }
+  $1==$6 && $2==$7 && $3==$8 { print $1, $2, $3, $9-$4, $10-$5 }
+' | column -t
+```
 
 ## List PDU sessions
 
