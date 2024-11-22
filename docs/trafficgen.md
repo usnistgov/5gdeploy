@@ -6,8 +6,7 @@ They can be invoked in a Compose context directory (e.g. `~/compose/20230601`), 
 ## Gather netif counters
 
 `./compose.sh linkstat` command prints a table or writes a TSV document that lists network interface counters.
-The information is gathered by executing `ip -s link show` in each container.
-If a container lacks the iproute2 package, it is silently skipped.
+The information is gathered by executing `ip -s link show` in each container's network namespace, either through the bridge container on a multi-host deployment or in the target container itself.
 
 By default, the output is an aligned textual table.
 You can set `--out=FILENAME` flag to write to a TSV output file.
@@ -15,8 +14,15 @@ You can set `--out=-.tsv` flag to print the TSV document to the console.
 
 The table shows network interfaces within each container (across all hosts, in case of a multi-host deployment).
 Each row has container name, network interface name, RX packet counter, and TX packet counter.
+The sort order may be adjusted with either `--sort-by=ct` or `--sort-by=net` flag.
+
+By default, the table includes all services defined in the Compose file that have their own network namespaces.
+You can specify `--ct=PATTERN` flag with a minimatch pattern to change which container names are included.
+For example, `--ct='+(ue|gnb|upf|dn_)*'` selects dataplane related containers.
+
 By default, the table only includes the networks defined in the Compose file.
-You can specify `--net=PATTERN` flag with a minimatch pattern to change which network interfaces are included; for example, `--net=n[369]` selects n3, n6, and n9 interfaces.
+You can specify `--net=PATTERN` flag with a minimatch pattern to change which network interfaces are included.
+For example, `--net=n[369]` selects n3, n6, and n9 interfaces.
 To show all network interfaces (including "lo" and PDU sessions), use `--net=ALL` flag.
 
 Each packet counter is an accumulative value since the network interface was added.

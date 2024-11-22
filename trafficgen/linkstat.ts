@@ -16,14 +16,37 @@ type LinkInfo64 = SetOptional<LinkInfo, "stats"> & {
 const args = Yargs()
   .option(ctxOptions)
   .option(tableOutputOptions)
+  .option("ct", {
+    default: "*",
+    desc: "selected containers (minimatch pattern)",
+    type: "string",
+  })
   .option("net", {
     defaultDescription: "networks defined in the Compose file",
     desc: "selected networks (minimatch pattern, 'ALL' for all network interfaces including 'lo' and PDU sessions)",
     type: "string",
   })
+  .option("sort-by", {
+    choices: ["ct", "net"],
+    default: "ct",
+    desc: "report sort order",
+    type: "string",
+  })
   .parseSync();
 
 const [c] = await loadCtx(args);
+
+function ctnsExec(s: ComposeService, command: readonly string[]): Promise<dockerode.execCommand.Result> {
+  let containerName = s.container_name;
+  if (c.services.bridge) {
+    containerName = "bridge";
+    command = ["ctns.sh", s.container_name, ...command];
+  }
+  const ct = dockerode.getContainer(containerName, compose.annotate(s, "host"));
+  return dockerode.execCommand(ct, command);
+}
+
+const ctMatcher = new Minimatch(args.ct);
 
 let networksMatcher: (net: string) => boolean;
 if (args.net === undefined) {
@@ -37,11 +60,11 @@ if (args.net === undefined) {
 
 const table = await pipeline(
   () => Object.values(c.services),
-  filter((s: ComposeService) => !compose.annotate(s, "every_host") && s.network_mode === undefined),
+  filter((s: ComposeService) => !compose.annotate(s, "every_host") &&
+   ctMatcher.match(s.container_name) && s.network_mode === undefined),
   flatTransform(16, async function*(s) {
     try {
-      const ct = dockerode.getContainer(s.container_name, compose.annotate(s, "host"));
-      const exec = await dockerode.execCommand(ct, ["ip", "-j", "-s", "link", "show"]);
+      const exec = await ctnsExec(s, ["ip", "-j", "-s", "link", "show"]);
       const links = JSON.parse(exec.stdout) as LinkInfo64[];
       yield { ct: s.container_name, links };
     } catch {}
@@ -57,7 +80,16 @@ const table = await pipeline(
   map(({ row }) => row),
   collect,
 );
-table.sort(sortBy("0", "1"));
+switch (args["sort-by"]) {
+  case "ct": {
+    table.sort(sortBy("0", "1"));
+    break;
+  }
+  case "net": {
+    table.sort(sortBy("1", "0"));
+    break;
+  }
+}
 
 await tableOutput(args, file_io.toTable(
   ["ct", "net", "rx-pkts", "tx-pkts"],
