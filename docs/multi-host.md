@@ -186,14 +186,20 @@ Bridge configuration scripts will configure Toeplitz hash function on the networ
 The hash key is selected such that any *E* consecutive source/destination IP addresses are distributed to *E* distinct queues.
 For example, assuming gNBs / UPFs / PDU sessions are assigned consecutive IP addresses, a possible arrangement to achieve balanced distribution is:
 
-* UPF N3 could have +rss=*S*/*E*s, where *E* is a divisor of gNB quantity.
-* DN N6 could have +rss=*S*/*E*s, where *E* is a divisor of per-DN UE quantity.
-* UPF N6 could have +rss=*S*/*E*d, where *E* is a divisor of per-DN UE quantity.
-* gNB N3 could have +rss=*S*/*E*s, where *E* is a divisor of UPF quantity.
+* UPF N3 could have +rss*S*/*E*s, where *E* is a divisor of gNB quantity.
+* DN N6 could have +rss*S*/*E*s, where *E* is a divisor of per-DN UE quantity.
+* UPF N6 could have +rss*S*/*E*d, where *E* is a divisor of per-DN UE quantity.
+* gNB N3 could have +rss*S*/*E*s, where *E* is a divisor of UPF quantity.
 
 Host NICs are not configured automatically, but they can be manually configured using the `toeplitz.sh` script embedded in the bridge container.
 Note that changing RSS setting on a host NIC would affect all attached MACVLAN subinterfaces.
 The same script supports changing container NIC RSS rules at runtime, as an alternative of writing "+rss" as part of bridge parameter.
+
+For i40 Ethernet adapter used inside KVM guest via PCI passthrough, the mapping between queue number and CPU core may change during virtual machine reboots.
+This causes difficulty in providing a queue number in the *S* parameter when it's desired to handle the traffic in a specific CPU core.
+To solve this issue, the `toeplitz.sh` script allows *S* parameter to be written as i40e:*C*, where *C* is a CPU core.
+This would invoke `i40e-queue-cpu.sh` script to search for a queue number among `/proc/irq/*/effective_affinity_list`.
+This syntax is only supported when invoking `toeplitz.sh` script manually, and *E* must be 1.
 
 ```bash
 #                             netif S E input
@@ -202,6 +208,9 @@ docker exec bridge toeplitz.sh eth2 6 2 d
 
 #                             ct:netif S E input
 docker exec bridge toeplitz.sh upf1:n3 8 2 s
+
+# i40e lookup queue number by CPU core
+$(./compose.sh at upf1) exec bridge toeplitz.sh upf1:n3 i40e:4 1 s
 
 # revert to default state
 docker exec bridge toeplitz.sh eth1    reset
