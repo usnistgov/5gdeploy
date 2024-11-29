@@ -71,7 +71,7 @@ class F5CPBuilder {
 
   private async buildWebClient(): Promise<void> {
     const webconsole = await import("./webconsole-openapi/models/index.js");
-    const serverIP = compose.getIP(this.ctx.c.services.webui!, "mgmt");
+    const serverIP = compose.getIP(this.ctx.c, "webui", "mgmt");
     const s = this.ctx.defineService("webclient", "5gdeploy.localhost/free5gc-webclient", ["mgmt"]);
     await compose.setCommandsFile(
       this.ctx, s, this.generateWebClientCommands(webconsole, serverIP),

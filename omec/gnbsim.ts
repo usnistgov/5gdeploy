@@ -28,7 +28,7 @@ export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
 
 function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: NetDef.GNB): PartialDeep<OMEC.Root<OMEC.gnbsim.Configuration>> {
   const plmnId: OMEC.PLMNID = NetDef.splitPLMN(ctx.network.plmn);
-  const amfIP = ctx.gatherIPs("amf", "n2")[0]!;
+  const amfIP = compose.getIP(ctx.c, "amf*", "n2");
   const g: OMEC.gnbsim.GNB = {
     n2IpAddr: compose.getIP(s, "n2"),
     n2Port: 9487,
@@ -88,7 +88,7 @@ function makeProfile(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
   assert(sub.requestedDN.length > 0);
   const dn = ctx.netdef.findDN(sub.requestedDN[0]!);
   assert(!!dn);
-  const dnIP = compose.getIP(ctx.c.services[`dn_${dn.dnn}`]!, "n6");
+  const dnIP = compose.getIP(ctx.c, `dn_${dn.dnn}`, "n6");
   const plmnId: OMEC.PLMNID = NetDef.splitPLMN(ctx.network.plmn);
 
   return {

@@ -245,8 +245,8 @@ class NWDAFBuilder extends CN5GBuilder {
   public async build(): Promise<void> {
     this.tplC = await file_io.readYAML(path.join(oai_conf.composePath, "nwdaf/docker-compose-nwdaf-cn-http2.yaml")) as any;
     this.ipRepl.push(
-      ["192.168.70.132", compose.getIP(this.ctx.c.services.amf!, "cp")],
-      ["192.168.70.133", compose.getIP(this.ctx.c.services.smf!, "cp")],
+      ["192.168.70.132", compose.getIP(this.ctx.c, "amf*", "cp")],
+      ["192.168.70.133", compose.getIP(this.ctx.c, "smf*", "cp")],
     );
 
     this.ctx.defineNetwork("nwdaf");
@@ -280,8 +280,8 @@ class NWDAFBuilder extends CN5GBuilder {
     if (ms === "sbi") {
       compose.setCommands(s, [
         ...compose.waitReachable("AMF and SMF", [
-          compose.getIP(this.ctx.c.services.amf!, "cp"),
-          compose.getIP(this.ctx.c.services.smf!, "cp"),
+          compose.getIP(this.ctx.c, "amf*", "cp"),
+          compose.getIP(this.ctx.c, "smf*", "cp"),
         ], { mode: "tcp:8080" }),
         "msg Starting NWDAF-SBI",
         "exec ./oai-nwdaf-sbi",
@@ -299,7 +299,7 @@ class NWDAFBuilder extends CN5GBuilder {
 
   private buildCLI(): void {
     const s = this.ctx.defineService("nwdaf_cli", "5gdeploy.localhost/oai-nwdaf-cli", ["nwdaf"]);
-    s.extra_hosts["oai-nwdaf-nbi-gateway"] = compose.getIP(this.ctx.c.services.nwdaf_nbigateway!, "nwdaf");
+    s.extra_hosts["oai-nwdaf-nbi-gateway"] = compose.getIP(this.ctx.c, "nwdaf_nbigateway", "nwdaf");
 
     const nu = new URL("http://127.0.0.1:3000/notification");
     nu.hostname = compose.getIP(s, "nwdaf");
@@ -358,9 +358,12 @@ class UPBuilder extends CN5GBuilder {
 
   private updateConfigUPF(peers: NetDef.UPFPeers): void {
     if (this.c.nfs.nrf) {
-      this.c.nfs.nrf.host = compose.getIP(this.ctx.c.services.nrf!, "cp");
+      this.c.nfs.nrf.host = compose.getIP(this.ctx.c, "nrf", "cp");
     }
-    this.c.upf!.smfs = this.ctx.gatherIPs("smf", "n4").map((host): CN5G.upf.SMF => ({ host }));
+    this.c.upf!.smfs = Array.from(
+      compose.listByNf(this.ctx.c, "smf"),
+      (smf) => ({ host: compose.getIP(smf, "n4") }),
+    );
     this.c.nfs.smf!.host = this.c.upf!.smfs[0]!.host;
 
     this.updateConfigDNNs();

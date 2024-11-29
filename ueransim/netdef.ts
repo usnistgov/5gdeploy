@@ -55,8 +55,8 @@ class UeransimBuilder {
       ngapIp: compose.getIP(s, "n2"),
       gtpIp: compose.getIP(s, "n3"),
       amfConfigs: Array.from(
-        this.ctx.gatherIPs("amf", "n2"),
-        (address) => ({ address, port: 38412 }),
+        compose.listByNf(this.ctx.c, "amf"),
+        (amf) => ({ address: compose.getIP(amf, "n2"), port: 38412 } as const),
       ),
       slices: Array.from(
         this.ctx.netdef.nssai,
@@ -97,7 +97,7 @@ class UeransimBuilder {
       key: sub.k,
       op: sub.opc,
       opType: "OPC",
-      gnbSearchList: this.ctx.gatherIPs(sub.gnbs, "air"),
+      gnbSearchList: Array.from(sub.gnbs, (gnb) => compose.getIP(this.ctx.c, gnb, "air")),
       sessions: Array.from(
         sub.requestedDN,
         ({ dnn, snssai }) => ({

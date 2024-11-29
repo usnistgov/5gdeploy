@@ -101,7 +101,7 @@ class RANBuilder {
   }
 
   private async buildGNB(s: ComposeService, gnb: NetDef.GNB, rusdr: SRS.gnb.RUSDR, cellcfg: SetOptional<SRS.gnb.Cell, "plmn" | "tac" | "pci">): Promise<void> {
-    const amfIP = this.ctx.gatherIPs("amf", "n2")[0]!;
+    const amfIP = compose.getIP(this.ctx.c, "amf*", "n2");
 
     const c: SRS.gnb.Config = {
       gnb_id: gnb.nci.gnb,

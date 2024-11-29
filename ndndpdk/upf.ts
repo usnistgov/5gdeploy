@@ -16,7 +16,7 @@ function setCommands(ctx: NetDefComposeContext, s: ComposeService, upf: N.UPF): 
   const [upfN4ip] = compose.getIPMAC(s, "n4");
   const [upfN3ip, upfN3mac] = compose.getIPMAC(s, "n3");
   const flags = [
-    `--smf-n4=${ctx.gatherIPs("smf", "n4")[0]}`,
+    `--smf-n4=${compose.getIP(ctx.c, "smf*", "n4")}`,
     `--upf-n4=${upfN4ip}`,
     `--upf-n3=${upfN3ip}`,
     `--upf-mac=${upfN3mac}`,
@@ -24,7 +24,7 @@ function setCommands(ctx: NetDefComposeContext, s: ComposeService, upf: N.UPF): 
 
   const peers = ctx.netdef.gatherUPFPeers(upf);
   assert(peers.N6IPv4.length === 1);
-  flags.push(`--dn=${ctx.gatherIPs([`dn_${peers.N6IPv4[0]!.dnn}`], "n6")}`);
+  flags.push(`--dn=${compose.getIP(ctx.c, `dn_${peers.N6IPv4[0]!.dnn}`, "n6")}`);
   for (const gnb of peers.N3) {
     const [gnbN3ip, gnbN3mac] = compose.getIPMAC(ctx.c.services[gnb.name]!, "n3");
     flags.push(`--n3=${gnbN3ip}=${gnbN3mac}`);

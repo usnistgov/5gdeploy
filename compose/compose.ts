@@ -1,5 +1,6 @@
 import stringify from "json-stringify-deterministic";
 import { ip2long, Netmask } from "netmask";
+import { filter, take } from "obliterator";
 import type { ConditionalKeys, ReadonlyDeep } from "type-fest";
 
 import type { ComposeFile, ComposeNamedVolume, ComposeNetwork, ComposePort, ComposeService, ComposeVolume } from "../types/mod.js";
@@ -234,16 +235,27 @@ export function annotate(s: any, key: string, value?: string | number) {
 }
 
 /**
+ * List containers that match the network function name.
+ * @param c - Compose file, possibly readonly.
+ * @param nf - Desired network function name.
+ */
+export function listByNf<T extends Pick<ReadonlyDeep<ComposeService>, "container_name">>(
+    c: { readonly services: Record<string, T> }, nf: string,
+): Iterable<T> {
+  return filter(Object.values(c.services), ({ container_name }) => nameToNf(container_name) === nf);
+}
+
+/**
  * List services whose annotation matching a predicate.
- * @param c - Compose file.
+ * @param c - Compose file, possibly readonly.
  * @param key - Annotation key.
  * @param predicate - Expected value or predicate function.
  * @returns List of matched services.
  */
-export function listByAnnotation(
-    c: ComposeFile, key: string,
+export function listByAnnotation<T extends Pick<ReadonlyDeep<ComposeService>, "annotations">>(
+    c: { readonly services: Record<string, T> }, key: string,
     predicate: string | number | ((value: string) => boolean) = () => true,
-): ComposeService[] {
+): T[] {
   key = `5gdeploy.${key}`;
   if (typeof predicate !== "function") {
     const expected = `${predicate}`;
@@ -299,10 +311,32 @@ export function disconnectNetif(c: ComposeFile, ct: string, net: string): string
 
 /**
  * Retrieve IPv4 address.
+ * @param ct - Either container name or network function named followed by "*".
+ * @throws Error - Service or netif does not exist.
+ */
+export function getIP(c: ReadonlyDeep<ComposeFile>, ct: string, net: string): string;
+
+/**
+ * Retrieve IPv4 address.
  * @throws Error - Netif does not exist.
  */
-export function getIP(s: ReadonlyDeep<ComposeService>, net: string): string {
-  const ip = annotate(s, `ip_${net}`) ?? s.networks[net]?.ipv4_address;
+export function getIP(s: ReadonlyDeep<ComposeService>, net: string): string;
+
+export function getIP(c: ReadonlyDeep<ComposeFile> | ReadonlyDeep<ComposeService>, ct: string, net = ct): string {
+  let s: ReadonlyDeep<ComposeService> | undefined;
+  if ("services" in c) {
+    if (ct.endsWith("*")) {
+      const nf = ct.slice(0, -1);
+      [s] = take(listByNf(c, nf), 1);
+    } else {
+      s = c.services[ct];
+    }
+    assert(s, `service ${ct} missing`);
+  } else {
+    s = c;
+  }
+
+  const ip = annotate(s, `ip_${net}`);
   assert(ip, `netif ${s.container_name}:${net} missing`);
   return ip;
 }
@@ -311,7 +345,7 @@ export function getIP(s: ReadonlyDeep<ComposeService>, net: string): string {
  * Retrieve IPv4 and MAC address.
  * @throws Error - Netif does not exist.
  */
-export function getIPMAC(s: ComposeService, net: string): [ip: string, mac: string] {
+export function getIPMAC(s: ReadonlyDeep<ComposeService>, net: string): [ip: string, mac: string] {
   const ip = getIP(s, net);
   const mac = annotate(s, `mac_${net}`) ?? ip2mac(ip);
   return [ip, mac];

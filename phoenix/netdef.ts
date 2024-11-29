@@ -144,7 +144,7 @@ abstract class PhoenixScenarioBuilder {
       initCommands,
       makeDatabase: async (tpl, d, append) => {
         d.database = ct;
-        d.hostname = compose.getIP(this.ctx.c.services.sql!, "db");
+        d.hostname = compose.getIP(this.ctx.c, "sql", "db");
         await this.ctx.writeFile(
           `${this.nfKind}-sql/${ct}.sql`,
           await compose.mysql.join(await this.loadDatabase(tpl, ct), append),
@@ -159,12 +159,15 @@ abstract class PhoenixScenarioBuilder {
   private async loadNF(tpl: string, s: ComposeService): Promise<NetworkFunction> {
     const tplCt = path.basename(tpl, ".json");
     let body = await file_io.readText(this.tplFile(tpl), { once: true });
-    body = body.replaceAll(/"%([A-Z\d]+)_([A-Z\d]+)_IP"/g, (m, mCt: string, mNet: string) => {
+    body = body.replaceAll(/"%([A-Z\d]+)_([A-Z\d]+)_IP"/g, (m, ct: string, net: string) => {
       void m;
-      mCt = mCt.toLowerCase();
-      const service = mCt === tplCt ? s : this.ctx.c.services[mCt];
-      mNet = mNet.toLowerCase();
-      return JSON.stringify(service?.networks[mNet]?.ipv4_address ?? "unresolved-ip-address");
+      ct = ct.toLowerCase();
+      net = net.toLowerCase();
+      let ip = "unresolved-ip-address";
+      try {
+        ip = ct === tplCt ? compose.getIP(s, net) : compose.getIP(this.ctx.c, ct, net);
+      } catch {}
+      return JSON.stringify(ip);
     });
 
     const nf = NetworkFunction.parse(body);
@@ -408,20 +411,20 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       });
 
       nf.editModule("pfcp", ({ config }) => {
-        config.Associations.Peer = Array.from(this.ctx.gatherIPs("upf", "n4"), (ip) => ({
+        config.Associations.Peer = Array.from(compose.listByNf(this.ctx.c, "upf"), (upf) => ({
           type: "udp",
           port: 8805,
-          bind: ip,
-        }));
+          bind: compose.getIP(upf, "n4"),
+        } as const));
         config.Associations.heartbeat_interval = 5;
         config.Associations.max_heartbeat_retries = 2;
-      });
 
-      // After an initial PFCP Association Setup Request times out, the SMF may generate duplicate
-      // PFCP Association Setup Requests and end up with multiple associations with the same UPF.
-      // This eventually leads to heartbeat timeout and SMF crash. To avoid this situation, we
-      // wait for all UPFs to come online before launching the SMF.
-      initCommands.push(...compose.waitReachable("UPF", this.ctx.gatherIPs("upf", "n4")));
+        // After an initial PFCP Association Setup Request times out, the SMF may generate duplicate
+        // PFCP Association Setup Requests and end up with multiple associations with the same UPF.
+        // This eventually leads to heartbeat timeout and SMF crash. To avoid this situation, we
+        // wait for all UPFs to come online before launching the SMF.
+        initCommands.push(...compose.waitReachable("UPF", Array.from(config.Associations.Peer, ({ bind }) => bind)));
+      });
     }
   }
 
@@ -650,10 +653,10 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
         Object.assign(config, this.plmn);
         delete config.amf_addr;
         delete config.amf_port;
-        config.amf_list = Array.from(this.ctx.gatherIPs("amf", "n2"), (ip) => ({
-          ngc_addr: ip,
+        config.amf_list = Array.from(compose.listByNf(this.ctx.c, "amf"), (amf) => ({
+          ngc_addr: compose.getIP(amf, "n2"),
           ngc_sctp_port: 38412,
-        }));
+        } as const));
         config.gnb_id = gnb.nci.gnb;
         config.cell_id = gnb.nci.nci;
         config.tac = this.netdef.tac;

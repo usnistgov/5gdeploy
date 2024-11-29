@@ -53,8 +53,8 @@ function makeConfigUpdate(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDe
 
   const c: PartialDeep<prush.Root> = {};
   c.amfif = Array.from(
-    ctx.gatherIPs("amf", "n2"),
-    (ip) => ({ ip, port: 38412 }),
+    compose.listByNf(ctx.c, "amf"),
+    (amf) => ({ ip: compose.getIP(amf, "n2"), port: 38412 } as const),
   );
   c.gnodeb = {
     controlif: { ip: compose.getIP(s, "n2") },

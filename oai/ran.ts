@@ -49,8 +49,8 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
     "snssaiList:dtype": "l",
   }];
 
-  g0.amf_ip_address = ctx.gatherIPs("amf", "n2").map((ip): OAI.gnb.AMF => ({
-    ipv4: ip,
+  g0.amf_ip_address = Array.from(compose.listByNf(ctx.c, "amf"), (amf): OAI.gnb.AMF => ({
+    ipv4: compose.getIP(amf, "n2"),
     ipv6: "100::",
     active: "yes",
     preference: "ipv4",
@@ -147,7 +147,7 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
   }
 
   c.rfsimulator = {
-    serveraddr: ctx.gatherIPs(sub.gnbs, "air")[0]!,
+    serveraddr: compose.getIP(ctx.c, sub.gnbs[0]!, "air"),
   };
 
   c.telnetsrv = {

@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { Arrayable, EmptyObject, Promisable } from "type-fest";
+import type { EmptyObject, Promisable } from "type-fest";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
@@ -49,26 +49,6 @@ export class ComposeContext {
       compose.connectNetif(this.c, ct, net, this.ipAlloc.allocNetif(net, ct));
     }
     return service;
-  }
-
-  /**
-   * Gather IP addresses of a network function or containers on a network.
-   * @param nf - A network function name or a list of container names.
-   * @param net - Network name.
-   * @returns A list of IPv4 addresses used by containers serving the network function.
-   */
-  public gatherIPs(nf: Arrayable<string>, net: string): string[] {
-    const list: string[] = [];
-    for (const [ct, s] of Object.entries(this.c.services)) {
-      if ((typeof nf === "string") ? (compose.nameToNf(ct) !== nf) : (!nf.includes(ct))) {
-        continue;
-      }
-      const ip = compose.annotate(s, `ip_${net}`) ?? s.networks[net]?.ipv4_address;
-      if (ip) {
-        list.push(ip);
-      }
-    }
-    return list;
   }
 
   /**

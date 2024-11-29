@@ -18,7 +18,7 @@ export async function bessUP(ctx: NetDefComposeContext, upf: N.UPF): Promise<voi
   c.core.ifname = "n6";
   c.workers = 2;
   c.read_timeout = 0xFFFFFFFF;
-  c.cpiface = { peers: ctx.gatherIPs("smf", "n4") };
+  c.cpiface = { peers: Array.from(compose.listByNf(ctx.c, "smf"), (smf) => compose.getIP(smf, "n4")) };
   const cfg = await ctx.writeFile(`up-cfg/${ct}.json`, c);
 
   const pfcpiface = ctx.defineService(ct, `upf-epc-pfcpiface:${version}`, ["mgmt", "n4", "n3", "n6"]);
