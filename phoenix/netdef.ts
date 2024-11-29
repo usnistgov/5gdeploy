@@ -27,7 +27,7 @@ export const phoenixOptions = {
     type: "number",
   },
   "phoenix-upf-single-worker-n3": {
-    default: true,
+    defaultDescription: "true if phoenix-upf-workers is greater than 1",
     desc: "set N3 interface to single_thread mode",
     group: "phoenix",
     type: "boolean",
@@ -541,7 +541,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
       let nThreadPoolWorkers = nWorkers;
       let needThreadPool = false;
       const getInterfaceMode = (intf: "n3" | "n9" | "n6"): PH.pfcp.Interface["mode"] => {
-        if (this.opts[`phoenix-upf-single-worker-${intf}`]) {
+        if (this.opts[`phoenix-upf-single-worker-${intf}`] ?? (intf === "n3" && nWorkers > 1)) {
           --nThreadPoolWorkers;
           return "single_thread";
         }

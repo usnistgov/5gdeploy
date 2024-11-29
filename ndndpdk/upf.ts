@@ -23,7 +23,7 @@ function setCommands(ctx: NetDefComposeContext, s: ComposeService, upf: N.UPF): 
   ];
 
   const peers = ctx.netdef.gatherUPFPeers(upf);
-  assert(peers.N6IPv4.length === 1);
+  assert(peers.N6IPv4.length === 1, `UPF ${upf.name} must handle exactly 1 IPv4 DN`);
   flags.push(`--dn=${compose.getIP(ctx.c, `dn_${peers.N6IPv4[0]!.dnn}`, "n6")}`);
   for (const gnb of peers.N3) {
     const [gnbN3ip, gnbN3mac] = compose.getIPMAC(ctx.c.services[gnb.name]!, "n3");
@@ -42,7 +42,7 @@ function setCommands(ctx: NetDefComposeContext, s: ComposeService, upf: N.UPF): 
     `  ETHDEV_ID=$(jq -r --arg MAC ${upfN3mac} 'select(.macAddr==$MAC) | .id' ethdev.ndjson | head -1)`,
     "  msg Making NDN-DPDK passthru face on $ETHDEV_ID",
     `  jq -n --arg MAC ${upfN3mac} --arg PORT $ETHDEV_ID '{scheme:"passthru",local:$MAC,port:$PORT}' | ndndpdk-ctrl create-face`,
-    `  PASSTHRU_NETIF=$(ip -j link show | jq -r --arg MAC ${upfN3mac} '.[] | select(.address==$MAC and (.link|not)) | .ifname')`,
+    `  PASSTHRU_NETIF=$(ip -j link show | jq -r --arg MAC ${upfN3mac} '.[] | select(.address==$MAC and (.ifname|startswith("ndndpdkPT"))) | .ifname')`,
     `  ip addr add ${upfN3ip}/24 dev $PASSTHRU_NETIF`,
     "  msg Listing passthru device",
     "  ip addr show dev $PASSTHRU_NETIF",
