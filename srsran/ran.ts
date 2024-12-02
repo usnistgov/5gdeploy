@@ -1,17 +1,18 @@
-import type { SetOptional } from "type-fest";
+import type { Except } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import { type ComposeService, type SRS } from "../types/mod.js";
+import type { ComposeService, SRSRAN } from "../types/mod.js";
 import srsgnbSchema from "../types/srsgnb.schema.json";
 import { file_io, makeSchemaValidator } from "../util/mod.js";
 import type { SRSOpts } from "./options.js";
+import * as UHD from "./uhd.js";
 
-const gnbDockerImage = "gradiant/srsran-5g:24_04";
+const gnbDockerImage = "gradiant/srsran-5g:24_10";
 const ueDockerImage = "gradiant/srsran-4g:23_11";
 const srate = 23.04;
 
-const validateGNB: (input: unknown) => asserts input is SRS.gnb.Config = makeSchemaValidator<SRS.gnb.Config>(srsgnbSchema);
+const validateGNB: (input: unknown) => asserts input is SRSRAN.GnbConfig = makeSchemaValidator<SRSRAN.GnbConfig>(srsgnbSchema);
 
 /** Build RAN functions using srsRAN. */
 export async function srsRAN(ctx: NetDefComposeContext, opts: SRSOpts): Promise<void> {
@@ -51,22 +52,13 @@ class RANBuilder {
     }
   }
 
-  private async buildGNBsdr(gnb: NetDef.GNB, c: SRS.gnb.Config): Promise<void> {
+  private async buildGNBsdr(gnb: NetDef.GNB, c: SRSRAN.GnbConfig): Promise<void> {
     const s = this.ctx.defineService(gnb.name, gnbDockerImage, ["n2", "n3"]);
     compose.annotate(s, "cpus", 4);
     await this.buildGNB(s, gnb, c.ru_sdr, c.cell_cfg);
 
     if (c.ru_sdr.device_driver === "uhd") {
-      s.privileged = true;
-      s.volumes.push({
-        // /dev/bus/usb must be a bind volume and not in s.devices; putting this in s.devices would
-        // cause UHD to report "USB open failed: insufficient permissions" error when the USRP
-        // hardware is initialized for the first time after re-plugging, because UHD may reset the
-        // USRP hardware from high-speed to SuperSpeed, changing its inode device number
-        type: "bind",
-        source: "/dev/bus/usb",
-        target: "/dev/bus/usb",
-      });
+      UHD.prepareContainer(s, false);
     }
   }
 
@@ -100,30 +92,43 @@ class RANBuilder {
     return compose.getIP(s, "air");
   }
 
-  private async buildGNB(s: ComposeService, gnb: NetDef.GNB, rusdr: SRS.gnb.RUSDR, cellcfg: SetOptional<SRS.gnb.Cell, "plmn" | "tac" | "pci">): Promise<void> {
+  private async buildGNB(
+      s: ComposeService, gnb: NetDef.GNB, rusdr: SRSRAN.RUSDR,
+      cellcfg: Except<SRSRAN.Cell, "plmn" | "tac" | "pci" | "slicing">,
+  ): Promise<void> {
     const amfIP = compose.getIP(this.ctx.c, "amf*", "n2");
+    const plmn = `${this.plmn.mcc}${this.plmn.mnc}`;
+    const { tac } = this.ctx.netdef;
+    const slices = Array.from(this.ctx.netdef.nssai, (snssai) => NetDef.splitSNSSAI(snssai, true).int);
 
-    const c: SRS.gnb.Config = {
+    const c: SRSRAN.GnbConfig = {
       gnb_id: gnb.nci.gnb,
       gnb_id_bit_length: this.ctx.network.gnbIdLength,
       ran_node_name: gnb.name,
-      slicing: Array.from(this.ctx.netdef.nssai, (snssai) => NetDef.splitSNSSAI(snssai).int),
-      amf: {
-        addr: amfIP,
-        bind_addr: compose.getIP(s, "n2"),
-        n2_bind_addr: compose.getIP(s, "n2"),
-        n3_bind_addr: compose.getIP(s, "n3"),
-      },
       cu_cp: {
+        amf: {
+          addr: amfIP,
+          bind_addr: compose.getIP(s, "n2"),
+          supported_tracking_areas: [{
+            tac,
+            plmn_list: [{ plmn, tai_slice_support_list: slices }],
+          }],
+        },
         // https://github.com/srsran/srsRAN_Project/discussions/527#discussioncomment-8980792
         inactivity_timer: 7200,
+      },
+      cu_up: {
+        upf: {
+          bind_addr: compose.getIP(s, "n3"),
+        },
       },
       ru_sdr: rusdr,
       cell_cfg: {
         ...cellcfg,
         pci: gnb.nci.cell,
-        plmn: `${this.plmn.mcc}${this.plmn.mnc}`,
-        tac: this.ctx.netdef.tac,
+        plmn,
+        tac,
+        slicing: slices,
       },
       log: {
         filename: "stdout",

@@ -2,6 +2,7 @@ import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import * as UHD from "../srsran/uhd.js";
 import type { ComposeService, OAI } from "../types/mod.js";
 import { assert } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
@@ -101,20 +102,7 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
 function enableUSRP(usrp: OAIOpts["oai-gnb-usrp"], s: ComposeService, softmodemArgs: string[]): void {
   assert(usrp === "b2xx", `USRP ${usrp} is not supported`);
   softmodemArgs.push("-E", "--continuous-tx");
-  s.volumes.push({
-    // /dev/bus/usb must be a bind volume and not in s.devices; putting this in s.devices would
-    // cause UHD to report "USB open failed: insufficient permissions" error when the USRP
-    // hardware is initialized for the first time after re-plugging, because UHD may reset the
-    // USRP hardware from high-speed to SuperSpeed, changing its inode device number
-    type: "bind",
-    source: "/dev/bus/usb",
-    target: "/dev/bus/usb",
-  }, {
-    type: "bind",
-    source: "/usr/local/share/uhd/images",
-    target: "/usr/local/share/uhd/images",
-    read_only: true,
-  });
+  UHD.prepareContainer(s, true);
 }
 
 /** Define UE container and generate configuration. */

@@ -1,5 +1,5 @@
 import map from "obliterator/map.js";
-import type { SetRequired } from "type-fest";
+import type { RequiredDeep, SetRequired } from "type-fest";
 import { arr2hex, randomBytes } from "uint8-util";
 
 import type { N } from "../types/mod.js";
@@ -260,9 +260,14 @@ export namespace NetDef {
   }
 
   /** Split S-NSSAI as sst and sd. */
-  export function splitSNSSAI(snssai: N.SNSSAI): SNSSAI {
+  export function splitSNSSAI(snssai: N.SNSSAI): SNSSAI;
+
+  /** Split S-NSSAI as sst and sd, filling default sd 0xFFFFFF. */
+  export function splitSNSSAI(snssai: N.SNSSAI, sdFilled: true): RequiredDeep<SNSSAI>;
+
+  export function splitSNSSAI(snssai: N.SNSSAI, sdFilled = false) {
     assert(/^[\da-f]{2}(?:[\da-f]{6})?$/i.test(snssai));
-    if (snssai.length === 2) {
+    if (snssai.length === 2 && !sdFilled) {
       const sstInt = Number.parseInt(snssai, 16);
       return {
         hex: { sst: snssai },
@@ -272,7 +277,7 @@ export namespace NetDef {
     }
     const sst = snssai.slice(0, 2);
     const sstInt = Number.parseInt(sst, 16);
-    const sd = snssai.slice(2);
+    const sd = snssai.slice(2) || "FFFFFF";
     return {
       hex: { sst, sd },
       int: { sst: sstInt, sd: Number.parseInt(sd, 16) },

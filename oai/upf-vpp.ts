@@ -15,7 +15,7 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIO
   const peers = ctx.netdef.gatherUPFPeers(upf);
   assert(peers.N6IPv4.length === 1, `UPF ${upf.name} must handle exactly 1 IPv4 DN`);
   const dn = peers.N6IPv4[0]!;
-  const { sst, sd = "FFFFFF" } = NetDef.splitSNSSAI(dn.snssai).ih;
+  const { sst, sd } = NetDef.splitSNSSAI(dn.snssai, true).ih;
 
   const image = await oai_conf.getTaggedImageName(opts, "upf-vpp");
   const s = ctx.defineService(ct, image, ["cp", "n4", "n6", "n3"]);

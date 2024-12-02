@@ -44,8 +44,8 @@ export type PLMN = string;
  * S-NSSAI, single network slice selection assistance information.
  *
  * @remarks
- * SST only: 2 hexadecimal digits, example: "01".
- * SST+SD: 8 hexadecimal digits, example: "80000001".
+ * SST only: 2 hexadecimal digits (upper case), example: "01".
+ * SST+SD: 8 hexadecimal digits (upper case), example: "8000000F".
  * @see {@link https://www.techplayon.com/5g-ran-and-5gc-network-slice-signaling/}
  */
 export type SNSSAI = string;

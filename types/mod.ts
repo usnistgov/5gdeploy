@@ -34,8 +34,8 @@ export * as prom from "./prometheus.js";
 /** PacketRusher related types. */
 export * as prush from "./packetrusher.js";
 
-/** srsRAN related types. */
-export * as SRS from "./srsran.js";
+/** srsRAN 5G related types. */
+export * as SRSRAN from "./srsran.js";
 
 /** UERANSIM related types. */
 export * as UERANSIM from "./ueransim.js";
