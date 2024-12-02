@@ -40,6 +40,7 @@ export namespace gnb {
     rfsimulator: RFSimulator;
     telnetsrv?: TelnetServer;
     log_config?: LogConfig;
+    e2_agent?: unknown;
     [k: string]: unknown;
   }
 

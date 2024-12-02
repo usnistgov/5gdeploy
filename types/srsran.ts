@@ -1,6 +1,6 @@
 export interface Slice {
   sst: number;
-  sd: number;
+  sd?: number;
 }
 
 export interface GnbConfig {
@@ -11,7 +11,7 @@ export interface GnbConfig {
   qos?: unknown;
   srbs?: unknown;
   cu_cp: CUCP;
-  cu_up: CUUP;
+  cu_up?: CUUP;
   du?: unknown;
   cell_cfg: Cell;
   cells?: Array<Partial<Cell>>;

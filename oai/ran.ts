@@ -78,6 +78,8 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
     ngap_log_level: "debug",
   };
 
+  delete c.e2_agent;
+
   const softmodemArgs = [
     "-O", "/opt/oai-gnb/etc/gnb.conf",
     "--sa",

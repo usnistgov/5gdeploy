@@ -99,7 +99,7 @@ class RANBuilder {
     const amfIP = compose.getIP(this.ctx.c, "amf*", "n2");
     const plmn = `${this.plmn.mcc}${this.plmn.mnc}`;
     const { tac } = this.ctx.netdef;
-    const slices = Array.from(this.ctx.netdef.nssai, (snssai) => NetDef.splitSNSSAI(snssai, true).int);
+    const slices = Array.from(this.ctx.netdef.nssai, (snssai) => NetDef.splitSNSSAI(snssai).int);
 
     const c: SRSRAN.GnbConfig = {
       gnb_id: gnb.nci.gnb,
