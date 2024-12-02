@@ -1,8 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { promisify } from "node:util";
 
-import fsWalkLib from "@nodelib/fs.walk";
 import asTable from "as-table";
 import { parse as csvParse, type parser as csvParser, stringify as csvStringify } from "csv/sync";
 import getStdin from "get-stdin";
@@ -12,8 +10,6 @@ import * as jsonc from "jsonc-parser";
 import DefaultMap from "mnemonist/default-map.js";
 import { type AnyIterable, collect } from "streaming-iterables";
 import type { Promisable } from "type-fest";
-
-export const fsWalk = promisify(fsWalkLib.walk);
 
 function doReadText(filename: string): Promise<string> {
   return filename === "-" ? getStdin() : fs.readFile(filename, "utf8");
@@ -73,6 +69,8 @@ export namespace readYAML {
   }
 }
 
+let tableDelim: string[] | undefined;
+
 /**
  * Read file as UTF-8 text and parse as TSV/CSV table.
  * @param filename - Filename, "-" for stdin.
@@ -81,11 +79,18 @@ export namespace readYAML {
  * Space delimited input files are supported, for up to 64 consecutive spaces.
  */
 export async function readTable(filename: string, opts: readTable.Options = {}): Promise<unknown> {
+  if (!tableDelim) {
+    tableDelim = [",", "\t"];
+    for (let i = 64; i >= 1; --i) {
+      tableDelim.push(" ".repeat(i));
+    }
+  }
+
   return csvParse(await readText(filename, opts), {
     cast: opts.cast ?? false,
     columns: opts.columns ?? false,
     comment: "#",
-    delimiter: [",", "\t", ...Array.from({ length: 64 }, (x, i) => " ".repeat(64 - i))],
+    delimiter: tableDelim,
     skipEmptyLines: true,
     trim: true,
   });

@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import * as fsWalk from "@nodelib/fs.walk/promises";
 import { Netmask } from "netmask";
 import sql from "sql-tagged-template-literal";
 import type { AnyIterable } from "streaming-iterables";
@@ -253,7 +254,7 @@ abstract class PhoenixScenarioBuilder {
       }],
     );
 
-    for (const entry of await file_io.fsWalk(this.tplFile("5g/prometheus"), {
+    for (const entry of await fsWalk.walk(this.tplFile("5g/prometheus"), {
       entryFilter: (entry) => entry.name.endsWith(".json"),
     })) {
       await importGrafanaDashboard(this.ctx, entry.path);

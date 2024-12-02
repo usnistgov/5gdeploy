@@ -15,7 +15,7 @@
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
   "dependencies": {
-    "@nodelib/fs.walk": "^2.0.0",
+    "@nodelib/fs.walk": "^3.0.1",
     "@segment/ajv-human-errors": "^2.14.1",
     "@types/dockerode": "^3.3.32",
     "@types/js-yaml": "^4.0.9",
@@ -49,7 +49,7 @@
     "ts-json-schema-generator": "2.3.0",
     "tslib": "^2.8.1",
     "tsx": "^4.19.2",
-    "type-fest": "^4.29.0",
+    "type-fest": "^4.29.1",
     "typescript": "~5.7.2",
     "uint8-util": "^2.2.5",
     "yargs": "^17.7.2"
