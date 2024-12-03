@@ -5,7 +5,7 @@ This package offers these choices in the **netdef-compose** command:
 
 * `--ran=oai`: [OpenAirInterface5G](https://gitlab.eurecom.fr/oai/openairinterface5g)
   * runs in either RFSimulator mode (very slow) or with USRP hardware (gNB only)
-  * gNB supports Ethernet bridge only if `--oai-ran-tag` is unset
+  * gNB crashes upon receiving RerouteNASRequest
   * UE can only establish one PDU session
 * `--cp=oai`: [CN5G control plane](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed)
   * does not support Ethernet bridge

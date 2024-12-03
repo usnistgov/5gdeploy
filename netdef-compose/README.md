@@ -33,7 +33,6 @@ Due to incompatibilities in 5G implementations, not every combinations will work
 These combinations are verified to be compatible:
 
 * `--cp=free5gc --up=free5gc --ran=gnbsim`
-* `--cp=free5gc --up=free5gc --ran=oai` with gNB USRP
 * `--cp=free5gc --up=free5gc --ran=packetrusher`
 * `--cp=free5gc --up=free5gc --ran=ueransim`
 * `--cp=oai --up=oai --ran=gnbsim`
@@ -42,11 +41,6 @@ These combinations are verified to be compatible:
 * `--cp=oai --up=oai-vpp --ran=oai`
 * `--cp=oai --up=oai-vpp --ran=packetrusher`
 * `--cp=oai --up=oai-vpp --ran=ueransim`
-* `--cp=phoenix --up=free5gc --ran=oai`
-* `--cp=phoenix --up=free5gc --ran=packetrusher`
-* `--cp=phoenix --up=free5gc --ran=phoenix`
-* `--cp=phoenix --up=free5gc --ran=srsran`
-* `--cp=phoenix --up=free5gc --ran=ueransim`
 * `--cp=phoenix --up=open5gs --ran=packetrusher`
 * `--cp=phoenix --up=open5gs --ran=phoenix`
 * `--cp=phoenix --up=phoenix --ran=packetrusher` with `--phoenix-upf-xdp=false`
