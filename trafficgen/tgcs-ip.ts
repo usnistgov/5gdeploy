@@ -4,7 +4,7 @@ import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
 import { assert, tsrun } from "../util/mod.js";
-import { ClientStartOpt, Direction, extractHashFlag, handleTextOutputFlag, mountOutputVolume, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
+import { ClientStartOpt, Direction, extractPpFlag, handleTextOutputFlag, mountOutputVolume, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
 
 export const iperf2: TrafficGen = {
   determineDirection({ cFlags }) {
@@ -323,8 +323,8 @@ export const itg: TrafficGen = {
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
 
-    let nFlows: extractHashFlag.Match | number;
-    [cFlags, nFlows] = extractHashFlag(cFlags, /^#flows=(\d+)$/);
+    let nFlows: extractPpFlag.Match | number;
+    [cFlags, nFlows] = extractPpFlag(cFlags, /^#flows=(\d+)$/);
     nFlows = nFlows ? Number.parseInt(nFlows[1]!, 10) : 1;
     flow.nPorts = nFlows + 1;
 

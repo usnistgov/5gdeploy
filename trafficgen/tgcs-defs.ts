@@ -130,12 +130,12 @@ export function rewriteOutputFlag(s: ComposeService, prefix: string, group: stri
 }
 
 /**
- * Extract a flag that starts with '#'.
- * @param flags - Input flags. #-flags must appear before other flags.
- * @param re - RegExp to match the desired #-flag.
+ * Extract a preprocessor flag that starts with '#'.
+ * @param flags - Input flags. Preprocessor flags must appear before other flags.
+ * @param re - RegExp to match the desired preprocessor flag.
  * @returns - Remaining flags with matched flag deleted; RegExp match result.
  */
-export function extractHashFlag(flags: readonly string[], re: RegExp): [rflags: string[], m: extractHashFlag.Match] {
+export function extractPpFlag(flags: readonly string[], re: RegExp): [rflags: string[], m: extractPpFlag.Match] {
   for (const [i, flag] of flags.entries()) {
     if (!flag.startsWith("#")) {
       break;
@@ -148,11 +148,11 @@ export function extractHashFlag(flags: readonly string[], re: RegExp): [rflags: 
 
   return [[...flags], undefined];
 }
-export namespace extractHashFlag {
+export namespace extractPpFlag {
   export type Match = RegExpMatchArray | undefined;
 }
 
-/** Handle #start= flag for delayed client start. */
+/** Handle #start= preprocessor flag for delayed client start. */
 export class ClientStartOpt {
   constructor(private readonly s: ComposeService) {}
   private expr = "";
@@ -163,7 +163,7 @@ export class ClientStartOpt {
    * @returns - Remaining flags.
    */
   public rewriteFlag(flags: readonly string[]): string[] {
-    const [rflags, m] = extractHashFlag(flags, /^#start=(\$\w+|\+[.\d]+)$/);
+    const [rflags, m] = extractPpFlag(flags, /^#start=(\$\w+|\+[.\d]+)$/);
     if (m) {
       this.expr = m[1]!;
     }
@@ -189,7 +189,7 @@ export class ClientStartOpt {
 export function handleTextOutputFlag(
     s: ComposeService, flags: readonly string[], nonTextStatsExt: string,
 ): [rflags: string[], wantText: boolean] {
-  const [rflags, wantText] = extractHashFlag(flags, /^#text$/);
+  const [rflags, wantText] = extractPpFlag(flags, /^#text$/);
   if (!wantText) {
     compose.annotate(s, "tgcs_stats_ext", nonTextStatsExt);
   }

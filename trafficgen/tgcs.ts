@@ -11,7 +11,7 @@ import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
 import { assert, cmdOutput, file_io, splitVbar, tsrun, Yargs, YargsFloatNonNegative, type YargsOpt } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
-import { Direction, extractHashFlag, type TrafficGen, type TrafficGenFlowContext } from "./tgcs-defs.js";
+import { Direction, extractPpFlag, type TrafficGen, type TrafficGenFlowContext } from "./tgcs-defs.js";
 import * as tg_ip from "./tgcs-ip.js";
 import * as tg_ndn from "./tgcs-ndn.js";
 import * as tg_ns3 from "./tgcs-ns3.js";
@@ -128,14 +128,14 @@ for (let {
   sFlags,
 } of tgFlows) {
   const port = nextPort;
-  let isReversed: extractHashFlag.Match | boolean;
-  [cFlags, isReversed] = extractHashFlag(cFlags, /^#r$/i);
+  let isReversed: extractPpFlag.Match | boolean;
+  [cFlags, isReversed] = extractPpFlag(cFlags, /^#r$/i);
   isReversed = !!isReversed;
   assert(!isReversed || !tg.serverPerDN, `${tgid} does not support #R flag`);
-  let cCpus: extractHashFlag.Match;
-  [cFlags, cCpus] = extractHashFlag(cFlags, /^#cpus=(\d+)$/);
-  let sCpus: extractHashFlag.Match;
-  [sFlags, sCpus] = extractHashFlag(sFlags, /^#cpus=(\d+)$/);
+  let cCpus: extractPpFlag.Match;
+  [cFlags, cCpus] = extractPpFlag(cFlags, /^#cpus=(\d+)$/);
+  let sCpus: extractPpFlag.Match;
+  [sFlags, sCpus] = extractPpFlag(sFlags, /^#cpus=(\d+)$/);
 
   const tgFlow: TrafficGenFlowContext = {
     c,
