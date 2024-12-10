@@ -3,6 +3,8 @@
 Package **open5gs** generates [Open5GS](https://open5gs.org/) configurations.
 This package offers these choices in the **netdef-compose** command:
 
+* `--cp=open5gs`: Open5GS Control Plane
+  * not working yet
 * `--up=open5gs`: Open5GS UPF
   * does not support Ethernet bridge
   * does not support N9 interface

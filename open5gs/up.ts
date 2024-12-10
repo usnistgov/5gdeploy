@@ -7,7 +7,6 @@ import type { N, O5G } from "../types/mod.js";
 /** Build Open5GS UPF. */
 export async function o5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void> {
   const s = ctx.defineService(upf.name, "5gdeploy.localhost/open5gs", ["mgmt", "n4", "n6", "n3"]);
-  s.user = "root";
   s.devices.push("/dev/net/tun:/dev/net/tun");
   compose.annotate(s, "cpus", 1);
 

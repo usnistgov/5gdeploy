@@ -7,7 +7,7 @@ import { ndndpdkUP } from "../ndndpdk/upf.js";
 import { NetDef } from "../netdef/netdef.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { bessUP, gnbsimRAN } from "../omec/mod.js";
-import { o5UP } from "../open5gs/up.js";
+import { o5CP, o5UP } from "../open5gs/mod.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { srsOptions, srsRAN } from "../srsran/mod.js";
@@ -25,6 +25,7 @@ type UpProvider = (ctx: NetDefComposeContext, upf: N.UPF, opts: typeof args) => 
 const cpProviders: Record<string, Provider> = {
   free5gc: f5CP,
   oai: oaiCP,
+  open5gs: o5CP,
   phoenix: phoenixCP,
 };
 

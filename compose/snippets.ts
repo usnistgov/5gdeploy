@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import stringify from "json-stringify-deterministic";
 import * as shlex from "shlex";
 
 import type { ComposeService } from "../types/mod.js";
@@ -140,7 +141,7 @@ export function* waitReachable(
   yield `msg Waiting for ${noun} to become reachable`;
   for (const ip of ips) {
     if (mode === "icmp") {
-      yield `with_retry ping -c 1 -W 0.5 ${ip} &>/dev/null`;
+      yield `with_retry ping -c 1 -W 1 ${ip} &>/dev/null`;
     } else if (mode.startsWith("tcp:")) {
       yield `with_retry bash -c ${shlex.quote(`>/dev/tcp/${ip}/${mode.slice(4)}`)} &>/dev/null`;
     } else if (mode.startsWith("nc:")) {
@@ -191,7 +192,7 @@ export function* mergeConfigFile(cfg: unknown, { base, update, merged }: mergeCo
   if (typeof cfg === "string") {
     update = cfg;
   } else {
-    yield `echo ${shlex.quote(JSON.stringify(cfg))} >${update}`;
+    yield `echo ${shlex.quote(stringify(cfg))} >${update}`;
   }
   yield `yq ${fmt} -P '. *= load("${update}") | ... comments=""' ${base} | tee ${merged}`;
 }
