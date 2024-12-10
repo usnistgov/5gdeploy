@@ -31,7 +31,7 @@ export const ctxOptions = {
 /**
  * Load Compose context and NetDef.
  * @param args - Parsed {@link ctxOptions}.
- * @returns - Compose context and NetDef.
+ * @returns Compose context and NetDef.
  */
 export async function loadCtx(args: YargsInfer<typeof ctxOptions>): Promise<[c: ComposeFile, netdef: NetDef]> {
   const c = await file_io.readYAML(path.join(args.dir, "compose.yml")) as ComposeFile;

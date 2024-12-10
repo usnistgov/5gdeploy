@@ -312,11 +312,17 @@ After finishing, log contains `ERROR: _seqN > m_maxSequenceNo`:
 `--itg` traffic flow flag prepares a [D-ITG](https://traffic.comics.unina.it/software/ITG/manual/) benchmark.
 
 ```bash
-# single-flow mode
+# single flow
 ./compose.sh tgcs --itg='internet | * | -t 30000 -C 3000 -c 1250'
 
-# multi-flow mode with same characteristics
+# multiple flows of same characteristics
 ./compose.sh tgcs --itg='internet | * | #cpus=2 #flows=16 -t 30000 -O 3000 -c 1250 | #cpus=1'
+
+# multiple flows of different characteristics
+./compose.sh tgcs --itg='internet | * | #cpus=2
+  (# #flows=8 -t 30000 -O 3000 -c 1000 #)
+  (# #flows=8 -t 30000 -O 1000 -c 1200 #)
+| #cpus=1'
 ```
 
 Client flags are passed to [`ITGSend`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00042000000000000000) command.
@@ -324,6 +330,10 @@ Use `#start` preprocessor flag for delayed client start, described in [delayed c
 Use `#R` preprocessor flag for reverse direction, described in [reverse direction](tgcs-advanced.md).
 Use `#flows` preprocessor flag to send multiple parallel flows from the each client.
 Apart from preprocessor flags, all ITGSend flags except log\_opts and address+port are permitted.
+
+The brackets syntax `(# .. #)` may be used to send multiple parallel flows with different characteristics.
+When using this syntax, the `#flows` proprocessor flag should appear inside the brackets and apply to only these parallel flows, while all other proprocessor flags should appear outside the brackets and apply to the entire process.
+It's advised to make all flows end at the same time, otherwise ITGSend may encounter `terminate called after throwing an instance of 'Runtime_error'` error.
 
 Each client/server container requests one dedicated CPU core by default.
 If you are sending many flows, it's recommended to have one CPU core per 10 flows on the client side and one CPU core per 20 flows on the server side, to avoid CPU bottleneck.

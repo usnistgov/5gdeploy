@@ -73,7 +73,7 @@ export class IPAlloc {
    * Allocate a netif address.
    * @param net - Subnet name. It must exist.
    * @param host - Host name.
-   * @returns - IPv4 address within subnet.
+   * @returns IPv4 address within subnet.
    */
   public allocNetif(net: string, host: string): string {
     const c = this.networks.get(net);

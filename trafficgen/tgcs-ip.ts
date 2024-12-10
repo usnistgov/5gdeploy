@@ -4,7 +4,7 @@ import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
 import { assert, tsrun } from "../util/mod.js";
-import { ClientStartOpt, Direction, extractPpFlag, handleTextOutputFlag, mountOutputVolume, rewriteOutputFlag, type TrafficGen } from "./tgcs-defs.js";
+import { ClientStartOpt, Direction, extractPpFlag, handleTextOutputFlag, mountOutputVolume, rewriteOutputFlag, splitFlagGroups, type TrafficGen } from "./tgcs-defs.js";
 
 export const iperf2: TrafficGen = {
   determineDirection({ cFlags }) {
@@ -320,30 +320,34 @@ export const itg: TrafficGen = {
   },
   clientSetup(s, flow) {
     let { prefix, group, port, cService, cIP, cFlags, sService, sIP } = flow;
+    const sPort = port;
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
 
-    let nFlows: extractPpFlag.Match | number;
-    [cFlags, nFlows] = extractPpFlag(cFlags, /^#flows=(\d+)$/);
-    nFlows = nFlows ? Number.parseInt(nFlows[1]!, 10) : 1;
-    flow.nPorts = nFlows + 1;
-
     const ipFlags = [
       "-Sda", compose.getIP(sService, "mgmt"),
-      "-Sdp", `${port}`,
+      "-Sdp", `${sPort}`,
       "-Ssa", compose.getIP(cService, "mgmt"),
       "-a", `::ffff:${sIP}`,
       "-sa", `::ffff:${cIP}`,
     ];
     const flows: string[] = [];
-    for (let i = 1; i <= nFlows; ++i) {
-      flows.push(shlex.join([
-        ...ipFlags,
-        "-rp", `${port + i}`,
-        "-sp", `${port + i}`,
-        ...cFlags,
-      ]));
+    for (let gFlags of splitFlagGroups(cFlags)) {
+      let nFlows: extractPpFlag.Match | number;
+      [gFlags, nFlows] = extractPpFlag(gFlags, /^#flows=(\d+)$/);
+      nFlows = nFlows ? Number.parseInt(nFlows[1]!, 10) : 1;
+
+      for (let i = 0; i < nFlows; ++i) {
+        ++port;
+        flows.push(shlex.join([
+          ...ipFlags,
+          "-rp", `${port}`,
+          "-sp", `${port}`,
+          ...gFlags,
+        ]));
+      }
     }
+    flow.nPorts = port + 1 - sPort;
 
     compose.setCommands(s, [
       "msg Creating multi-flow script",
@@ -353,8 +357,8 @@ export const itg: TrafficGen = {
       shlex.join([
         "ITGSend",
         "/multi-flow.txt",
-        "-l", `/output/${group}-${port}-c.itg`,
-        "-x", `/output/${group}-${port}-s.itg`,
+        "-l", `/output/${group}-${sPort}-c.itg`,
+        "-x", `/output/${group}-${sPort}-s.itg`,
       ]),
     ]);
     mountOutputVolume(s, prefix);

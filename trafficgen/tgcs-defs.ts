@@ -102,6 +102,52 @@ export function mountOutputVolume(s: ComposeService, prefix: string): ComposeVol
 }
 
 /**
+ * Split flags as groups wrapped by "(#" and "#)".
+ * @param flags - Input flags.
+ * @returns Iterable that yields flag groups.
+ *
+ * @example
+ * No grouping:
+ * ```
+ * splitFlagGroups(shlex.split("a b"))
+ * // Yields:
+ * // - ["a", "b"]
+ * ```
+ *
+ * With grouping:
+ * ```
+ * splitFlagGroups(shlex.split("(# a b #) (# c d #)"))
+ * // Yields:
+ * // - ["a", "b"]
+ * // - ["c", "d"]
+ * ```
+ */
+export function* splitFlagGroups(flags: readonly string[]): Iterable<readonly string[]> {
+  let hasGroups = false;
+  let group: string[] = [];
+  for (const flag of flags) {
+    switch (flag) {
+      case "(#": {
+        hasGroups = true;
+        group = [];
+        break;
+      }
+      case "#)": {
+        yield group;
+        break;
+      }
+      default: {
+        group.push(flag);
+        break;
+      }
+    }
+  }
+  if (!hasGroups) {
+    yield group;
+  }
+}
+
+/**
  * Rewrite trafficgen flags so that output files are placed in the output folder.
  * @param s - Compose service for trafficgen client or server.
  * @param prefix - Service name prefix aka output folder name.
@@ -110,7 +156,7 @@ export function mountOutputVolume(s: ComposeService, prefix: string): ComposeVol
  * @param flags - Command line flags for client or server.
  * @param re - Regular expression to match output file flag name. It should have a capture group to identify file kind.
  * @param ext - Output file extension.
- * @returns - Transformed flags.
+ * @returns Transformed flags.
  */
 export function rewriteOutputFlag(s: ComposeService, prefix: string, group: string, port: number, flags: readonly string[], re: RegExp, ext: string): string[] {
   let hasOutput = false;
@@ -133,7 +179,7 @@ export function rewriteOutputFlag(s: ComposeService, prefix: string, group: stri
  * Extract a preprocessor flag that starts with '#'.
  * @param flags - Input flags. Preprocessor flags must appear before other flags.
  * @param re - RegExp to match the desired preprocessor flag.
- * @returns - Remaining flags with matched flag deleted; RegExp match result.
+ * @returns Remaining flags with matched flag deleted; RegExp match result.
  */
 export function extractPpFlag(flags: readonly string[], re: RegExp): [rflags: string[], m: extractPpFlag.Match] {
   for (const [i, flag] of flags.entries()) {
@@ -160,7 +206,7 @@ export class ClientStartOpt {
   /**
    * Extract #start= flag.
    * @param flags - Input flags.
-   * @returns - Remaining flags.
+   * @returns Remaining flags.
    */
   public rewriteFlag(flags: readonly string[]): string[] {
     const [rflags, m] = extractPpFlag(flags, /^#start=(\$\w+|\+[.\d]+)$/);
