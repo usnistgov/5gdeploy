@@ -309,39 +309,51 @@ After finishing, log contains `ERROR: _seqN > m_maxSequenceNo`:
 
 ## D-ITG
 
-`--itg` traffic flow flag prepares a [D-ITG](https://traffic.comics.unina.it/software/ITG/manual/) benchmark.
+`--itg` traffic flow flag prepares a [D-ITG](https://traffic.comics.unina.it/software/ITG/manual/index.html) benchmark.
 
 ```bash
 # single flow
 ./compose.sh tgcs --itg='internet | * | -t 30000 -C 3000 -c 1250'
 
 # multiple flows of same characteristics
-./compose.sh tgcs --itg='internet | * | #cpus=2 #flows=16 -t 30000 -O 3000 -c 1250 | #cpus=1'
+./compose.sh tgcs --itg='internet | * | #flows=4 -t 30000 -O 3000 -c 1250'
 
 # multiple flows of different characteristics
-./compose.sh tgcs --itg='internet | * | #cpus=2
-  (# #flows=8 -t 30000 -O 3000 -c 1000 #)
-  (# #flows=8 -t 30000 -O 1000 -c 1200 #)
-| #cpus=1'
+./compose.sh tgcs --itg='internet | * |
+  (# #flows=2 -t 30000 -O 3000 -c 1000 #)
+  (# #flows=2 -t 30000 -O 1000 -c 1200 #)
+'
+
+# large number of flows with IDT busy-wait disabled
+./compose.sh tgcs --itg='internet | * | #poll=0 #flows=80 -t 30000 -O 100 -c 1250'
 ```
 
 Client flags are passed to [`ITGSend`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00042000000000000000) command.
 Use `#start` preprocessor flag for delayed client start, described in [delayed client start](tgcs-advanced.md).
 Use `#R` preprocessor flag for reverse direction, described in [reverse direction](tgcs-advanced.md).
-Use `#flows` preprocessor flag to send multiple parallel flows from the each client.
+Use `#flows` preprocessor flag to define multiple parallel flows from the each client.
 Apart from preprocessor flags, all ITGSend flags except log\_opts and address+port are permitted.
 
-The brackets syntax `(# .. #)` may be used to send multiple parallel flows with different characteristics.
+The brackets syntax `(# .. #)` may be used to define multiple parallel flows with different characteristics.
 When using this syntax, the `#flows` proprocessor flag should appear inside the brackets and apply to only these parallel flows, while all other proprocessor flags should appear outside the brackets and apply to the entire process.
-It's advised to make all flows end at the same time, otherwise ITGSend may encounter `terminate called after throwing an instance of 'Runtime_error'` error.
+It's advised to align all flows to finish at the same time, otherwise ITGSend may throw `terminate called after throwing an instance of 'Runtime_error'` error.
 
-Each client/server container requests one dedicated CPU core by default.
-If you are sending many flows, it's recommended to have one CPU core per 10 flows on the client side and one CPU core per 20 flows on the server side, to avoid CPU bottleneck.
-Use `#cpus` preprocessor flag to request dedicated CPU cores, separately for clients and servers, described in [CPU allocation](tgcs-advanced.md).
+### IDT Busy-wait and CPU Allocation
+
+In an effort to improve the accuracy of inter-departure times, ITGSend is invoked with `-poll` flag that uses busy-wait loop for IDTs.
+To accommodate the CPU overhead of busy-wait loops, the client container is allocated one CPU core for every flow.
+By default, the server container is also allocated one CPU core for every flow.
+Note that you must have `--place` flags for CPU allocation rules to take effect, see [CPU allocation](tgcs-advanced.md).
+
+If it becomes necessary to reduce CPU allocation, you can turn off the `-poll` flag with `#poll=0` preprocessor flag.
+This will revert CPU allocation to one core per container, which can be further adjusted with `#cpus` preprocessor flag.
+
+### Decoding Packet Logs
 
 Packet-level logs on both client and server are always saved in the stats directory.
 Use the `--move-to-primary` flag, described in basic usage section, if they need to be transferred to the primary host.
-They can be further analyzed with [`ITGDec`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00045000000000000000) command.
+
+Each log file can be further analyzed with [`ITGDec`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00045000000000000000) command.
 
 ```bash
 alias ITGDec='docker run --rm --network none --mount type=bind,source=$(pwd),target=/data -w /data jjq52021/ditg ITGDec'

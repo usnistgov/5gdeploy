@@ -45,14 +45,16 @@ export interface TrafficGenFlowContext {
   /** Client program flags. */
   readonly cFlags: readonly string[];
 
-  /** Service service, DN or UE. */
+  /** Server service, DN or UE. */
   readonly sService: ReadonlyDeep<ComposeService>;
-  /** Service netif name. */
+  /** Server netif name. */
   readonly sNetif: string;
-  /** Service bind IP. */
+  /** Server bind IP. */
   readonly sIP: string;
-  /** Service program flags. */
+  /** Server program flags. */
   readonly sFlags: readonly string[];
+  /** Traffic generator server, available in clientSetup when serverPerDN is false. */
+  server?: ComposeService;
 }
 
 /** Traffic generator application. */

@@ -319,14 +319,17 @@ export const itg: TrafficGen = {
     compose.annotate(s, "tgcs_docker_logerr", 1);
   },
   clientSetup(s, flow) {
-    let { prefix, group, port, cService, cIP, cFlags, sService, sIP } = flow;
-    const sPort = port;
+    let { prefix, group, port, cService, cIP, cFlags, sService, sIP, server } = flow;
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
+    let noPoll: extractPpFlag.Match;
+    [cFlags, noPoll] = extractPpFlag(cFlags, /^#poll=0$/);
+    let totalFlows = 0;
 
-    const ipFlags = [
+    const commonFlags = [
+      ...(noPoll ? [] : ["-poll"]),
       "-Sda", compose.getIP(sService, "mgmt"),
-      "-Sdp", `${sPort}`,
+      "-Sdp", `${port}`,
       "-Ssa", compose.getIP(cService, "mgmt"),
       "-a", `::ffff:${sIP}`,
       "-sa", `::ffff:${cIP}`,
@@ -338,16 +341,20 @@ export const itg: TrafficGen = {
       nFlows = nFlows ? Number.parseInt(nFlows[1]!, 10) : 1;
 
       for (let i = 0; i < nFlows; ++i) {
-        ++port;
+        ++totalFlows;
         flows.push(shlex.join([
-          ...ipFlags,
-          "-rp", `${port}`,
-          "-sp", `${port}`,
+          ...commonFlags,
+          "-rp", `${port + totalFlows}`,
+          "-sp", `${port + totalFlows}`,
           ...gFlags,
         ]));
       }
     }
-    flow.nPorts = port + 1 - sPort;
+    flow.nPorts = 1 + totalFlows;
+    if (!noPoll) {
+      compose.annotate(s, "cpus", totalFlows);
+    }
+    compose.annotate(server!, "cpus", totalFlows);
 
     compose.setCommands(s, [
       "msg Creating multi-flow script",
@@ -357,8 +364,8 @@ export const itg: TrafficGen = {
       shlex.join([
         "ITGSend",
         "/multi-flow.txt",
-        "-l", `/output/${group}-${sPort}-c.itg`,
-        "-x", `/output/${group}-${sPort}-s.itg`,
+        "-l", `/output/${group}-${port}-c.itg`,
+        "-x", `/output/${group}-${port}-s.itg`,
       ]),
     ]);
     mountOutputVolume(s, prefix);

@@ -23,9 +23,7 @@ You can turn off these assignments with `--dn-workers=0 --phoenix-ue-isolated=NO
 
 Each traffic generator container is assigned either 1 or 2 dedicated CPU cores, depending on the traffic generator.
 You can use `place-report.sh` script to view the assignments.
-To change the quantity, add `#cpus=` client or server flag.
-This flag is translated by tgcs script and not passed to the client program.
-It must be specified before other flags that do not start with `#` symbol.
+To change the quantity, add `#cpus=` preprocessor flag flag.
 
 ```bash
 ~/5gdeploy/compose/place-report.sh compose.tg.yml

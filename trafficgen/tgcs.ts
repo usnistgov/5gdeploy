@@ -180,6 +180,7 @@ for (let {
       compose.annotate(server, "cpus", Number.parseInt(sCpus[1]!, 10));
     }
     services.push(server);
+    tgFlow.server = server;
   }
 
   const client = compose.defineService(output, `${prefix}_${group}_${port}_c`, tg.dockerImage);
