@@ -41,7 +41,6 @@ class F5CPBuilder {
 
   private buildMongo(): void {
     const s = this.ctx.defineService("mongo", compose.mongo.image, ["db"]);
-    compose.mongo.init(s);
     this.mongoUrl.hostname = compose.getIP(s, "db");
   }
 
@@ -435,7 +434,7 @@ class F5CPBuilder {
 
     if ("nrfUri" in c) {
       this.nrfUrl ??= (() => {
-        const u = new URL("http://invalid:8000");
+        const u = new URL("http://unset.invalid:8000");
         u.hostname = compose.getIP(this.ctx.c, "nrf", "cp");
         return u.toString().replace(/\/$/, ""); // trailing '/' causes NRF to return HTTP 404
       })();

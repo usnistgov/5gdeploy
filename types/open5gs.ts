@@ -118,6 +118,19 @@ export namespace nrf {
   }
 }
 
+export namespace pcf {
+  export interface Root extends RootBase {
+    db_uri: string;
+    pcf: PCF;
+  }
+
+  export interface PCF {
+    sbi: SBI;
+    metrics: Metrics;
+    policy: unknown[];
+  }
+}
+
 export namespace smf {
   export interface Root extends RootBase {
     smf: SMF;
@@ -153,6 +166,17 @@ export namespace smf {
   }
 
   export type Session = Except<upf.Session, "dev">;
+}
+
+export namespace udr {
+  export interface Root extends RootBase {
+    db_uri: string;
+    udr: UDR;
+  }
+
+  export interface UDR {
+    sbi: SBI;
+  }
 }
 
 export namespace upf {

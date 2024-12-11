@@ -64,6 +64,7 @@ export const mysql = {
 /** Mongo database container helpers. */
 export const mongo = {
   image: "mongo:7",
+
   init(s: ComposeService): void {
     void s;
   },

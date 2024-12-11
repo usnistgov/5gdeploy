@@ -41,6 +41,7 @@ These combinations are verified to be compatible:
 * `--cp=oai --up=oai-vpp --ran=oai`
 * `--cp=oai --up=oai-vpp --ran=packetrusher`
 * `--cp=oai --up=oai-vpp --ran=ueransim`
+* `--cp=open5gs --up=open5gs --ran=ueransim`
 * `--cp=phoenix --up=open5gs --ran=packetrusher`
 * `--cp=phoenix --up=open5gs --ran=phoenix`
 * `--cp=phoenix --up=phoenix --ran=packetrusher` with `--phoenix-upf-xdp=false`
