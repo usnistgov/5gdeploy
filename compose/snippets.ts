@@ -191,21 +191,16 @@ export function* mergeConfigFile(
   assert(fmt !== undefined, "unknown config file format");
 
   yield `yq ${fmt} -P ${shlex.quote([
-    `. ${op} ${typeof cfg === "string" ? `load(${JSON.stringify(cfg)})` : stringify(cfg)}`,
-    ...Array.from(dels, (expr) => `del(${expr})`),
     "... comments=\"\"",
+    ...Array.from(dels, (expr) => `del(${expr})`),
+    `. ${op} ${typeof cfg === "string" ? `load(${JSON.stringify(cfg)})` : stringify(cfg)}`,
+    "sort_keys(..)",
   ].join(" | "))} ${base} | tee ${merged}`;
 }
 export namespace mergeConfigFile {
   export interface Options {
     /** Base config filename from container image. */
     base: string;
-
-    /**
-     * Merge operator.
-     * @defaultValue "*"
-     */
-    op?: string;
 
     /**
      * Paths to delete.
@@ -215,6 +210,12 @@ export namespace mergeConfigFile {
      * ```
      */
     dels?: string[];
+
+    /**
+     * Merge operator.
+     * @defaultValue "*"
+     */
+    op?: string;
 
     /** Merged filename. */
     merged: string;

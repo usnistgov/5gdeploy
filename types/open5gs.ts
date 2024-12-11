@@ -1,3 +1,5 @@
+import type { Except, RequireAtLeastOne } from "type-fest";
+
 export interface RootBase {
   logger: Logger;
   global: Global;
@@ -17,6 +19,19 @@ export interface Global {
   };
 }
 
+export type SockNode = RequireAtLeastOne<{
+  family?: 0 | 2 | 10;
+  address?: string;
+  port?: number;
+  dev?: string;
+  option?: unknown;
+}, "address" | "dev">;
+export namespace SockNode {
+  export type WithAdvertise = SockNode & {
+    advertise?: string;
+  };
+}
+
 export interface PLMNID {
   mcc: string;
   mnc: string;
@@ -28,38 +43,20 @@ export interface SNSSAI {
 }
 
 export interface SBI {
-  server: SBI.Server[];
+  server: SockNode.WithAdvertise[];
   client: {
     nrf?: SBI.Client[];
     scp?: SBI.Client[];
   };
 }
 export namespace SBI {
-  export interface Server {
-    address: string;
-    port?: number;
-    dev?: string;
-    advertise?: string;
-  }
-
   export interface Client {
     uri: string;
   }
 }
 
 export interface Metrics {
-  server: Metrics.Server[];
-}
-export namespace Metrics {
-  export interface Server {
-    dev: string;
-    port: number;
-  }
-}
-
-export interface PfcpServer {
-  dev: string;
-  advertise?: string;
+  server: SockNode[];
 }
 
 export namespace amf {
@@ -79,9 +76,7 @@ export namespace amf {
   }
 
   export interface NGAP {
-    server: Array<{
-      dev: string;
-    }>;
+    server: SockNode[];
   }
 
   export interface GUAMI {
@@ -89,12 +84,13 @@ export namespace amf {
     amf_id: {
       region: number;
       set: number;
+      pointer?: number;
     };
   }
 
   export interface TAI {
     plmn_id: PLMNID;
-    tac: number;
+    tac: number[];
   }
 
   export interface PlmnSupport {
@@ -128,33 +124,35 @@ export namespace smf {
   }
 
   export interface SMF {
+    info: Info[];
     sbi: SBI;
     pfcp: {
-      server: PfcpServer[];
+      server: SockNode.WithAdvertise[];
       client: {
         upf: PfcpUpf[];
       };
     };
-    gtpc: {
-      server: Array<{
-        dev: string;
-      }>;
-    };
     gtpu: {
-      server: upf.GtpuServer[];
+      server: SockNode[];
     };
     metrics: Metrics;
-    session: upf.Session[];
+    session: Session[];
     dns: string[];
     mtu: number;
-    freeDiameter: string;
     [k: string]: unknown;
+  }
+
+  export interface Info {
+    s_nssai: Array<SNSSAI & { dnn: string[] }>;
+    tai?: unknown;
   }
 
   export interface PfcpUpf {
     address: string;
     dnn: string[];
   }
+
+  export type Session = Except<upf.Session, "dev">;
 }
 
 export namespace upf {
@@ -164,18 +162,13 @@ export namespace upf {
 
   export interface UPF {
     pfcp: {
-      server: PfcpServer[];
+      server: SockNode.WithAdvertise[];
     };
     gtpu: {
-      server: GtpuServer[];
+      server: SockNode[];
     };
     session: Session[];
     metrics: Metrics;
-  }
-
-  export interface GtpuServer {
-    dev: string;
-    [k: string]: unknown;
   }
 
   export interface Session {

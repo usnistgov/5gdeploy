@@ -3,7 +3,7 @@ import type { PartialDeep } from "type-fest";
 import * as compose from "../compose/mod.js";
 import { makeUPFRoutes, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { N, O5G } from "../types/mod.js";
-import { configureMetrics, makeLaunchCommands, o5DockerImage } from "./common.js";
+import { makeLaunchCommands, makeMetrics, o5DockerImage } from "./common.js";
 
 /** Build Open5GS UPF. */
 export async function o5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void> {
@@ -26,7 +26,7 @@ export async function o5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void>
           subnet: subnet!,
         }),
       ),
-      metrics: configureMetrics(s),
+      metrics: makeMetrics(s),
     },
   };
 

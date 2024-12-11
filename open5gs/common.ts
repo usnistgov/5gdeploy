@@ -3,7 +3,15 @@ import type { ComposeService, O5G } from "../types/mod.js";
 
 export const o5DockerImage = "5gdeploy.localhost/open5gs";
 
-export function configureMetrics(s: ComposeService): O5G.Metrics {
+export function makeSockNode(s: ComposeService, net: string, port?: number): O5G.SockNode {
+  return {
+    family: 2,
+    address: compose.getIP(s, net),
+    port,
+  };
+}
+
+export function makeMetrics(s: ComposeService): O5G.Metrics {
   const target = new URL("http://localhost:9091/metrics");
   target.hostname = compose.getIP(s, "mgmt");
   target.searchParams.set("job_name", "open5gs");
