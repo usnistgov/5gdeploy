@@ -179,29 +179,43 @@ export namespace waitReachable {
  * @remarks
  * This requires `yq` to be installed in the container.
  */
-export function* mergeConfigFile(cfg: unknown, { base, update, merged }: mergeConfigFile.Options): Iterable<string> {
-  const ext = path.extname(base);
+export function* mergeConfigFile(
+    cfg: unknown,
+    { base, op = "*", dels = [], merged }: mergeConfigFile.Options,
+): Iterable<string> {
   const fmt = {
     ".json": "-oj",
     ".yaml": "",
     ".yml": "",
-  }[ext];
+  }[path.extname(base)];
   assert(fmt !== undefined, "unknown config file format");
-  update ??= `/tmp/config-update${ext}`;
 
-  if (typeof cfg === "string") {
-    update = cfg;
-  } else {
-    yield `echo ${shlex.quote(stringify(cfg))} >${update}`;
-  }
-  yield `yq ${fmt} -P '. *= load("${update}") | ... comments=""' ${base} | tee ${merged}`;
+  yield `yq ${fmt} -P ${shlex.quote([
+    `. ${op} ${typeof cfg === "string" ? `load(${JSON.stringify(cfg)})` : stringify(cfg)}`,
+    ...Array.from(dels, (expr) => `del(${expr})`),
+    "... comments=\"\"",
+  ].join(" | "))} ${base} | tee ${merged}`;
 }
 export namespace mergeConfigFile {
   export interface Options {
     /** Base config filename from container image. */
     base: string;
-    /** Update filename to be written. */
-    update?: string;
+
+    /**
+     * Merge operator.
+     * @defaultValue "*"
+     */
+    op?: string;
+
+    /**
+     * Paths to delete.
+     * @example
+     * ```
+     * [".smf.freeDiameter"]
+     * ```
+     */
+    dels?: string[];
+
     /** Merged filename. */
     merged: string;
   }

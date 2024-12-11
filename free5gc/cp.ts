@@ -23,6 +23,7 @@ class F5CPBuilder {
   private readonly plmn: F5.PLMNID;
   private readonly plmnID: string;
   private readonly mongoUrl = new URL("mongodb://unset.invalid:27017");
+  private nrfUrl?: string;
 
   public async build(): Promise<void> {
     this.buildMongo();
@@ -422,7 +423,7 @@ class F5CPBuilder {
   }
 
   private updateSBI(s: ComposeService, c: F5.SBI): void {
-    if (c.sbi !== undefined) {
+    if ("sbi" in c) {
       const cpIP = compose.getIP(s, "cp");
       c.sbi = {
         scheme: "http",
@@ -432,12 +433,13 @@ class F5CPBuilder {
       };
     }
 
-    if (c.nrfUri !== undefined) {
-      const { nrf } = this.ctx.c.services;
-      assert(!!nrf, "NRF is not yet created");
-      const nrfUri = new URL("http://invalid:8000");
-      nrfUri.hostname = compose.getIP(nrf, "cp");
-      c.nrfUri = nrfUri.toString().replace(/\/$/, ""); // trailing '/' causes NRF to return HTTP 404
+    if ("nrfUri" in c) {
+      this.nrfUrl ??= (() => {
+        const u = new URL("http://invalid:8000");
+        u.hostname = compose.getIP(this.ctx.c, "nrf", "cp");
+        return u.toString().replace(/\/$/, ""); // trailing '/' causes NRF to return HTTP 404
+      })();
+      c.nrfUri = this.nrfUrl;
     }
   }
 

@@ -30,8 +30,8 @@ export interface SNSSAI {
 export interface SBI {
   server: SBI.Server[];
   client: {
-    nrf?: SBI.Client;
-    scp?: SBI.Client;
+    nrf?: SBI.Client[];
+    scp?: SBI.Client[];
   };
 }
 export namespace SBI {
@@ -147,6 +147,7 @@ export namespace smf {
     session: upf.Session[];
     dns: string[];
     mtu: number;
+    freeDiameter: string;
     [k: string]: unknown;
   }
 
