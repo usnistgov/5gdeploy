@@ -29,25 +29,13 @@ corepack pnpm netdef-compose --netdef=$HOME/netdef.json --out=$HOME/compose/exam
 The default combination is `--cp=phoenix --up=phoenix --ran=phoenix` (subject to change).
 If you installed 5gdeploy with `NOPHOENIX=1` environ (Open5GCore disabled), you must explicitly choose other 5G implementations.
 
-Due to incompatibilities in 5G implementations, not every combinations will work.
-These combinations are verified to be compatible:
+These are some verified combinations, see [interoperability](../docs/interop.md) for more information:
 
-* `--cp=free5gc --up=free5gc --ran=gnbsim`
 * `--cp=free5gc --up=free5gc --ran=packetrusher`
 * `--cp=free5gc --up=free5gc --ran=ueransim`
-* `--cp=oai --up=oai --ran=gnbsim`
 * `--cp=oai --up=oai --ran=oai`
-* `--cp=oai --up=oai --ran=ueransim`
-* `--cp=oai --up=oai-vpp --ran=oai`
-* `--cp=oai --up=oai-vpp --ran=packetrusher`
-* `--cp=oai --up=oai-vpp --ran=ueransim`
-* `--cp=open5gs --up=open5gs --ran=ueransim`
-* `--cp=phoenix --up=open5gs --ran=packetrusher`
-* `--cp=phoenix --up=open5gs --ran=phoenix`
-* `--cp=phoenix --up=phoenix --ran=packetrusher` with `--phoenix-upf-xdp=false`
+* `--cp=open5gs --up=open5gs --ran=srsran`
 * `--cp=phoenix --up=phoenix --ran=phoenix`
-* `--cp=phoenix --up=phoenix --ran=srsran` with `--phoenix-upf-xdp=false`
-* `--cp=phoenix --up=phoenix --ran=ueransim` with `--phoenix-upf-xdp=false`
 
 Each UPF implementation may be chosen independently, by repeating the `--up` flag.
 Each flag value consists of a minimatch pattern followed by a 5G implementation identifier.

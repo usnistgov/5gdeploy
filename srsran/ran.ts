@@ -8,7 +8,7 @@ import { file_io, makeSchemaValidator } from "../util/mod.js";
 import type { SRSOpts } from "./options.js";
 import * as UHD from "./uhd.js";
 
-const gnbDockerImage = "gradiant/srsran-5g:24_10";
+const gnbDockerImage = "5gdeploy.localhost/srsran5g";
 const ueDockerImage = "gradiant/srsran-4g:23_11";
 const srate = 23.04;
 
@@ -138,7 +138,7 @@ class RANBuilder {
     await this.ctx.writeFile(`ran-cfg/${gnb.name}.yml`, c, { s, target: "/gnb.yml" });
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s),
+      ...compose.renameNetifs(s, { disableTxOffload: true }),
       ...compose.waitReachable("AMF", [amfIP]),
       "exec /opt/srsRAN_Project/target/bin/gnb -c /gnb.yml",
     ]);
