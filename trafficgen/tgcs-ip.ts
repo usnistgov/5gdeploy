@@ -62,7 +62,7 @@ export const iperf2: TrafficGen = {
 
     const txstartIndex = cFlags.indexOf("--txstart-time");
     let txstartValue: string | undefined;
-    if (txstartIndex >= 0 && (txstartValue = cFlags[txstartIndex + 1])?.startsWith("+")) {
+    if (txstartIndex !== -1 && (txstartValue = cFlags[txstartIndex + 1])?.startsWith("+")) {
       s.environment.TGCS_T0 = "$TGCS_T0";
       cFlags = cFlags.toSpliced(txstartIndex, 2, "--txstart-time", `$(echo $TGCS_T0 ${txstartValue} | awk '{ printf "%0.9f", $1+$2 }')`);
     }
@@ -270,7 +270,7 @@ export const sockperf: TrafficGen = {
       s.cap_add.push("NET_ADMIN");
 
       const dfIndex = cFlags.indexOf("--data-file");
-      assert(dfIndex >= 0 && dfIndex < cFlags.length - 1, "sockperf playback --data-file missing");
+      assert(dfIndex !== -1 && dfIndex < cFlags.length - 1, "sockperf playback --data-file missing");
       const dataFile = cFlags[dfIndex + 1]!;
       assert(path.isAbsolute(dataFile), "sockperf playback --data-file must have absolute path");
       s.volumes.push({

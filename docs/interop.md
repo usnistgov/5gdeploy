@@ -47,7 +47,7 @@ Known to be compatible:
 
 Known to be incompatible:
 
-* `--cp=free5gc --ran=oai`: [UE does not send 5GMM capability field in Registration Request](https://lists.eurecom.fr/sympa/arc/openair5g-user/2024-12/msg00068.html)
+* `--cp=free5gc --ran=oai`: [openairinterface5g issue 881](https://gitlab.eurecom.fr/oai/openairinterface5g/-/issues/881)
 
 ## UP-RAN
 
