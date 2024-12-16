@@ -3,7 +3,7 @@ import type { PartialDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { ComposeService, N, O5G } from "../types/mod.js";
+import type { ComposeService, O5G } from "../types/mod.js";
 import { assert } from "../util/mod.js";
 import { dbctlDockerImage, makeLaunchCommands, makeMetrics, makeSockNode, o5DockerImage } from "./common.js";
 
@@ -19,12 +19,12 @@ class O5CPBuilder {
   }
 
   private readonly plmn: O5G.PLMNID;
-  private readonly mongoUrl = new URL("mongodb://unset.invalid:27017/open5gs");
+  private readonly mongoUrl = compose.mongo.makeUrl("open5gs");
   private waitNrf: string[] = [];
   private nrfUri?: string;
 
   public build(): void {
-    this.buildMongo();
+    compose.mongo.define(this.ctx, this.mongoUrl);
     this.buildPopulate();
     this.buildNRF();
     this.defineOnlySbi("udr", ["db"]); // needed by UDM
@@ -39,12 +39,6 @@ class O5CPBuilder {
     for (const smf of this.ctx.netdef.smfs) {
       this.buildSMF(smf);
     }
-  }
-
-  private buildMongo(): void {
-    const s = this.ctx.defineService("mongo", compose.mongo.image, ["db"]);
-    s.environment.MONGO_INITDB_DATABASE = this.mongoUrl.pathname.replace(/^\//, "");
-    this.mongoUrl.hostname = compose.getIP(s, "db");
   }
 
   private buildPopulate(): void {
@@ -106,7 +100,7 @@ class O5CPBuilder {
     ]);
   }
 
-  private buildAMF(amf: Required<N.AMF>): void {
+  private buildAMF(amf: NetDef.AMF): void {
     const s = this.defineService(amf.name, ["mgmt", "cp", "n2"]);
 
     const cfg: PartialDeep<O5G.amf.Root> = {
@@ -143,7 +137,7 @@ class O5CPBuilder {
     ]);
   }
 
-  private buildSMF(smf: Required<N.SMF>): void {
+  private buildSMF(smf: NetDef.SMF): void {
     const s = this.defineService(smf.name, ["mgmt", "cp", "n4"]);
     const cfg: PartialDeep<O5G.smf.Root> = {
       smf: {

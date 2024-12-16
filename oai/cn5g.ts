@@ -127,15 +127,14 @@ class CPBuilder extends CN5GBuilder {
   }
 
   private async buildSQL(): Promise<void> {
-    const s = this.ctx.defineService("sql", compose.mysql.image, ["db"]);
-    compose.mysql.init(s, "cp-sql");
+    const s = compose.mysql.define(this.ctx, "cp-sql");
     const dbc = this.c.database;
     dbc.host = compose.getIP(s, "db");
     dbc.user = "oai";
     dbc.password = "oai";
     dbc.database_name = "oai_db";
 
-    await this.ctx.writeFile("cp-sql/oai_db.sql", await compose.mysql.join(
+    await this.ctx.writeFile("cp-sql/oai_db.sql", compose.mysql.join(
       [ // sql`` template literal is only meant for escaping values and cannot be used on database names
         `CREATE DATABASE ${dbc.database_name}`,
         `USE ${dbc.database_name}`,

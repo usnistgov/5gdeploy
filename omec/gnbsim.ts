@@ -7,11 +7,11 @@ import { assert, hexPad } from "../util/mod.js";
 
 /** Build RAN functions using gNBSim. */
 export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
-  for (const [ct, gnb] of compose.suggestNames("gnb", ctx.netdef.gnbs)) {
-    const s = ctx.defineService(ct, "5gdeploy.localhost/gnbsim", ["mgmt", "n2", "n3"]);
+  for (const gnb of ctx.netdef.gnbs) {
+    const s = ctx.defineService(gnb.name, "5gdeploy.localhost/gnbsim", ["mgmt", "n2", "n3"]);
     s.stop_signal = "SIGQUIT";
     const c = makeConfigUpdate(ctx, s, gnb);
-    await ctx.writeFile(`ran-cfg/${ct}.yaml`, c, { s, target: "/config.update.yaml" });
+    await ctx.writeFile(`ran-cfg/${gnb.name}.yaml`, c, { s, target: "/config.update.yaml" });
     compose.setCommands(s, [
       ...compose.renameNetifs(s, { disableTxOffload: true }),
       "msg Preparing gNBSim config",

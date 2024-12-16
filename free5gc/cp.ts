@@ -22,11 +22,11 @@ class F5CPBuilder {
 
   private readonly plmn: F5.PLMNID;
   private readonly plmnID: string;
-  private readonly mongoUrl = new URL("mongodb://unset.invalid:27017");
+  private readonly mongoUrl = compose.mongo.makeUrl();
   private nrfUrl?: string;
 
   public async build(): Promise<void> {
-    this.buildMongo();
+    compose.mongo.define(this.ctx, this.mongoUrl);
     await this.buildNRF();
     await this.buildWebUI();
     await this.buildWebClient();
@@ -35,13 +35,12 @@ class F5CPBuilder {
     await this.buildAUSF();
     await this.buildNSSF();
     await this.buildPCF();
-    await this.buildAMFs();
-    await this.buildSMFs();
-  }
-
-  private buildMongo(): void {
-    const s = this.ctx.defineService("mongo", compose.mongo.image, ["db"]);
-    this.mongoUrl.hostname = compose.getIP(s, "db");
+    for (const amf of this.ctx.netdef.amfs) {
+      await this.buildAMF(amf);
+    }
+    for (const smf of this.ctx.netdef.smfs) {
+      await this.buildSMF(smf);
+    }
   }
 
   private async buildNRF(): Promise<void> {
@@ -240,77 +239,74 @@ class F5CPBuilder {
     ];
   }
 
-  private async buildAMFs(): Promise<void> {
-    const { network, netdef } = this.ctx;
-    for (const [ct, amf] of compose.suggestNames("amf", netdef.amfs)) {
-      const [s, amfcfg] = await this.defineService<F5.amf.Configuration>(ct, ["cp", "n2"]);
-      const c = amfcfg.configuration;
-      c.ngapIpList = [compose.getIP(s, "n2")];
+  private async buildAMF(amf: NetDef.AMF): Promise<void> {
+    const [s, amfcfg] = await this.defineService<F5.amf.Configuration>(amf.name, ["cp", "n2"]);
+    const c = amfcfg.configuration;
+    c.ngapIpList = [compose.getIP(s, "n2")];
 
-      const [region, set, pointer] = amf.amfi;
-      const amfi = (BigInt(region) << 16n) | (BigInt(set) << 6n) | BigInt(pointer);
-      c.servedGuamiList = [{
-        plmnId: this.plmn,
-        amfId: hexPad(amfi, 6),
-      }];
-      c.supportTaiList = [{
-        plmnId: this.plmn,
-        tac: network.tac,
-      }];
-      c.plmnSupportList = [{
-        plmnId: this.plmn,
-        snssaiList: netdef.nssai.map((snssai) => convertSNSSAI(snssai)),
-      }];
-      c.supportDnnList = network.dataNetworks.map((dn) => dn.dnn);
+    const [region, set, pointer] = amf.amfi;
+    const amfi = (BigInt(region) << 16n) | (BigInt(set) << 6n) | BigInt(pointer);
+    c.servedGuamiList = [{
+      plmnId: this.plmn,
+      amfId: hexPad(amfi, 6),
+    }];
+    c.supportTaiList = [{
+      plmnId: this.plmn,
+      tac: this.ctx.network.tac,
+    }];
+    c.plmnSupportList = [{
+      plmnId: this.plmn,
+      snssaiList: this.ctx.netdef.nssai.map((snssai) => convertSNSSAI(snssai)),
+    }];
+    c.supportDnnList = this.ctx.network.dataNetworks.map((dn) => dn.dnn);
 
-      compose.setCommands(s, [
-        ...compose.renameNetifs(s),
-        shlex.join([
-          "./amf",
-          "-c", await this.saveConfig(s, `cp-cfg/${ct}.yaml`, "amfcfg.yaml", amfcfg),
-        ]),
-      ], { shell: "ash" });
-    }
+    compose.setCommands(s, [
+      ...compose.renameNetifs(s),
+      shlex.join([
+        "./amf",
+        "-c", await this.saveConfig(s, `cp-cfg/${amf.name}.yaml`, "amfcfg.yaml", amfcfg),
+      ]),
+    ], { shell: "ash" });
   }
 
-  private async buildSMFs(): Promise<void> {
-    const { network, netdef } = this.ctx;
-    const upi = this.buildSMFupi();
-    for (const [ct, smf] of compose.suggestNames("smf", netdef.smfs)) {
-      const [s, smfcfg] = await this.defineService<F5.smf.Configuration>(ct, ["cp", "n4"]);
-      const uerouting = await loadTemplate("uerouting");
+  private async buildSMF(smf: NetDef.SMF): Promise<void> {
+    this.smfUpi ??= this.buildSMFupi();
+    const [s, smfcfg] = await this.defineService<F5.smf.Configuration>(smf.name, ["cp", "n4"]);
+    const uerouting = await loadTemplate("uerouting");
 
-      const c = smfcfg.configuration;
-      c.pfcp = {
-        listenAddr: compose.getIP(s, "n4"),
-        externalAddr: compose.getIP(s, "n4"),
-        nodeID: compose.getIP(s, "n4"),
-      };
-      c.userplaneInformation = upi;
-      c.snssaiInfos = smf.nssai.map((snssai): F5.smf.SNSSAIInfo => ({
-        sNssai: convertSNSSAI(snssai),
-        dnnInfos: network.dataNetworks
-          .filter((dn) => dn.snssai === snssai)
-          .map((dn) => ({
-            dnn: dn.dnn,
-            dns: { ipv4: "1.1.1.1" },
-          })),
-      }));
-      c.plmnList = [this.plmn];
-      delete c.urrPeriod;
-      delete c.urrThreshold;
-      c.nwInstFqdnEncoding = true;
+    const c = smfcfg.configuration;
+    const n4 = compose.getIP(s, "n4");
+    c.pfcp = {
+      listenAddr: n4,
+      externalAddr: n4,
+      nodeID: n4,
+    };
+    c.userplaneInformation = this.smfUpi;
+    c.snssaiInfos = smf.nssai.map((snssai): F5.smf.SNSSAIInfo => ({
+      sNssai: convertSNSSAI(snssai),
+      dnnInfos: this.ctx.network.dataNetworks
+        .filter((dn) => dn.snssai === snssai)
+        .map((dn) => ({
+          dnn: dn.dnn,
+          dns: { ipv4: "1.1.1.1" },
+        })),
+    }));
+    c.plmnList = [this.plmn];
+    delete c.urrPeriod;
+    delete c.urrThreshold;
+    c.nwInstFqdnEncoding = true;
 
-      compose.setCommands(s, [
-        ...compose.renameNetifs(s),
-        shlex.join([
-          "./smf",
-          "-c", await this.saveConfig(s, `cp-cfg/${ct}.yaml`, "smfcfg.yaml", smfcfg),
-          "-u", await this.saveConfig(s, `cp-cfg/${ct}.uerouting.yaml`, "uerouting.yaml", uerouting),
-        ]),
-      ], { shell: "ash" });
-    }
+    compose.setCommands(s, [
+      ...compose.renameNetifs(s),
+      shlex.join([
+        "./smf",
+        "-c", await this.saveConfig(s, `cp-cfg/${smf.name}.yaml`, "smfcfg.yaml", smfcfg),
+        "-u", await this.saveConfig(s, `cp-cfg/${smf.name}.uerouting.yaml`, "uerouting.yaml", uerouting),
+      ]),
+    ], { shell: "ash" });
   }
+
+  private smfUpi?: F5.smf.UP;
 
   private buildSMFupi(): F5.smf.UP {
     const { network, netdef } = this.ctx;

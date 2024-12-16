@@ -10,8 +10,8 @@ import type { OAIOpts } from "./options.js";
 
 /** Build RAN functions using OpenAirInterface5G. */
 export async function oaiRAN(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
-  for (const [ct, gnb] of compose.suggestNames("gnb", ctx.netdef.gnbs)) {
-    await makeGNB(ctx, opts, ct, gnb);
+  for (const gnb of ctx.netdef.gnbs) {
+    await makeGNB(ctx, opts, gnb);
   }
 
   if (opts["oai-gnb-usrp"]) {
@@ -23,16 +23,16 @@ export async function oaiRAN(ctx: NetDefComposeContext, opts: OAIOpts): Promise<
 }
 
 /** Define gNB container and generate configuration. */
-async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb: NetDef.GNB): Promise<void> {
+async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, gnb: NetDef.GNB): Promise<void> {
   const nets = ["air", "mgmt", "n2", "n3"];
   if (opts["oai-gnb-usrp"]) {
     nets.shift();
   }
-  const s = ctx.defineService(ct, await oai_conf.getTaggedImageName(opts, "gnb"), nets);
+  const s = ctx.defineService(gnb.name, await oai_conf.getTaggedImageName(opts, "gnb"), nets);
   compose.annotate(s, "cpus", 4);
   s.privileged = true;
 
-  const c = await oai_conf.loadLibconf<OAI.gnb.Config>(opts["oai-gnb-conf"], ct);
+  const c = await oai_conf.loadLibconf<OAI.gnb.Config>(opts["oai-gnb-conf"], gnb.name);
   c.Active_gNBs = [gnb.name];
 
   assert(c.gNBs.length === 1);
@@ -92,7 +92,7 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, gnb
     softmodemArgs.push("-E", "--rfsim");
   }
 
-  await ctx.writeFile(`ran-cfg/${ct}.conf`, c, { s, target: "/opt/oai-gnb/etc/gnb.conf" });
+  await ctx.writeFile(`ran-cfg/${gnb.name}.conf`, c, { s, target: "/opt/oai-gnb/etc/gnb.conf" });
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
     "sleep 10",

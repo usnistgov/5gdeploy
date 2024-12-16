@@ -31,8 +31,8 @@ class UeransimBuilder {
   private readonly plmn: NetDef.PLMN;
 
   public async build(): Promise<void> {
-    for (const [ct, gnb] of compose.suggestNames("gnb", this.ctx.netdef.gnbs)) {
-      await this.buildGNB(ct, gnb);
+    for (const gnb of this.ctx.netdef.gnbs) {
+      await this.buildGNB(gnb);
     }
 
     const expandCount = this.opts["ueransim-single-ue"];
@@ -41,8 +41,8 @@ class UeransimBuilder {
     }
   }
 
-  private async buildGNB(ct: string, gnb: NetDef.GNB): Promise<void> {
-    const s = this.ctx.defineService(ct, ueransimDockerImage, ["air", "n2", "n3"]);
+  private async buildGNB(gnb: NetDef.GNB): Promise<void> {
+    const s = this.ctx.defineService(gnb.name, ueransimDockerImage, ["air", "n2", "n3"]);
     compose.annotate(s, "cpus", 1);
 
     const c: PartialDeep<UERANSIM.gnb.Config> = {
@@ -63,7 +63,7 @@ class UeransimBuilder {
         (snssai) => NetDef.splitSNSSAI(snssai).int,
       ),
     };
-    await this.ctx.writeFile(`ran-cfg/${ct}.yaml`, c, { s, target: "/ueransim/config/update.yaml" });
+    await this.ctx.writeFile(`ran-cfg/${gnb.name}.yaml`, c, { s, target: "/ueransim/config/update.yaml" });
 
     compose.setCommands(s, [
       ...compose.renameNetifs(s, { disableTxOffload: true }),
@@ -71,11 +71,11 @@ class UeransimBuilder {
       "msg Preparing UERANSIM gNB config",
       ...compose.mergeConfigFile("/ueransim/config/update.yaml", {
         base: "/ueransim/config/custom-gnb.yaml",
-        merged: `/ueransim/config/${ct}.yaml`,
+        merged: `/ueransim/config/${gnb.name}.yaml`,
       }),
       "sleep 10",
       "msg Starting UERANSIM gNB",
-      `exec /ueransim/nr-gnb -c /ueransim/config/${ct}.yaml`,
+      `exec /ueransim/nr-gnb -c /ueransim/config/${gnb.name}.yaml`,
     ]);
   }
 

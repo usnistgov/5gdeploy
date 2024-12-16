@@ -1,14 +1,16 @@
-import type { AnyIterable } from "streaming-iterables";
-
 import type { ComposeService } from "../types/mod.js";
+import { assert } from "../util/mod.js";
+import { getIP } from "./compose.js";
+import type { ComposeContext } from "./context.js";
 
 /** MySQL database container helpers. */
 export const mysql = {
-  /** Docker image name and tag. */
-  image: "bitnami/mariadb:10.6",
-
-  /** Initialize Compose service. */
-  init(s: ComposeService, startdb?: string): void {
+  /**
+   * Define Compose service.
+   * @param startdb - Host directory containing SQL scripts.
+   */
+  define(ctx: ComposeContext, startdb?: string): ComposeService {
+    const s = ctx.defineService("sql", "bitnami/mariadb:10.6", ["db"]);
     if (startdb) {
       s.volumes.push({
         type: "bind",
@@ -19,10 +21,11 @@ export const mysql = {
     }
     s.environment.ALLOW_EMPTY_PASSWORD = "yes";
     s.environment.MARIADB_EXTRA_FLAGS = "--max_connections=1000";
+    return s;
   },
 
   /** Join SQL statements into string. */
-  async join(...parts: ReadonlyArray<string | AnyIterable<string>>): Promise<string> {
+  join(...parts: ReadonlyArray<string | Iterable<string>>): string {
     let b = "";
     const append = (stmt: string): void => {
       if (/;\s*$/.test(stmt)) {
@@ -38,7 +41,7 @@ export const mysql = {
         continue;
       }
 
-      for await (const stmt of p) {
+      for (const stmt of p) {
         append(stmt.trim().replaceAll(/\n\s+/g, " "));
       }
     }
@@ -63,9 +66,32 @@ export const mysql = {
 
 /** Mongo database container helpers. */
 export const mongo = {
-  image: "mongo:7",
+  /**
+   * Build mongodb: URL.
+   * @param db - Database name.
+   */
+  makeUrl(db?: string): URL {
+    const u = new URL("mongodb://invalid");
+    if (db) {
+      u.pathname = db;
+    }
+    return u;
+  },
 
-  init(s: ComposeService): void {
-    void s;
+  /**
+   * Define Compose service.
+   * @param mongoUrl - mongodb: URL with optional database name in path, will be updated with IP+port.
+   */
+  define(ctx: ComposeContext, mongoUrl?: URL): ComposeService {
+    const s = ctx.defineService("mongo", "mongo:7", ["db"]);
+    if (mongoUrl) {
+      assert(mongoUrl.protocol === "mongodb:");
+      if (mongoUrl.pathname.length > 1) {
+        s.environment.MONGO_INITDB_DATABASE = mongoUrl.pathname.slice(1); // strip leading "/"
+      }
+      mongoUrl.hostname = getIP(s, "db");
+      mongoUrl.port = "27017";
+    }
+    return s;
   },
 };

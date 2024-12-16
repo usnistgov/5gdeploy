@@ -45,14 +45,14 @@ export class NetDef {
   }
 
   /** List all AMFs. */
-  public get amfs(): Array<Required<N.AMF>> {
+  public get amfs(): NetDef.AMF[] {
     let { amfs } = this.network;
     if (!amfs?.length) {
       amfs = [{ name: "amf" }];
     }
     const nssai = this.nssai;
     return amfs.map((amf, i) => {
-      const result: Required<N.AMF> = {
+      const result: NetDef.AMF = {
         name: `amf${i}`,
         amfi: [1, i, 0],
         nssai,
@@ -67,7 +67,7 @@ export class NetDef {
   }
 
   /** List all SMFs. */
-  public get smfs(): Array<Required<N.SMF>> {
+  public get smfs(): NetDef.SMF[] {
     let { smfs } = this.network;
     if (!smfs?.length) {
       smfs = [{ name: "smf" }];
@@ -242,6 +242,12 @@ export namespace NetDef {
   export interface GNB extends Required<N.GNB> {
     nci: string & NCI;
   }
+
+  /** Information about an AMF. */
+  export interface AMF extends Required<N.AMF> {}
+
+  /** Information about an SMF. */
+  export interface SMF extends Required<N.SMF> {}
 
   /** S-NSSAI components. */
   export interface SNSSAI {

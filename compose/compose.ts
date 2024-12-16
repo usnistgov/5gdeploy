@@ -11,25 +11,6 @@ export function nameToNf(ct: string): string {
   return ct.replace(/(_.*|\d*)$/, "");
 }
 
-/**
- * Suggest container names for network function.
- * @param nf - Network function name.
- * @param list - Relevant config objects.
- *
- * @remarks
- * If a config object has a `.name` property, it must reflect the templated network function.
- */
-export function suggestNames<T>(nf: string, list: readonly T[]): Map<string, T> {
-  const m = new Map<string, T>();
-  for (const [i, item] of list.entries()) {
-    const { name } = (item as { name?: unknown });
-    const ct = typeof name === "string" ? name : `${nf}${i}`;
-    assert(nameToNf(ct) === nf);
-    m.set(ct, item);
-  }
-  return m;
-}
-
 /** Suggest container names for UE simulators. */
 export function suggestUENames<T extends { supi: string }>(list: readonly T[]): Map<string, T> {
   let commonPrefix: string | undefined;

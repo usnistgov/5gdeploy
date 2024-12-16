@@ -3,7 +3,6 @@ import path from "node:path";
 import * as fsWalk from "@nodelib/fs.walk/promises";
 import { Netmask } from "netmask";
 import sql from "sql-tagged-template-literal";
-import type { AnyIterable } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
 import { importGrafanaDashboard, makeUPFRoutes, NetDef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
@@ -101,7 +100,7 @@ interface PhoenixServiceContext {
   s: ComposeService;
   nf: NetworkFunction;
   initCommands: string[];
-  makeDatabase: (tpl: `${string}.sql`, database: PH.Database, append: AnyIterable<string>) => Promise<void>;
+  makeDatabase: (tpl: `${string}.sql`, database: PH.Database, append: Iterable<string>) => Promise<void>;
 }
 
 abstract class PhoenixScenarioBuilder {
@@ -148,7 +147,7 @@ abstract class PhoenixScenarioBuilder {
         d.hostname = compose.getIP(this.ctx.c, "sql", "db");
         await this.ctx.writeFile(
           `${this.nfKind}-sql/${ct}.sql`,
-          await compose.mysql.join(await this.loadDatabase(tpl, ct), append),
+          compose.mysql.join(await this.loadDatabase(tpl, ct), append),
         );
         initCommands.push(...compose.mysql.wait(d.hostname, d.username, d.password, ct));
       },
@@ -208,11 +207,6 @@ abstract class PhoenixScenarioBuilder {
     return nf;
   }
 
-  public buildSQL(): void {
-    const s = this.ctx.defineService("sql", compose.mysql.image, ["db"]);
-    compose.mysql.init(s, `./${this.nfKind}-sql`);
-  }
-
   private async loadDatabase(tpl: string, dbName: string): Promise<string> {
     let body = await file_io.readText(this.tplFile(tpl), { once: true });
     body = body.replace(/^create database .*;$/im, `CREATE OR REPLACE DATABASE ${dbName};`);
@@ -265,11 +259,26 @@ abstract class PhoenixScenarioBuilder {
 class PhoenixCPBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "cp";
 
-  public async buildNRF(): Promise<void> {
+  public async build(): Promise<void> {
+    compose.mysql.define(this.ctx, "./cp-sql");
     await this.defineService("nrf", ["cp"], "5g/nrf.json");
+    await this.buildUDM();
+    await this.defineService("ausf", ["cp"], "5g/ausf.json");
+    await this.buildNSSF();
+
+    for (const amf of this.ctx.netdef.amfs) {
+      await this.buildAMF(amf);
+    }
+
+    const { smfs } = this.ctx.netdef;
+    assert(smfs.length <= 250);
+    for (const [i, smf] of smfs.entries()) {
+      await this.buildSMF(smf, (1 + i) << 24);
+    }
+    await this.finish();
   }
 
-  public async buildUDM(): Promise<void> {
+  private async buildUDM(): Promise<void> {
     const { nf, makeDatabase } = await this.defineService("udm", ["db", "cp"], "5g/udm.json");
     await nf.editModule("udm", async ({ config }) => {
       await makeDatabase("5g/sql/udm_db.sql", config.Database, this.makeUDMDatabase());
@@ -315,11 +324,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     }
   }
 
-  public async buildAUSF(): Promise<void> {
-    await this.defineService("ausf", ["cp"], "5g/ausf.json");
-  }
-
-  public async buildNSSF(): Promise<void> {
+  private async buildNSSF(): Promise<void> {
     const amfNSSAIs = new Set<string>();
     for (const amf of this.netdef.amfs) {
       amf.nssai.sort((a, b) => a.localeCompare(b));
@@ -349,84 +354,75 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     }
   }
 
-  public async buildAMFs(): Promise<void> {
-    for (const [ct, amf] of compose.suggestNames("amf", this.ctx.netdef.amfs)) {
-      const { nf } = await this.defineService(ct, ["cp", "n2"], "5g/amf.json");
-      setNrfClientSlices(nf, amf.nssai);
-      nf.editModule("amf", ({ config }) => {
-        config.id = ct;
-        const [regionId, amfSetId, amfPointer] = amf.amfi;
-        config.guami = {
-          ...this.plmn,
-          regionId,
-          amfSetId,
-          amfPointer,
-        };
-        config.trackingArea = [{
-          ...this.plmn,
-          taiList: [
-            { tac: this.netdef.tac },
-          ],
-        }];
-        config.hacks.enable_reroute_nas = !!this.ctx.c.services.nssf;
-      });
-    }
+  private async buildAMF(amf: NetDef.AMF): Promise<void> {
+    const { nf } = await this.defineService(amf.name, ["cp", "n2"], "5g/amf.json");
+    setNrfClientSlices(nf, amf.nssai);
+    nf.editModule("amf", ({ config }) => {
+      config.id = amf.name;
+      const [regionId, amfSetId, amfPointer] = amf.amfi;
+      config.guami = {
+        ...this.plmn,
+        regionId,
+        amfSetId,
+        amfPointer,
+      };
+      config.trackingArea = [{
+        ...this.plmn,
+        taiList: [
+          { tac: this.netdef.tac },
+        ],
+      }];
+      config.hacks.enable_reroute_nas = !!this.ctx.c.services.nssf;
+    });
   }
 
-  public async buildSMFs(): Promise<void> {
-    let nextTeid = 0x10000000;
-    const eachTeid = Math.floor(0xE0000000 / this.netdef.smfs.length);
-    for (const [ct, smf] of compose.suggestNames("smf", this.ctx.netdef.smfs)) {
-      const { nf, initCommands, makeDatabase } = await this.defineService(ct, ["db", "cp", "n4"], "5g/smf.json");
+  private async buildSMF(smf: NetDef.SMF, startTeid: number): Promise<void> {
+    const { nf, initCommands, makeDatabase } = await this.defineService(smf.name, ["db", "cp", "n4"], "5g/smf.json");
+    setNrfClientSlices(nf, smf.nssai);
 
-      setNrfClientSlices(nf, smf.nssai);
+    await nf.editModule("smf", async ({ config }) => {
+      Object.assign(config, this.plmn);
+      await makeDatabase("5g/sql/smf_db.sql", config.Database, this.makeSMFDatabase());
+      config.id = smf.name;
+      config.mtu = 1456;
+      config.startTeid = startTeid;
+    });
 
-      const startTeid = nextTeid;
-      nextTeid += eachTeid;
-      await nf.editModule("smf", async ({ config }) => {
-        Object.assign(config, this.plmn);
-        await makeDatabase("5g/sql/smf_db.sql", config.Database, this.makeSMFDatabase());
-        config.id = ct;
-        config.mtu = 1456;
-        config.startTeid = startTeid;
+    nf.editModule("sdn_routing_topology", ({ config }) => {
+      config.Topology.Link = this.netdef.dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
+        const typeA = this.determineDataPathNodeType(nodeA);
+        const typeB = this.determineDataPathNodeType(nodeB);
+        const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
+        if (dn && ((
+          smf.nssai && !smf.nssai.includes(dn.snssai) // DN not in SMF's NSSAI
+        ) || (
+          this.netdef.findDN(dn)!.type !== "IPv4" // Ethernet DN cannot appear in sdn_routing_topology because it has no N6
+        ))) {
+          return [];
+        }
+        return {
+          weight: cost,
+          Node_A: this.makeDataPathTopoNode(nodeA, typeA, typeB),
+          Node_B: this.makeDataPathTopoNode(nodeB, typeB, typeA),
+        };
       });
+    });
 
-      nf.editModule("sdn_routing_topology", ({ config }) => {
-        config.Topology.Link = this.netdef.dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
-          const typeA = this.determineDataPathNodeType(nodeA);
-          const typeB = this.determineDataPathNodeType(nodeB);
-          const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
-          if (dn && ((
-            smf.nssai && !smf.nssai.includes(dn.snssai) // DN not in SMF's NSSAI
-          ) || (
-            this.netdef.findDN(dn)!.type !== "IPv4" // Ethernet DN cannot appear in sdn_routing_topology because it has no N6
-          ))) {
-            return [];
-          }
-          return {
-            weight: cost,
-            Node_A: this.makeDataPathTopoNode(nodeA, typeA, typeB),
-            Node_B: this.makeDataPathTopoNode(nodeB, typeB, typeA),
-          };
-        });
-      });
+    nf.editModule("pfcp", ({ config }) => {
+      config.Associations.Peer = Array.from(compose.listByNf(this.ctx.c, "upf"), (upf) => ({
+        type: "udp",
+        port: 8805,
+        bind: compose.getIP(upf, "n4"),
+      } as const));
+      config.Associations.heartbeat_interval = 5;
+      config.Associations.max_heartbeat_retries = 2;
 
-      nf.editModule("pfcp", ({ config }) => {
-        config.Associations.Peer = Array.from(compose.listByNf(this.ctx.c, "upf"), (upf) => ({
-          type: "udp",
-          port: 8805,
-          bind: compose.getIP(upf, "n4"),
-        } as const));
-        config.Associations.heartbeat_interval = 5;
-        config.Associations.max_heartbeat_retries = 2;
-
-        // After an initial PFCP Association Setup Request times out, the SMF may generate duplicate
-        // PFCP Association Setup Requests and end up with multiple associations with the same UPF.
-        // This eventually leads to heartbeat timeout and SMF crash. To avoid this situation, we
-        // wait for all UPFs to come online before launching the SMF.
-        initCommands.push(...compose.waitReachable("UPF", Array.from(config.Associations.Peer, ({ bind }) => bind)));
-      });
-    }
+      // After an initial PFCP Association Setup Request times out, the SMF may generate duplicate
+      // PFCP Association Setup Requests and end up with multiple associations with the same UPF.
+      // This eventually leads to heartbeat timeout and SMF crash. To avoid this situation, we
+      // wait for all UPFs to come online before launching the SMF.
+      initCommands.push(...compose.waitReachable("UPF", Array.from(config.Associations.Peer, ({ bind }) => bind)));
+    });
   }
 
   private *makeSMFDatabase(): Iterable<string> {
@@ -499,14 +495,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
 /** Build CP functions using Open5GCore. */
 export async function phoenixCP(ctx: NetDefComposeContext, opts: PhoenixOpts): Promise<void> {
   const b = new PhoenixCPBuilder(ctx, opts);
-  b.buildSQL();
-  await b.buildNRF();
-  await b.buildUDM();
-  await b.buildAUSF();
-  await b.buildNSSF();
-  await b.buildAMFs();
-  await b.buildSMFs();
-  await b.finish();
+  await b.build();
 }
 
 class PhoenixUPBuilder extends PhoenixScenarioBuilder {
@@ -639,14 +628,20 @@ export async function phoenixUP(ctx: NetDefComposeContext, upf: N.UPF, opts: Pho
 class PhoenixRANBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "ran";
 
-  public async buildGNBs(): Promise<void> {
+  public async build(): Promise<void> {
+    await this.buildGNBs();
+    await this.buildUEs();
+    await this.finish();
+  }
+
+  private async buildGNBs(): Promise<void> {
     const sliceKeys = ["slice", "slice2"] as const;
     const slices = this.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
     assert(slices.length <= sliceKeys.length, `gNB allows up to ${sliceKeys.length} slices`);
     const nWorkers = this.opts["phoenix-gnb-workers"];
 
-    for (const [ct, gnb] of compose.suggestNames("gnb", this.ctx.netdef.gnbs)) {
-      const { s, nf, initCommands } = await this.defineService(ct, ["air", "n2", "n3"], "5g/gnb1.json");
+    for (const gnb of this.ctx.netdef.gnbs) {
+      const { s, nf, initCommands } = await this.defineService(gnb.name, ["air", "n2", "n3"], "5g/gnb1.json");
       s.sysctls["net.ipv4.ip_forward"] = 0;
       compose.annotate(s, "cpus", this.opts["phoenix-gnb-taskset"][1] + nWorkers);
 
@@ -681,7 +676,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     }
   }
 
-  public async buildUEs(): Promise<void> {
+  private async buildUEs(): Promise<void> {
     const { "phoenix-ue-isolated": isolated } = this.opts;
     const mcc = Number.parseInt(this.plmn.mcc, 10);
     const mnc = Number.parseInt(this.plmn.mnc, 10);
@@ -733,9 +728,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 /** Build RAN functions using Open5GCore RAN simulators. */
 export async function phoenixRAN(ctx: NetDefComposeContext, opts: PhoenixOpts): Promise<void> {
   const b = new PhoenixRANBuilder(ctx, opts);
-  await b.buildGNBs();
-  await b.buildUEs();
-  await b.finish();
+  await b.build();
 }
 
 function setNrfClientSlices(c: NetworkFunction, nssai: readonly N.SNSSAI[]): void {
