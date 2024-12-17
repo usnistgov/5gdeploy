@@ -1,4 +1,4 @@
-import type { Except, RequireAtLeastOne } from "type-fest";
+import type { Except, MergeDeep, RequireAtLeastOne } from "type-fest";
 
 export interface RootBase {
   logger: Logger;
@@ -114,6 +114,22 @@ export namespace nrf {
     sbi: Pick<SBI, "server">;
     serving: Array<{
       plmn_id: PLMNID;
+    }>;
+  }
+}
+
+export namespace nssf {
+  export interface Root extends RootBase {
+    nssf: NSSF;
+  }
+
+  export interface NSSF {
+    sbi: MergeDeep<SBI, {
+      client: {
+        nsi: Array<SBI.Client & {
+          s_nssai: SNSSAI;
+        }>;
+      };
     }>;
   }
 }

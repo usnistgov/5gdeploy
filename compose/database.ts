@@ -71,7 +71,7 @@ export const mongo = {
    * @param db - Database name.
    */
   makeUrl(db?: string): URL {
-    const u = new URL("mongodb://invalid");
+    const u = new URL("mongodb://unset.invalid");
     if (db) {
       u.pathname = db;
     }

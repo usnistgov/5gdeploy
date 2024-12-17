@@ -32,7 +32,7 @@ class O5CPBuilder {
     this.defineOnlySbi("ausf"); // needed by AMF
     this.defineOnlySbi("bsf"); // needed by PCF
     this.buildPCF(); // needed by AMF
-    this.defineOnlySbi("nssf");
+    this.buildNSSF(); // needed by AMF
     for (const amf of this.ctx.netdef.amfs) {
       this.buildAMF(amf);
     }
@@ -67,6 +67,7 @@ class O5CPBuilder {
 
   private buildNRF(): void {
     const s = this.defineService("nrf", ["cp"]);
+
     const cfg: PartialDeep<O5G.nrf.Root> = {
       nrf: {
         sbi: this.makeSBI(s),
@@ -78,6 +79,7 @@ class O5CPBuilder {
         nf_instance: { heartbeat: 0 },
       },
     };
+
     compose.setCommands(s, [
       ...compose.renameNetifs(s),
       ...makeLaunchCommands("nrf", cfg),
@@ -93,10 +95,31 @@ class O5CPBuilder {
         metrics: makeMetrics(s),
       },
     };
+
     compose.setCommands(s, [
       ...compose.renameNetifs(s),
       ...this.waitNrf,
       ...makeLaunchCommands("pcf", cfg),
+    ]);
+  }
+
+  private buildNSSF(): void {
+    const s = this.defineService("nssf", ["cp"]);
+
+    const cfg: PartialDeep<O5G.nssf.Root> = {
+      nssf: {
+        sbi: this.makeSBI(s),
+      },
+    };
+    cfg.nssf!.sbi!.client!.nsi = Array.from(this.ctx.netdef.nssai, (snssai) => ({
+      uri: this.nrfUri!.toString(),
+      s_nssai: NetDef.splitSNSSAI(snssai).ih,
+    }));
+
+    compose.setCommands(s, [
+      ...compose.renameNetifs(s),
+      ...this.waitNrf,
+      ...makeLaunchCommands("nssf", cfg),
     ]);
   }
 
@@ -130,6 +153,7 @@ class O5CPBuilder {
         amf_name: amf.name,
       },
     };
+
     compose.setCommands(s, [
       ...compose.renameNetifs(s),
       ...this.waitNrf,
@@ -139,6 +163,7 @@ class O5CPBuilder {
 
   private buildSMF(smf: NetDef.SMF): void {
     const s = this.defineService(smf.name, ["mgmt", "cp", "n4"]);
+
     const cfg: PartialDeep<O5G.smf.Root> = {
       smf: {
         info: [{
@@ -171,11 +196,13 @@ class O5CPBuilder {
         metrics: makeMetrics(s),
       },
     };
+
     const dels = [
       ".smf.freeDiameter",
       ".smf.gtpc",
       ".smf.sbi.client.scp",
     ];
+
     compose.setCommands(s, [
       ...compose.renameNetifs(s),
       ...this.waitNrf,
@@ -201,6 +228,7 @@ class O5CPBuilder {
         sbi: this.makeSBI(s),
       },
     };
+
     compose.setCommands(s, [
       ...compose.renameNetifs(s),
       ...this.waitNrf,

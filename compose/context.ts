@@ -74,8 +74,8 @@ export class ComposeContext {
       },
     };
 
-    if ((opts as ComposeContext.FileVolumeOptions).s) {
-      result.mountInto(opts as ComposeContext.FileVolumeOptions);
+    if ("s" in opts) {
+      result.mountInto(opts);
     }
 
     return result;
