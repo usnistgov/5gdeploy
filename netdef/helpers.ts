@@ -146,7 +146,10 @@ export function listSubscribers(network: N.Network, { expandCount = true, gnb }:
 export namespace listSubscribers {
   /** {@link listSubscribers} options. */
   export interface Options {
-    /** If true, emit `.count>1` entry as multiple entries. */
+    /**
+     * If true, emit `.count>1` entry as multiple entries.
+     * @defaultValue true
+     */
     expandCount?: boolean;
 
     /** If specified, emit subscribers connected to this gNB only. */
@@ -262,23 +265,8 @@ export function listSUPIs({ supi, count }: Subscriber): string[] {
   return Array.from({ length: count }, () => decPad(n++, 15));
 }
 
-/** N3,N9,N6 peers of a UPF. */
-export interface UPFPeers {
-  N3: GNB[];
-  N9: N.UPF[];
-  N6Ethernet: UPFN6Peer[];
-  N6IPv4: UPFN6Peer[];
-  N6IPv6: UPFN6Peer[];
-}
-
-/** N6 peer of a UPF. */
-export interface UPFN6Peer extends N.DataNetwork {
-  index: number;
-  cost: number;
-}
-
 /** Determine equality of two DataPathNodes. */
-export function equalDataPathNode(a: N.DataPathNode, b: N.DataPathNode): boolean {
+function equalDataPathNode(a: N.DataPathNode, b: N.DataPathNode): boolean {
   if (typeof a === "string" && typeof b === "string") {
     return a === b;
   }
@@ -307,6 +295,21 @@ export function* listDataPathPeers({ dataPaths }: N.Network, self: N.DataPathNod
       yield [a, cost];
     }
   }
+}
+
+/** N3,N9,N6 peers of a UPF. */
+export interface UPFPeers {
+  N3: GNB[];
+  N9: N.UPF[];
+  N6Ethernet: UPFN6Peer[];
+  N6IPv4: UPFN6Peer[];
+  N6IPv6: UPFN6Peer[];
+}
+
+/** N6 peer of a UPF. */
+export interface UPFN6Peer extends N.DataNetwork {
+  index: number;
+  cost: number;
 }
 
 /** Gather N3,N9,N6 peers of a UPF. */

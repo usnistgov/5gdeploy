@@ -325,6 +325,7 @@ class F5CPBuilder {
       const peersJoined = peers.join(",");
       gnbPeers ??= [gnb.name, peersJoined, peers];
       if (gnbPeers[1] !== peersJoined) {
+        // https://github.com/free5gc/go-upf/issues/35
         throw new Error(`${gnb.name} peer list (${peersJoined}) differs from ${gnbPeers[0]} peer list (${gnbPeers[1]}), not supported by free5GC SMF`);
       }
     }
@@ -356,20 +357,13 @@ class F5CPBuilder {
         node.sNssaiUpfInfos.push(info);
         return info;
       });
-      for (const [peer] of netdef.listDataPathPeers(network, upf.name)) {
-        if (typeof peer === "string") {
-          continue;
-        }
-        const dn = netdef.findDN(network, peer);
-        assert(dn);
-        if (dn.type !== "IPv4") {
-          continue;
-        }
-        dnBySNSSAI.get(dn.snssai).dnnUpfInfoList.push({
-          dnn: dn.dnn,
-          pools: [{ cidr: dn.subnet! }],
+      const peers = netdef.gatherUPFPeers(network, upf);
+      for (const { snssai, dnn, subnet } of peers.N6IPv4) {
+        dnBySNSSAI.get(snssai).dnnUpfInfoList.push({
+          dnn,
+          pools: [{ cidr: subnet! }],
         });
-        networkInstances.push(peer.dnn);
+        networkInstances.push(dnn);
       }
 
       for (const ifType of ["N3", "N9"] as const) {

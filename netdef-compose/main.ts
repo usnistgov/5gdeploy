@@ -67,15 +67,15 @@ const args = await Yargs()
   })
   .option("up", {
     array: true,
-    coerce(lines: readonly string[]): Array<[pattern: Minimatch | undefined, provider: keyof UpProvider]> {
+    coerce(lines: readonly string[]): Array<[pattern: Minimatch | undefined, provider: string]> {
       const choices = Object.keys(upProviders);
       return Array.from(lines, (line) => {
         const tokens = line.split("=");
         assert(tokens.length <= 2 && choices.includes(tokens.at(-1)!), `bad --up=${line}`);
         if (tokens.length === 1) {
-          return [undefined, tokens[0]! as keyof UpProvider];
+          return [undefined, tokens[0]!];
         }
-        return [new Minimatch(tokens[0]!), tokens[1]! as keyof UpProvider];
+        return [new Minimatch(tokens[0]!), tokens[1]!];
       });
     },
     default: "phoenix",
