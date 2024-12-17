@@ -80,11 +80,6 @@ export class NetDef {
     }));
   }
 
-  /** List normalized data path links. */
-  public get dataPathLinks(): Array<Required<N.DataPathLink.Object>> {
-    return Array.from(this.network.dataPaths.links, (link) => NetDef.normalizeDataPathLink(link));
-  }
-
   /** Split NR Cell Identity (NCI) as gNB ID and Cell ID. */
   public splitNCI(nci: string): NetDef.NCI {
     assert(/^[\da-f]{9}$/i.test(nci));
@@ -170,8 +165,7 @@ export class NetDef {
 
   /** Iterate over peers of a data path node. */
   public *listDataPathPeers(self: N.DataPathNode): Iterable<[peer: N.DataPathNode, cost: number]> {
-    for (const link of this.network.dataPaths.links) {
-      const { a, b, cost = 1 } = NetDef.normalizeDataPathLink(link);
+    for (const [a, b, cost = 1] of this.network.dataPaths) {
       if (NetDef.equalDataPathNode(self, a)) {
         yield [b, cost];
       } else if (NetDef.equalDataPathNode(self, b)) {
@@ -339,14 +333,6 @@ export namespace NetDef {
       return a.snssai === b.snssai && a.dnn === b.dnn;
     }
     return false;
-  }
-
-  /** Normalize data path link as object form. */
-  export function normalizeDataPathLink(link: N.DataPathLink): Required<N.DataPathLink.Object> {
-    if (Array.isArray(link)) {
-      return { a: link[0], b: link[1], cost: 1 };
-    }
-    return { cost: 1, ...link };
   }
 
   /**

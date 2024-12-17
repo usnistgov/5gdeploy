@@ -40,9 +40,7 @@ const network: N.Network = {
   gnbs: [],
   upfs: [],
   dataNetworks: [],
-  dataPaths: {
-    links: [],
-  },
+  dataPaths: [],
 };
 
 const { dn: dnCount, upf: upfCount, gnb: gnbCount, sameSnssai, dnPerUe } = args;
@@ -64,7 +62,7 @@ for (let upfIndex = 0; upfIndex < upfCount; ++upfIndex) {
       type: "IPv4",
     });
 
-    network.dataPaths.links.push([{ dnn, snssai }, upfName]);
+    network.dataPaths.push([{ dnn, snssai }, upfName]);
   }
 }
 assert(network.dataNetworks.length === dnCount);
@@ -73,7 +71,7 @@ for (let gnbIndex = 0; gnbIndex < gnbCount; ++gnbIndex) {
   const gnbName = `gnb${gnbIndex}`;
   network.gnbs.push({ name: gnbName });
   for (const { name: upfName } of network.upfs) {
-    network.dataPaths.links.push([gnbName, upfName]);
+    network.dataPaths.push([gnbName, upfName]);
   }
 
   let supi = BigInt(`700555${gnbIndex}000`);

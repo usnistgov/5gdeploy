@@ -55,18 +55,16 @@ export function buildNetwork(c: CLIOptions, s: ScenarioOptions): N.Network {
       type: "IPv4",
       subnet,
     })),
-    dataPaths: {
-      links: dnDef.map(({ dnn }) => [
-        s[`${dnn}UPF`],
-        { snssai: s[`${dnn}SNSSAI`], dnn },
-      ]),
-    },
+    dataPaths: dnDef.map(({ dnn }) => [
+      s[`${dnn}UPF`],
+      { snssai: s[`${dnn}SNSSAI`], dnn },
+    ]),
   };
 
   for (let i = 0; i < c.gnbs; ++i) {
     const name = `gnb${i}`;
     network.gnbs.push({ name });
-    network.dataPaths.links.push(...upfs.map((upf): N.DataPathLink => [name, upf]));
+    network.dataPaths.push(...upfs.map((upf): N.DataPathLink => [name, upf]));
   }
 
   ran.addUEsPerGNB(network, "001017005551000", c.phones, [

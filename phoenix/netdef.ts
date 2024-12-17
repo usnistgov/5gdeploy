@@ -389,7 +389,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     });
 
     nf.editModule("sdn_routing_topology", ({ config }) => {
-      config.Topology.Link = this.netdef.dataPathLinks.flatMap(({ a: nodeA, b: nodeB, cost }) => {
+      config.Topology.Link = this.network.dataPaths.flatMap(([nodeA, nodeB, weight = 1]) => {
         const typeA = this.determineDataPathNodeType(nodeA);
         const typeB = this.determineDataPathNodeType(nodeB);
         const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
@@ -401,7 +401,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
           return [];
         }
         return {
-          weight: cost,
+          weight,
           Node_A: this.makeDataPathTopoNode(nodeA, typeA, typeB),
           Node_B: this.makeDataPathTopoNode(nodeB, typeB, typeA),
         };

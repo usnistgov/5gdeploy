@@ -386,7 +386,7 @@ class F5CPBuilder {
       }
     }
 
-    for (const { a, b } of netdef.dataPathLinks) {
+    for (const [a, b] of network.dataPaths) {
       if (![a, b].every((node) => typeof node === "string" && compose.nameToNf(node) === "upf")) {
         continue;
       }

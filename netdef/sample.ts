@@ -79,18 +79,16 @@ const network: N.Network = {
     { snssai: "01", dnn: "net3", type: "IPv4", subnet: "192.168.3.0/24" },
     { snssai: "90000001", dnn: "net5", type: "IPv4", subnet: "192.168.5.0/24" },
   ],
-  dataPaths: {
-    links: [
-      ["gnb1", "upf1"],
-      ["gnb2", "upf2"],
-      ["upf1", "upf2"],
-      ["upf1", "upf3"],
-      ["upf1", { snssai: "01", dnn: "net6" }],
-      ["upf2", { snssai: "01", dnn: "net3" }],
-      ["upf2", { snssai: "90000001", dnn: "net5" }],
-      ["upf3", { snssai: "01", dnn: "ethernet" }],
-    ],
-  },
+  dataPaths: [
+    ["gnb1", "upf1"],
+    ["gnb2", "upf2"],
+    ["upf1", "upf2"],
+    ["upf1", "upf3"],
+    ["upf1", { snssai: "01", dnn: "net6" }],
+    ["upf2", { snssai: "01", dnn: "net3" }],
+    ["upf2", { snssai: "90000001", dnn: "net5" }],
+    ["upf3", { snssai: "01", dnn: "ethernet" }],
+  ],
 };
 
 validateNetDef(network);

@@ -31,7 +31,7 @@ export interface Network {
   dataNetworks: DataNetwork[];
 
   /** Data paths. */
-  dataPaths: DataPaths;
+  dataPaths: DataPathLink[];
 }
 
 /**
@@ -192,11 +192,6 @@ export interface DataNetwork extends DataNetworkID {
 /** DN type. */
 export type DataNetworkType = "IPv4" | "IPv6" | "Ethernet";
 
-/** DN data paths. */
-export interface DataPaths {
-  links: DataPathLink[];
-}
-
 /** DN data path node. */
 export type DataPathNode = string | DataNetworkID;
 
@@ -208,28 +203,5 @@ export type DataPathNode = string | DataNetworkID;
  * (1) a string that identifies the short name of a gNB or UPF.
  * (2) a DataNetworkID that identifies a DataNetwork.
  */
-export type DataPathLink = DataPathLink.Tuple | DataPathLink.Object;
-export namespace DataPathLink {
-  /**
-   * Two ends of a link.
-   *
-   * @remarks
-   * Cost is the default.
-   */
-  export type Tuple = [a: DataPathNode, b: DataPathNode];
-
-  export interface Object {
-    /** One end of a link. */
-    a: DataPathNode;
-
-    /** One end of a link. */
-    b: DataPathNode;
-
-    /**
-     * Link cost (positive integer).
-     *
-     * @defaultValue 1
-     */
-    cost?: number;
-  }
-}
+export type DataPathLink = [a: DataPathNode, b: DataPathNode] | [a: DataPathNode, b: DataPathNode, cost: number];
+// note: writing as two alternate types is needed for ts-json-schema-generator to allow 2-item array
