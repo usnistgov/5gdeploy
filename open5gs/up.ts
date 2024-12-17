@@ -1,7 +1,6 @@
 import type { PartialDeep } from "type-fest";
 
-import * as compose from "../compose/mod.js";
-import { makeUPFRoutes, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { N, O5G } from "../types/mod.js";
 import { makeLaunchCommands, makeMetrics, o5DockerImage } from "./common.js";
 
@@ -11,7 +10,7 @@ export async function o5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void>
   s.devices.push("/dev/net/tun:/dev/net/tun");
   compose.annotate(s, "cpus", 1);
 
-  const peers = ctx.netdef.gatherUPFPeers(upf);
+  const peers = netdef.gatherUPFPeers(ctx.network, upf);
   const cfg: PartialDeep<O5G.upf.Root> = {
     upf: {
       pfcp: {

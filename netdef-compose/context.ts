@@ -1,8 +1,7 @@
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
-import type { NetDef } from "../netdef/netdef.js";
-import type { ComposeFile } from "../types/mod.js";
+import type { ComposeFile, N } from "../types/mod.js";
 import { tsrun } from "../util/cmd.js";
 
 /** Contextual information and helpers while converting NetDef into Compose context. */
@@ -17,16 +16,11 @@ export class NetDefComposeContext extends compose.ComposeContext {
    * @param ipAlloc - IP address allocator.
    */
   constructor(
-      public readonly netdef: NetDef,
+      public readonly network: N.Network,
       out: string,
       ipAlloc: compose.IPAlloc,
   ) {
     super(out, ipAlloc);
-  }
-
-  /** Access NetDef JSON. */
-  public get network() {
-    return this.netdef.network;
   }
 
   protected override makeComposeSh(): Iterable<string> {

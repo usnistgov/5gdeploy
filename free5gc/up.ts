@@ -1,5 +1,4 @@
-import * as compose from "../compose/mod.js";
-import { makeUPFRoutes, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeFile, ComposeService, F5, N } from "../types/mod.js";
 import * as f5_conf from "./conf.js";
 
@@ -7,7 +6,7 @@ import * as f5_conf from "./conf.js";
 export async function f5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void> {
   const s = ctx.defineService(upf.name, await f5_conf.getTaggedImageName("upf"), ["n4", "n6", "n3", "n9"]);
   f5_conf.mountTmpfsVolumes(s);
-  const peers = ctx.netdef.gatherUPFPeers(upf);
+  const peers = netdef.gatherUPFPeers(ctx.network, upf);
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
     ...compose.applyQoS(s),

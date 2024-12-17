@@ -2,10 +2,10 @@ import path from "node:path";
 
 import * as fsWalk from "@nodelib/fs.walk/promises";
 import { Netmask } from "netmask";
+import { sortBy } from "sort-by-typescript";
 import sql from "sql-tagged-template-literal";
 
-import * as compose from "../compose/mod.js";
-import { importGrafanaDashboard, makeUPFRoutes, NetDef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
+import { compose, importGrafanaDashboard, makeUPFRoutes, netdef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
 import type { ComposeService, N, PH } from "../types/mod.js";
 import { assert, file_io, findByName, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { NetworkFunction } from "./nf.js";
@@ -116,12 +116,10 @@ abstract class PhoenixScenarioBuilder {
     this.ctx.defineNetwork("air", { mtu: 1470 });
     this.ctx.defineNetwork("n6", { mtu: 1456 });
 
-    this.plmn = NetDef.splitPLMN(this.network.plmn);
+    this.plmn = netdef.splitPLMN(this.ctx.network.plmn);
     assert(this.plmn.mnc.length === 2, "Open5GCore only supports 2-digit MNC");
   }
 
-  protected get netdef() { return this.ctx.netdef; }
-  protected get network() { return this.ctx.network; }
   private readonly unsaved = new Map<string, PhoenixServiceContext>();
 
   private tplFile(relPath: string): string {
@@ -266,11 +264,11 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     await this.defineService("ausf", ["cp"], "5g/ausf.json");
     await this.buildNSSF();
 
-    for (const amf of this.ctx.netdef.amfs) {
+    for (const amf of netdef.listAmfs(this.ctx.network)) {
       await this.buildAMF(amf);
     }
 
-    const { smfs } = this.ctx.netdef;
+    const smfs = netdef.listSmfs(this.ctx.network);
     assert(smfs.length <= 250);
     for (const [i, smf] of smfs.entries()) {
       await this.buildSMF(smf, (1 + i) << 24);
@@ -294,7 +292,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     yield "SELECT @dnn_json:=json FROM dnn_configurations WHERE supi='default_data' LIMIT 1";
     yield "DELETE FROM dnn_configurations";
 
-    for (const { supi, k, opc, subscribedNSSAI, subscribedDN } of this.netdef.listSubscribers()) {
+    for (const { supi, k, opc, subscribedNSSAI, subscribedDN } of netdef.listSubscribers(this.ctx.network)) {
       yield sql`
         INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type)
         VALUES (${supi},UNHEX(${k}),UNHEX(${USIM.amf}),UNHEX(${opc}),UNHEX(${USIM.sqn}),0,1,0)
@@ -305,15 +303,15 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
 
       const amPatch = {
         nssai: {
-          defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => NetDef.splitSNSSAI(snssai).ih),
+          defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => netdef.splitSNSSAI(snssai).ih),
         },
       };
       yield sql`INSERT am_data (supi,access_and_mobility_sub_data) VALUES (${supi},JSON_MERGE_PATCH(@am_json,${amPatch}))`;
 
       for (const { snssai, dnn } of subscribedDN) {
-        const dn = this.netdef.findDN(dnn, snssai);
+        const dn = netdef.findDN(this.ctx.network, dnn, snssai);
         assert(!!dn);
-        const { sst } = NetDef.splitSNSSAI(snssai).ih;
+        const { sst } = netdef.splitSNSSAI(snssai).ih;
         const dnnPatch = {
           pduSessionTypes: {
             defaultSessionType: dn.type.toUpperCase(),
@@ -326,8 +324,8 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
 
   private async buildNSSF(): Promise<void> {
     const amfNSSAIs = new Set<string>();
-    for (const amf of this.netdef.amfs) {
-      amf.nssai.sort((a, b) => a.localeCompare(b));
+    for (const amf of netdef.listAmfs(this.ctx.network)) {
+      amf.nssai.sort(sortBy());
       amfNSSAIs.add(amf.nssai.join(","));
     }
     if (amfNSSAIs.size <= 1) {
@@ -344,17 +342,17 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     yield "DELETE FROM snssai_nsi_mapping";
     yield "DELETE FROM nsi";
     yield "DELETE FROM snssai";
-    for (const [i, amf] of this.netdef.amfs.entries()) {
+    for (const [i, amf] of netdef.listAmfs(this.ctx.network).entries()) {
       yield sql`INSERT nsi (nsi_id,nrf_id,target_amf_set) VALUES (${`nsi_id_${i}`},${`nrf_id_${i}`},${`${amf.amfi[1]}`}) RETURNING @nsi_id:=row_id`;
       for (const snssai of amf.nssai) {
-        const { sst, sd = "" } = NetDef.splitSNSSAI(snssai).ih;
+        const { sst, sd = "" } = netdef.splitSNSSAI(snssai).ih;
         yield sql`INSERT snssai (sst,sd) VALUES (${sst},${sd}) RETURNING @snssai_id:=row_id`;
         yield "INSERT snssai_nsi_mapping (row_id_snssai,row_id_nsi) VALUES (@snssai_id,@nsi_id)";
       }
     }
   }
 
-  private async buildAMF(amf: NetDef.AMF): Promise<void> {
+  private async buildAMF(amf: netdef.AMF): Promise<void> {
     const { nf } = await this.defineService(amf.name, ["cp", "n2"], "5g/amf.json");
     setNrfClientSlices(nf, amf.nssai);
     nf.editModule("amf", ({ config }) => {
@@ -369,14 +367,14 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       config.trackingArea = [{
         ...this.plmn,
         taiList: [
-          { tac: this.netdef.tac },
+          { tac: Number.parseInt(this.ctx.network.tac, 16) },
         ],
       }];
       config.hacks.enable_reroute_nas = !!this.ctx.c.services.nssf;
     });
   }
 
-  private async buildSMF(smf: NetDef.SMF, startTeid: number): Promise<void> {
+  private async buildSMF(smf: netdef.SMF, startTeid: number): Promise<void> {
     const { nf, initCommands, makeDatabase } = await this.defineService(smf.name, ["db", "cp", "n4"], "5g/smf.json");
     setNrfClientSlices(nf, smf.nssai);
 
@@ -389,14 +387,14 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     });
 
     nf.editModule("sdn_routing_topology", ({ config }) => {
-      config.Topology.Link = this.network.dataPaths.flatMap(([nodeA, nodeB, weight = 1]) => {
+      config.Topology.Link = this.ctx.network.dataPaths.flatMap(([nodeA, nodeB, weight = 1]) => {
         const typeA = this.determineDataPathNodeType(nodeA);
         const typeB = this.determineDataPathNodeType(nodeB);
         const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
         if (dn && ((
           smf.nssai && !smf.nssai.includes(dn.snssai) // DN not in SMF's NSSAI
         ) || (
-          this.netdef.findDN(dn)!.type !== "IPv4" // Ethernet DN cannot appear in sdn_routing_topology because it has no N6
+          netdef.findDN(this.ctx.network, dn)!.type !== "IPv4" // Ethernet DN cannot appear in sdn_routing_topology because it has no N6
         ))) {
           return [];
         }
@@ -430,7 +428,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     yield "DELETE FROM dn_info";
     yield "DELETE FROM dn_ipv4_allocations";
     yield "DELETE FROM dnn";
-    for (const { dnn, type, subnet } of this.network.dataNetworks) {
+    for (const { dnn, type, subnet } of this.ctx.network.dataNetworks) {
       yield sql`INSERT dnn (dnn) VALUES (${dnn}) RETURNING @dn_id:=dn_id`;
       if (type === "IPv4") {
         assert(!!subnet);
@@ -445,13 +443,10 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     if (typeof node !== "string") {
       return "DNN";
     }
-    if (findByName(node, this.netdef.gnbs) !== undefined) {
-      return "gNodeB";
-    }
-    if (findByName(node, this.network.upfs) !== undefined) {
-      return "UPF";
-    }
-    throw new Error(`data path node ${node} not found`);
+    return ({
+      gnb: "gNodeB",
+      upf: "UPF",
+    } as const)[compose.nameToNf(node)]!;
   }
 
   private makeDataPathTopoNode(
@@ -470,7 +465,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       }
       case "gNodeB": {
         assert(peerType === "UPF");
-        const gnb = findByName(node as string, this.netdef.gnbs)!;
+        const gnb = findByName(node as string, netdef.listGnbs(this.ctx.network))!;
         return {
           type: "gNodeB",
           id: gnb.nci.gnb,
@@ -506,7 +501,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
     const nWorkers = this.opts["phoenix-upf-workers"];
     assert(nWorkers <= 8, "pfcp.so allows up to 8 threads");
 
-    const peers = this.netdef.gatherUPFPeers(upf);
+    const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
     assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
     assert(peers.N6IPv6.length === 0, "UPF does not support IPv6 DN");
 
@@ -636,11 +631,11 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 
   private async buildGNBs(): Promise<void> {
     const sliceKeys = ["slice", "slice2"] as const;
-    const slices = this.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
+    const slices = Array.from(netdef.listNssai(this.ctx.network), (snssai) => netdef.splitSNSSAI(snssai).ih);
     assert(slices.length <= sliceKeys.length, `gNB allows up to ${sliceKeys.length} slices`);
     const nWorkers = this.opts["phoenix-gnb-workers"];
 
-    for (const gnb of this.ctx.netdef.gnbs) {
+    for (const gnb of netdef.listGnbs(this.ctx.network)) {
       const { s, nf, initCommands } = await this.defineService(gnb.name, ["air", "n2", "n3"], "5g/gnb1.json");
       s.sysctls["net.ipv4.ip_forward"] = 0;
       compose.annotate(s, "cpus", this.opts["phoenix-gnb-taskset"][1] + nWorkers);
@@ -655,7 +650,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
         } as const));
         config.gnb_id = gnb.nci.gnb;
         config.cell_id = gnb.nci.nci;
-        config.tac = this.netdef.tac;
+        config.tac = Number.parseInt(this.ctx.network.tac, 16);
 
         for (const [i, k] of sliceKeys.entries()) {
           if (slices.length > i) {
@@ -681,7 +676,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     const mcc = Number.parseInt(this.plmn.mcc, 10);
     const mnc = Number.parseInt(this.plmn.mnc, 10);
 
-    for (const [ct, sub] of compose.suggestUENames(this.ctx.netdef.listSubscribers())) {
+    for (const [ct, sub] of compose.suggestUENames(netdef.listSubscribers(this.ctx.network))) {
       const { s, nf } = await this.defineService(ct, ["air"], "5g/ue1.json");
       compose.annotate(s, "cpus", isolated.some((suffix) => sub.supi.endsWith(suffix)) ? 1 : 0);
       compose.annotate(s, "ue_supi", sub.supi);
@@ -697,7 +692,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
         delete config["usim-test-vector19"];
 
         config.dn_list = sub.requestedDN.map(({ snssai, dnn }): PH.ue_5g_nas_only.DN => {
-          const dn = this.netdef.findDN(dnn, snssai);
+          const dn = netdef.findDN(this.ctx.network, dnn, snssai);
           assert(dn && dn.type !== "IPv6");
           return {
             dnn: dn.dnn,
@@ -707,7 +702,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
         config.DefaultNetwork.dnn = config.dn_list[0]?.dnn ?? "default";
 
         config.Cell = sub.gnbs.map((gnbName): PH.ue_5g_nas_only.Cell => {
-          const gnb = findByName(gnbName, this.netdef.gnbs);
+          const gnb = findByName(gnbName, netdef.listGnbs(this.ctx.network));
           const gnbService = this.ctx.c.services[gnbName]!;
           assert(!!gnb);
           return {
@@ -733,7 +728,7 @@ export async function phoenixRAN(ctx: NetDefComposeContext, opts: PhoenixOpts): 
 
 function setNrfClientSlices(c: NetworkFunction, nssai: readonly N.SNSSAI[]): void {
   c.editModule("nrf_client", ({ config }) => {
-    config.nf_profile.sNssais = nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
+    config.nf_profile.sNssais = nssai.map((snssai) => netdef.splitSNSSAI(snssai).ih);
   });
 }
 

@@ -1,6 +1,6 @@
 import type { N } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
-import { validateNetDef } from "./netdef.js";
+import * as netdef from "./helpers.js";
 
 const network: N.Network = {
   plmn: "001-01",
@@ -91,5 +91,5 @@ const network: N.Network = {
   ],
 };
 
-validateNetDef(network);
+netdef.validate(network);
 await file_io.write("-.json", network);

@@ -6,8 +6,7 @@ import { Netmask } from "netmask";
 import { flatTransform, pipeline } from "streaming-iterables";
 import type { ReadonlyDeep } from "type-fest";
 
-import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
+import { compose, netdef } from "../netdef-compose/mod.js";
 import type { ComposeFile, ComposeService, N, UERANSIM } from "../types/mod.js";
 import { ueransimDockerImage } from "../ueransim/netdef.js";
 import { assert, dockerode, file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
@@ -33,11 +32,11 @@ export const ctxOptions = {
  * @param args - Parsed {@link ctxOptions}.
  * @returns Compose context and NetDef.
  */
-export async function loadCtx(args: YargsInfer<typeof ctxOptions>): Promise<[c: ComposeFile, netdef: NetDef]> {
+export async function loadCtx(args: YargsInfer<typeof ctxOptions>): Promise<[c: ComposeFile, network: N.Network]> {
   const c = await file_io.readYAML(path.join(args.dir, "compose.yml")) as ComposeFile;
-  const netdef = new NetDef(await file_io.readJSON(args.netdef ?? path.join(args.dir, "netdef.json")) as N.Network);
-  netdef.validate();
-  return [c, netdef];
+  const network = await file_io.readJSON(args.netdef ?? path.join(args.dir, "netdef.json"));
+  netdef.validate(network);
+  return [c, network];
 }
 
 /** Yargs options `--out` for tabular output. */
@@ -61,9 +60,9 @@ export function tableOutput(args: YargsInfer<typeof tableOutputOptions>, table: 
   return file_io.write(args.out, table.tsv);
 }
 
-export function gatherPduSessions(c: ComposeFile, netdef: NetDef) {
-  const subscribers = new Map<string, NetDef.Subscriber>();
-  for (const sub of netdef.listSubscribers()) {
+export function gatherPduSessions(c: ComposeFile, network: N.Network) {
+  const subscribers = new Map<string, netdef.Subscriber>();
+  for (const sub of netdef.listSubscribers(network)) {
     subscribers.set(sub.supi, sub);
   }
 
@@ -95,7 +94,7 @@ export function gatherPduSessions(c: ComposeFile, netdef: NetDef) {
     }),
     flatTransform(16, function*({ sub, ueService, ueHost, ueIPs, uePDUs }) {
       for (const dnID of sub.subscribedDN) {
-        const dn = netdef.findDN(dnID);
+        const dn = netdef.findDN(network, dnID);
         if (!dn?.subnet) {
           continue;
         }

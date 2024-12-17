@@ -1,9 +1,10 @@
 import path from "node:path";
 
-import * as compose from "../compose/mod.js";
 import type { ComposeFile } from "../types/mod.js";
 import { cmdOptions, cmdOutput, dockerode, file_io, Yargs } from "../util/mod.js";
 import { virtDockerImage } from "../virt/context.js";
+import { annotate } from "./compose.js";
+import { classifyByHost } from "./place.js";
 
 const args = Yargs()
   .option(cmdOptions)
@@ -23,10 +24,10 @@ const c = await file_io.readYAML(path.join(args.dir, args.file)) as ComposeFile;
 
 const localImages = await dockerode.listImages(undefined);
 const pullImages = new Set<string>();
-const pushImagesByHost: Array<compose.classifyByHost.Result & { pushImages: Set<string> }> = [];
+const pushImagesByHost: Array<classifyByHost.Result & { pushImages: Set<string> }> = [];
 
-for (const hostServices of compose.classifyByHost(c).filter(({ host }) => !!host)) {
-  const inVM = hostServices.services.some((s) => !!compose.annotate(s, "vmname") && s.image !== virtDockerImage);
+for (const hostServices of classifyByHost(c).filter(({ host }) => !!host)) {
+  const inVM = hostServices.services.some((s) => !!annotate(s, "vmname") && s.image !== virtDockerImage);
   const remoteImages = await dockerode.listImages(inVM ? undefined : "5gdeploy.localhost/*", hostServices.host);
   const pushImages = new Set<string>();
   for (const { image } of hostServices.services) {

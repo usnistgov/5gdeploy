@@ -1,26 +1,25 @@
 import * as shlex from "shlex";
 import type { PartialDeep } from "type-fest";
 
-import * as compose from "../compose/mod.js";
 import { dependOnGtp5g } from "../free5gc/mod.js";
-import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { prush } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
 
 /** Build RAN functions using PacketRusher. */
 export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> {
   assert(ctx.network.gnbIdLength === 24, "only support 24-bit gNB ID");
-  for (const [gnb, sub] of NetDef.pairGnbUe(ctx.netdef, true)) {
+  for (const [gnb, sub] of netdef.pairGnbUe(ctx.network, true)) {
     defineGnbUe(ctx, gnb, sub);
   }
 }
 
-function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Subscriber): void {
+function defineGnbUe(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Subscriber): void {
   const s = ctx.defineService(gnb.name, "5gdeploy.localhost/packetrusher", ["mgmt", "n2", "n3"]);
   s.stop_signal = "SIGINT";
   s.cap_add.push("NET_ADMIN");
   compose.annotate(s, "cpus", 1);
-  compose.annotate(s, "ue_supi", NetDef.listSUPIs(sub).join(","));
+  compose.annotate(s, "ue_supi", netdef.listSUPIs(sub).join(","));
   if (sub.count === 1) {
     s.devices.push("/dev/net/tun:/dev/net/tun");
     dependOnGtp5g(s, ctx.c);
@@ -47,8 +46,8 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Sub
   ], { shell: "ash" });
 }
 
-function makeConfigUpdate(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDef.Subscriber): PartialDeep<prush.Root> {
-  const plmn = NetDef.splitPLMN(ctx.network.plmn);
+function makeConfigUpdate(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Subscriber): PartialDeep<prush.Root> {
+  const plmn = netdef.splitPLMN(ctx.network.plmn);
   const s = ctx.c.services[gnb.name]!;
 
   const c: PartialDeep<prush.Root> = {};
@@ -61,7 +60,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDe
     dataif: { ip: compose.getIP(s, "n3") },
     plmnlist: {
       ...plmn,
-      tac: hexPad(ctx.netdef.tac, 6),
+      tac: ctx.network.tac,
       gnbid: hexPad(gnb.nci.gnb, 6),
     },
   };
@@ -75,7 +74,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, gnb: NetDef.GNB, sub: NetDe
 
   if (sub.requestedDN.length > 0) {
     const dn = sub.requestedDN[0]!;
-    const snssai = NetDef.splitSNSSAI(dn.snssai);
+    const snssai = netdef.splitSNSSAI(dn.snssai);
     c.gnodeb.slicesupportlist = {
       sst: snssai.hex.sst,
       sd: snssai.hex.sd ?? "",

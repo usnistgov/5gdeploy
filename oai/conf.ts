@@ -5,7 +5,7 @@ import { execa } from "execa";
 import * as yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
 
-import * as compose from "../compose/mod.js";
+import { compose } from "../netdef-compose/mod.js";
 import type { CN5G } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 import type { OAIOpts } from "./options.js";

@@ -1,7 +1,6 @@
 import path from "node:path";
 
-import * as compose from "../compose/mod.js";
-import type { NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { N } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 

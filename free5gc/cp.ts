@@ -1,8 +1,7 @@
 import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 
-import * as compose from "../compose/mod.js";
-import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, F5, N } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
 import { convertSNSSAI, getTaggedImageName, loadTemplate, mountTmpfsVolumes } from "./conf.js";
@@ -16,7 +15,7 @@ export async function f5CP(ctx: NetDefComposeContext): Promise<void> {
 
 class F5CPBuilder {
   constructor(protected readonly ctx: NetDefComposeContext) {
-    this.plmn = NetDef.splitPLMN(ctx.network.plmn);
+    this.plmn = netdef.splitPLMN(ctx.network.plmn);
     this.plmnID = ctx.network.plmn.replace("-", "");
   }
 
@@ -35,10 +34,10 @@ class F5CPBuilder {
     await this.buildAUSF();
     await this.buildNSSF();
     await this.buildPCF();
-    for (const amf of this.ctx.netdef.amfs) {
+    for (const amf of netdef.listAmfs(this.ctx.network)) {
       await this.buildAMF(amf);
     }
-    for (const smf of this.ctx.netdef.smfs) {
+    for (const smf of netdef.listSmfs(this.ctx.network)) {
       await this.buildSMF(smf);
     }
   }
@@ -86,11 +85,11 @@ class F5CPBuilder {
     yield "msg Requesting WebUI access token";
     yield `http --ignore-stdin -j POST ${server}/api/login username=admin password=free5gc | tee /login.json | jq .`;
     yield "TOKEN=\"$(jq -r .access_token /login.json)\"";
-    for (const sub of this.ctx.netdef.listSubscribers({ expandCount: false })) {
+    for (const sub of netdef.listSubscribers(this.ctx.network, { expandCount: false })) {
       const j = this.toSubscription(sub);
       const payload = JSON.stringify(webconsole.SubscriptionToJSON(j));
       if (sub.count > 1) {
-        yield `msg Inserting UEs ${sub.supi}..${NetDef.listSUPIs(sub).at(-1)}`;
+        yield `msg Inserting UEs ${sub.supi}..${netdef.listSUPIs(sub).at(-1)}`;
       } else {
         yield `msg Inserting UE ${sub.supi}`;
       }
@@ -100,7 +99,7 @@ class F5CPBuilder {
     }
   }
 
-  private toSubscription(sub: NetDef.Subscriber): W.Subscription {
+  private toSubscription(sub: netdef.Subscriber): W.Subscription {
     const j: W.Subscription = {
       plmnID: this.plmnID,
       ueId: `imsi-${sub.supi}`,
@@ -142,9 +141,9 @@ class F5CPBuilder {
 
     const smDatas: Record<N.SNSSAI, W.SessionManagementSubscriptionData> = {};
     for (const { snssai, dnn } of sub.subscribedDN) {
-      const dn = this.ctx.netdef.findDN(dnn, snssai);
+      const dn = netdef.findDN(this.ctx.network, dnn, snssai);
       assert(dn);
-      const { sst, sd = "" } = NetDef.splitSNSSAI(snssai).hex;
+      const { sst, sd = "" } = netdef.splitSNSSAI(snssai).hex;
       const key = `${sst}${sd}`.toLowerCase();
       const sessionType = dn.type.toUpperCase();
 
@@ -239,7 +238,7 @@ class F5CPBuilder {
     ];
   }
 
-  private async buildAMF(amf: NetDef.AMF): Promise<void> {
+  private async buildAMF(amf: netdef.AMF): Promise<void> {
     const [s, amfcfg] = await this.defineService<F5.amf.Configuration>(amf.name, ["cp", "n2"]);
     const c = amfcfg.configuration;
     c.ngapIpList = [compose.getIP(s, "n2")];
@@ -256,7 +255,7 @@ class F5CPBuilder {
     }];
     c.plmnSupportList = [{
       plmnId: this.plmn,
-      snssaiList: this.ctx.netdef.nssai.map((snssai) => convertSNSSAI(snssai)),
+      snssaiList: Array.from(netdef.listNssai(this.ctx.network), (snssai) => convertSNSSAI(snssai)),
     }];
     c.supportDnnList = this.ctx.network.dataNetworks.map((dn) => dn.dnn);
 
@@ -269,7 +268,7 @@ class F5CPBuilder {
     ], { shell: "ash" });
   }
 
-  private async buildSMF(smf: NetDef.SMF): Promise<void> {
+  private async buildSMF(smf: netdef.SMF): Promise<void> {
     this.smfUpi ??= this.buildSMFupi();
     const [s, smfcfg] = await this.defineService<F5.smf.Configuration>(smf.name, ["cp", "n4"]);
     const uerouting = await loadTemplate("uerouting");
@@ -309,16 +308,16 @@ class F5CPBuilder {
   private smfUpi?: F5.smf.UP;
 
   private buildSMFupi(): F5.smf.UP {
-    const { network, netdef } = this.ctx;
+    const { network } = this.ctx;
     const upi: F5.smf.UP = {
       upNodes: {},
       links: [],
     };
 
     let gnbPeers: [name: string, peersJoined: string, peers: readonly string[]] | undefined;
-    for (const gnb of netdef.gnbs) {
+    for (const gnb of netdef.listGnbs(network)) {
       const peers: string[] = [];
-      for (const [upfName] of netdef.listDataPathPeers(gnb.name)) {
+      for (const [upfName] of netdef.listDataPathPeers(network, gnb.name)) {
         assert(typeof upfName === "string");
         peers.push(upfName);
       }
@@ -349,7 +348,7 @@ class F5CPBuilder {
       upi.upNodes[upf.name] = node;
 
       const networkInstances: string[] = [];
-      const dnBySNSSAI = new DefaultMap<string, F5.smf.UPFsnssai>((snssai) => {
+      const dnBySNSSAI = new DefaultMap<N.SNSSAI, F5.smf.UPFsnssai>((snssai) => {
         const info: F5.smf.UPFsnssai = {
           sNssai: convertSNSSAI(snssai),
           dnnUpfInfoList: [],
@@ -357,11 +356,11 @@ class F5CPBuilder {
         node.sNssaiUpfInfos.push(info);
         return info;
       });
-      for (const [peer] of netdef.listDataPathPeers(upf.name)) {
+      for (const [peer] of netdef.listDataPathPeers(network, upf.name)) {
         if (typeof peer === "string") {
           continue;
         }
-        const dn = netdef.findDN(peer);
+        const dn = netdef.findDN(network, peer);
         assert(dn);
         if (dn.type !== "IPv4") {
           continue;

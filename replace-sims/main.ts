@@ -1,4 +1,4 @@
-import { validateNetDef } from "../netdef/netdef.js";
+import * as netdef from "../netdef/mod.js";
 import type { N } from "../types/mod.js";
 import { decPad, file_io, Yargs } from "../util/mod.js";
 
@@ -20,8 +20,8 @@ const sims = await file_io.readTable(args.sims, {
   columns: ["supi", "k", "opc"],
 }) as Array<Required<Pick<N.Subscriber, "supi" | "k" | "opc">>>;
 
-const network = await file_io.readJSON(args.netdef) as N.Network;
-validateNetDef(network);
+const network = await file_io.readJSON(args.netdef);
+netdef.validate(network);
 
 if (sims.length > 0) {
   const { supi } = sims[0]!;

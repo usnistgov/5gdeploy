@@ -1,7 +1,6 @@
 import type { Except } from "type-fest";
 
-import * as compose from "../compose/mod.js";
-import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, SRSRAN } from "../types/mod.js";
 import srsgnbSchema from "../types/srsgnb.schema.json";
 import { file_io, makeSchemaValidator } from "../util/mod.js";
@@ -21,10 +20,10 @@ export async function srsRAN(ctx: NetDefComposeContext, opts: SRSOpts): Promise<
 
 class RANBuilder {
   constructor(private readonly ctx: NetDefComposeContext, private readonly opts: SRSOpts) {
-    this.plmn = NetDef.splitPLMN(ctx.network.plmn);
+    this.plmn = netdef.splitPLMN(ctx.network.plmn);
   }
 
-  private readonly plmn: NetDef.PLMN;
+  private readonly plmn: netdef.PLMN;
 
   public async build(): Promise<void> {
     const sdrFile = this.opts["srs-gnb-sdr"];
@@ -39,20 +38,20 @@ class RANBuilder {
     const c = await file_io.readYAML(sdrFile);
     validateGNB(c);
 
-    for (const gnb of this.ctx.netdef.gnbs) {
+    for (const gnb of netdef.listGnbs(this.ctx.network)) {
       await this.buildGNBsdr(gnb, c);
     }
   }
 
   private async buildZmq(): Promise<void> {
-    for (const [gnb, sub] of NetDef.pairGnbUe(this.ctx.netdef)) {
+    for (const [gnb, sub] of netdef.pairGnbUe(this.ctx.network)) {
       const ue = this.ctx.defineService(gnb.name.replace("gnb", "ue"), ueDockerImage, ["mgmt", "air"]);
       const gnbIP = await this.buildGNBzmq(gnb, compose.getIP(ue, "air"));
       this.buildUE(ue, sub, gnbIP);
     }
   }
 
-  private async buildGNBsdr(gnb: NetDef.GNB, c: SRSRAN.GnbConfig): Promise<void> {
+  private async buildGNBsdr(gnb: netdef.GNB, c: SRSRAN.GnbConfig): Promise<void> {
     const s = this.ctx.defineService(gnb.name, gnbDockerImage, ["n2", "n3"]);
     compose.annotate(s, "cpus", 4);
     await this.buildGNB(s, gnb, c.ru_sdr, c.cell_cfg);
@@ -62,7 +61,7 @@ class RANBuilder {
     }
   }
 
-  private async buildGNBzmq(gnb: NetDef.GNB, ueIP: string): Promise<string> {
+  private async buildGNBzmq(gnb: netdef.GNB, ueIP: string): Promise<string> {
     const s = this.ctx.defineService(gnb.name, gnbDockerImage, ["air", "n2", "n3"]);
     compose.annotate(s, "cpus", 3);
 
@@ -93,13 +92,13 @@ class RANBuilder {
   }
 
   private async buildGNB(
-      s: ComposeService, gnb: NetDef.GNB, rusdr: SRSRAN.RUSDR,
+      s: ComposeService, gnb: netdef.GNB, rusdr: SRSRAN.RUSDR,
       cellcfg: Except<SRSRAN.Cell, "plmn" | "tac" | "pci" | "slicing">,
   ): Promise<void> {
     const amfIP = compose.getIP(this.ctx.c, "amf*", "n2");
     const plmn = `${this.plmn.mcc}${this.plmn.mnc}`;
-    const { tac } = this.ctx.netdef;
-    const slices = Array.from(this.ctx.netdef.nssai, (snssai) => NetDef.splitSNSSAI(snssai).int);
+    const tac = Number.parseInt(this.ctx.network.tac, 16);
+    const slices = Array.from(netdef.listNssai(this.ctx.network), (snssai) => netdef.splitSNSSAI(snssai).int);
 
     const c: SRSRAN.GnbConfig = {
       gnb_id: gnb.nci.gnb,
@@ -144,7 +143,7 @@ class RANBuilder {
     ]);
   }
 
-  private buildUE(s: ComposeService, sub: NetDef.Subscriber, gnbIP: string): void {
+  private buildUE(s: ComposeService, sub: netdef.Subscriber, gnbIP: string): void {
     compose.annotate(s, "cpus", 2);
     compose.annotate(s, "ue_supi", sub.supi);
     s.cap_add.push("NET_ADMIN", "SYS_NICE");

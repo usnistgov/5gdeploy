@@ -1,7 +1,6 @@
 import * as shlex from "shlex";
 
-import * as compose from "../compose/mod.js";
-import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import * as UHD from "../srsran/uhd.js";
 import type { ComposeService, OAI } from "../types/mod.js";
 import { assert } from "../util/mod.js";
@@ -10,20 +9,20 @@ import type { OAIOpts } from "./options.js";
 
 /** Build RAN functions using OpenAirInterface5G. */
 export async function oaiRAN(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
-  for (const gnb of ctx.netdef.gnbs) {
+  for (const gnb of netdef.listGnbs(ctx.network)) {
     await makeGNB(ctx, opts, gnb);
   }
 
   if (opts["oai-gnb-usrp"]) {
     return;
   }
-  for (const [ct, subscriber] of compose.suggestUENames(ctx.netdef.listSubscribers())) {
+  for (const [ct, subscriber] of compose.suggestUENames(netdef.listSubscribers(ctx.network))) {
     await makeUE(ctx, opts, ct, subscriber);
   }
 }
 
 /** Define gNB container and generate configuration. */
-async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, gnb: NetDef.GNB): Promise<void> {
+async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, gnb: netdef.GNB): Promise<void> {
   const nets = ["air", "mgmt", "n2", "n3"];
   if (opts["oai-gnb-usrp"]) {
     nets.shift();
@@ -37,16 +36,16 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, gnb: NetDef.GNB
 
   assert(c.gNBs.length === 1);
   const g0 = c.gNBs[0]!;
-  ({ gnb: g0.gNB_ID, nci: g0.nr_cellid } = ctx.netdef.splitNCI(gnb.nci));
+  ({ gnb: g0.gNB_ID, nci: g0.nr_cellid } = gnb.nci);
   g0.gNB_name = gnb.name;
-  g0.tracking_area_code = ctx.netdef.tac;
+  g0.tracking_area_code = Number.parseInt(ctx.network.tac, 16);
 
-  const { mcc, mnc } = NetDef.splitPLMN(ctx.network.plmn);
+  const { mcc, mnc } = netdef.splitPLMN(ctx.network.plmn);
   g0.plmn_list = [{
     mcc: Number.parseInt(mcc, 10),
     mnc: Number.parseInt(mnc, 10),
     mnc_length: mnc.length,
-    snssaiList: ctx.netdef.nssai.map((snssai): OAI.gnb.SNSSAI => NetDef.splitSNSSAI(snssai).int),
+    snssaiList: Array.from(netdef.listNssai(ctx.network), (snssai): OAI.gnb.SNSSAI => netdef.splitSNSSAI(snssai).int),
     "snssaiList:dtype": "l",
   }];
 
@@ -108,7 +107,7 @@ function enableUSRP(usrp: OAIOpts["oai-gnb-usrp"], s: ComposeService, softmodemA
 }
 
 /** Define UE container and generate configuration. */
-async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub: NetDef.Subscriber): Promise<void> {
+async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub: netdef.Subscriber): Promise<void> {
   const s = ctx.defineService(ct, await oai_conf.getTaggedImageName(opts, "ue"), ["mgmt", "air"]);
   compose.annotate(s, "cpus", 1);
   compose.annotate(s, "ue_supi", sub.supi);
@@ -122,7 +121,7 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
   const c = await oai_conf.loadLibconf<OAI.ue.Config>(opts["oai-ue-conf"], ct);
   c.uicc0 = {
     imsi: sub.supi,
-    nmc_size: NetDef.splitPLMN(ctx.network.plmn).mnc.length,
+    nmc_size: netdef.splitPLMN(ctx.network.plmn).mnc.length,
     key: sub.k,
     opc: sub.opc,
     dnn: "",
@@ -130,7 +129,7 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
   };
   if (sub.requestedDN.length > 0) {
     const { snssai, dnn } = sub.requestedDN[0]!;
-    const { sst, sd } = NetDef.splitSNSSAI(snssai).int;
+    const { sst, sd } = netdef.splitSNSSAI(snssai).int;
     c.uicc0.nssai_sst = sst;
     c.uicc0.nssai_sd = sd;
     c.uicc0.dnn = dnn;

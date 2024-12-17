@@ -1,4 +1,4 @@
-import * as compose from "../compose/mod.js";
+import { compose } from "../netdef-compose/mod.js";
 import type { ComposeService, O5G } from "../types/mod.js";
 
 export const o5DockerImage = "5gdeploy.localhost/open5gs";

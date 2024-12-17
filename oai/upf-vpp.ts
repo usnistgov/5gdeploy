@@ -1,7 +1,6 @@
 import path from "node:path";
 
-import * as compose from "../compose/mod.js";
-import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { N } from "../types/mod.js";
 import { assert, file_io } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
@@ -10,12 +9,12 @@ import type { OAIOpts } from "./options.js";
 /** Build oai-upf-vpp UPF. */
 export async function oaiUPvpp(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIOpts): Promise<void> {
   const ct = upf.name;
-  const { mcc, mnc } = NetDef.splitPLMN(ctx.network.plmn);
+  const { mcc, mnc } = netdef.splitPLMN(ctx.network.plmn);
 
-  const peers = ctx.netdef.gatherUPFPeers(upf);
+  const peers = netdef.gatherUPFPeers(ctx.network, upf);
   assert(peers.N6IPv4.length === 1, `UPF ${upf.name} must handle exactly 1 IPv4 DN`);
   const dn = peers.N6IPv4[0]!;
-  const { sst, sd } = NetDef.splitSNSSAI(dn.snssai, true).ih;
+  const { sst, sd } = netdef.splitSNSSAI(dn.snssai, true).ih;
 
   const image = await oai_conf.getTaggedImageName(opts, "upf-vpp");
   const s = ctx.defineService(ct, image, ["cp", "n4", "n6", "n3"]);

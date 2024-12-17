@@ -2,8 +2,7 @@ import path from "node:path";
 
 import * as yaml from "js-yaml";
 
-import * as compose from "../compose/mod.js";
-import { NetDef } from "../netdef/netdef.js";
+import { compose, netdef } from "../netdef-compose/mod.js";
 import type { ComposeService, F5 } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 
@@ -28,7 +27,7 @@ export function loadTemplate(tpl: string): Promise<unknown> {
 }
 
 export function convertSNSSAI(input: string): F5.SNSSAI {
-  const { sst, sd } = NetDef.splitSNSSAI(input).ih;
+  const { sst, sd } = netdef.splitSNSSAI(input).ih;
   return { sst, sd: sd?.toLowerCase() };
 }
 

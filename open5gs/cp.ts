@@ -1,8 +1,7 @@
 import * as shlex from "shlex";
 import type { PartialDeep } from "type-fest";
 
-import * as compose from "../compose/mod.js";
-import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, O5G } from "../types/mod.js";
 import { assert } from "../util/mod.js";
 import { dbctlDockerImage, makeLaunchCommands, makeMetrics, makeSockNode, o5DockerImage } from "./common.js";
@@ -15,7 +14,7 @@ export async function o5CP(ctx: NetDefComposeContext): Promise<void> {
 
 class O5CPBuilder {
   constructor(protected readonly ctx: NetDefComposeContext) {
-    this.plmn = NetDef.splitPLMN(ctx.network.plmn);
+    this.plmn = netdef.splitPLMN(ctx.network.plmn);
   }
 
   private readonly plmn: O5G.PLMNID;
@@ -33,25 +32,25 @@ class O5CPBuilder {
     this.defineOnlySbi("bsf"); // needed by PCF
     this.buildPCF(); // needed by AMF
     this.buildNSSF(); // needed by AMF
-    for (const amf of this.ctx.netdef.amfs) {
+    for (const amf of netdef.listAmfs(this.ctx.network)) {
       this.buildAMF(amf);
     }
-    for (const smf of this.ctx.netdef.smfs) {
+    for (const smf of netdef.listSmfs(this.ctx.network)) {
       this.buildSMF(smf);
     }
   }
 
   private buildPopulate(): void {
-    const { netdef } = this.ctx;
-    const s = this.ctx.defineService("populate", dbctlDockerImage, ["db"]);
+    const { ctx } = this;
+    const s = ctx.defineService("populate", dbctlDockerImage, ["db"]);
     s.environment.DB_URI = this.mongoUrl.toString();
     s.depends_on.mongo = { condition: "service_started" };
 
     compose.setCommands(s, (function*() {
       yield "open5gs-dbctl reset";
-      for (const sub of netdef.listSubscribers()) {
+      for (const sub of netdef.listSubscribers(ctx.network)) {
         for (const [i, { snssai, dnns }] of sub.subscribedNSSAI.entries()) {
-          const { sst, sd } = NetDef.splitSNSSAI(snssai, true).ih;
+          const { sst, sd } = netdef.splitSNSSAI(snssai, true).ih;
           assert(dnns.length === 1, "open5gs-dbctl supports exactly one DNN per S-NSSAI");
           const dnn = dnns[0]!;
           if (i === 0) {
@@ -111,9 +110,9 @@ class O5CPBuilder {
         sbi: this.makeSBI(s),
       },
     };
-    cfg.nssf!.sbi!.client!.nsi = Array.from(this.ctx.netdef.nssai, (snssai) => ({
+    cfg.nssf!.sbi!.client!.nsi = Array.from(netdef.listNssai(this.ctx.network), (snssai) => ({
       uri: this.nrfUri!.toString(),
-      s_nssai: NetDef.splitSNSSAI(snssai).ih,
+      s_nssai: netdef.splitSNSSAI(snssai).ih,
     }));
 
     compose.setCommands(s, [
@@ -123,7 +122,7 @@ class O5CPBuilder {
     ]);
   }
 
-  private buildAMF(amf: NetDef.AMF): void {
+  private buildAMF(amf: netdef.AMF): void {
     const s = this.defineService(amf.name, ["mgmt", "cp", "n2"]);
 
     const cfg: PartialDeep<O5G.amf.Root> = {
@@ -141,14 +140,11 @@ class O5CPBuilder {
         }],
         tai: [{
           plmn_id: this.plmn,
-          tac: [this.ctx.netdef.tac],
+          tac: [Number.parseInt(this.ctx.network.tac, 16)],
         }],
         plmn_support: [{
           plmn_id: this.plmn,
-          s_nssai: Array.from(
-            this.ctx.netdef.nssai,
-            (snssai) => NetDef.splitSNSSAI(snssai).ih,
-          ),
+          s_nssai: Array.from(netdef.listNssai(this.ctx.network), (snssai) => netdef.splitSNSSAI(snssai).ih),
         }],
         amf_name: amf.name,
       },
@@ -161,7 +157,7 @@ class O5CPBuilder {
     ]);
   }
 
-  private buildSMF(smf: NetDef.SMF): void {
+  private buildSMF(smf: netdef.SMF): void {
     const s = this.defineService(smf.name, ["mgmt", "cp", "n4"]);
 
     const cfg: PartialDeep<O5G.smf.Root> = {
@@ -172,7 +168,7 @@ class O5CPBuilder {
               this.ctx.network.dataNetworks.filter((dn) => dn.snssai === snssai),
               ({ dnn }) => dnn,
             );
-            return { ...NetDef.splitSNSSAI(snssai).ih, dnn };
+            return { ...netdef.splitSNSSAI(snssai).ih, dnn };
           }),
         }],
         sbi: this.makeSBI(s),
@@ -180,7 +176,7 @@ class O5CPBuilder {
           server: [makeSockNode(s, "n4")],
           client: {
             upf: Array.from(this.ctx.network.upfs, (upf): O5G.smf.PfcpUpf => {
-              const peers = this.ctx.netdef.gatherUPFPeers(upf);
+              const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
               return {
                 address: compose.getIP(this.ctx.c, upf.name, "n4"),
                 dnn: Array.from([...peers.N6IPv4, ...peers.N6IPv6], ({ dnn }) => dnn),

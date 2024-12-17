@@ -1,7 +1,6 @@
 import type { PartialDeep } from "type-fest";
 
-import * as compose from "../compose/mod.js";
-import { NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { UERANSIM } from "../types/mod.js";
 import type { YargsInfer, YargsOptions } from "../util/mod.js";
 
@@ -25,23 +24,23 @@ export async function ueransimRAN(ctx: NetDefComposeContext, opts: UeransimOpts)
 
 class UeransimBuilder {
   constructor(private readonly ctx: NetDefComposeContext, private readonly opts: UeransimOpts) {
-    this.plmn = NetDef.splitPLMN(ctx.network.plmn);
+    this.plmn = netdef.splitPLMN(ctx.network.plmn);
   }
 
-  private readonly plmn: NetDef.PLMN;
+  private readonly plmn: netdef.PLMN;
 
   public async build(): Promise<void> {
-    for (const gnb of this.ctx.netdef.gnbs) {
+    for (const gnb of netdef.listGnbs(this.ctx.network)) {
       await this.buildGNB(gnb);
     }
 
     const expandCount = this.opts["ueransim-single-ue"];
-    for (const [ct, sub] of compose.suggestUENames(this.ctx.netdef.listSubscribers({ expandCount }))) {
+    for (const [ct, sub] of compose.suggestUENames(netdef.listSubscribers(this.ctx.network, { expandCount }))) {
       await this.buildUE(ct, sub);
     }
   }
 
-  private async buildGNB(gnb: NetDef.GNB): Promise<void> {
+  private async buildGNB(gnb: netdef.GNB): Promise<void> {
     const s = this.ctx.defineService(gnb.name, ueransimDockerImage, ["air", "n2", "n3"]);
     compose.annotate(s, "cpus", 1);
 
@@ -50,7 +49,7 @@ class UeransimBuilder {
       mnc: this.plmn.mnc,
       nci: Number.parseInt(gnb.nci, 16),
       idLength: this.ctx.network.gnbIdLength,
-      tac: this.ctx.netdef.tac,
+      tac: Number.parseInt(this.ctx.network.tac, 16),
       linkIp: compose.getIP(s, "air"),
       ngapIp: compose.getIP(s, "n2"),
       gtpIp: compose.getIP(s, "n3"),
@@ -59,8 +58,8 @@ class UeransimBuilder {
         (amf) => ({ address: compose.getIP(amf, "n2"), port: 38412 } as const),
       ),
       slices: Array.from(
-        this.ctx.netdef.nssai,
-        (snssai) => NetDef.splitSNSSAI(snssai).int,
+        netdef.listNssai(this.ctx.network),
+        (snssai) => netdef.splitSNSSAI(snssai).int,
       ),
     };
     await this.ctx.writeFile(`ran-cfg/${gnb.name}.yaml`, c, { s, target: "/ueransim/config/update.yaml" });
@@ -79,16 +78,16 @@ class UeransimBuilder {
     ]);
   }
 
-  private async buildUE(ct: string, sub: NetDef.Subscriber): Promise<void> {
+  private async buildUE(ct: string, sub: netdef.Subscriber): Promise<void> {
     const s = this.ctx.defineService(ct, ueransimDockerImage, ["mgmt", "air"]);
     compose.annotate(s, "cpus", 1);
     s.cap_add.push("NET_ADMIN");
     s.devices.push("/dev/net/tun:/dev/net/tun");
-    compose.annotate(s, "ue_supi", NetDef.listSUPIs(sub).join(","));
+    compose.annotate(s, "ue_supi", netdef.listSUPIs(sub).join(","));
 
     const nssai: UERANSIM.Slice[] = Array.from(
       sub.requestedNSSAI ?? sub.subscribedNSSAI,
-      ({ snssai }) => NetDef.splitSNSSAI(snssai).int,
+      ({ snssai }) => netdef.splitSNSSAI(snssai).int,
     );
     const c: PartialDeep<UERANSIM.ue.Config> = {
       supi: `imsi-${sub.supi}`,
@@ -103,7 +102,7 @@ class UeransimBuilder {
         ({ dnn, snssai }) => ({
           type: "IPv4",
           apn: dnn,
-          slice: NetDef.splitSNSSAI(snssai).int,
+          slice: netdef.splitSNSSAI(snssai).int,
         }),
       ),
       "configured-nssai": nssai,

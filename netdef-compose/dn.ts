@@ -4,7 +4,7 @@ import map from "obliterator/map.js";
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
-import type { NetDef } from "../netdef/netdef.js";
+import * as netdef from "../netdef/mod.js";
 import type { N } from "../types/mod.js";
 import { assert, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import type { NetDefComposeContext } from "./context.js";
@@ -55,7 +55,7 @@ export function defineDNServices(ctx: NetDefComposeContext, opts: DNOpts): void 
 function* makeDNRoutes(ctx: NetDefComposeContext, dn: N.DataNetwork): Iterable<string> {
   const dest = new Netmask(dn.subnet!);
   yield `msg Adding routes for ${shlex.quote(`${dn.snssai}:${dn.dnn}`)} toward UPFs`;
-  for (const [upfName, cost] of ctx.netdef.listDataPathPeers(dn)) {
+  for (const [upfName, cost] of netdef.listDataPathPeers(ctx.network, dn)) {
     assert(typeof upfName === "string");
     const upf = ctx.c.services[upfName];
     assert(!!upf, `${upfName} container not found`);
@@ -93,7 +93,7 @@ export function setDNCommands(ctx: NetDefComposeContext): void {
  * @remarks
  * This shall be called after {@link defineDNServices} and before {@link setDNCommands}.
  */
-export function* makeUPFRoutes(ctx: NetDefComposeContext, peers: NetDef.UPFPeers, upfNetif?: string): Iterable<string> {
+export function* makeUPFRoutes(ctx: NetDefComposeContext, peers: netdef.UPFPeers, upfNetif?: string): Iterable<string> {
   for (const dn of peers.N6IPv4) {
     const dnService = ctx.c.services[makeDNServiceName(ctx, dn)];
     const dest = new Netmask(dn.subnet!);

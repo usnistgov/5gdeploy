@@ -4,7 +4,7 @@ import type { Promisable } from "type-fest";
 import * as compose from "../compose/mod.js";
 import { f5CP, f5UP } from "../free5gc/mod.js";
 import { ndndpdkUP } from "../ndndpdk/upf.js";
-import { NetDef } from "../netdef/netdef.js";
+import * as netdef from "../netdef/mod.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { bessUP, gnbsimRAN } from "../omec/mod.js";
 import { o5CP, o5UP } from "../open5gs/mod.js";
@@ -103,9 +103,9 @@ const args = await Yargs()
   .middleware(useVm)
   .parseAsync();
 
-const netdef = new NetDef(await file_io.readJSON(args.netdef) as N.Network);
-netdef.validate();
-const ctx = new NetDefComposeContext(netdef, args.out, new compose.IPAlloc(args));
+const network = await file_io.readJSON(args.netdef);
+netdef.validate(network);
+const ctx = new NetDefComposeContext(network, args.out, new compose.IPAlloc(args));
 defineDNServices(ctx, args);
 for (const upf of ctx.network.upfs) {
   const up = args.up.find(([pattern]) => pattern === undefined || pattern.match(upf.name));

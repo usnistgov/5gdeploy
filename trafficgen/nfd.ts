@@ -4,7 +4,7 @@ import { Netmask } from "netmask";
 import * as shlex from "shlex";
 import { consume, filter, map, pipeline } from "streaming-iterables";
 
-import * as compose from "../compose/mod.js";
+import { compose, netdef } from "../netdef-compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
 import { assert, cmdOptions, cmdOutput, file_io, Yargs } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx, toNfdName } from "./common.js";
@@ -34,9 +34,9 @@ const args = Yargs()
   })
   .parseSync();
 
-const [c, netdef] = await loadCtx(args);
+const [c, network] = await loadCtx(args);
 
-const dn = netdef.findDN(args.dnn);
+const dn = netdef.findDN(network, args.dnn);
 assert(dn !== undefined, `Data Network ${args.dnn} not found`);
 assert(dn.type === "IPv4", `Data Network ${args.dnn} is not IPv4`);
 
@@ -74,7 +74,7 @@ function defineServer(dnService: ComposeService): ComposeService {
 }
 
 await pipeline(
-  () => gatherPduSessions(c, netdef),
+  () => gatherPduSessions(c, network),
   filter(({ dn: { dnn } }) => dnn === dn.dnn),
   map((ctx) => {
     const { ueService, dnService, dnIP, pduNetif } = ctx;

@@ -6,9 +6,9 @@ import map from "obliterator/map.js";
 import * as shlex from "shlex";
 import type { ReadonlyDeep } from "type-fest";
 
-import * as compose from "../compose/mod.js";
-import type { ComposeFile, ComposeService, ComposeVolume } from "../types/compose";
+import type { ComposeFile, ComposeService, ComposeVolume } from "../types/mod.js";
 import { hexPad, joinVbar, scriptHead, splitVbar, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { annotate } from "./compose.js";
 import type { ComposeContext } from "./context.js";
 
 interface BaseRule {
@@ -203,7 +203,7 @@ function* listRules<R extends ReadonlyDeep<BaseRule>>(
       continue;
     }
 
-    const srcIP = compose.annotate(s, `ip_${rule.net}`);
+    const srcIP = annotate(s, `ip_${rule.net}`);
     assert(!!srcIP, `${s.container_name} does not have ${rule.net} netif`);
 
     const dstSubnets: string[] = [];
@@ -217,7 +217,7 @@ function* listRules<R extends ReadonlyDeep<BaseRule>>(
           continue;
         }
 
-        const dstIP = compose.annotate(dst, `ip_${rule.net}`);
+        const dstIP = annotate(dst, `ip_${rule.net}`);
         if (dstIP) {
           dstSubnets.push(`${dstIP}/32`);
         }

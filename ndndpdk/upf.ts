@@ -1,6 +1,5 @@
 
-import * as compose from "../compose/mod.js";
-import type { NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, N } from "../types/mod.js";
 import { assert } from "../util/mod.js";
 
@@ -22,7 +21,7 @@ function setCommands(ctx: NetDefComposeContext, s: ComposeService, upf: N.UPF): 
     `--upf-mac=${upfN3mac}`,
   ];
 
-  const peers = ctx.netdef.gatherUPFPeers(upf);
+  const peers = netdef.gatherUPFPeers(ctx.network, upf);
   assert(peers.N6IPv4.length === 1, `UPF ${upf.name} must handle exactly 1 IPv4 DN`);
   flags.push(`--dn=${compose.getIP(ctx.c, `dn_${peers.N6IPv4[0]!.dnn}`, "n6")}`);
   for (const gnb of peers.N3) {

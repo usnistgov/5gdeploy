@@ -4,8 +4,7 @@ import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 import sql from "sql-tagged-template-literal";
 
-import * as compose from "../compose/mod.js";
-import { makeUPFRoutes, NetDef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { CN5G, ComposeFile, ComposeService, N } from "../types/mod.js";
 import { assert, file_io, hexPad } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
@@ -19,7 +18,6 @@ abstract class CN5GBuilder {
       protected readonly opts: OAIOpts,
   ) {}
 
-  protected get netdef() { return this.ctx.netdef; }
   protected c!: CN5G.Config;
 
   protected async loadTemplateConfig(): Promise<void> {
@@ -80,7 +78,7 @@ abstract class CN5GBuilder {
   }
 
   protected updateConfigDNNs(): void {
-    this.c.snssais = this.netdef.nssai.map((snssai) => NetDef.splitSNSSAI(snssai).ih);
+    this.c.snssais = Array.from(netdef.listNssai(this.ctx.network), (snssai) => netdef.splitSNSSAI(snssai).ih);
     this.c.dnns = this.ctx.network.dataNetworks.map((dn): CN5G.DNN => ({
       dnn: dn.dnn,
       pdu_session_type: "IPV4",
@@ -88,18 +86,18 @@ abstract class CN5GBuilder {
     }));
   }
 
-  protected makeUPFInfo(peers: NetDef.UPFPeers): CN5G.upf.UPFInfo {
+  protected makeUPFInfo(peers: netdef.UPFPeers): CN5G.upf.UPFInfo {
     const info: CN5G.upf.UPFInfo = {
       sNssaiUpfInfoList: [],
     };
-    for (const snssai of this.netdef.nssai) {
+    for (const snssai of netdef.listNssai(this.ctx.network)) {
       const sPeers = peers.N6IPv4.filter((peer) => peer.snssai === snssai);
       if (sPeers.length === 0) {
         continue;
       }
 
       const item: CN5G.upf.SNSSAIInfo = {
-        sNssai: NetDef.splitSNSSAI(snssai).ih,
+        sNssai: netdef.splitSNSSAI(snssai).ih,
         dnnUpfInfoList: sPeers.map(({ dnn }) => ({ dnn })),
       };
       info.sNssaiUpfInfoList.push(item);
@@ -147,15 +145,15 @@ class CPBuilder extends CN5GBuilder {
   }
 
   private *populateSQL(): Iterable<string> {
-    const { mcc, mnc } = NetDef.splitPLMN(this.ctx.network.plmn);
+    const { mcc, mnc } = netdef.splitPLMN(this.ctx.network.plmn);
     const servingPlmnid = `${mcc}${mnc}`;
     yield "SELECT @sqn_json:=sequenceNumber FROM AuthenticationSubscription LIMIT 1";
     yield "DELETE FROM AccessAndMobilitySubscriptionData";
     yield "DELETE FROM AuthenticationSubscription";
     yield "DELETE FROM SessionManagementSubscriptionData";
-    for (const sub of this.netdef.listSubscribers()) {
+    for (const sub of netdef.listSubscribers(this.ctx.network)) {
       const nssai = {
-        defaultSingleNssais: sub.subscribedNSSAI.map(({ snssai }) => NetDef.splitSNSSAI(snssai).ih),
+        defaultSingleNssais: sub.subscribedNSSAI.map(({ snssai }) => netdef.splitSNSSAI(snssai).ih),
       };
       yield sql`
         INSERT AccessAndMobilitySubscriptionData (ueid,servingPlmnid,nssai)
@@ -169,7 +167,7 @@ class CPBuilder extends CN5GBuilder {
   }
 
   private updateConfigAMF(): void {
-    const { amfs } = this.netdef;
+    const amfs = netdef.listAmfs(this.ctx.network);
     assert(amfs.length === 1, "support exactly 1 AMF");
     const amf = amfs[0]!;
 
@@ -181,7 +179,7 @@ class CPBuilder extends CN5GBuilder {
     }
     c.supported_integrity_algorithms = c.supported_integrity_algorithms.filter((algo) => algo !== "NIA0");
 
-    const plmn = NetDef.splitPLMN(this.ctx.network.plmn);
+    const plmn = netdef.splitPLMN(this.ctx.network.plmn);
     c.served_guami_list = [{
       ...plmn,
       amf_region_id: hexPad(amf.amfi[0], 2),
@@ -190,13 +188,13 @@ class CPBuilder extends CN5GBuilder {
     }];
     c.plmn_support_list = [{
       ...plmn,
-      tac: `0x${hexPad(this.netdef.tac, 4)}`,
+      tac: `0x${this.ctx.network.tac.slice(2, 6)}`,
       nssai: this.c.snssais,
     }];
   }
 
   private updateConfigSMF(): void {
-    const { smfs } = this.netdef;
+    const smfs = netdef.listSmfs(this.ctx.network);
     assert(smfs.length === 1, "support exactly 1 SMF");
 
     const s = this.ctx.c.services.smf!;
@@ -209,7 +207,7 @@ class CPBuilder extends CN5GBuilder {
       s.extra_hosts[`${upf.name}.5gdeploy.oai`] = host; // SMF would attempt RDNS lookup
       const upfCfg: CN5G.smf.UPF = { ...upfTpl, host };
       if (!this.opts["oai-cn5g-nrf"]) {
-        const peers = this.netdef.gatherUPFPeers(upf);
+        const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
         upfCfg.upf_info = this.makeUPFInfo(peers);
         upfCfg.config = {
           ...upfCfg.config,
@@ -219,10 +217,10 @@ class CPBuilder extends CN5GBuilder {
       return upfCfg;
     });
 
-    c.smf_info.sNssaiSmfInfoList = this.netdef.nssai.map((snssai): CN5G.smf.SNSSAIInfo => {
+    c.smf_info.sNssaiSmfInfoList = Array.from(netdef.listNssai(this.ctx.network), (snssai): CN5G.smf.SNSSAIInfo => {
       const dataNetworks = this.ctx.network.dataNetworks.filter((dn) => dn.snssai === snssai);
       return {
-        sNssai: NetDef.splitSNSSAI(snssai).ih,
+        sNssai: netdef.splitSNSSAI(snssai).ih,
         dnnSmfInfoList: dataNetworks.map(({ dnn }) => ({ dnn })),
       };
     });
@@ -230,7 +228,7 @@ class CPBuilder extends CN5GBuilder {
     const localSubscriptionTpl = c.local_subscription_infos[0]!;
     c.local_subscription_infos = this.ctx.network.dataNetworks.map((dn): CN5G.smf.LocalSubscription => ({
       ...localSubscriptionTpl,
-      single_nssai: NetDef.splitSNSSAI(dn.snssai).ih,
+      single_nssai: netdef.splitSNSSAI(dn.snssai).ih,
       dnn: dn.dnn,
     }));
   }
@@ -345,7 +343,7 @@ class UPBuilder extends CN5GBuilder {
     compose.annotate(s, "cpus", this.opts["oai-upf-workers"]);
     s.devices.push("/dev/net/tun:/dev/net/tun");
 
-    const peers = this.netdef.gatherUPFPeers(upf);
+    const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
     assert(peers.N9.length === 0, "N9 not supported");
     compose.setCommands(s, this.makeExecCommands(s, "upf", makeUPFRoutes(this.ctx, peers)));
 
@@ -355,7 +353,7 @@ class UPBuilder extends CN5GBuilder {
     });
   }
 
-  private updateConfigUPF(peers: NetDef.UPFPeers): void {
+  private updateConfigUPF(peers: netdef.UPFPeers): void {
     if (this.c.nfs.nrf) {
       this.c.nfs.nrf.host = compose.getIP(this.ctx.c, "nrf", "cp");
     }
