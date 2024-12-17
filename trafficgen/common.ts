@@ -95,7 +95,7 @@ export function gatherPduSessions(c: ComposeFile, network: N.Network) {
     flatTransform(16, function*({ sub, ueService, ueHost, ueIPs, uePDUs }) {
       for (const dnID of sub.subscribedDN) {
         const dn = netdef.findDN(network, dnID);
-        if (!dn?.subnet) {
+        if (!dn.subnet) {
           continue;
         }
         const pduSess = findPduIP(dn, ueIPs, uePDUs);

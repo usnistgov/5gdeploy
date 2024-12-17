@@ -1,3 +1,4 @@
+import stringify from "json-stringify-deterministic";
 import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 
@@ -78,23 +79,23 @@ class F5CPBuilder {
   }
 
   private *generateWebClientCommands(webconsole: typeof W, serverIP: string): Iterable<string> {
-    const serverPort = 5000;
-    const server = `http://${serverIP}:${serverPort}`;
+    const server = new URL("http://unset.invalid:5000");
+    server.hostname = serverIP;
 
-    yield* compose.waitReachable("WebUI", [serverIP], { mode: `nc:${serverPort}`, sleep: 1 });
+    yield* compose.waitReachable("WebUI", [serverIP], { mode: `nc:${server.port as `${number}`}`, sleep: 1 });
     yield "msg Requesting WebUI access token";
     yield `http --ignore-stdin -j POST ${server}/api/login username=admin password=free5gc | tee /login.json | jq .`;
     yield "TOKEN=\"$(jq -r .access_token /login.json)\"";
     for (const sub of netdef.listSubscribers(this.ctx.network, { expandCount: false })) {
       const j = this.toSubscription(sub);
-      const payload = JSON.stringify(webconsole.SubscriptionToJSON(j));
+      const payload = stringify(webconsole.SubscriptionToJSON(j));
       if (sub.count > 1) {
-        yield `msg Inserting UEs ${sub.supi}..${netdef.listSUPIs(sub).at(-1)}`;
+        yield `msg Inserting UEs ${sub.supi}..${sub.supis.at(-1)}`;
       } else {
         yield `msg Inserting UE ${sub.supi}`;
       }
-      const url = `${server}/api/subscriber/imsi-${sub.supi}/${this.plmnID}/${sub.count}`;
-      yield `echo ${shlex.quote(payload)} | http -j POST ${shlex.quote(url)} Token:"$TOKEN"`;
+      const url = new URL(`/api/subscriber/imsi-${sub.supi}/${this.plmnID}/${sub.count}`, server);
+      yield `echo ${shlex.quote(payload)} | http -j POST ${shlex.quote(url.toString())} Token:"$TOKEN"`;
       yield "echo";
     }
   }
@@ -121,7 +122,7 @@ class F5CPBuilder {
       },
       accessAndMobilitySubscriptionData: {
         gpsis: ["msisdn-"],
-        subscribedUeAmbr: { uplink: "2 Gbps", downlink: "1 Gbps" },
+        subscribedUeAmbr: sub.ambr,
         nssai: {
           defaultSingleNssais: sub.subscribedNSSAI.map(({ snssai }) => convertSNSSAI(snssai)),
         },
@@ -140,12 +141,10 @@ class F5CPBuilder {
     };
 
     const smDatas: Record<N.SNSSAI, W.SessionManagementSubscriptionData> = {};
-    for (const { snssai, dnn } of sub.subscribedDN) {
-      const dn = netdef.findDN(this.ctx.network, dnn, snssai);
-      assert(dn);
+    for (const dnID of sub.subscribedDN) {
+      const { dnn, snssai, sessionType, fiveQi, priorityLevel, ambr } = netdef.findDN(this.ctx.network, dnID);
       const { sst, sd = "" } = netdef.splitSNSSAI(snssai).hex;
       const key = `${sst}${sd}`.toLowerCase();
-      const sessionType = dn.type.toUpperCase();
 
       let smData = smDatas[snssai];
       if (!smData) {
@@ -166,14 +165,11 @@ class F5CPBuilder {
           allowedSscModes: ["SSC_MODE_2", "SSC_MODE_3"],
         },
         _5gQosProfile: {
-          _5qi: 9,
-          arp: { priorityLevel: 8, preemptCap: "", preemptVuln: "" },
-          priorityLevel: 8,
+          _5qi: fiveQi,
+          arp: { priorityLevel: 8, preemptCap: "NOT_PREEMPT", preemptVuln: "NOT_PREEMPTABLE" },
+          priorityLevel,
         },
-        sessionAmbr: {
-          downlink: "1000 Mbps",
-          uplink: "1000 Mbps",
-        },
+        sessionAmbr: ambr,
       };
 
       (j.smfSelectionSubscriptionData.subscribedSnssaiInfos![key] ??= {

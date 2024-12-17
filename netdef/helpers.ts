@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import DefaultMap from "mnemonist/default-map.js";
 import map from "obliterator/map.js";
-import type { RequiredDeep, SetRequired } from "type-fest";
+import type { RequiredDeep, SetOptional, SetRequired } from "type-fest";
 import { arr2hex } from "uint8-util";
 
 import { type N } from "../types/mod.js";
@@ -72,13 +72,31 @@ export function listNssai({ dataNetworks }: N.Network): Iterable<N.SNSSAI> {
   return new Set(map(dataNetworks, ({ snssai }) => snssai));
 }
 
+export interface AMBR {
+  downlink: `${number} Mbps`;
+  uplink: `${number} Mbps`;
+}
+
+function toAmbr({ dlAmbr, ulAmbr }: { dlAmbr: number; ulAmbr: number }): AMBR {
+  return {
+    downlink: `${dlAmbr} Mbps`,
+    uplink: `${ulAmbr} Mbps`,
+  } as const;
+}
+
 /** Information about a subscriber. */
-export interface Subscriber extends SetRequired<N.Subscriber, "count" | "k" | "opc" | "subscribedNSSAI" | "gnbs"> {
+export interface Subscriber extends SetRequired<N.Subscriber, "count" | "k" | "opc" | "subscribedNSSAI" | "dlAmbr" | "ulAmbr" | "gnbs"> {
   /** Subscribed Data Networks, derived from `.subscribedNSSAI`. */
   subscribedDN: N.DataNetworkID[];
 
   /** Requested Data Networks, derived from `.requestedNSSAI`. */
   requestedDN: N.DataNetworkID[];
+
+  /** Subscribed AMBR. */
+  readonly ambr: AMBR;
+
+  /** List of SUPIs, will have multiple entries if `.count>1`. */
+  readonly supis: readonly string[];
 }
 
 /**
@@ -104,10 +122,21 @@ export function listSubscribers(network: N.Network, { expandCount = true, gnb }:
       k: network.subscriberDefault.k,
       opc: network.subscriberDefault.opc,
       subscribedNSSAI: dfltSubscribedNSSAI,
+      dlAmbr: 1000,
+      ulAmbr: 1000,
       gnbs: allGNBs,
       ...subscriber,
       subscribedDN: [],
       requestedDN: [],
+
+      get ambr() {
+        return toAmbr(this);
+      },
+      get supis() {
+        const { supi, count } = this;
+        let n = BigInt(supi);
+        return Array.from({ length: count }, () => decPad(n++, 15));
+      },
     };
     assert(sub.count >= 1);
 
@@ -259,10 +288,40 @@ export function listSmfs(network: N.Network): SMF[] {
   }));
 }
 
-/** List SUPIs of a (possibly multi-count) subscriber. */
-export function listSUPIs({ supi, count }: Subscriber): string[] {
-  let n = BigInt(supi);
-  return Array.from({ length: count }, () => decPad(n++, 15));
+export interface DataNetwork extends SetOptional<Required<N.DataNetwork>, "subnet"> {
+  readonly index: number;
+  readonly sessionType: Uppercase<N.DataNetworkType>;
+  readonly ambr: AMBR;
+}
+
+/** Find Data Network by dnn and optional snssai. */
+export function findDN(network: N.Network, dnn: string, snssai?: string): DataNetwork;
+export function findDN(network: N.Network, id: N.DataNetworkID): DataNetwork;
+export function findDN(network: N.Network, dnn: N.DataNetworkID | string, snssai?: string): DataNetwork {
+  if (typeof dnn !== "string") {
+    return findDN(network, dnn.dnn, dnn.snssai);
+  }
+
+  const index = network.dataNetworks.findIndex((dn) => dn.dnn === dnn && (snssai === undefined || dn.snssai === snssai));
+  assert(index !== -1, `Data Network ${dnn} with S-NSSAI ${snssai} not found`);
+  const dn = network.dataNetworks[index]!;
+  assert(!dn.type.startsWith("IP") || dn.subnet, `Data Network ${dnn} is IP but has no subnet`);
+
+  return {
+    index,
+    fiveQi: 9,
+    priorityLevel: 90,
+    dlAmbr: 1000,
+    ulAmbr: 1000,
+    ...dn,
+
+    get sessionType() {
+      return this.type.toUpperCase() as Uppercase<N.DataNetworkType>;
+    },
+    get ambr() {
+      return toAmbr(this);
+    },
+  };
 }
 
 /** Determine equality of two DataPathNodes. */
@@ -274,16 +333,6 @@ function equalDataPathNode(a: N.DataPathNode, b: N.DataPathNode): boolean {
     return a.snssai === b.snssai && a.dnn === b.dnn;
   }
   return false;
-}
-
-/** Find Data Network by dnn and optional snssai. */
-export function findDN(network: N.Network, dnn: string, snssai?: string): N.DataNetwork | undefined;
-export function findDN(network: N.Network, id: N.DataNetworkID): N.DataNetwork | undefined;
-export function findDN(network: N.Network, dnn: N.DataNetworkID | string, snssai?: string): N.DataNetwork | undefined {
-  if (typeof dnn !== "string") {
-    return findDN(network, dnn.dnn, dnn.snssai);
-  }
-  return network.dataNetworks.find((dn) => dn.dnn === dnn && (snssai === undefined || dn.snssai === snssai));
 }
 
 /** Iterate over peers of a data path node. */
@@ -307,8 +356,7 @@ export interface UPFPeers {
 }
 
 /** N6 peer of a UPF. */
-export interface UPFN6Peer extends N.DataNetwork {
-  index: number;
+export interface UPFN6Peer extends DataNetwork {
   cost: number;
 }
 
@@ -339,12 +387,7 @@ export function gatherUPFPeers(network: N.Network, upf: N.UPF): UPFPeers {
     }
 
     const dn = findDN(network, peer);
-    assert(!!dn, `missing peer ${JSON.stringify(peer)}`);
-    peers[`N6${dn.type}`].push({
-      ...dn,
-      index: network.dataNetworks.indexOf(dn),
-      cost,
-    });
+    peers[`N6${dn.type}`].push({ ...dn, cost });
   }
   return peers;
 }

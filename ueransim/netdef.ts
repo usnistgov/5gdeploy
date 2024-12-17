@@ -83,7 +83,7 @@ class UeransimBuilder {
     compose.annotate(s, "cpus", 1);
     s.cap_add.push("NET_ADMIN");
     s.devices.push("/dev/net/tun:/dev/net/tun");
-    compose.annotate(s, "ue_supi", netdef.listSUPIs(sub).join(","));
+    compose.annotate(s, "ue_supi", sub.supis.join(","));
 
     const nssai: UERANSIM.Slice[] = Array.from(
       sub.requestedNSSAI ?? sub.subscribedNSSAI,

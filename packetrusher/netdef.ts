@@ -19,7 +19,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Sub
   s.stop_signal = "SIGINT";
   s.cap_add.push("NET_ADMIN");
   compose.annotate(s, "cpus", 1);
-  compose.annotate(s, "ue_supi", netdef.listSUPIs(sub).join(","));
+  compose.annotate(s, "ue_supi", sub.supis.join(","));
   if (sub.count === 1) {
     s.devices.push("/dev/net/tun:/dev/net/tun");
     dependOnGtp5g(s, ctx.c);

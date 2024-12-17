@@ -37,7 +37,6 @@ const args = Yargs()
 const [c, network] = await loadCtx(args);
 
 const dn = netdef.findDN(network, args.dnn);
-assert(dn !== undefined, `Data Network ${args.dnn} not found`);
 assert(dn.type === "IPv4", `Data Network ${args.dnn} is not IPv4`);
 
 const output = compose.create();

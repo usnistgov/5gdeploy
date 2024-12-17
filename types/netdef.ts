@@ -86,6 +86,18 @@ export interface Subscriber {
   requestedNSSAI?: SubscriberSNSSAI[];
 
   /**
+   * Subscribed AMBR downlink, in Mbps.
+   * @defaultValue 1000
+   */
+  dlAmbr?: number;
+
+  /**
+     * Subscribed AMBR uplink, in Mbps.
+     * @defaultValue 1000
+     */
+  ulAmbr?: number;
+
+  /**
    * Detected gNBs (short names).
    * @defaultValue all defined gNBs
    */
@@ -187,6 +199,30 @@ export interface DataNetwork extends DataNetworkID {
    * IPv4 example: `10.5.5.0/24`
    */
   subnet?: string;
+
+  /**
+   * 5G QoS Identifier (5QI).
+   * @defaultValue 9
+   */
+  fiveQi?: number;
+
+  /**
+   * 5G QoS priority level.
+   * @defaultValue 90
+   */
+  priorityLevel?: number;
+
+  /**
+   * Session AMBR downlink, in Mbps.
+   * @defaultValue 1000
+   */
+  dlAmbr?: number;
+
+  /**
+   * Session AMBR uplink, in Mbps.
+   * @defaultValue 1000
+   */
+  ulAmbr?: number;
 }
 
 /** DN type. */

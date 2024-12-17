@@ -85,9 +85,8 @@ const PROFILES: readonly ProfileBase[] = [
 
 function makeProfile(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Subscriber, base: ProfileBase): OMEC.gnbsim.Profile {
   assert(sub.requestedDN.length > 0);
-  const dn = netdef.findDN(ctx.network, sub.requestedDN[0]!);
-  assert(!!dn);
-  const dnIP = compose.getIP(ctx.c, `dn_${dn.dnn}`, "n6");
+  const { dnn, snssai } = netdef.findDN(ctx.network, sub.requestedDN[0]!);
+  const dnIP = compose.getIP(ctx.c, `dn_${dnn}`, "n6");
   const plmnId: OMEC.PLMNID = netdef.splitPLMN(ctx.network.plmn);
 
   return {
@@ -100,8 +99,8 @@ function makeProfile(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Sub
     key: sub.k,
     opc: sub.opc,
     sequenceNumber: "000000000020",
-    dnn: dn.dnn,
-    sNssai: netdef.splitSNSSAI(dn.snssai).ih,
+    dnn,
+    sNssai: netdef.splitSNSSAI(snssai).ih,
     execInParallel: true,
     plmnId,
     ...base,

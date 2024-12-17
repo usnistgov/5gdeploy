@@ -308,13 +308,12 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       };
       yield sql`INSERT am_data (supi,access_and_mobility_sub_data) VALUES (${supi},JSON_MERGE_PATCH(@am_json,${amPatch}))`;
 
-      for (const { snssai, dnn } of subscribedDN) {
-        const dn = netdef.findDN(this.ctx.network, dnn, snssai);
-        assert(!!dn);
+      for (const dnID of subscribedDN) {
+        const { dnn, snssai, sessionType } = netdef.findDN(this.ctx.network, dnID);
         const { sst } = netdef.splitSNSSAI(snssai).ih;
         const dnnPatch = {
           pduSessionTypes: {
-            defaultSessionType: dn.type.toUpperCase(),
+            defaultSessionType: sessionType,
           },
         };
         yield sql`INSERT dnn_configurations (supi,sst,dnn,json) VALUES (${supi},${sst},${dnn},JSON_MERGE_PATCH(@dnn_json,${dnnPatch}))`;
@@ -394,7 +393,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         if (dn && ((
           smf.nssai && !smf.nssai.includes(dn.snssai) // DN not in SMF's NSSAI
         ) || (
-          netdef.findDN(this.ctx.network, dn)!.type !== "IPv4" // Ethernet DN cannot appear in sdn_routing_topology because it has no N6
+          netdef.findDN(this.ctx.network, dn).type !== "IPv4" // Ethernet DN cannot appear in sdn_routing_topology because it has no N6
         ))) {
           return [];
         }
@@ -693,7 +692,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 
         config.dn_list = sub.requestedDN.map(({ snssai, dnn }): PH.ue_5g_nas_only.DN => {
           const dn = netdef.findDN(this.ctx.network, dnn, snssai);
-          assert(dn && dn.type !== "IPv6");
+          assert(dn.type !== "IPv6");
           return {
             dnn: dn.dnn,
             dn_type: dn.type,
