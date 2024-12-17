@@ -292,7 +292,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     yield "SELECT @dnn_json:=json FROM dnn_configurations WHERE supi='default_data' LIMIT 1";
     yield "DELETE FROM dnn_configurations";
 
-    for (const { supi, k, opc, subscribedNSSAI, subscribedDN } of netdef.listSubscribers(this.ctx.network)) {
+    for (const { supi, k, opc, subscribedNSSAI, subscribedDN, ambr } of netdef.listSubscribers(this.ctx.network)) {
       yield sql`
         INSERT supi (identity,k,amf,op,sqn,auth_type,op_is_opc,usim_type)
         VALUES (${supi},UNHEX(${k}),UNHEX(${USIM.amf}),UNHEX(${opc}),UNHEX(${USIM.sqn}),0,1,0)
@@ -302,6 +302,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       yield "INSERT gpsi_supi_association (gpsi_id,supi_id) VALUES (@gpsi_id,@supi_id)";
 
       const amPatch = {
+        subscribedUeAmbr: ambr,
         nssai: {
           defaultSingleNssais: subscribedNSSAI.map(({ snssai }) => netdef.splitSNSSAI(snssai).ih),
         },
@@ -309,12 +310,16 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       yield sql`INSERT am_data (supi,access_and_mobility_sub_data) VALUES (${supi},JSON_MERGE_PATCH(@am_json,${amPatch}))`;
 
       for (const dnID of subscribedDN) {
-        const { dnn, snssai, sessionType } = netdef.findDN(this.ctx.network, dnID);
+        const { dnn, snssai, sessionType, fiveQi, ambr } = netdef.findDN(this.ctx.network, dnID);
         const { sst } = netdef.splitSNSSAI(snssai).ih;
         const dnnPatch = {
           pduSessionTypes: {
             defaultSessionType: sessionType,
           },
+          "5gQosProfile": {
+            "5qi": fiveQi,
+          },
+          sessionAmbr: ambr, // ineffective without PCF
         };
         yield sql`INSERT dnn_configurations (supi,sst,dnn,json) VALUES (${supi},${sst},${dnn},JSON_MERGE_PATCH(@dnn_json,${dnnPatch}))`;
       }

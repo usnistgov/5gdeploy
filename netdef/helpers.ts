@@ -92,7 +92,7 @@ export interface Subscriber extends SetRequired<N.Subscriber, "count" | "k" | "o
   /** Requested Data Networks, derived from `.requestedNSSAI`. */
   requestedDN: N.DataNetworkID[];
 
-  /** Subscribed AMBR. */
+  /** Subscribed UE AMBR. */
   readonly ambr: AMBR;
 
   /** List of SUPIs, will have multiple entries if `.count>1`. */
