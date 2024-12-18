@@ -119,21 +119,25 @@ export abstract class PhoenixScenarioBuilder {
 
   private async loadDatabase(tpl: string, dbName: string): Promise<string> {
     let body = await file_io.readText(this.tplFile(tpl), { once: true });
-    body = body.replace(/^create database .*;$/im, `CREATE OR REPLACE DATABASE ${dbName};`);
-    body = body.replaceAll(/^create database .*;$/gim, "");
-    body = body.replaceAll(/^use .*;$/gim, `USE ${dbName};`);
-    body = body.replaceAll(/^grant ([a-z,]*) on \w+\.\* to (.*);$/gim, `GRANT $1 ON ${dbName}.* TO $2;`);
+    body = body.replace(/^create database [^;]+;$/im, `CREATE OR REPLACE DATABASE ${dbName};`);
+    body = body.replaceAll(/^create database [^;]+;$/gim, "");
+    body = body.replaceAll(/^use [^;]+;$/gim, `USE ${dbName};`);
+    body = body.replaceAll(/^grant ([\w,]+) on \w+\.\* to ([^;]+);$/gim, (match, privileges: string, userSpec: string) => {
+      void match;
+      return `GRANT ${privileges.toUpperCase()} ON ${dbName}.* TO ${
+        userSpec.replace(/ identified by /i, " IDENTIFIED BY ")};`;
+    });
     return body;
   }
 
-  public async finish(): Promise<void> {
+  protected async finish(): Promise<void> {
     for (const [ct, { s, nf, initCommands }] of this.unsaved) {
       await this.ctx.writeFile(`${this.nfKind}-cfg/${ct}.json`, nf, {
         s, target: path.join(cfgdir, `${ct}.json`),
       });
       compose.setCommands(s, [
         ...compose.renameNetifs(s, { disableTxOffload: true }),
-        ...initCommands ?? [],
+        ...initCommands,
         `exec /opt/phoenix/dist/phoenix.sh -j ${ct}.json -p /opt/phoenix/dist/lib`,
       ]);
     }

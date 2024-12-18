@@ -17,11 +17,30 @@ export interface PLMN {
   mcc: string;
   mnc: string;
 }
+export namespace PLMN {
+  export interface Int {
+    mcc: number;
+    mnc: number;
+    mncLength: 2 | 3;
+  }
+}
 
-/** Split PLMN to MCC and MNC. */
-export function splitPLMN(plmn: N.PLMN): PLMN {
+/** Split PLMN to MCC and MNC strings. */
+export function splitPLMN(plmn: N.PLMN): PLMN;
+
+/** Split PLMN to MCC and MNC integers. */
+export function splitPLMN(plmn: N.PLMN, int: true): PLMN.Int;
+
+export function splitPLMN(plmn: N.PLMN, int = false) {
   assert(/^\d{3}-\d{2,3}$/.test(plmn));
   const [mcc, mnc] = plmn.split("-") as [string, string];
+  if (int) {
+    return {
+      mcc: Number.parseInt(mcc, 10),
+      mnc: Number.parseInt(mnc, 10),
+      mncLength: mnc.length as 2 | 3,
+    };
+  }
   return { mcc, mnc };
 }
 

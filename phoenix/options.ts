@@ -1,5 +1,7 @@
 import path from "node:path";
 
+import { compose } from "../netdef-compose/mod.js";
+import type { ComposeService } from "../types/mod.js";
 import { assert, codebaseRoot, type YargsInfer, type YargsOptions } from "../util/mod.js";
 
 export const phoenixDockerImage = "5gdeploy.localhost/phoenix";
@@ -81,8 +83,12 @@ export const phoenixOptions = {
 
 export type PhoenixOpts = YargsInfer<typeof phoenixOptions>;
 
-export function* tasksetScript(opt: PhoenixOpts["phoenix-upf-taskset"], nWorkers: number, workerPrefix: string): Iterable<string> {
-  const [mode, cnt] = opt;
+export function* tasksetScript(
+    s: ComposeService,
+    [mode, cnt]: PhoenixOpts["phoenix-upf-taskset"],
+    nWorkers: number, workerPrefix: string,
+): Iterable<string> {
+  compose.annotate(s, "cpus", cnt + nWorkers);
   if (mode === "none") {
     return;
   }

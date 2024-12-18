@@ -7,14 +7,18 @@ import { type PhoenixOpts, tasksetScript } from "./options.js";
 /** Build UP functions using Open5GCore as UPF. */
 export async function phoenixUP(ctx: NetDefComposeContext, upf: N.UPF, opts: PhoenixOpts): Promise<void> {
   const b = new PhoenixUPBuilder(ctx, opts);
-  await b.buildUPF(upf);
-  await b.finish();
+  await b.build(upf);
 }
 
 class PhoenixUPBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "up";
 
-  public async buildUPF(upf: N.UPF): Promise<void> {
+  public async build(upf: N.UPF): Promise<void> {
+    await this.buildUPF(upf);
+    await this.finish();
+  }
+
+  private async buildUPF(upf: N.UPF): Promise<void> {
     const ct = upf.name;
     const nWorkers = this.opts["phoenix-upf-workers"];
     assert(nWorkers <= 8, "pfcp.so allows up to 8 threads");
@@ -29,7 +33,6 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
       ["n9", peers.N9.length],
       ["n6", peers.N6IPv4.length],
     ] satisfies Array<[string, number]>).filter(([, cnt]) => cnt > 0).map(([net]) => net), "5g/upf1.json");
-    compose.annotate(s, "cpus", this.opts["phoenix-upf-taskset"][1] + nWorkers);
     for (const netif of ["all", "default"]) {
       s.sysctls[`net.ipv4.conf.${netif}.accept_local`] = 1;
       s.sysctls[`net.ipv4.conf.${netif}.rp_filter`] = 2;
@@ -127,7 +130,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         "ip link set n6_tap up master br-eth",
       ] : []),
       ...makeUPFRoutes(this.ctx, peers),
-      ...tasksetScript(this.opts["phoenix-upf-taskset"], nWorkers, "UPFSockFwd_"),
+      ...tasksetScript(s, this.opts["phoenix-upf-taskset"], nWorkers, "UPFSockFwd_"),
     );
   }
 }
