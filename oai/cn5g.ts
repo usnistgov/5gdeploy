@@ -147,21 +147,43 @@ class CPBuilder extends CN5GBuilder {
   private *populateSQL(): Iterable<string> {
     const { mcc, mnc } = netdef.splitPLMN(this.ctx.network.plmn);
     const servingPlmnid = `${mcc}${mnc}`;
+
     yield "SELECT @sqn_json:=sequenceNumber FROM AuthenticationSubscription LIMIT 1";
-    yield "DELETE FROM AccessAndMobilitySubscriptionData";
     yield "DELETE FROM AuthenticationSubscription";
+    yield "DELETE FROM AccessAndMobilitySubscriptionData";
+    yield sql`SELECT @dnn_json_tpl:=JSON_EXTRACT(dnnConfigurations,${"$.default"}) FROM SessionManagementSubscriptionData LIMIT 1`;
     yield "DELETE FROM SessionManagementSubscriptionData";
-    for (const sub of netdef.listSubscribers(this.ctx.network)) {
-      const nssai = {
-        defaultSingleNssais: sub.subscribedNSSAI.map(({ snssai }) => netdef.splitSNSSAI(snssai).ih),
-      };
-      yield sql`
-        INSERT AccessAndMobilitySubscriptionData (ueid,servingPlmnid,nssai)
-        VALUES (${sub.supi},${servingPlmnid},${nssai})
-      `;
+
+    for (const { supi, k, opc, subscribedNSSAI } of netdef.listSubscribers(this.ctx.network)) {
       yield sql`
         INSERT AuthenticationSubscription (ueid,authenticationMethod,encPermanentKey,protectionParameterId,sequenceNumber,authenticationManagementField,algorithmId,encOpcKey,encTopcKey,vectorGenerationInHss,n5gcAuthMethod,rgAuthenticationInd,supi)
-        VALUES (${sub.supi},'5G_AKA',${sub.k},${sub.k},@sqn_json,'8000','milenage',${sub.opc},NULL,NULL,NULL,NULL,${sub.supi})
+        VALUES (${supi},'5G_AKA',${k},${k},@sqn_json,'8000','milenage',${opc},NULL,NULL,NULL,NULL,${supi})
+      `;
+
+      const nssai = {
+        defaultSingleNssais: [] as CN5G.SNSSAI[],
+      };
+      for (const { snssai, dnns } of subscribedNSSAI) {
+        const snssaiJ = netdef.splitSNSSAI(snssai).ih;
+        nssai.defaultSingleNssais.push(snssaiJ);
+        yield sql`SET @dnn_json=${{}}`;
+        for (const dnn of dnns) {
+          const { sessionType, fiveQi, priorityLevel, ambr } = netdef.findDN(this.ctx.network, dnn, snssai);
+          yield sql`SET @dnn_json=JSON_INSERT(@dnn_json,${`$.${dnn}`},JSON_MERGE_PATCH(@dnn_json_tpl,${{
+            pduSessionTypes: { defaultSessionType: sessionType },
+            "5gQosProfile": { "5qi": fiveQi, priorityLevel },
+            sessionAmbr: ambr,
+          }}))`;
+        }
+        yield sql`
+          INSERT SessionManagementSubscriptionData (ueid,servingPlmnid,singleNssai,dnnConfigurations)
+          VALUES (${supi},${servingPlmnid},${snssaiJ},@dnn_json)
+        `;
+      }
+
+      yield sql`
+        INSERT AccessAndMobilitySubscriptionData (ueid,servingPlmnid,nssai)
+        VALUES (${supi},${servingPlmnid},${nssai})
       `;
     }
   }
