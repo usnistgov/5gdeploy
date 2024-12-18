@@ -342,6 +342,9 @@ class UPBuilder extends CN5GBuilder {
     const s = await this.defineService(ct, "upf", this.c.nfs.upf!, false, configPath);
     compose.annotate(s, "cpus", this.opts["oai-upf-workers"]);
     s.devices.push("/dev/net/tun:/dev/net/tun");
+    if (this.opts["oai-upf-bpf"]) {
+      s.cap_add.push("BPF", "SYS_ADMIN", "SYS_RESOURCE");
+    }
 
     const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
     assert(peers.N9.length === 0, "N9 not supported");

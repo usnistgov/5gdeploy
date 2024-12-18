@@ -12,7 +12,6 @@ This package offers these choices in the **netdef-compose** command:
   * requires exactly one AMF and exactly one SMF
 * `--up=oai`: [CN5G UPF](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-upf)
   * does not support N9 interface
-  * supports Ethernet bridge only if `--oai-cn5g-tag` is unset
 * `--up=oai-vpp`: [UPF using a VPP implementation](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-upf-vpp)
   * does not support Ethernet bridge
   * does not support N9 interface

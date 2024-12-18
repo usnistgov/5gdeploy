@@ -40,21 +40,15 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, gnb: netdef.GNB
   g0.gNB_name = gnb.name;
   g0.tracking_area_code = Number.parseInt(ctx.network.tac, 16);
 
-  const { mcc, mnc } = netdef.splitPLMN(ctx.network.plmn);
+  const { mcc, mnc, mncLength } = netdef.splitPLMN(ctx.network.plmn, true);
   g0.plmn_list = [{
-    mcc: Number.parseInt(mcc, 10),
-    mnc: Number.parseInt(mnc, 10),
-    mnc_length: mnc.length,
-    snssaiList: Array.from(netdef.listNssai(ctx.network), (snssai): OAI.gnb.SNSSAI => netdef.splitSNSSAI(snssai).int),
+    mcc, mnc, mnc_length: mncLength,
+    snssaiList: Array.from(netdef.listNssai(ctx.network), (snssai) => netdef.splitSNSSAI(snssai).int),
     "snssaiList:dtype": "l",
   }];
 
-  g0.amf_ip_address = Array.from(compose.listByNf(ctx.c, "amf"), (amf): OAI.gnb.AMF => ({
-    ipv4: compose.getIP(amf, "n2"),
-    ipv6: "100::",
-    active: "yes",
-    preference: "ipv4",
-  }));
+  const amfIPs = Array.from(compose.listByNf(ctx.c, "amf"), (amf) => compose.getIP(amf, "n2"));
+  g0.amf_ip_address = Array.from(amfIPs, (ipv4) => ({ ipv4, ipv6: "100::", active: "yes", preference: "ipv4" }));
   g0.NETWORK_INTERFACES = {
     GNB_INTERFACE_NAME_FOR_NG_AMF: "n2",
     GNB_IPV4_ADDRESS_FOR_NG_AMF: compose.getIP(s, "n2"),
@@ -81,7 +75,6 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, gnb: netdef.GNB
 
   const softmodemArgs = [
     "-O", "/opt/oai-gnb/etc/gnb.conf",
-    "--sa",
     "--telnetsrv",
   ];
 
@@ -94,7 +87,7 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, gnb: netdef.GNB
   await ctx.writeFile(`ran-cfg/${gnb.name}.conf`, c, { s, target: "/opt/oai-gnb/etc/gnb.conf" });
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
-    "sleep 10",
+    ...compose.waitReachable("AMF", amfIPs, { sleep: 5 }),
     "msg Starting OpenAirInterface5G gNB",
     `exec /opt/oai-gnb/bin/nr-softmodem ${shlex.join(softmodemArgs)}`,
   ]);
@@ -149,11 +142,20 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
   };
 
   await ctx.writeFile(`ran-cfg/${ct}.conf`, c, { s, target: "/opt/oai-nr-ue/etc/nr-ue.conf" });
+
+  const ueArgs = [
+    "--telnetsrv",
+    "--rfsim",
+    "-C", "3319680000",
+    "-r", "106",
+    "--numerology", "1",
+    "--ssb", "516",
+    "-E",
+  ];
   compose.setCommands(s, [
     ...compose.renameNetifs(s),
-    "sleep 20",
+    ...compose.waitReachable("gNB", [c.rfsimulator.serveraddr], { sleep: 15 }),
     "msg Starting OpenAirInterface5G UE simulator",
-    "exec /opt/oai-nr-ue/bin/entrypoint.sh /opt/oai-nr-ue/bin/nr-uesoftmodem" +
-    " -E --sa --telnetsrv --rfsim -r 106 --numerology 1 -C 3619200000",
+    `exec /opt/oai-nr-ue/bin/entrypoint.sh /opt/oai-nr-ue/bin/nr-uesoftmodem ${shlex.join(ueArgs)}`,
   ]);
 }
