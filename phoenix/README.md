@@ -15,6 +15,11 @@ This package offers these choices in the **netdef-compose** command:
 
 This package adds several phoenix-specific options to the **netdef-compose** command, described in the next sections.
 
+## CP Options
+
+`--phoenix-pcf=true` enables Policy Control Function (PCF).
+Default is disabled.
+
 ## UPF Data Plane and Worker Threads
 
 Open5GCore UPF has two data plane implementations: userspace and XDP.

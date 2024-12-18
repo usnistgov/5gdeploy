@@ -34,6 +34,10 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     for (const [i, smf] of smfs.entries()) {
       await this.buildSMF(smf, (1 + i) << 24);
     }
+
+    if (this.opts["phoenix-pcf"]) {
+      await this.buildPCF();
+    }
     await this.finish();
   }
 
@@ -149,18 +153,19 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       config.id = smf.name;
       config.mtu = 1456;
       config.startTeid = startTeid;
+      if (this.opts["phoenix-pcf"]) {
+        config.pcf_flag = 1;
+      }
     });
 
     nf.editModule("sdn_routing_topology", ({ config }) => {
       config.Topology.Link = this.ctx.network.dataPaths.flatMap(([nodeA, nodeB, weight = 1]) => {
-        const typeA = this.determineDataPathNodeType(nodeA);
-        const typeB = this.determineDataPathNodeType(nodeB);
+        const typeA = determineDataPathNodeType(nodeA);
+        const typeB = determineDataPathNodeType(nodeB);
         const dn = typeA === "DNN" ? nodeA as N.DataNetworkID : typeB === "DNN" ? nodeB as N.DataNetworkID : undefined;
-        if (dn && ((
-          smf.nssai && !smf.nssai.includes(dn.snssai) // DN not in SMF's NSSAI
-        ) || (
-          netdef.findDN(this.ctx.network, dn).type !== "IPv4" // Ethernet DN cannot appear in sdn_routing_topology because it has no N6
-        ))) {
+        if (dn && (!smf.nssai.includes(dn.snssai) || netdef.findDN(this.ctx.network, dn).type !== "IPv4")) {
+          // DN not in SMF's NSSAI: skip
+          // Ethernet DN: cannot appear in sdn_routing_topology because it has no N6
           return [];
         }
         return {
@@ -204,16 +209,6 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     }
   }
 
-  private determineDataPathNodeType(node: string | N.DataNetworkID): PH.sdn_routing_topology.Node["type"] {
-    if (typeof node !== "string") {
-      return "DNN";
-    }
-    return ({
-      gnb: "gNodeB",
-      upf: "UPF",
-    } as const)[compose.nameToNf(node)]!;
-  }
-
   private makeDataPathTopoNode(
       node: string | N.DataNetworkID,
       nodeType: PH.sdn_routing_topology.Node["type"],
@@ -238,11 +233,11 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
         };
       }
       case "UPF": {
-        const upf = this.ctx.c.services[node as string]!;
+        assert(typeof node === "string");
         return {
           type: "UPF",
-          id: compose.getIP(upf, "n4"),
-          ip: compose.getIP(upf, {
+          id: compose.getIP(this.ctx.c, node, "n4"),
+          ip: compose.getIP(this.ctx.c, node, {
             DNN: "n6",
             gNodeB: "n3",
             UPF: "n9",
@@ -251,10 +246,28 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       }
     }
   }
+
+  private async buildPCF(): Promise<void> {
+    const { nf } = await this.defineService("pcf", ["cp"], "5g_af/pcf.json");
+    nf.editModule("pcf", ({ config }) => {
+      const smf = netdef.listSmfs(this.ctx.network)[0]!;
+      config.sba.smf_server.addr = compose.getIP(this.ctx.c, smf.name, "cp");
+    });
+  }
 }
 
 function setNrfClientSlices(c: NetworkFunction, nssai: readonly N.SNSSAI[]): void {
   c.editModule("nrf_client", ({ config }) => {
     config.nf_profile.sNssais = nssai.map((snssai) => netdef.splitSNSSAI(snssai).ih);
   });
+}
+
+function determineDataPathNodeType(node: string | N.DataNetworkID): PH.sdn_routing_topology.Node["type"] {
+  if (typeof node !== "string") {
+    return "DNN";
+  }
+  return ({
+    gnb: "gNodeB",
+    upf: "UPF",
+  } as const)[compose.nameToNf(node)]!;
 }

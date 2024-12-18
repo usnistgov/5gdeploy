@@ -20,6 +20,7 @@ export interface ModuleConfigMap {
   monitoring: monitoring.Config;
   nrf_client: nrf_client.Config;
   nssf: nssf.Config;
+  pcf: pcf.Config;
   pfcp: pfcp.Config;
   remote_command: {};
   rest_api: {};
@@ -161,6 +162,23 @@ export namespace nssf {
   }
 }
 
+export namespace pcf {
+  export interface Config {
+    sba: Sba;
+    [k: string]: unknown;
+  }
+
+  export interface Sba {
+    nrf_server: SbaServer;
+    smf_server: SbaServer;
+  }
+
+  export interface SbaServer {
+    addr: string;
+    port: number;
+  }
+}
+
 export namespace pfcp {
   export type Config = UP | CP;
 
@@ -277,8 +295,9 @@ export namespace smf {
   export interface Config extends PLMNID {
     Database: Database;
     id: string;
-    mtu: 1456;
-    startTeid: number;
+    mtu: number;
+    startTeid?: number;
+    pcf_flag?: 1;
     [k: string]: unknown;
   }
 }

@@ -33,6 +33,12 @@ export const phoenixOptions = {
     group: "phoenix",
     type: "string",
   },
+  "phoenix-pcf": {
+    default: false,
+    desc: "enable PCF",
+    group: "phoenix",
+    type: "boolean",
+  },
   "phoenix-upf-workers": {
     default: 3,
     desc: "number of worker threads in UPF",

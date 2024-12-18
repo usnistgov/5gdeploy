@@ -1,10 +1,10 @@
 import { sortBy } from "sort-by-typescript";
 
 import type { PH } from "../types/mod.js";
-import { assert } from "../util/mod.js";
+import { assert, type file_io } from "../util/mod.js";
 
 /** Open5GCore network function configuration. */
-export class NetworkFunction {
+export class NetworkFunction implements file_io.write.Saver {
   /** Parse network function JSON document. */
   public static parse(body: string): NetworkFunction {
     const nf = new NetworkFunction();
@@ -22,14 +22,14 @@ export class NetworkFunction {
 
   /**
    * Edit a module.
-   * @param binaryName - Module binary name without path or .so suffix.
+   * @param binaryName - Module binary name with neither path nor .so suffix.
    * @param edit - Edit function.
    */
   public editModule<K extends keyof PH.ModuleConfigMap, R = void>(binaryName: K, edit: (m: PH.Module<PH.ModuleConfigMap[K]>) => R): R;
 
   /**
    * Edit a module if it exists.
-   * @param binaryName - Module binary name without path or .so suffix.
+   * @param binaryName - Module binary name with neither path nor .so suffix.
    * @param edit - Edit function.
    */
   public editModule<K extends keyof PH.ModuleConfigMap, R = void>(binaryName: K, optional: true, edit: (m: PH.Module<PH.ModuleConfigMap[K]>) => R): R | void;

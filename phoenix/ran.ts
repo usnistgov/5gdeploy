@@ -3,6 +3,7 @@ import type { PH } from "../types/mod.js";
 import { assert } from "../util/mod.js";
 import { PhoenixScenarioBuilder } from "./builder.js";
 import { type PhoenixOpts, tasksetScript, USIM } from "./options.js";
+
 /** Build RAN functions using Open5GCore RAN simulators. */
 export async function phoenixRAN(ctx: NetDefComposeContext, opts: PhoenixOpts): Promise<void> {
   const b = new PhoenixRANBuilder(ctx, opts);
