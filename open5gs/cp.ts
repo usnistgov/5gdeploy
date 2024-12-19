@@ -3,7 +3,6 @@ import type { PartialDeep } from "type-fest";
 
 import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, N, O5G } from "../types/mod.js";
-import { assert } from "../util/mod.js";
 import { dbctlDockerImage, makeLaunchCommands, makeMetrics, makeSockNode, o5DockerImage, webuiDockerImage } from "./common.js";
 
 /** Build CP functions using Open5GS. */
@@ -45,22 +44,7 @@ class O5CPBuilder {
     const s = this.defineService("populate", dbctlDockerImage, ["db"]);
     s.depends_on.mongo = { condition: "service_started" };
 
-    compose.setCommands(s, (function*(network: N.Network) {
-      yield "open5gs-dbctl reset";
-      for (const sub of netdef.listSubscribers(network)) {
-        for (const [i, { snssai, dnns }] of sub.subscribedNSSAI.entries()) {
-          const { sst, sd } = netdef.splitSNSSAI(snssai, true).ih;
-          assert(dnns.length === 1, "open5gs-dbctl supports exactly one DNN per S-NSSAI");
-          const dnn = dnns[0]!;
-          if (i === 0) {
-            yield shlex.join(["open5gs-dbctl", "add_ue_with_slice", sub.supi, sub.k, sub.opc, dnn, `${sst}`, sd]);
-          } else {
-            yield shlex.join(["open5gs-dbctl", "update_slice", sub.supi, dnn, `${sst}`, sd]);
-          }
-        }
-      }
-      yield "open5gs-dbctl showpretty";
-    })(this.ctx.network));
+    compose.setCommands(s, makeDbctlCommands(this.ctx.network));
   }
 
   private buildNRF(): void {
@@ -264,4 +248,24 @@ class O5CPBuilder {
 
     return sbi;
   }
+}
+
+function* makeDbctlCommands(network: N.Network) {
+  yield "open5gs-dbctl reset";
+  for (const { supi, k, opc, subscribedNSSAI, dlAmbr, ulAmbr } of netdef.listSubscribers(network)) {
+    for (const [i, { snssai, dnns }] of subscribedNSSAI.entries()) {
+      const { sst, sd } = netdef.splitSNSSAI(snssai, true).ih;
+      for (const [j, dnn] of dnns.entries()) {
+        if (j > 0) {
+          yield shlex.join(["open5gs-dbctl", "update_apn", supi, dnn, `${i}`]);
+        } else if (i > 0) {
+          yield shlex.join(["open5gs-dbctl", "update_slice", supi, dnn, `${sst}`, sd]);
+        } else {
+          yield shlex.join(["open5gs-dbctl", "add_ue_with_slice", supi, k, opc, dnn, `${sst}`, sd]);
+          yield shlex.join(["open5gs-dbctl", "ambr_speed", supi, `${Math.trunc(dlAmbr * 1e3)}`, "1", `${Math.trunc(ulAmbr * 1e3)}`, "1"]);
+        }
+      }
+    }
+  }
+  yield "open5gs-dbctl showpretty";
 }

@@ -4,8 +4,9 @@ Package **open5gs** generates [Open5GS](https://open5gs.org/) configurations.
 This package offers these choices in the **netdef-compose** command:
 
 * `--cp=open5gs`: Open5GS Control Plane
-  * each S-NSSAI must have exactly one DNN
+  * Subscribed UE AMBR is supported but it's also applied to the first Data Network.
+  * Session AMBR is not supported.
 * `--up=open5gs`: Open5GS UPF
-  * does not support Ethernet bridge
-  * does not support N9 interface
-  * IPv6 is enabled but untested
+  * N9 interface is not supported.
+  * Ethernet PDU session is not supported.
+  * IPv6 PDU session is allowed but untested.

@@ -86,13 +86,13 @@ export interface Subscriber {
   requestedNSSAI?: SubscriberSNSSAI[];
 
   /**
-   * Subscribed AMBR downlink, in Mbps.
+   * Subscribed UE AMBR downlink, in Mbps.
    * @defaultValue 1000
    */
   dlAmbr?: number;
 
   /**
-     * Subscribed AMBR uplink, in Mbps.
+     * Subscribed UE AMBR uplink, in Mbps.
      * @defaultValue 1000
      */
   ulAmbr?: number;
