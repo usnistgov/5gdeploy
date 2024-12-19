@@ -4,6 +4,7 @@
 /free5gc/webconsole-openapi
 /oai/docker-compose
 /omec/upf
+/open5gs/open5gs-dbctl
 /pnpm-lock.yaml
 /sims.tsv
 /types/*.schema.json

@@ -1,14 +1,17 @@
+import path from "node:path";
+
 import * as shlex from "shlex";
 import type { PartialDeep } from "type-fest";
 
 import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, N, O5G } from "../types/mod.js";
-import { dbctlDockerImage, makeLaunchCommands, makeMetrics, makeSockNode, o5DockerImage, webuiDockerImage } from "./common.js";
+import { file_io, scriptHead } from "../util/mod.js";
+import { makeLaunchCommands, makeMetrics, makeSockNode, o5DockerImage, webuiDockerImage } from "./common.js";
 
 /** Build CP functions using Open5GS. */
 export async function o5CP(ctx: NetDefComposeContext): Promise<void> {
   const b = new O5CPBuilder(ctx);
-  b.build();
+  await b.build();
 }
 
 class O5CPBuilder {
@@ -21,9 +24,8 @@ class O5CPBuilder {
   private waitNrf: string[] = [];
   private nrfUri?: string;
 
-  public build(): void {
-    compose.mongo.define(this.ctx, this.mongoUrl);
-    this.buildPopulate();
+  public async build(): Promise<void> {
+    await this.buildMongo();
     this.buildNRF();
     this.defineOnlySbi("udr", ["db"]); // needed by UDM
     this.defineOnlySbi("udm"); // needed by AUSF
@@ -40,20 +42,14 @@ class O5CPBuilder {
     this.buildWebUI();
   }
 
-  private buildPopulate(): void {
-    const s = this.defineService("populate", dbctlDockerImage, ["db"]);
-    s.depends_on.mongo = { condition: "service_started" };
-    s.volumes.push({
-      type: "tmpfs",
-      source: "",
-      target: "/data/configdb",
-    }, {
-      type: "tmpfs",
-      source: "",
-      target: "/data/db",
-      tmpfs: { mode: 0o1777 },
-    });
-    compose.setCommands(s, makeDbctlCommands(this.ctx.network));
+  private async buildMongo(): Promise<void> {
+    compose.mongo.define(this.ctx, this.mongoUrl, "./cp-db");
+    await this.ctx.writeFile(
+      "./cp-db/open5gs-dbctl",
+      file_io.write.copyFrom(path.join(import.meta.dirname, "open5gs-dbctl")),
+      { executable: true },
+    );
+    await this.ctx.writeFile("./cp-db/open5gs.sh", makeDbctlCommands(this.ctx.network, this.mongoUrl));
   }
 
   private buildNRF(): void {
@@ -259,9 +255,10 @@ class O5CPBuilder {
   }
 }
 
-function* makeDbctlCommands(network: N.Network) {
-  yield "msg Clearing database";
-  yield "with_retry open5gs-dbctl reset";
+function* makeDbctlCommands(network: N.Network, dbUri: URL) {
+  yield* scriptHead;
+  yield `export DB_URI=${dbUri}`;
+  yield `PATH=${compose.mongo.initdbPath}:$PATH`;
   for (const { supi, k, opc, subscribedNSSAI, dlAmbr, ulAmbr } of netdef.listSubscribers(network)) {
     yield `msg Creating subscriber ${supi}`;
     for (const [i, { snssai, dnns }] of subscribedNSSAI.entries()) {
