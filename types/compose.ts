@@ -74,6 +74,9 @@ export interface ComposeVolume {
     propagation?: "shared";
     create_host_path?: boolean;
   };
+  tmpfs?: {
+    mode?: number;
+  };
 }
 
 /** Compose service network interface. */

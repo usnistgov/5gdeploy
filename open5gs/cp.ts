@@ -43,7 +43,16 @@ class O5CPBuilder {
   private buildPopulate(): void {
     const s = this.defineService("populate", dbctlDockerImage, ["db"]);
     s.depends_on.mongo = { condition: "service_started" };
-
+    s.volumes.push({
+      type: "tmpfs",
+      source: "",
+      target: "/data/configdb",
+    }, {
+      type: "tmpfs",
+      source: "",
+      target: "/data/db",
+      tmpfs: { mode: 0o1777 },
+    });
     compose.setCommands(s, makeDbctlCommands(this.ctx.network));
   }
 
@@ -251,8 +260,10 @@ class O5CPBuilder {
 }
 
 function* makeDbctlCommands(network: N.Network) {
-  yield "open5gs-dbctl reset";
+  yield "msg Clearing database";
+  yield "with_retry open5gs-dbctl reset";
   for (const { supi, k, opc, subscribedNSSAI, dlAmbr, ulAmbr } of netdef.listSubscribers(network)) {
+    yield `msg Creating subscriber ${supi}`;
     for (const [i, { snssai, dnns }] of subscribedNSSAI.entries()) {
       const { sst, sd } = netdef.splitSNSSAI(snssai, true).ih;
       for (const [j, dnn] of dnns.entries()) {
@@ -267,5 +278,6 @@ function* makeDbctlCommands(network: N.Network) {
       }
     }
   }
+  yield "msg Listing subscribers";
   yield "open5gs-dbctl showpretty";
 }

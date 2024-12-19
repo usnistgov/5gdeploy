@@ -138,6 +138,11 @@ class PromBuilder {
     s.command = [
       "--config.file=/etc/prometheus/prometheus.yml",
     ];
+    s.volumes.push({
+      type: "tmpfs",
+      source: "",
+      target: "/prometheus",
+    });
 
     const url = new URL("http://localhost:9090");
     url.hostname = compose.getIP(s, "meas");

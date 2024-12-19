@@ -11,6 +11,8 @@ export const mysql = {
    */
   define(ctx: ComposeContext, startdb?: string): ComposeService {
     const s = ctx.defineService("sql", "bitnami/mariadb:10.6", ["db"]);
+    s.environment.ALLOW_EMPTY_PASSWORD = "yes";
+    s.environment.MARIADB_EXTRA_FLAGS = "--max_connections=1000";
     if (startdb) {
       s.volumes.push({
         type: "bind",
@@ -19,8 +21,6 @@ export const mysql = {
         read_only: true,
       });
     }
-    s.environment.ALLOW_EMPTY_PASSWORD = "yes";
-    s.environment.MARIADB_EXTRA_FLAGS = "--max_connections=1000";
     return s;
   },
 
@@ -83,11 +83,12 @@ export const mongo = {
    * @param mongoUrl - mongodb: URL with optional database name in path, will be updated with IP+port.
    */
   define(ctx: ComposeContext, mongoUrl?: URL): ComposeService {
-    const s = ctx.defineService("mongo", "mongo:7", ["db"]);
+    const s = ctx.defineService("mongo", "bitnami/mongodb:7.0-debian-12", ["db"]);
+    s.environment.ALLOW_EMPTY_PASSWORD = "yes";
     if (mongoUrl) {
       assert(mongoUrl.protocol === "mongodb:");
       if (mongoUrl.pathname.length > 1) {
-        s.environment.MONGO_INITDB_DATABASE = mongoUrl.pathname.slice(1); // strip leading "/"
+        s.environment.MONGODB_DATABASE = mongoUrl.pathname.slice(1); // strip leading "/"
       }
       mongoUrl.hostname = getIP(s, "db");
       mongoUrl.port = "27017";
