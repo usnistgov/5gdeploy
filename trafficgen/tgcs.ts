@@ -345,13 +345,13 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() { // eslint-di
   yield "fi";
 })());
 
-const counts = new DefaultMap<string, [cnt: number, group: string]>((group: string) => [0, group]);
+const counts = new DefaultMap((group: string) => ({ group, cnt: 0 }));
 for (const row of table) {
   const group = row[0]! as string;
-  counts.get(group)[0] += 1;
+  ++counts.get(group).cnt;
 }
 table.push(...oblMap(counts.values(),
-  ([cnt, group]) => [group, "*", "*", "COUNT", cnt],
+  ({ group, cnt }) => [group, "*", "*", "COUNT", cnt],
 ));
 const tTable = file_io.toTable(
   ["group", "snssai_dnn", "dir", "supi", "port"],

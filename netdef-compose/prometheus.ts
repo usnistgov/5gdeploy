@@ -120,8 +120,8 @@ class PromBuilder {
 
       const labels: Record<string, string> = {};
       for (const kv of target.searchParams.getAll("labels")) {
-        const [k = "", v = ""] = kv.split("=");
-        labels[k] = v;
+        const [k, v] = kv.split("=");
+        labels[k!] = v!;
       }
       job.static_configs.push({
         targets: [target.host],
@@ -138,11 +138,6 @@ class PromBuilder {
     s.command = [
       "--config.file=/etc/prometheus/prometheus.yml",
     ];
-    s.volumes.push({
-      type: "tmpfs",
-      source: "",
-      target: "/prometheus",
-    });
 
     const url = new URL("http://localhost:9090");
     url.hostname = compose.getIP(s, "meas");
@@ -204,7 +199,7 @@ class PromBuilder {
   }
 }
 
-const ctxBuilder = new DefaultWeakMap<NetDefComposeContext, PromBuilder>((ctx) => new PromBuilder(ctx));
+const ctxBuilder = new DefaultWeakMap((ctx: NetDefComposeContext) => new PromBuilder(ctx));
 
 /** Define Prometheus and Grafana containers in the scenario. */
 export async function prometheus(ctx: NetDefComposeContext, opts: YargsInfer<typeof prometheusOptions>): Promise<void> {

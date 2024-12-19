@@ -14,10 +14,7 @@ import type { Promisable } from "type-fest";
 function doReadText(filename: string): Promise<string> {
   return filename === "-" ? getStdin() : fs.readFile(filename, "utf8");
 }
-
-const readOnce = new DefaultMap<string, Promise<string>>(
-  (filename) => doReadText(filename),
-);
+const readOnce = new DefaultMap((filename: string) => doReadText(filename));
 
 /**
  * Read file as UTF-8 text.

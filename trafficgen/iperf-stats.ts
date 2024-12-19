@@ -167,8 +167,8 @@ for (const s of Object.values(c.services).filter(({ container_name: ct }) => /_i
 }
 table.sort(sortBy("0", "1", "2", "3", "4"));
 
-const sums = new DefaultMap<string, [send: number, recv: number, group: string, dn: string, dir: string]>(
-  (key: string) => [0, 0, ...key.split("|")] as [number, number, string, string, string],
+const sums = new DefaultMap(
+  (key: string) => [0, 0, ...key.split("|")] as [send: number, recv: number, group: string, dn: string, dir: string],
 );
 for (const row of table) {
   const [group, dn, dir] = row;

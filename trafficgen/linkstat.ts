@@ -34,10 +34,7 @@ const args = Yargs()
 
 const [c] = await loadCtx(args);
 
-const netnsRules = new DefaultMap<string, Array<{
-  net: Minimatch;
-  ethStats: boolean;
-}>>(() => []);
+const netnsRules = new DefaultMap<string, Array<{ net: Minimatch; ethStats: boolean }>>(() => []);
 for (const line of args.link) {
   const [ct, net, opts = ""] = splitVbar("link", line, 2, 3);
   const rule = {
