@@ -3,7 +3,7 @@ import type { PartialDeep } from "type-fest";
 
 import { dependOnGtp5g } from "../free5gc/mod.js";
 import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { prush } from "../types/mod.js";
+import type { ComposeService, prush } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
 
 /** Build RAN functions using PacketRusher. */
@@ -25,7 +25,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Sub
     dependOnGtp5g(s, ctx.c);
   }
 
-  const c = makeConfigUpdate(ctx, gnb, sub);
+  const c = makeConfigUpdate(ctx, s, gnb, sub);
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
   const flags = [
     `--config=${filename}`,
@@ -36,7 +36,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Sub
     flags.push("-d", "-t", "--tunnel-vrf=false");
   }
   compose.setCommands(s, [
-    ...compose.renameNetifs(s),
+    ...compose.renameNetifs(s, { disableTxOffload: true }),
     ...compose.applyQoS(s, "ash"),
     "msg Preparing PacketRusher config",
     ...compose.mergeConfigFile(c, { base: "/config.base.yml", merged: filename }),
@@ -46,14 +46,16 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Sub
   ], { shell: "ash" });
 }
 
-function makeConfigUpdate(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Subscriber): PartialDeep<prush.Root> {
+function makeConfigUpdate(
+    ctx: NetDefComposeContext, s: ComposeService,
+    gnb: netdef.GNB, sub: netdef.Subscriber,
+): PartialDeep<prush.Root> {
   const plmn = netdef.splitPLMN(ctx.network.plmn);
-  const s = ctx.c.services[gnb.name]!;
 
   const c: PartialDeep<prush.Root> = {};
   c.amfif = Array.from(
     compose.listByNf(ctx.c, "amf"),
-    (amf) => ({ ip: compose.getIP(amf, "n2"), port: 38412 } as const),
+    (amf) => ({ ip: compose.getIP(amf, "n2"), port: 38412 }),
   );
   c.gnodeb = {
     controlif: { ip: compose.getIP(s, "n2") },
@@ -75,14 +77,8 @@ function makeConfigUpdate(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netde
   if (sub.requestedDN.length > 0) {
     const dn = sub.requestedDN[0]!;
     const snssai = netdef.splitSNSSAI(dn.snssai);
-    c.gnodeb.slicesupportlist = {
-      sst: snssai.hex.sst,
-      sd: snssai.hex.sd ?? "",
-    };
-    c.ue.snssai = {
-      sst: snssai.int.sst,
-      sd: snssai.hex.sd ?? "",
-    };
+    c.gnodeb.slicesupportlist = { sd: "", ...snssai.hex };
+    c.ue.snssai = { sd: "", ...snssai.ih };
     c.ue.dnn = dn.dnn;
   }
 

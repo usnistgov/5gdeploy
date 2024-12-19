@@ -177,11 +177,10 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
     });
 
     nf.editModule("pfcp", ({ config }) => {
-      config.Associations.Peer = Array.from(compose.listByNf(this.ctx.c, "upf"), (upf) => ({
-        type: "udp",
-        port: 8805,
-        bind: compose.getIP(upf, "n4"),
-      } as const));
+      config.Associations.Peer = Array.from(
+        compose.listByNf(this.ctx.c, "upf"),
+        (upf) => ({ type: "udp", port: 8805, bind: compose.getIP(upf, "n4") }),
+      );
       config.Associations.heartbeat_interval = 5;
       config.Associations.max_heartbeat_retries = 2;
 

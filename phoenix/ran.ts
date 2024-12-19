@@ -44,10 +44,10 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
       Object.assign(config, this.plmn);
       delete config.amf_addr;
       delete config.amf_port;
-      config.amf_list = Array.from(compose.listByNf(this.ctx.c, "amf"), (amf) => ({
-        ngc_addr: compose.getIP(amf, "n2"),
-        ngc_sctp_port: 38412,
-      } as const));
+      config.amf_list = Array.from(
+        compose.listByNf(this.ctx.c, "amf"),
+        (amf) => ({ ngc_addr: compose.getIP(amf, "n2"), ngc_sctp_port: 38412 }),
+      );
       config.gnb_id = gnb.nci.gnb;
       config.cell_id = gnb.nci.nci;
       config.tac = this.tac;

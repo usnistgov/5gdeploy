@@ -14,5 +14,5 @@ EOF
 
 
 FROM alpine:3.20
-RUN apk add --no-cache iproute2 iptables yq
+RUN apk add --no-cache ethtool iproute2 iptables yq
 COPY --from=build /PacketRusher/packetrusher /PacketRusher/config.base.yml /

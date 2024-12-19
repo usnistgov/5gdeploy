@@ -55,7 +55,7 @@ class UeransimBuilder {
       gtpIp: compose.getIP(s, "n3"),
       amfConfigs: Array.from(
         compose.listByNf(this.ctx.c, "amf"),
-        (amf) => ({ address: compose.getIP(amf, "n2"), port: 38412 } as const),
+        (amf) => ({ address: compose.getIP(amf, "n2"), port: 38412 }),
       ),
       slices: Array.from(
         netdef.listNssai(this.ctx.network),
