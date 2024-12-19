@@ -5,6 +5,7 @@ import DefaultMap from "mnemonist/default-map.js";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
+import type { UnknownRecord } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService, ComposeVolume } from "../types/mod.js";
@@ -165,7 +166,7 @@ export class VirtComposeContext extends compose.ComposeContext {
   }
 
   private makeNetplan({ networks }: VMContext, vm: ComposeService) {
-    const ethernets: Record<string, unknown> = {};
+    const ethernets: UnknownRecord = {};
     for (const [net, hostNetif] of networks) {
       const m = reHostNetif.exec(hostNetif);
       if (m?.[2] && m[1]!.toUpperCase() !== "VF") {
@@ -184,6 +185,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     }
     return {
       network: {
+        version: 2,
         ethernets,
       },
     };

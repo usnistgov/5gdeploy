@@ -91,7 +91,7 @@ function hasQoSVolume(s: ComposeService): boolean {
 export function* applyQoS(s: ComposeService, shell = "bash"): Iterable<string> {
   s.cap_add.push("NET_ADMIN");
   s.volumes.push(qosVolume);
-  yield `${shell} ${qosVolume.target}`;
+  yield `${shell} ${qosVolume.target} ${s.container_name}`;
 }
 
 /**
@@ -111,7 +111,7 @@ export async function saveQoS(ctx: ComposeContext, opts: QoSOpts): Promise<void>
 
 function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {
   yield* scriptHead;
-  yield "HOSTNAME=$(hostname -s)";
+  yield "CT=\"$1\"";
   yield "HAS_MANGLE=0";
   yield "TC_DEVICES=''";
 
@@ -121,7 +121,7 @@ function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {
     }
 
     yield "";
-    yield `if [[ $HOSTNAME == ${s.container_name} ]]; then`;
+    yield `if [[ $CT == ${s.container_name} ]]; then`;
     yield* map(generateScriptForContainer(c, s, opts), (line) => line === "" ? line : `  ${line}`);
     yield "fi";
   }

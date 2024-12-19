@@ -1,7 +1,7 @@
 import stringify from "json-stringify-deterministic";
 import { ip2long, Netmask } from "netmask";
 import { filter, take } from "obliterator";
-import type { ConditionalKeys, ReadonlyDeep } from "type-fest";
+import type { ConditionalKeys, ReadonlyDeep, UnknownRecord } from "type-fest";
 
 import type { ComposeFile, ComposeNamedVolume, ComposeNetwork, ComposePort, ComposeService, ComposeVolume } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
@@ -124,7 +124,7 @@ function createService(name: string, image: string): ComposeService {
 
   for (const key of [
     "sysctls", "environment", "networks", "extra_hosts", "depends_on",
-  ] as const satisfies ReadonlyArray<ConditionalKeys<ComposeService, Record<string, unknown>>>) {
+  ] as const satisfies ReadonlyArray<ConditionalKeys<ComposeService, UnknownRecord>>) {
     Object.defineProperty(s, key, {
       enumerable: true,
       writable: false,

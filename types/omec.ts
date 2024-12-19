@@ -1,6 +1,8 @@
+import type { UnknownRecord } from "type-fest";
+
 import type { Info, Logger, PLMNID, Root } from "./free5gc.js";
 
-export type { Root, Info, Logger, PLMNID };
+export type { Info, Logger, PLMNID, Root };
 
 export interface SNSSAI {
   sst: number;
@@ -10,7 +12,7 @@ export interface SNSSAI {
 export namespace gnbsim {
   export interface Configuration {
     gnbs: Record<string, GNB>;
-    customProfiles: Record<string, unknown>;
+    customProfiles: UnknownRecord;
     profiles: Profile[];
     singleInterface: boolean;
     execInParallel: boolean;

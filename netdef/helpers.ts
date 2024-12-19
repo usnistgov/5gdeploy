@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 
 import DefaultMap from "mnemonist/default-map.js";
 import map from "obliterator/map.js";
-import type { RequiredDeep, SetOptional, SetRequired } from "type-fest";
+import type { RequiredDeep, SetRequired } from "type-fest";
 import { arr2hex } from "uint8-util";
 
 import { type N } from "../types/mod.js";
@@ -307,7 +307,7 @@ export function listSmfs(network: N.Network): SMF[] {
   }));
 }
 
-export interface DataNetwork extends SetOptional<Required<N.DataNetwork>, "subnet"> {
+export interface DataNetwork extends SetRequired<N.DataNetwork, Exclude<keyof N.DataNetwork, "subnet">> {
   readonly index: number;
   readonly sessionType: Uppercase<N.DataNetworkType>;
   readonly ambr: AMBR;
@@ -369,14 +369,14 @@ export function* listDataPathPeers({ dataPaths }: N.Network, self: N.DataPathNod
 export interface UPFPeers {
   N3: GNB[];
   N9: N.UPF[];
-  N6Ethernet: UPFN6Peer[];
-  N6IPv4: UPFN6Peer[];
-  N6IPv6: UPFN6Peer[];
+  N6Ethernet: UPFPeers.N6[];
+  N6IPv4: UPFPeers.N6[];
+  N6IPv6: UPFPeers.N6[];
 }
-
-/** N6 peer of a UPF. */
-export interface UPFN6Peer extends DataNetwork {
-  cost: number;
+export namespace UPFPeers {
+  export interface N6 extends DataNetwork {
+    cost: number;
+  }
 }
 
 /** Gather N3,N9,N6 peers of a UPF. */
