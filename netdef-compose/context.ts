@@ -30,15 +30,22 @@ export class NetDefComposeContext extends compose.ComposeContext {
       desc: "View access instructions for web applications.",
       *code() {
         let count = 0;
-        for (const [ct, net, port, title, tail] of [
+        for (const [ct, net, port, title, tail, re] of [
           ["prometheus", "meas", 9090, "Prometheus", ""],
           ["grafana", "meas", 3000, "Grafana", "login with admin/grafana"],
-          ["webui", "mgmt", 5000, "free5GC WebUI", "login with admin/free5gc"],
-        ] satisfies Array<[string, string, number, string, string]>) {
-          const ip = c.services[ct]?.annotations?.[`5gdeploy.ip_${net}`];
-          if (!ip) {
+          ["webui", "mgmt", 5000, "free5GC WebUI", "login with admin/free5gc", /free5gc/],
+          ["webui", "mgmt", 9999, "Open5GS WebUI", "login with admin/1423", /open5gs/],
+        ] satisfies ReadonlyArray<[string, string, number, string, string, RegExp?]>) {
+          let ip: string;
+          try {
+            ip = compose.getIP(c, ct, net);
+          } catch {
             continue;
           }
+          if (re && !re.test(c.services[ct]!.image)) {
+            continue;
+          }
+
           ++count;
           const msg = [`${title} is at ${ip}:${port}`];
           if (tail) {
@@ -46,6 +53,7 @@ export class NetDefComposeContext extends compose.ComposeContext {
           }
           yield `msg ${shlex.quote(msg.join(" , "))}`;
         }
+
         if (count > 0) {
           yield "msg Setup SSH port forwarding to access these services in a browser";
         } else {

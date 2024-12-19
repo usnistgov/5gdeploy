@@ -2,9 +2,9 @@ import * as shlex from "shlex";
 import type { PartialDeep } from "type-fest";
 
 import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { ComposeService, O5G } from "../types/mod.js";
+import type { ComposeService, N, O5G } from "../types/mod.js";
 import { assert } from "../util/mod.js";
-import { dbctlDockerImage, makeLaunchCommands, makeMetrics, makeSockNode, o5DockerImage } from "./common.js";
+import { dbctlDockerImage, makeLaunchCommands, makeMetrics, makeSockNode, o5DockerImage, webuiDockerImage } from "./common.js";
 
 /** Build CP functions using Open5GS. */
 export async function o5CP(ctx: NetDefComposeContext): Promise<void> {
@@ -38,17 +38,16 @@ class O5CPBuilder {
     for (const smf of netdef.listSmfs(this.ctx.network)) {
       this.buildSMF(smf);
     }
+    this.buildWebUI();
   }
 
   private buildPopulate(): void {
-    const { ctx } = this;
-    const s = ctx.defineService("populate", dbctlDockerImage, ["db"]);
-    s.environment.DB_URI = this.mongoUrl.toString();
+    const s = this.defineService("populate", dbctlDockerImage, ["db"]);
     s.depends_on.mongo = { condition: "service_started" };
 
-    compose.setCommands(s, (function*() {
+    compose.setCommands(s, (function*(network: N.Network) {
       yield "open5gs-dbctl reset";
-      for (const sub of netdef.listSubscribers(ctx.network)) {
+      for (const sub of netdef.listSubscribers(network)) {
         for (const [i, { snssai, dnns }] of sub.subscribedNSSAI.entries()) {
           const { sst, sd } = netdef.splitSNSSAI(snssai, true).ih;
           assert(dnns.length === 1, "open5gs-dbctl supports exactly one DNN per S-NSSAI");
@@ -61,7 +60,7 @@ class O5CPBuilder {
         }
       }
       yield "open5gs-dbctl showpretty";
-    })());
+    })(this.ctx.network));
   }
 
   private buildNRF(): void {
@@ -206,8 +205,16 @@ class O5CPBuilder {
     ]);
   }
 
-  private defineService(ct: string, nets: readonly string[]): ComposeService {
-    const s = this.ctx.defineService(ct, o5DockerImage, nets);
+  private buildWebUI(): void {
+    const s = this.defineService("webui", webuiDockerImage, ["mgmt", "db"]);
+    s.environment.NODE_ENV = "dev"; // needed for automatic account creation
+  }
+
+  private defineService(ct: string, nets: readonly string[]): ComposeService;
+  private defineService(ct: string, image: string, nets: readonly string[]): ComposeService;
+  private defineService(ct: string, arg2: unknown, arg3?: unknown): ComposeService {
+    const [image, nets] = (Array.isArray(arg2) ? [o5DockerImage, arg2] : [arg2, arg3]) as [string, readonly string[]];
+    const s = this.ctx.defineService(ct, image, nets);
     s.stop_signal = "SIGTERM";
     if (nets.includes("db")) {
       s.environment.DB_URI = this.mongoUrl.toString();

@@ -307,6 +307,7 @@ export function listSmfs(network: N.Network): SMF[] {
   }));
 }
 
+/** Information about a Data Network. */
 export interface DataNetwork extends SetRequired<N.DataNetwork, Exclude<keyof N.DataNetwork, "subnet">> {
   readonly index: number;
   readonly sessionType: Uppercase<N.DataNetworkType>;

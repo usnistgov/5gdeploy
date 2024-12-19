@@ -1,4 +1,4 @@
-import type { ComposeService } from "../types/compose";
+import type { ComposeService } from "../types/compose.js";
 
 /** Allow libuhd to be used inside a container. */
 export function prepareContainer(s: ComposeService, mountImages: boolean): void {
