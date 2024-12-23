@@ -21,6 +21,7 @@ class O5CPBuilder {
 
   private readonly plmn: O5G.PLMNID;
   private readonly mongoUrl = compose.mongo.makeUrl("open5gs");
+  private waitMongo: string[] = [];
   private waitNrf: string[] = [];
   private nrfUri?: string;
 
@@ -50,6 +51,9 @@ class O5CPBuilder {
       { executable: true },
     );
     await this.ctx.writeFile("./cp-db/open5gs.sh", makeDbctlCommands(this.ctx.network, this.mongoUrl));
+    this.waitMongo = [...compose.waitReachable("database", [this.mongoUrl.hostname], {
+      mode: `tcp:${Number.parseInt(this.mongoUrl.port, 10)}`, sleep: 0,
+    })];
   }
 
   private buildNRF(): void {
@@ -68,7 +72,7 @@ class O5CPBuilder {
     };
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s),
+      ...this.netCommands(s),
       ...makeLaunchCommands("nrf", cfg),
     ]);
   }
@@ -84,8 +88,7 @@ class O5CPBuilder {
     };
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s),
-      ...this.waitNrf,
+      ...this.netCommands(s),
       ...makeLaunchCommands("pcf", cfg),
     ]);
   }
@@ -104,8 +107,7 @@ class O5CPBuilder {
     }));
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s),
-      ...this.waitNrf,
+      ...this.netCommands(s),
       ...makeLaunchCommands("nssf", cfg),
     ]);
   }
@@ -139,8 +141,7 @@ class O5CPBuilder {
     };
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s),
-      ...this.waitNrf,
+      ...this.netCommands(s),
       ...makeLaunchCommands(amf.name, cfg),
     ]);
   }
@@ -188,8 +189,7 @@ class O5CPBuilder {
     ];
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s),
-      ...this.waitNrf,
+      ...this.netCommands(s),
       ...makeLaunchCommands(smf.name, cfg, { dels }),
     ]);
   }
@@ -222,8 +222,7 @@ class O5CPBuilder {
     };
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s),
-      ...this.waitNrf,
+      ...this.netCommands(s),
       ...makeLaunchCommands(ct, cfg),
     ]);
     return s;
@@ -252,6 +251,16 @@ class O5CPBuilder {
     }
 
     return sbi;
+  }
+
+  private *netCommands(s: ComposeService): Iterable<string> {
+    yield* compose.renameNetifs(s);
+    if (s.networks.db) {
+      yield* this.waitMongo;
+    }
+    if (s.networks.cp && s.container_name !== "nrf") {
+      yield* this.waitNrf;
+    }
   }
 }
 

@@ -39,6 +39,7 @@ Known to be compatible:
 * `--cp=oai --ran=oai`
 * `--cp=oai --ran=packetrusher`
 * `--cp=oai --ran=ueransim`
+* `--cp=open5gs --ran=oai`
 * `--cp=open5gs --ran=packetrusher`
 * `--cp=open5gs --ran=srsran`
 * `--cp=open5gs --ran=ueransim`
@@ -67,6 +68,7 @@ Known to be compatible:
 * `--up=oai-vpp --ran=oai`
 * `--up=oai-vpp --ran=packetrusher`
 * `--up=oai-vpp --ran=ueransim`
+* `--up=open5gs --ran=oai`
 * `--up=open5gs --ran=packetrusher`
 * `--up=open5gs --ran=srsran`
 * `--up=open5gs --ran=ueransim`
