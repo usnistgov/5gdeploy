@@ -14,6 +14,7 @@ Known to be compatible:
 * `--cp=oai --up=oai-vpp`
 * `--cp=oai --up=oai`
 * `--cp=open5gs --up=open5gs`
+* `--cp=phoenix --up=bess`
 * `--cp=phoenix --up=ndndpdk`
 * `--cp=phoenix --up=phoenix`
 
@@ -56,6 +57,7 @@ Known to be incompatible:
 
 Known to be compatible:
 
+* `--up=bess --ran=phoenix`
 * `--up=free5gc --ran=gnbsim`
 * `--up=free5gc --ran=packetrusher`
 * `--up=free5gc --ran=srsran`

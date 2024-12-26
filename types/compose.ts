@@ -44,7 +44,7 @@ export interface ComposeService {
   readonly sysctls: Record<string, string | number>;
   readonly volumes: ComposeVolume[];
   readonly environment: Record<string, string>;
-  pid?: "host";
+  pid?: "host" | `service:${string}` | `container:${string}`;
   network_mode?: "host" | "none" | `service:${string}` | `container:${string}`;
   readonly networks: Record<string, ComposeNetif>;
   readonly ports: ComposePort[];

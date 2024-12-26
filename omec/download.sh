@@ -1,6 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
+TAG=${1:-main}
 
-git clone https://github.com/omec-project/upf.git
+if [[ -d upf ]]; then
+  git -C upf fetch
+  git -C upf checkout "${TAG}"
+  git -C upf pull || true
+else
+  git clone --branch "${TAG}" https://github.com/omec-project/upf.git
+fi
+
 make -C upf docker-build

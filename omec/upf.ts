@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { compose, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { N } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 
@@ -17,44 +17,68 @@ export async function bessUP(ctx: NetDefComposeContext, upf: N.UPF): Promise<voi
   c.core.ifname = "n6";
   c.workers = 2;
   c.read_timeout = 0xFFFFFFFF;
-  c.cpiface = { peers: Array.from(compose.listByNf(ctx.c, "smf"), (smf) => compose.getIP(smf, "n4")) };
+  c.cpiface = { peers: [] };
+  c.p4rtciface = {};
+  delete c.sim;
+  delete c.slice_rate_limit_config;
   const cfg = await ctx.writeFile(`up-cfg/${ct}.json`, c);
 
-  const pfcpiface = ctx.defineService(ct, `upf-epc-pfcpiface:${version}`, ["mgmt", "n4", "n3", "n6"]);
+  const bess = ctx.defineService(ct, `upf-epc-bess:${version}`, ["mgmt", "n4", "n3", "n6"]);
+  bess.sysctls["net.ipv6.conf.default.disable_ipv6"] = 1; // route_control.py don't pick up ICMPv6 RAs
+  compose.annotate(bess, "cpus", c.workers);
+  bess.cap_add.push("IPC_LOCK", "NET_ADMIN");
+  const bessCommands = [
+    // generate renameNetifs commands early, before netifs are detached in bridge configuration
+    ...compose.renameNetifs(bess),
+    ...makeUPFRoutes(ctx, netdef.gatherUPFPeers(ctx.network, upf)),
+  ];
+  ctx.finalize.push(() => { // gNB IPs are available in ctx.finalize
+    compose.setCommands(bess, [
+      ...bessCommands,
+      ...(function*() {
+        yield "n3_routes() {";
+        yield "  while true; do";
+        for (const gnb of compose.listByNf(ctx.c, "gnb")) {
+          const [ip, mac] = compose.getIPMAC(gnb, "n3");
+          yield `    ip neigh replace ${ip} lladdr ${mac} nud permanent dev n3`;
+          yield `    ip route replace ${ip} via ${ip}`; // trigger n3Dst* creation by route_control.py
+        }
+        yield "    sleep 10";
+        yield "  done";
+        yield "}";
+        yield "n3_routes &";
+      })(),
+      "iptables -I OUTPUT -p icmp --icmp-type port-unreachable -j DROP",
+      "msg Starting bessd",
+      "exec bessd -f -grpc-url=127.0.0.1:10514 -m=0",
+    ]);
+  });
+
+  const pfcpiface = ctx.defineService(ct.replace(/^upf/, "upfpfcp"), `upf-epc-pfcpiface:${version}`, []);
+  pfcpiface.network_mode = `service:${bess.container_name}`;
   compose.setCommands(pfcpiface, [
-    ...compose.renameNetifs(pfcpiface),
     ...compose.waitReachable("bessd", ["127.0.0.1"], { mode: "nc:10514", sleep: 15 }),
     "msg Starting pfcpiface",
     `exec pfcpiface -config /conf/${ct}.json`,
   ], { shell: "ash" });
   cfg.mountInto({ s: pfcpiface, target: `/conf/${ct}.json` });
 
-  const bess = ctx.defineService(ct.replace(/^upf/, "upfbess"), `upf-epc-bess:${version}`, []);
-  compose.annotate(bess, "cpus", c.workers);
-  bess.network_mode = `service:${ct}`;
-  bess.cap_add.push("IPC_LOCK");
-  bess.cap_add.push("NET_ADMIN");
-  compose.setCommands(bess, [
-    "iptables -I OUTPUT -p icmp --icmp-type port-unreachable -j DROP",
-    "msg Starting bessd",
-    "exec bessd -f -grpc-url=127.0.0.1:10514 -m=0",
-  ]);
-
   const gui = ctx.defineService(ct.replace(/^upf/, "upfgui"), `upf-epc-bess:${version}`, []);
-  gui.network_mode = `service:${ct}`;
+  gui.network_mode = `service:${bess.container_name}`;
   compose.setCommands(gui, [
-    "sleep 10",
+    ...compose.waitReachable("bessd", ["127.0.0.1"], { mode: "tcp:10514" }),
     "msg Loading BESS pipeline",
-    "bessctl run up4",
+    "with_retry bessctl run up4",
     "msg Starting bessctl GUI",
-    `exec bessctl http ${compose.getIP(pfcpiface, "mgmt")} 8000`,
+    `exec bessctl http ${compose.getIP(bess, "mgmt")} 8000`,
   ]);
   cfg.mountInto({ s: gui, target: "/opt/bess/bessctl/conf/upf.jsonc" });
 
   const route = ctx.defineService(ct.replace(/^upf/, "upfroute"), `upf-epc-bess:${version}`, []);
-  route.network_mode = `service:${ct}`;
+  route.network_mode = `service:${bess.container_name}`;
+  route.pid = `service:${bess.container_name}`;
   compose.setCommands(route, [
-    "sleep 5",
+    ...compose.waitReachable("bessd", ["127.0.0.1"], { mode: "tcp:10514" }),
     "msg Starting route_control",
     "exec /opt/bess/bessctl/conf/route_control.py -i n3 n6",
   ]);
