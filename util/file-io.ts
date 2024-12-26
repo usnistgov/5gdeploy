@@ -105,7 +105,7 @@ export namespace readTable {
  * @remarks
  * If `body.save` is a function, its return value is used as body.
  *
- * {@link MKDIR} makes a directory instead of writing a file.
+ * {@link write.MKDIR} makes a directory instead of writing a file.
  * Uint8Array and string are written directly.
  * String arrays and iterables are joined as lines, when filename ends with ".sh".
  * Other types are serialized as either JSON or YAML (when filename ends with ".yaml" or ".yml").

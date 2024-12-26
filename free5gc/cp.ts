@@ -142,7 +142,7 @@ class F5CPBuilder {
 
     const smDatas: Record<N.SNSSAI, W.SessionManagementSubscriptionData> = {};
     for (const dnID of sub.subscribedDN) {
-      const { dnn, snssai, sessionType, fiveQi, priorityLevel, ambr } = netdef.findDN(this.ctx.network, dnID);
+      const { dnn, snssai, sessionType, fiveQi, fiveQiPriorityLevel, arpLevel, ambr } = netdef.findDN(this.ctx.network, dnID);
       const { sst, sd = "" } = netdef.splitSNSSAI(snssai).hex;
       const key = `${sst}${sd}`.toLowerCase();
 
@@ -166,8 +166,8 @@ class F5CPBuilder {
         },
         _5gQosProfile: {
           _5qi: fiveQi,
-          arp: { priorityLevel: 8, preemptCap: "NOT_PREEMPT", preemptVuln: "NOT_PREEMPTABLE" },
-          priorityLevel,
+          priorityLevel: fiveQiPriorityLevel,
+          arp: { priorityLevel: arpLevel, preemptCap: "NOT_PREEMPT", preemptVuln: "NOT_PREEMPTABLE" },
         },
         sessionAmbr: ambr,
       };

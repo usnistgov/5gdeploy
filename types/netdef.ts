@@ -188,6 +188,7 @@ export interface DataNetworkID {
 }
 
 /** Data Network (DN) definition. */
+/* eslint-disable tsdoc/syntax -- @minimum and @maximum are used by ts-json-schema-generator */
 export interface DataNetwork extends DataNetworkID {
   /** DN type. */
   type: DataNetworkType;
@@ -203,14 +204,25 @@ export interface DataNetwork extends DataNetworkID {
   /**
    * 5G QoS Identifier (5QI).
    * @defaultValue 9
+   * @minimum 1
    */
   fiveQi?: number;
 
   /**
-   * 5G QoS priority level.
+   * 5QI priority level.
    * @defaultValue 90
+   * @minimum 1
+   * @maximum 127
    */
-  priorityLevel?: number;
+  fiveQiPriorityLevel?: number;
+
+  /**
+   * Allocation/Retention Priority (ARP) level.
+   * @defaultValue 8
+   * @minimum 1
+   * @maximum 15
+   */
+  arpLevel?: number;
 
   /**
    * Session AMBR downlink, in Mbps.
@@ -224,6 +236,7 @@ export interface DataNetwork extends DataNetworkID {
    */
   ulAmbr?: number;
 }
+/* eslint-enable tsdoc/syntax */
 
 /** DN type. */
 export type DataNetworkType = "IPv4" | "IPv6" | "Ethernet";

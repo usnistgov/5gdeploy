@@ -330,7 +330,8 @@ export function findDN(network: N.Network, dnn: N.DataNetworkID | string, snssai
   return {
     index,
     fiveQi: 9,
-    priorityLevel: 90,
+    fiveQiPriorityLevel: 90,
+    arpLevel: 8,
     dlAmbr: 1000,
     ulAmbr: 1000,
     ...dn,

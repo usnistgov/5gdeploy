@@ -26,16 +26,17 @@ function qosOption(dnn: string) {
   return {
     array: false,
     coerce(line: string) {
-      const m = /^(\d+),(\d+),([\d.]+),([\d.]+)$/.exec(line);
+      const m = /^(\d+),(\d+),(\d+),([\d.]+),([\d.]+)$/.exec(line);
       assert(m, `bad QoS option ${line}`);
       return {
         fiveQi: Number.parseInt(m[1]!, 10),
-        priorityLevel: Number.parseInt(m[2]!, 10),
-        dlAmbr: Number.parseFloat(m[3]!),
-        ulAmbr: Number.parseFloat(m[4]!),
+        fiveQiPriorityLevel: Number.parseInt(m[2]!, 10),
+        arpLevel: Number.parseInt(m[3]!, 10),
+        dlAmbr: Number.parseFloat(m[4]!),
+        ulAmbr: Number.parseFloat(m[5]!),
       } satisfies Partial<netdef.DataNetwork>;
     },
-    desc: `QoS of ${dnn} Data Network - 5qi,priorityLevel,dlAmbr,ulAmbr (Mbps)`,
+    desc: `QoS of ${dnn} Data Network - 5qi,5qiPriorityLevel,dlAmbr,ulAmbr (Mbps)`,
     type: "string",
   } as const satisfies YargsOpt;
 }

@@ -168,11 +168,16 @@ class CPBuilder extends CN5GBuilder {
         nssai.defaultSingleNssais.push(snssaiJ);
         yield sql`SET @dnn_json=${{}}`;
         for (const dnn of dnns) {
-          const { sessionType, fiveQi, priorityLevel, ambr } = netdef.findDN(this.ctx.network, dnn, snssai);
+          const { sessionType, fiveQi, fiveQiPriorityLevel, arpLevel, ambr } = netdef.findDN(this.ctx.network, dnn, snssai);
           yield sql`SET @dnn_json=JSON_INSERT(@dnn_json,${`$.${dnn}`},JSON_MERGE_PATCH(@dnn_json_tpl,${{
             pduSessionTypes: { defaultSessionType: sessionType },
-            "5gQosProfile": { "5qi": fiveQi, priorityLevel },
+            "5gQosProfile": {
+              "5qi": fiveQi,
+              priorityLevel: fiveQiPriorityLevel,
+              arp: { priorityLevel: arpLevel },
+            },
             sessionAmbr: ambr,
+            staticIpAddress: [],
           }}))`;
         }
         yield sql`

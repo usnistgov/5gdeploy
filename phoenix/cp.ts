@@ -75,7 +75,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       yield sql`INSERT am_data (supi,access_and_mobility_sub_data) VALUES (${supi},JSON_MERGE_PATCH(@am_json,${amPatch}))`;
 
       for (const dnID of subscribedDN) {
-        const { dnn, snssai, sessionType, fiveQi, ambr } = netdef.findDN(this.ctx.network, dnID);
+        const { dnn, snssai, sessionType, fiveQi, arpLevel, ambr } = netdef.findDN(this.ctx.network, dnID);
         const { sst } = netdef.splitSNSSAI(snssai).ih;
         const dnnPatch = {
           pduSessionTypes: {
@@ -83,6 +83,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
           },
           "5gQosProfile": {
             "5qi": fiveQi,
+            arp: { priorityLevel: arpLevel },
           },
           sessionAmbr: ambr, // ineffective without PCF
         };
