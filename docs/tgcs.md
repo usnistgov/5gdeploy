@@ -7,6 +7,7 @@ Many traffic generators have a client-server architecture, including:
 * OWAMP and TWAMP
 * netperf
 * sockperf
+* D-ITG
 
 These traffic generators are supported through `./compose.sh tgcs` subcommand.
 See [traffic generators](trafficgen.md) for other traffic generators.
@@ -230,7 +231,7 @@ The script cannot gather summary information from the output.
 
 ## Sockperf
 
-`--sockperf` traffic flow flag prepares a [sockperf](https://manpages.ubuntu.com/manpages/jammy/man1/sockperf.1.html) benchmark.
+`--sockperf` traffic flow flag prepares a [sockperf](https://manpages.debian.org/bookworm/sockperf/sockperf.1.en.html) benchmark.
 
 This requires uses a custom Docker image built on the primary host.
 To transfer the image to secondary hosts, run `./PREFIX.sh upload` before the first run.
@@ -281,18 +282,17 @@ scp gen2.csv SECONDARY:$PWD/gen2.csv
 Sockperf playback mode requires a playback file as input.
 It is a CSV file where each record describes a packet to be transmitted.
 First column is a timestamp (monotonically increasing); second column is UDP payload length (between 14 and 65000).
-The sample command uses [gen2.awk](https://github.com/Mellanox/sockperf/blob/91b10ca095ea2efe6aaab830e34c2afe2c3e4cbf/tools/gen2.awk) to generate a playback file.
+The sample command uses [gen2.awk](https://github.com/Mellanox/sockperf/blob/19accb5229503dac7833f03713b978cb7fc48762/tools/gen2.awk) to generate a playback file.
 
 The `--data-file` flag should be set to the absolute path of the playback file.
 In a multi-host deployment, this file must be present on the host that runs the sockperf playback, which may or may not be the primary host.
 The playback file would be bind-mounted into the container at the same path so that it is readable by sockperf.
 
-This mode would not work in a multi-UE container (e.g. UERANSIM) due to implementation limitation (lack of `--client_ip` flag).
-
 ### Troubleshooting
 
 During startup, `bind source path does not exist` for the playback file:
 
+* Did you specify the correct absolute path for the playback file?
 * Did you upload the playback file to the secondary host where the sender would be running?
 
 During startup, `Error Get "http://5gdeploy.localhost/v2/"`:

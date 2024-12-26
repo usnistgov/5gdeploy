@@ -1,4 +1,18 @@
-FROM ryozitn/sockperf:3.10 AS sockperf
+FROM buildpack-deps:bookworm AS build
+SHELL ["/bin/bash", "-c"]
+ADD https://github.com/Mellanox/sockperf/archive/19accb5229503dac7833f03713b978cb7fc48762.zip /sockperf.zip
+
+RUN <<EOF
+  set -euxo pipefail
+  cd /
+  unzip -n sockperf.zip
+  mv sockperf-* sockperf
+  cd /sockperf
+  ./autogen.sh
+  ./configure
+  make
+  make install DESTDIR=/target
+EOF
 
 FROM debian:bookworm
 SHELL ["/bin/bash", "-c"]
@@ -10,5 +24,5 @@ RUN <<EOF
   rm -rf /var/lib/apt/lists/*
 EOF
 
-COPY --from=sockperf /usr/bin/sockperf /usr/local/bin/
-ADD --chmod=755 https://github.com/Mellanox/sockperf/raw/91b10ca095ea2efe6aaab830e34c2afe2c3e4cbf/tools/gen2.awk /usr/local/bin/
+COPY --from=build /target/ /
+COPY --from=build /sockperf/tools/gen2.awk /usr/local/bin/

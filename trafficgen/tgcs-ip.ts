@@ -261,14 +261,8 @@ export const sockperf: TrafficGen = {
       "--client_ip", cIP,
       "--client_port", `${port}`,
     ];
-    const ipCommands: string[] = [];
 
     if (["playback", "pb"].includes(cFlags[0]!)) {
-      ipFlags.splice(4, 4); // https://github.com/Mellanox/sockperf/issues/234
-      ipCommands.push(`ip -j route get ${sIP} from ${cIP} | jq -r${
-        " "}'.[] | ["ip","route","replace",.dst] + if .gateway then ["via",.gateway] else ["dev",.dev] end | @sh' | sh`);
-      s.cap_add.push("NET_ADMIN");
-
       const dfIndex = cFlags.indexOf("--data-file");
       assert(dfIndex !== -1 && dfIndex < cFlags.length - 1, "sockperf playback --data-file missing");
       const dataFile = cFlags[dfIndex + 1]!;
@@ -282,7 +276,6 @@ export const sockperf: TrafficGen = {
     }
 
     compose.setCommands(s, [
-      ...ipCommands,
       ...start.waitCommands(),
       shlex.join(["sockperf", ...cFlags.toSpliced(1, 0, ...ipFlags)]),
     ], { withScriptHead: false });
