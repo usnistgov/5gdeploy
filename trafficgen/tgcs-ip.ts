@@ -346,8 +346,8 @@ export const itg: TrafficGen = {
     flow.nPorts = 1 + totalFlows;
     if (!noPoll) {
       compose.annotate(s, "cpus", totalFlows);
+      compose.annotate(server!, "cpus", totalFlows);
     }
-    compose.annotate(server!, "cpus", totalFlows);
 
     compose.setCommands(s, [
       "msg Creating multi-flow script",

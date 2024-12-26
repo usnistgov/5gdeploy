@@ -183,7 +183,7 @@ export function rewriteOutputFlag(s: ComposeService, prefix: string, group: stri
  * @param re - RegExp to match the desired preprocessor flag.
  * @returns Remaining flags with matched flag deleted; RegExp match result.
  */
-export function extractPpFlag(flags: readonly string[], re: RegExp): [rflags: string[], m: extractPpFlag.Match] {
+export function extractPpFlag(flags: readonly string[], re: RegExp): [rFlags: string[], m: extractPpFlag.Match] {
   for (const [i, flag] of flags.entries()) {
     if (!flag.startsWith("#")) {
       break;
@@ -211,11 +211,11 @@ export class ClientStartOpt {
    * @returns Remaining flags.
    */
   public rewriteFlag(flags: readonly string[]): string[] {
-    const [rflags, m] = extractPpFlag(flags, /^#start=(\$\w+|\+[.\d]+)$/);
+    const [rFlags, m] = extractPpFlag(flags, /^#start=(\$\w+|\+[.\d]+)$/);
     if (m) {
       this.expr = m[1]!;
     }
-    return rflags;
+    return rFlags;
   }
 
   /** Generate commands to wait until requested client start time. */
@@ -236,10 +236,10 @@ export class ClientStartOpt {
 /** Handle #text flag and save "docker logs" file extension. */
 export function handleTextOutputFlag(
     s: ComposeService, flags: readonly string[], nonTextStatsExt: string,
-): [rflags: string[], wantText: boolean] {
-  const [rflags, wantText] = extractPpFlag(flags, /^#text$/);
+): [rFlags: string[], wantText: boolean] {
+  const [rFlags, wantText] = extractPpFlag(flags, /^#text$/);
   if (!wantText) {
     compose.annotate(s, "tgcs_stats_ext", nonTextStatsExt);
   }
-  return [rflags, !!wantText];
+  return [rFlags, !!wantText];
 }

@@ -74,7 +74,7 @@ IPERF3_0_START="$(expr $(date -u +%s) + 30)" IPERF3_1_START="$(expr $(date -u +%
 ```
 
 The value of `#start` preprocessor flag may also be a **relative timestamp**, written as a `+`*t* where *t* is a floating point number.
-This is resolved at runtime to be `$TGCS_T0 + `*t*, where `$TGCS_T0` is 30 seconds since starting clients (adjustable with `--t0-delay` flag).
+This is resolved at runtime to be `$TGCS_T0+`*t*, where `$TGCS_T0` is 30 seconds since starting clients (adjustable with `--t0-delay` flag).
 For example:
 
 ```bash

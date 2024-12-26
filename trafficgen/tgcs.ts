@@ -306,26 +306,34 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() { // eslint-di
   yield "";
 
   yield "if [[ -z $ACT ]] || [[ $ACT == stop ]]; then";
+  const moveToPrimary = args["move-to-primary"];
+  const chmodStats = `run --rm --network none -v $COMPOSE_CTX/compose.yml:/owner:ro -v $STATS_DIR:/output${
+    " "}alpine:3.20 ash -c 'chown -R $(stat -c %u:%g /owner) /output'`;
   for (const { host, hostDesc, dockerH, names, services } of compose.classifyByHost(output)) {
     yield `  msg Deleting trafficgen servers and clients on ${hostDesc}`;
     yield `  with_retry env COMPOSE_IGNORE_ORPHANS=1 ${dockerH} compose -f ${
       composeFilename} stop -t 2 ${names.join(" ")} >/dev/null`;
     yield `  with_retry delete_by_regex ${shlex.quote(dockerH)} ${shlex.quote(`^${prefix}_`)} >/dev/null`;
-    if (host && args["move-to-primary"] && services.some((s) => s.volumes.some((volume) => volume.target === "/output"))) {
-      yield `  msg Moving $STATS_DIR from ${hostDesc} to primary`;
-      yield `  docker run --rm --network host -v ~/.ssh/id_ed25519:/sshkey:ro -v $STATS_DIR:/target${
-        " "}rclone/rclone move :sftp:$STATS_DIR /target ${shlex.join([
-        "--transfers=2",
-        "--inplace",
-        ...compose.makeRcloneSftpFlags(host),
-        ...(host.startsWith("root@") ? [] : ["--sftp-server-command=sudo /usr/lib/openssh/sftp-server"]),
-        "--log-level=ERROR",
-      ])}`;
+    if (host && services.some((s) => s.volumes.some((volume) => volume.target === "/output"))) {
+      if (moveToPrimary) {
+        yield `  msg Moving $STATS_DIR from ${hostDesc} to primary`;
+        yield `  docker run --rm --network host -v ~/.ssh/id_ed25519:/sshkey:ro -v $STATS_DIR:/target${
+          " "}rclone/rclone move :sftp:$STATS_DIR /target ${shlex.join([
+          "--transfers=2",
+          "--inplace",
+          ...compose.makeRcloneSftpFlags(host),
+          ...(host.startsWith("root@") ? [] : ["--sftp-server-command=sudo /usr/lib/openssh/sftp-server"]),
+          "--log-level=ERROR",
+        ])}`;
+      } else if (!host.startsWith("root@")) {
+        yield `  msg Running chmod on ${hostDesc}:$STATS_DIR`;
+        yield `  ${dockerH} ${chmodStats}`;
+      }
     }
   }
-  if (args["move-to-primary"] && Object.values(output.services).some((s) => s.volumes.some((volume) => volume.target === "/output"))) {
-    yield "  msg Running chmod on $STATS_DIR";
-    yield "  sudo chown -R $(id -un):$(id -gn) $STATS_DIR";
+  if (Object.values(output.services).some((s) => s.volumes.some((volume) => volume.target === "/output"))) {
+    yield "  msg Running chmod on PRIMARY:$STATS_DIR";
+    yield `  docker ${chmodStats}`;
   }
   yield "fi";
   yield "";

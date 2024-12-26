@@ -104,7 +104,7 @@ The `-yC` flag for CSV output is included by default.
 To obtain text output instead, add `#text` preprocessor flag.
 In either case, you should specify `-i` flag to enable interval reports.
 
-Use `-P` client flag to send multiple parallel flows from the each client.
+Use `-P` client flag to send multiple sub-flows from the each client.
 If you observe CPU bottleneck when using this flag, consider adding `#cpus` preprocessor flag to increase CPU allocation, described in [CPU allocation](tgcs-advanced.md).
 By default, the client uses TCP/UDP ports randomly assigned by the operating system.
 Add `-B :+`*r* to assign sequential ports to the client, where the first port is server port plus *r*; this implicitly adds `--incr-srcport` flag.
@@ -116,7 +116,7 @@ The iperf2 `-R` flag is also permitted, but it suffers from certain compatibilit
 
 The outputs of each iperf2 container are saved in the stats directory.
 The script shows a table of iperf2 flows that have CSV output, together with iperf3 flows that have JSON output.
-Latency column is available with `--trip-times` client flag; it is the median when there are multiple flows specified via `-P` flag.
+Latency column is available with `--trip-times` client flag; it is the median when there are multiple sub-flows specified via `-P` flag.
 
 ### Delayed TX Start
 
@@ -312,31 +312,31 @@ After finishing, log contains `ERROR: _seqN > m_maxSequenceNo`:
 `--itg` traffic flow flag prepares a [D-ITG](https://traffic.comics.unina.it/software/ITG/manual/index.html) benchmark.
 
 ```bash
-# single flow
+# single sub-flow
 ./compose.sh tgcs --itg='internet | * | -t 30000 -C 3000 -c 1250'
 
-# multiple flows of same characteristics
+# multiple sub-flows of same characteristics
 ./compose.sh tgcs --itg='internet | * | #flows=4 -t 30000 -O 3000 -c 1250'
 
-# multiple flows of different characteristics
+# multiple sub-flows of different characteristics
 ./compose.sh tgcs --itg='internet | * |
   (# #flows=2 -t 30000 -O 3000 -c 1000 #)
   (# #flows=2 -t 30000 -O 1000 -c 1200 #)
 '
 
-# large number of flows with IDT busy-wait disabled
+# large number of sub-flows with IDT busy-wait disabled
 ./compose.sh tgcs --itg='internet | * | #poll=0 #flows=80 -t 30000 -O 100 -c 1250'
 ```
 
 Client flags are passed to [`ITGSend`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00042000000000000000) command.
 Use `#start` preprocessor flag for delayed client start, described in [delayed client start](tgcs-advanced.md).
 Use `#R` preprocessor flag for reverse direction, described in [reverse direction](tgcs-advanced.md).
-Use `#flows` preprocessor flag to define multiple parallel flows from the each client.
+Use `#flows` preprocessor flag to define multiple sub-flows from the each client.
 Apart from preprocessor flags, all ITGSend flags except log\_opts and address+port are permitted.
 
-The brackets syntax `(# .. #)` may be used to define multiple parallel flows with different characteristics.
-When using this syntax, the `#flows` proprocessor flag should appear inside the brackets and apply to only these parallel flows, while all other proprocessor flags should appear outside the brackets and apply to the entire process.
-It's advised to align all flows to finish at the same time, otherwise ITGSend may throw `terminate called after throwing an instance of 'Runtime_error'` error.
+The brackets syntax `(# .. #)` may be used to define multiple sub-flows with different characteristics.
+When using this syntax, the `#flows` proprocessor flag should appear inside the brackets and apply to only these sub-flows, while all other proprocessor flags should appear outside the brackets and apply to the entire process.
+It's advised to align all sub-flows to finish at the same time, otherwise ITGSend may throw `terminate called after throwing an instance of 'Runtime_error'` error.
 
 ### IDT Busy-wait and CPU Allocation
 
