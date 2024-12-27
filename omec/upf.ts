@@ -19,6 +19,7 @@ export async function bessUP(ctx: NetDefComposeContext, upf: N.UPF): Promise<voi
   c.read_timeout = 0xFFFFFFFF;
   c.cpiface = { peers: [] };
   c.p4rtciface = {};
+  c.qci_qos_config = [];
   delete c.sim;
   delete c.slice_rate_limit_config;
   const cfg = await ctx.writeFile(`up-cfg/${ct}.json`, c);
