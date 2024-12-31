@@ -16,9 +16,10 @@ export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
       "msg Preparing gNBSim config",
       ...compose.mergeConfigFile("/config.update.yaml", {
         base: "/config.base.yaml",
+        dels: [".configuration.gnbs", ".configuration.customProfiles"],
         merged: "/gnbsim.yaml",
       }),
-      "sleep 10",
+      "sleep 15",
       "msg Starting gNBSim",
       "exec /gnbsim --cfg /gnbsim.yaml",
     ], { shell: "ash" });
