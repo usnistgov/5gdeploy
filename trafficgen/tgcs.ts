@@ -308,7 +308,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() { // eslint-di
   yield "if [[ -z $ACT ]] || [[ $ACT == stop ]]; then";
   const moveToPrimary = args["move-to-primary"];
   const chmodStats = `run --rm --network none -v $COMPOSE_CTX/compose.yml:/owner:ro -v $STATS_DIR:/output${
-    " "}alpine:3.20 ash -c 'chown -R $(stat -c %u:%g /owner) /output'`;
+    " "}alpine:3.21 ash -c 'chown -R $(stat -c %u:%g /owner) /output'`;
   for (const { host, hostDesc, dockerH, names, services } of compose.classifyByHost(output)) {
     yield `  msg Deleting trafficgen servers and clients on ${hostDesc}`;
     yield `  with_retry env COMPOSE_IGNORE_ORPHANS=1 ${dockerH} compose -f ${

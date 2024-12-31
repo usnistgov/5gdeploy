@@ -20,5 +20,5 @@ fi
 docker run --rm -v ./webconsole-openapi:/output -e _JAVA_OPTIONS openapitools/openapi-generator-cli generate \
   -i https://github.com/free5gc/webconsole/raw/06185fd39e8176e86e73e5b7c2a4f6d0bbe07a92/frontend/webconsole.yaml \
   -g typescript-fetch -o /output
-docker run --rm -v ./webconsole-openapi:/output alpine:3.20 chown -R $(id -u):$(id -g) /output
+docker run --rm -v ./webconsole-openapi:/output alpine:3.21 chown -R $(id -u):$(id -g) /output
 find webconsole-openapi -name '*.ts' | xargs sed -i '1 i\// @ts-nocheck'

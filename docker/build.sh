@@ -47,8 +47,8 @@ build_oai_nwdaf() {
 
   for MS in engine nbi-analytics nbi-events nbi-ml sbi; do
     build_oai_nwdaf_microservice $MS \
-      --build-arg BUILD_IMAGE=golang:1.23-alpine3.20 \
-      --build-arg TARGET_IMAGE=alpine:3.20
+      --build-arg BUILD_IMAGE=golang:1.23-alpine3.21 \
+      --build-arg TARGET_IMAGE=alpine:3.21
   done
 
   build_oai_nwdaf_microservice engine-ads

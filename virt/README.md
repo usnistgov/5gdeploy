@@ -33,7 +33,7 @@ You should define all KVM guests needed in a deployment on the same command line
 Each `--vm` flag value consists of three parts, separated by `|` character:
 
 1. virtual machine name
-2. placement of the virtual machine, including physical host IP and CPU isolation 
+2. placement of the virtual machine, including physical host IP and CPU isolation
 3. network interfaces of the virtual machine
 
 The virtual machine name must be a lowercase letter followed by zero or more lowercase letters or digits.

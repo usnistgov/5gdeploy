@@ -1,4 +1,4 @@
-FROM python:3.10-alpine3.20
+FROM python:3.10-alpine3.21
 SHELL ["/bin/ash", "-c"]
 ARG branch=master
 ADD https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-nwdaf/-/archive/$branch/oai-cn5g-nwdaf-$branch.zip?path=cli /nwdaf.zip

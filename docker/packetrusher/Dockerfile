@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine3.20 AS build
+FROM golang:1.23-alpine3.21 AS build
 SHELL ["/bin/ash", "-c"]
 ADD https://github.com/HewlettPackard/PacketRusher/archive/fd83fec05d964cab7a16fe0d55ff230dd6d9a77a.zip /PacketRusher.zip
 
@@ -13,6 +13,6 @@ RUN <<EOF
 EOF
 
 
-FROM alpine:3.20
+FROM alpine:3.21
 RUN apk add --no-cache ethtool iproute2 iptables yq
 COPY --from=build /PacketRusher/packetrusher /PacketRusher/config.base.yml /
