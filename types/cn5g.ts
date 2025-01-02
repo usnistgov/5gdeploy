@@ -26,6 +26,7 @@ export interface NF {
 export namespace NF {
   export interface Interface {
     interface_name: string;
+    port?: number;
     [k: string]: unknown;
   }
 }

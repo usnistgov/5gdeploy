@@ -82,13 +82,14 @@ export const mongo = {
 
   initdbPath: "/docker-entrypoint-initdb.d",
 
-  /**
-   * Define Compose service.
-   * @param mongoUrl - mongodb: URL with optional database name in path, will be updated with IP+port.
-   * @param initdb - Host directory containing SQL scripts.
-   */
-  define(ctx: ComposeContext, mongoUrl?: URL, initdb?: string): ComposeService {
-    const s = ctx.defineService("mongo", "bitnami/mongodb:7.0-debian-12", ["db"]);
+  /** Define Compose service. */
+  define(ctx: ComposeContext, {
+    ct = "mongo",
+    net = "db",
+    mongoUrl,
+    initdb,
+  }: mongo.Options = {}): ComposeService {
+    const s = ctx.defineService(ct, "bitnami/mongodb:7.0-debian-12", [net]);
     s.environment.ALLOW_EMPTY_PASSWORD = "yes";
 
     if (mongoUrl) {
@@ -96,7 +97,7 @@ export const mongo = {
       if (mongoUrl.pathname.length > 1) {
         s.environment.MONGODB_DATABASE = mongoUrl.pathname.slice(1); // strip leading "/"
       }
-      mongoUrl.hostname = getIP(s, "db");
+      mongoUrl.hostname = getIP(s, net);
       mongoUrl.port = "27017";
     }
 
@@ -112,3 +113,25 @@ export const mongo = {
     return s;
   },
 };
+export namespace mongo {
+  /** {@link mongo.define} options. */
+  export interface Options {
+    /**
+     * Container name.
+     * @defaultValue mongo
+     */
+    ct?: string;
+
+    /**
+     * Network name.
+     * @defaultValue db
+     */
+    net?: string;
+
+    /** mongodb: URL with optional database name in path, will be updated with IP+port. */
+    mongoUrl?: URL;
+
+    /** Host directory containing SQL scripts. */
+    initdb?: string;
+  }
+}

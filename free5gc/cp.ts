@@ -26,7 +26,7 @@ class F5CPBuilder {
   private nrfUri?: string;
 
   public async build(): Promise<void> {
-    compose.mongo.define(this.ctx, this.mongoUrl);
+    compose.mongo.define(this.ctx, { mongoUrl: this.mongoUrl });
     await this.buildNRF();
     await this.buildWebUI();
     await this.buildWebClient();

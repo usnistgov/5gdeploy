@@ -44,7 +44,7 @@ class O5CPBuilder {
   }
 
   private async buildMongo(): Promise<void> {
-    compose.mongo.define(this.ctx, this.mongoUrl, "./cp-db");
+    compose.mongo.define(this.ctx, { mongoUrl: this.mongoUrl, initdb: "./cp-db" });
     await this.ctx.writeFile(
       "./cp-db/open5gs-dbctl",
       file_io.write.copyFrom(path.join(import.meta.dirname, "open5gs-dbctl")),

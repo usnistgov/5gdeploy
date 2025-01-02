@@ -30,6 +30,7 @@ The default is gathered from oai-cn5g-fed repository checkout.
 The default is using NRF, which includes UPF discovery by SMF.
 
 `--oai-cn5g-nwdaf=true` enables Network Data Analytics Function (NWDAF).
+Docker images must be built manually with `./docker/build.sh oai-nwdaf`.
 NBI analytics endpoint is working; Machine Learning related microservices are not working.
 
 `--oai-upf-workers` specifies CPU cores reserved for each UPF.

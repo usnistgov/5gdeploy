@@ -4,7 +4,7 @@ import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 import sql from "sql-tagged-template-literal";
 
-import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, http2Port, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { CN5G, ComposeFile, ComposeService, N } from "../types/mod.js";
 import { assert, file_io, hexPad } from "../util/mod.js";
 import * as oai_conf from "./conf.js";
@@ -33,11 +33,12 @@ abstract class CN5GBuilder {
     if (db) {
       nets.push(["db", undefined]);
     }
-    for (const key of Object.keys(c)) {
+    for (const [key, intf] of Object.entries(c)) {
       if (key === "sbi") {
-        nets.push(["cp", c.sbi]);
+        intf.port = http2Port;
+        nets.push(["cp", intf]);
       } else if (/^n\d+$/.test(key)) {
-        nets.push([key, c[key as `n${number}`]]);
+        nets.push([key, intf]);
       }
     }
     nets.sort(sortBy("0"));
@@ -265,6 +266,7 @@ class NWDAFBuilder extends CN5GBuilder {
   declare protected c: never;
   private tplC!: ComposeFile;
   private ipRepl: Array<[string, string]> = [];
+  private readonly mongoUrl = compose.mongo.makeUrl("nwdaf");
 
   public async build(): Promise<void> {
     this.tplC = await file_io.readYAML(path.join(oai_conf.composePath, "nwdaf/docker-compose-nwdaf-cn-http2.yaml")) as any;
@@ -273,8 +275,8 @@ class NWDAFBuilder extends CN5GBuilder {
       ["192.168.70.133", compose.getIP(this.ctx.c, "smf*", "cp")],
     );
 
-    this.ctx.defineNetwork("nwdaf");
-    for (const ms of ["database", "sbi", "engine", "engine-ads", "nbi-analytics", "nbi-events", "nbi-ml", "nbi-gateway"]) {
+    compose.mongo.define(this.ctx, { ct: "nwdaf_database", net: "nwdafdb", mongoUrl: this.mongoUrl });
+    for (const ms of ["sbi", "engine", "engine-ads", "nbi-analytics", "nbi-events", "nbi-ml", "nbi-gateway"]) {
       await this.buildMicroservice(ms);
     }
     this.buildCLI();
@@ -283,22 +285,36 @@ class NWDAFBuilder extends CN5GBuilder {
   private async buildMicroservice(ms: string): Promise<void> {
     const tplS = this.tplC.services[`oai-nwdaf-${ms}`];
     assert(!!tplS);
-    const s = this.ctx.defineService(
-      `nwdaf_${ms.replaceAll("-", "")}`,
-      tplS.image.replace(/^oai-nwdaf-/, "5gdeploy.localhost/oai-nwdaf-"),
-      ms === "sbi" ? ["cp", "nwdaf"] : ["nwdaf"],
-    );
-    if (ms === "sbi") {
-      this.ipRepl.push([compose.getIP(tplS, "public_net"), compose.getIP(s, "cp")]);
-    }
-    this.ipRepl.push([compose.getIP(tplS, "nwdaf_net"), compose.getIP(s, "nwdaf")]);
+    const tplEnv = Array.isArray(tplS.environment) ?
+      Object.fromEntries(Array.from(tplS.environment, (line) => line.split("=") as [string, string])) :
+      tplS.environment;
 
-    for (const [key, value] of Array.isArray(tplS.environment) ?
-      Array.from(tplS.environment, (line) => line.split("=") as [string, string]) :
-      Object.entries(tplS.environment)) {
-      s.environment[key] = this.replaceIPs(value);
+    const ct = `nwdaf_${ms.replaceAll("-", "")}`;
+    const image = tplS.image.replace(/^oai-nwdaf-/, "5gdeploy.localhost/oai-nwdaf-");
+    const nets: Record<string, string> = {
+      nwdaf: "nwdaf_net",
+    };
+    if (ms === "sbi") {
+      nets.cp = "public_net";
     }
-    if (ms.startsWith("engine")) {
+    if (tplEnv.MONGODB_URI) {
+      nets.nwdafdb = "";
+    }
+    const s = this.ctx.defineService(ct, image, Object.keys(nets));
+    for (const [netR, netT] of Object.entries(nets)) {
+      if (!netT) {
+        continue;
+      }
+      this.ipRepl.push([
+        tplS.networks[netT]!.ipv4_address, // cannot use compose.getIP() because it's not in annotations
+        compose.getIP(s, netR),
+      ]);
+    }
+
+    for (const [key, value] of Object.entries(tplEnv)) {
+      s.environment[key] = this.replaceIPs(key, value);
+    }
+    if ("nwdafdb" in nets) {
       s.depends_on.nwdaf_database = { condition: "service_started" };
     }
     if (ms === "sbi") {
@@ -306,7 +322,7 @@ class NWDAFBuilder extends CN5GBuilder {
         ...compose.waitReachable("AMF and SMF", [
           compose.getIP(this.ctx.c, "amf*", "cp"),
           compose.getIP(this.ctx.c, "smf*", "cp"),
-        ], { mode: "tcp:8080" }),
+        ], { mode: `tcp:${http2Port}` }),
         "msg Starting NWDAF-SBI",
         "exec ./oai-nwdaf-sbi",
       ]);
@@ -314,7 +330,7 @@ class NWDAFBuilder extends CN5GBuilder {
     if (ms === "nbi-gateway") {
       s.environment.KONG_PROXY_LISTEN = "0.0.0.0:80";
       const kong = await file_io.readText(path.join(oai_conf.composePath, "nwdaf/conf/kong.yml"));
-      await this.ctx.writeFile("cp-cfg/nbi-gateway.yaml", this.replaceIPs(kong), {
+      await this.ctx.writeFile("cp-cfg/nbi-gateway.yaml", this.replaceIPs("", kong), {
         s,
         target: "/kong/declarative/kong.yml",
       });
@@ -336,10 +352,20 @@ class NWDAFBuilder extends CN5GBuilder {
     ], { shell: "ash" });
   }
 
-  private replaceIPs(value: string): string {
+  private replaceIPs(key: string, value: string): string {
+    switch (key) {
+      case "MONGODB_URI": {
+        return new URL("/", this.mongoUrl).toString();
+      }
+      case "MONGODB_DATABASE_NAME": {
+        return this.mongoUrl.pathname.slice(1);
+      }
+    }
+
     for (const [s, r] of this.ipRepl) {
       value = value.replaceAll(`//${s}:`, `//${r}:`);
     }
+    value = value.replaceAll(/\b8080\b/g, `${http2Port}`);
     return value;
   }
 }
@@ -356,9 +382,11 @@ export async function oaiCP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<v
 class UPBuilder extends CN5GBuilder {
   public async build(upf: N.UPF): Promise<void> {
     await this.loadTemplateConfig();
-    for (const nf of Object.keys(this.c.nfs) as CN5G.NFName[]) {
-      if (!["nrf", "smf", "upf"].includes(nf)) {
-        delete this.c.nfs[nf]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+    for (const [nf, c] of Object.entries(this.c.nfs)) {
+      if (["nrf", "smf", "upf"].includes(nf)) {
+        c.sbi.port = http2Port;
+      } else {
+        delete this.c.nfs[nf as CN5G.NFName]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
       }
     }
     delete this.c.amf;
