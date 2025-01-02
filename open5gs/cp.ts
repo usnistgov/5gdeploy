@@ -3,7 +3,7 @@ import path from "node:path";
 import * as shlex from "shlex";
 import type { PartialDeep } from "type-fest";
 
-import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, http2Port, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, N, O5G } from "../types/mod.js";
 import { file_io, scriptHead } from "../util/mod.js";
 import { makeLaunchCommands, makeMetrics, makeSockNode, o5DockerImage, webuiDockerImage } from "./common.js";
@@ -22,7 +22,7 @@ class O5CPBuilder {
   private readonly plmn: O5G.PLMNID;
   private readonly mongoUrl = compose.mongo.makeUrl("open5gs");
   private waitMongo: string[] = [];
-  private waitNrf: string[] = [];
+  private waitNrf?: string[];
   private nrfUri?: string;
 
   public async build(): Promise<void> {
@@ -52,7 +52,7 @@ class O5CPBuilder {
     );
     await this.ctx.writeFile("./cp-db/open5gs.sh", makeDbctlCommands(this.ctx.network, this.mongoUrl));
     this.waitMongo = [...compose.waitReachable("database", [this.mongoUrl.hostname], {
-      mode: `tcp:${Number.parseInt(this.mongoUrl.port, 10)}`, sleep: 0,
+      mode: `tcp:${this.mongoUrl.port as `${number}`}`, sleep: 0,
     })];
   }
 
@@ -229,24 +229,20 @@ class O5CPBuilder {
   }
 
   private makeSBI(s: ComposeService): PartialDeep<O5G.SBI> {
-    const port = 8000;
     const sbi: PartialDeep<O5G.SBI> = {
-      server: [makeSockNode(s, "cp", port)],
+      server: [makeSockNode(s, "cp", http2Port)],
     };
 
-    if (s.container_name === "nrf") {
-      const u = new URL("http://unset.invalid");
-      u.hostname = compose.getIP(s, "cp");
-      u.port = `${port}`;
-      this.nrfUri = u.toString();
-
-      this.waitNrf = Array.from(compose.waitReachable(
-        "NRF", [u.hostname], { mode: `tcp:${port}`, sleep: 0 },
-      ));
-    } else {
+    if (s.container_name !== "nrf") {
+      this.nrfUri ??= (() => {
+        const u = new URL("http://unset.invalid");
+        u.hostname = compose.getIP(this.ctx.c, "nrf", "cp");
+        u.port = `${http2Port}`;
+        return u.toString();
+      })();
       sbi.client = {
         scp: [],
-        nrf: [{ uri: this.nrfUri! }],
+        nrf: [{ uri: this.nrfUri }],
       };
     }
 
@@ -259,6 +255,9 @@ class O5CPBuilder {
       yield* this.waitMongo;
     }
     if (s.networks.cp && s.container_name !== "nrf") {
+      this.waitNrf ??= Array.from(compose.waitReachable(
+        "NRF", [compose.getIP(this.ctx.c, "nrf", "cp")], { mode: `tcp:${http2Port}`, sleep: 0 },
+      ));
       yield* this.waitNrf;
     }
   }

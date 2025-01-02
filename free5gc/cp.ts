@@ -2,7 +2,7 @@ import stringify from "json-stringify-deterministic";
 import DefaultMap from "mnemonist/default-map.js";
 import * as shlex from "shlex";
 
-import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, http2Port, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, F5, N } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
 import { convertSNSSAI, getTaggedImageName, loadTemplate, mountTmpfsVolumes } from "./conf.js";
@@ -23,7 +23,7 @@ class F5CPBuilder {
   private readonly plmn: F5.PLMNID;
   private readonly plmnID: string;
   private readonly mongoUrl = compose.mongo.makeUrl();
-  private nrfUrl?: string;
+  private nrfUri?: string;
 
   public async build(): Promise<void> {
     compose.mongo.define(this.ctx, this.mongoUrl);
@@ -413,17 +413,18 @@ class F5CPBuilder {
         scheme: "http",
         registerIPv4: cpIP,
         bindingIPv4: cpIP,
-        port: 8000,
+        port: http2Port,
       };
     }
 
     if ("nrfUri" in c) {
-      this.nrfUrl ??= (() => {
-        const u = new URL("http://unset.invalid:8000");
+      this.nrfUri ??= (() => {
+        const u = new URL("http://unset.invalid");
         u.hostname = compose.getIP(this.ctx.c, "nrf", "cp");
+        u.port = `${http2Port}`;
         return u.toString().replace(/\/$/, ""); // trailing '/' causes NRF to return HTTP 404
       })();
-      c.nrfUri = this.nrfUrl;
+      c.nrfUri = this.nrfUri;
     }
   }
 
