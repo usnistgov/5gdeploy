@@ -15,10 +15,12 @@ export interface ModuleConfigMap {
   amf: amf.Config;
   command: command.Config;
   gnb: gnb.Config;
+  http2: http2.Config;
   httpd: httpd.Config;
   json_rpc: {};
   monitoring: monitoring.Config;
   nrf_client: nrf_client.Config;
+  nrf_server: nrf_server.Config;
   nssf: nssf.Config;
   pcf: pcf.Config;
   pfcp: pfcp.Config;
@@ -45,6 +47,11 @@ export interface Database {
   username: string;
   password: string;
   database: string;
+}
+
+export interface SbaServer {
+  addr: string;
+  port: number;
 }
 
 export namespace amf {
@@ -114,6 +121,13 @@ export namespace gnb {
   }
 }
 
+export namespace http2 {
+  export interface Config {
+    Acceptor: httpd.Acceptor[];
+    [k: string]: unknown;
+  }
+}
+
 export namespace httpd {
   export interface Config {
     Acceptor: Acceptor[];
@@ -143,6 +157,8 @@ export namespace monitoring {
 export namespace nrf_client {
   export interface Config {
     nf_profile: Profile;
+    nf_instance: SbaServer;
+    nrf_server: SbaServer;
     [k: string]: unknown;
   }
 
@@ -151,6 +167,15 @@ export namespace nrf_client {
     nfInstanceId: string;
     plmnList: PLMNID[];
     sNssais: SNSSAI[];
+    [k: string]: unknown;
+  }
+}
+
+export namespace nrf_server {
+  export interface Config {
+    sba: {
+      nrf_server: SbaServer;
+    };
     [k: string]: unknown;
   }
 }
@@ -171,11 +196,6 @@ export namespace pcf {
   export interface Sba {
     nrf_server: SbaServer;
     smf_server: SbaServer;
-  }
-
-  export interface SbaServer {
-    addr: string;
-    port: number;
   }
 }
 

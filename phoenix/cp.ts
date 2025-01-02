@@ -2,7 +2,7 @@ import { Netmask } from "netmask";
 import { sortBy } from "sort-by-typescript";
 import sql from "sql-tagged-template-literal";
 
-import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, http2Port, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { N, PH } from "../types/mod.js";
 import { assert, findByName } from "../util/mod.js";
 import { PhoenixScenarioBuilder } from "./builder.js";
@@ -20,7 +20,7 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
 
   public async build(): Promise<void> {
     compose.mysql.define(this.ctx, "./cp-sql");
-    await this.defineService("nrf", ["cp"], "5g/nrf.json");
+    await this.buildNRF();
     await this.buildUDM();
     await this.defineService("ausf", ["cp"], "5g/ausf.json");
     await this.buildNSSF();
@@ -39,6 +39,13 @@ class PhoenixCPBuilder extends PhoenixScenarioBuilder {
       await this.buildPCF();
     }
     await this.finish();
+  }
+
+  private async buildNRF(): Promise<void> {
+    const { nf } = await this.defineService("nrf", ["cp"], "5g/nrf.json");
+    nf.editModule("nrf_server", ({ config }) => {
+      config.sba.nrf_server.port = http2Port;
+    });
   }
 
   private async buildUDM(): Promise<void> {

@@ -4,6 +4,8 @@ import * as compose from "../compose/mod.js";
 import type { ComposeFile, N } from "../types/mod.js";
 import { tsrun } from "../util/cmd.js";
 
+export const http2Port = 8582;
+
 /** Contextual information and helpers while converting NetDef into Compose context. */
 export class NetDefComposeContext extends compose.ComposeContext {
   /** Output Compose file. */

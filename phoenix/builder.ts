@@ -2,7 +2,7 @@ import path from "node:path";
 
 import * as fsWalk from "@nodelib/fs.walk/promises";
 
-import { compose, importGrafanaDashboard, netdef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
+import { compose, http2Port, importGrafanaDashboard, netdef, type NetDefComposeContext, setProcessExporterRule } from "../netdef-compose/mod.js";
 import type { ComposeService, PH } from "../types/mod.js";
 import { assert, file_io } from "../util/mod.js";
 import { NetworkFunction } from "./nf.js";
@@ -93,9 +93,16 @@ export abstract class PhoenixScenarioBuilder {
       config.GreetingText = `${s.container_name.toUpperCase()}>`;
     });
 
+    nf.editModule("http2", true, ({ config }) => {
+      assert(config.Acceptor.length === 1);
+      config.Acceptor[0]!.port = http2Port;
+    });
+
     nf.editModule("nrf_client", true, ({ config }) => {
       config.nf_profile.plmnList = [this.plmn];
       config.nf_profile.nfInstanceId = globalThis.crypto.randomUUID();
+      config.nf_instance.port = http2Port;
+      config.nrf_server.port = http2Port;
     });
 
     nf.editModule("monitoring", true, ({ config }) => {
