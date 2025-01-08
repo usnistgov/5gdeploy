@@ -8,6 +8,14 @@ This package offers these choices in the **netdef-compose** command:
 
 Run `./compose.sh web` in the Compose context folder to view access instructions for the free5GC web console, which includes some real-time information for the core network.
 
+## Advanced Options
+
+This package adds several free5GC-specific options to the **netdef-compose** command.
+
+`--free5gc-tag` specifies Docker image tag for CP and UP functions.
+The default is gathered from free5gc-compose repository checkout.
+A useful value is `--free5gc-tag=latest` to make use of free5GC daily builds.
+
 ## gtp5g Kernel Module
 
 Both free5GC UPF and [PacketRusher](../packetrusher/README.md) depend on [gtp5g kernel module](https://github.com/free5gc/gtp5g).

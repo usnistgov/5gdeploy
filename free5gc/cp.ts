@@ -5,17 +5,18 @@ import * as shlex from "shlex";
 import { compose, http2Port, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, F5, N } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
-import { convertSNSSAI, getTaggedImageName, loadTemplate, mountTmpfsVolumes } from "./conf.js";
+import * as f5_conf from "./conf.js";
+import type { F5Opts } from "./options.js";
 import type * as W from "./webconsole-openapi/models/index.js";
 
 /** Build CP functions using free5GC. */
-export async function f5CP(ctx: NetDefComposeContext): Promise<void> {
-  const b = new F5CPBuilder(ctx);
+export async function f5CP(ctx: NetDefComposeContext, opts: F5Opts): Promise<void> {
+  const b = new F5CPBuilder(ctx, opts);
   await b.build();
 }
 
 class F5CPBuilder {
-  constructor(protected readonly ctx: NetDefComposeContext) {
+  constructor(protected readonly ctx: NetDefComposeContext, protected readonly opts: F5Opts) {
     this.plmn = netdef.splitPLMN(ctx.network.plmn);
     this.plmnID = ctx.network.plmn.replace("-", "");
   }
@@ -267,7 +268,7 @@ class F5CPBuilder {
   private async buildSMF(smf: netdef.SMF): Promise<void> {
     this.smfUpi ??= this.buildSMFupi();
     const [s, smfcfg] = await this.defineService<F5.smf.Configuration>(smf.name, ["cp", "n4"]);
-    const uerouting = await loadTemplate("uerouting");
+    const uerouting = await f5_conf.loadTemplate("uerouting");
 
     const c = smfcfg.configuration;
     const n4 = compose.getIP(s, "n4");
@@ -390,12 +391,12 @@ class F5CPBuilder {
 
   private async defineService<C extends F5.SBI>(ct: string, nets: readonly string[]): Promise<[s: ComposeService, cfg: F5.Root<C>]> {
     const nf = compose.nameToNf(ct);
-    const s = this.ctx.defineService(ct, await getTaggedImageName(nf), nets);
-    mountTmpfsVolumes(s);
+    const s = this.ctx.defineService(ct, await f5_conf.getTaggedImageName(this.opts, nf), nets);
+    f5_conf.mountTmpfsVolumes(s);
     s.stop_signal = "SIGQUIT";
     s.environment.GIN_MODE = "release";
 
-    const cfg = await loadTemplate(`${nf}cfg`) as F5.Root<C>;
+    const cfg = await f5_conf.loadTemplate(`${nf}cfg`) as F5.Root<C>;
 
     const nameProp = `${nf}Name`;
     if (Object.hasOwn(cfg.configuration, nameProp)) {
@@ -432,4 +433,9 @@ class F5CPBuilder {
     await this.ctx.writeFile(filename, body, { s, target: `/free5gc/config/${mount}` });
     return `./config/${mount}`;
   }
+}
+
+function convertSNSSAI(input: string): F5.SNSSAI {
+  const { sst, sd } = netdef.splitSNSSAI(input).ih;
+  return { sst, sd: sd?.toLowerCase() };
 }

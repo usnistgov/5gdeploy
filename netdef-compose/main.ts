@@ -2,7 +2,7 @@ import { Minimatch } from "minimatch";
 import type { Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { f5CP, f5UP } from "../free5gc/mod.js";
+import { f5CP, f5Options, f5UP } from "../free5gc/mod.js";
 import { ndndpdkUP } from "../ndndpdk/upf.js";
 import * as netdef from "../netdef/mod.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
@@ -94,6 +94,7 @@ const args = await Yargs()
   .option(compose.placeOptions)
   .option(compose.qosOptions)
   .option(dnOptions)
+  .option(f5Options)
   .option(oaiOptions)
   .option(phoenixOptions)
   .option(prometheusOptions)
