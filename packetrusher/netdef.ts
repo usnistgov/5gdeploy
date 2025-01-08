@@ -1,20 +1,20 @@
 import * as shlex from "shlex";
 import type { PartialDeep } from "type-fest";
 
-import { dependOnGtp5g } from "../free5gc/mod.js";
+import { dependOnGtp5g, type F5Opts } from "../free5gc/mod.js";
 import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, prush } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
 
 /** Build RAN functions using PacketRusher. */
-export async function packetrusherRAN(ctx: NetDefComposeContext): Promise<void> {
+export async function packetrusherRAN(ctx: NetDefComposeContext, opts: F5Opts): Promise<void> {
   assert(ctx.network.gnbIdLength === 24, "only support 24-bit gNB ID");
   for (const [gnb, sub] of netdef.pairGnbUe(ctx.network, true)) {
-    defineGnbUe(ctx, gnb, sub);
+    defineGnbUe(ctx, gnb, sub, opts);
   }
 }
 
-function defineGnbUe(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Subscriber): void {
+function defineGnbUe(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Subscriber, opts: F5Opts): void {
   const s = ctx.defineService(gnb.name, "5gdeploy.localhost/packetrusher", ["mgmt", "n2", "n3"]);
   s.stop_signal = "SIGINT";
   s.cap_add.push("NET_ADMIN");
@@ -22,7 +22,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Sub
   compose.annotate(s, "ue_supi", sub.supis.join(","));
   if (sub.count === 1) {
     s.devices.push("/dev/net/tun:/dev/net/tun");
-    dependOnGtp5g(s, ctx.c);
+    dependOnGtp5g(s, ctx.c, opts);
   }
 
   const c = makeConfigUpdate(ctx, s, gnb, sub);

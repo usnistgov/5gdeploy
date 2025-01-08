@@ -25,13 +25,10 @@ export function YargsDefaults<T extends YargsOptions>(opts: T): YargsInfer<T> {
 }
 
 /** Define YargsOpt that accepts integer scalar in a range. */
-export function YargsIntRange({
-  default: dflt,
-  desc,
-  min = 1,
-  max,
-}: YargsIntRange.Options) {
+export function YargsIntRange<O extends YargsIntRange.Options>(opts: O) {
+  const { min = 1, max, desc = "", ...rest } = opts;
   return {
+    ...rest,
     array: false,
     coerce(n: number): number {
       if (!Number.isSafeInteger(n) || n < min || n > max) {
@@ -39,13 +36,12 @@ export function YargsIntRange({
       }
       return n;
     },
-    default: dflt,
     desc: `${desc} (${min}..${max})`,
     type: "number",
   } satisfies YargsOpt;
 }
 export namespace YargsIntRange {
-  export interface Options extends Pick<YargsOpt, "default" | "desc"> {
+  export interface Options extends Exclude<YargsOpt, "array" | "coerce" | "type"> {
     /**
      * Minimum value.
      * @defaultValue 1

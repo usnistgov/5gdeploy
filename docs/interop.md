@@ -24,7 +24,7 @@ Known to be incompatible:
 * `--cp=free5gc --up=oai`: [free5GC SMF issue 137](https://github.com/free5gc/smf/issues/137)
 * `--cp=oai --up=free5gc` with `--oai-cn5g-nrf=false`: [free5GC UPF issue 65](https://github.com/free5gc/go-upf/issues/65)
 * `--cp=oai --up=free5gc` with `--oai-cn5g-nrf=true`: SMF expects UPF to register itself in NRF, but UPF doesn't do that
-* `--cp=open5gs --up=bess`: UPF doest not support PDI with "Source Interface: CP-function"
+* `--cp=open5gs --up=bess`: UPF does not support PDI with "Source Interface: CP-function"
 * `--cp=open5gs --up=free5gc`: [free5GC UPF PR 66](https://github.com/free5gc/go-upf/pull/66)
 * `--cp=open5gs --up=oai`: UPF does not support GTP-U Extension Header Deletion field (octet 6) in Outer Header Removal IE
 * `--cp=phoenix --up=free5gc`: [free5GC UPF issue 63](https://github.com/free5gc/go-upf/issues/63)
@@ -77,10 +77,7 @@ Known to be compatible:
 * `--up=open5gs --ran=srsran`
 * `--up=open5gs --ran=ueransim`
 * `--up=phoenix --ran=packetrusher` with `--phoenix-upf-xdp=false`
+* `--up=phoenix --ran=packetrusher` with `--phoenix-upf-xdp=true`: must disable GTP-U sequence number with `--gtp5g-seq=false`
 * `--up=phoenix --ran=phoenix`
 * `--up=phoenix --ran=srsran`
 * `--up=phoenix --ran=ueransim`
-
-Known to be incompatible:
-
-* `--up=phoenix --ran=packetrusher` with `--phoenix-upf-xdp=true`: uplink GTPv1U header has sequence number field that is not accepted by UPF

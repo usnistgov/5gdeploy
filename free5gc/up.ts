@@ -1,6 +1,7 @@
 import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { ComposeFile, ComposeService, F5, N } from "../types/mod.js";
+import type { F5, N } from "../types/mod.js";
 import * as f5_conf from "./conf.js";
+import { dependOnGtp5g } from "./gtp5g.js";
 import type { F5Opts } from "./options.js";
 
 /** Build free5GC UPF. */
@@ -15,7 +16,7 @@ export async function f5UP(ctx: NetDefComposeContext, upf: N.UPF, opts: F5Opts):
     "msg Starting free5GC UPF",
     "exec ./upf -c ./config/upfcfg.yaml",
   ]);
-  dependOnGtp5g(s, ctx.c);
+  dependOnGtp5g(s, ctx.c, opts);
 
   const c = await f5_conf.loadTemplate("upfcfg") as F5.upf.Root;
   c.pfcp.addr = compose.getIP(s, "n4");
@@ -32,38 +33,4 @@ export async function f5UP(ctx: NetDefComposeContext, upf: N.UPF, opts: F5Opts):
   }));
 
   await ctx.writeFile(`up-cfg/${upf.name}.yaml`, c, { s, target: "/free5gc/config/upfcfg.yaml" });
-}
-
-/** Declare a service that depends on gtp5g kernel module. */
-export function dependOnGtp5g(dependant: ComposeService, c: ComposeFile): void {
-  if (!c.services.gtp5g) {
-    defineGtp5gLoader(c);
-  }
-
-  dependant.depends_on.gtp5g = {
-    condition: "service_completed_successfully",
-  };
-}
-
-function defineGtp5gLoader(c: ComposeFile): void {
-  const s = compose.defineService(c, "gtp5g", "5gdeploy.localhost/gtp5g");
-  compose.annotate(s, "every_host", 1);
-  compose.annotate(s, "only_if_needed", 1);
-
-  s.network_mode = "none";
-  s.cap_add.push("SYS_MODULE");
-  s.volumes.push({
-    type: "bind",
-    source: "/etc/modules-load.d",
-    target: "/etc/modules-load.d",
-  }, {
-    type: "bind",
-    source: "/lib/modules",
-    target: "/lib/modules",
-  }, {
-    type: "bind",
-    source: "/usr/src",
-    target: "/usr/src",
-    read_only: true,
-  });
 }
