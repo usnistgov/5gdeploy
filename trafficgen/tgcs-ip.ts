@@ -1,10 +1,8 @@
-import path from "node:path";
-
 import * as shlex from "shlex";
 
 import * as compose from "../compose/mod.js";
 import { assert, tsrun } from "../util/mod.js";
-import { ClientStartOpt, Direction, extractPpFlag, handleTextOutputFlag, mountOutputVolume, rewriteOutputFlag, splitFlagGroups, type TrafficGen } from "./tgcs-defs.js";
+import { ClientStartOpt, Direction, extractPpFlag, handleTextOutputFlag, mountOutputVolume, rewriteInputFlag, rewriteOutputFlag, splitFlagGroups, type TrafficGen } from "./tgcs-defs.js";
 
 export const iperf2: TrafficGen = {
   determineDirection({ cFlags }) {
@@ -250,7 +248,7 @@ export const sockperf: TrafficGen = {
       ...sFlags,
     ];
   },
-  clientSetup(s, { prefix, group, port, sIP, cIP, cFlags }) {
+  clientSetup(s, { dir, prefix, group, port, sIP, cIP, cFlags }) {
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
     cFlags = rewriteOutputFlag(s, prefix, group, port, cFlags, /^--(full-log)$/, ".csv");
@@ -263,16 +261,7 @@ export const sockperf: TrafficGen = {
     ];
 
     if (["playback", "pb"].includes(cFlags[0]!)) {
-      const dfIndex = cFlags.indexOf("--data-file");
-      assert(dfIndex !== -1 && dfIndex < cFlags.length - 1, "sockperf playback --data-file missing");
-      const dataFile = cFlags[dfIndex + 1]!;
-      assert(path.isAbsolute(dataFile), "sockperf playback --data-file must have absolute path");
-      s.volumes.push({
-        type: "bind",
-        source: dataFile,
-        target: dataFile,
-        read_only: true,
-      });
+      cFlags = rewriteInputFlag(dir, s, cFlags, /--data-file/, true);
     }
 
     compose.setCommands(s, [

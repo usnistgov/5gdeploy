@@ -138,6 +138,7 @@ for (let {
   [sFlags, sCpus] = extractPpFlag(sFlags, /^#cpus=(\d+)$/);
 
   const tgFlow: TrafficGenFlowContext = {
+    dir: args.dir,
     c,
     output,
     prefix,

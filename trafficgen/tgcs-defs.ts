@@ -1,7 +1,10 @@
+import path from "node:path";
+
 import type { ReadonlyDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeFile, ComposeService, ComposeVolume } from "../types/mod.js";
+import { assert } from "../util/mod.js";
 
 /** Traffic direction. */
 export enum Direction {
@@ -20,6 +23,8 @@ export namespace Direction {
 
 /** Traffic generator flow information. */
 export interface TrafficGenFlowContext {
+  /** Compose context directory. */
+  readonly dir: string;
   /** Scenario Compose file. */
   readonly c: ComposeFile;
   /** Traffic generator Compose file. */
@@ -147,6 +152,43 @@ export function* splitFlagGroups(flags: readonly string[]): Iterable<readonly st
   if (!hasGroups) {
     yield group;
   }
+}
+
+/**
+ * Rewrite trafficgen flags so that input files are mounted.
+ * @param dir - Compose context directory for resolving relative paths.
+ * @param s - Compose service for trafficgen client or server.
+ * @param flags - Command line flags for client or server.
+ * @param re - Regular expression to match input file flag name.
+ * @param required - If true, the input flag must be present.
+ * @returns Transformed flags.
+ */
+export function rewriteInputFlag(
+    dir: string,
+    s: ComposeService,
+    flags: readonly string[],
+    re: RegExp,
+    required = false,
+): string[] {
+  let nInputs = 0;
+  const rFlags = flags.map((flag, i) => {
+    const m = flags[i - 1]?.match(re);
+    if (!m) {
+      return flag;
+    }
+
+    ++nInputs;
+    const filename = path.isAbsolute(flag) ? flag : path.join(dir, flag);
+    s.volumes.push({
+      type: "bind",
+      source: filename,
+      target: filename,
+      read_only: true,
+    });
+    return filename;
+  });
+  assert(!required || nInputs > 0, `input flag matching ${re.source} is missing`);
+  return rFlags;
 }
 
 /**

@@ -272,11 +272,8 @@ docker run -i --rm 5gdeploy.localhost/sockperf gen2.awk >gen2.csv <<EOT
   90.01 29.99 9000 4000 1250
 EOT
 
-# transfer playback file to secondary host, if necessary
-scp gen2.csv SECONDARY:$PWD/gen2.csv
-
 # prepare for uplink traffic; add '#R' client flag for downlink traffic
-./compose.sh tgcs --sockperf='internet | * | playback --data-file '$PWD/gen2.csv' --full-log x --full-rtt | -g'
+./compose.sh tgcs --sockperf='internet | * | playback --data-file gen2.csv --full-log x --full-rtt | -g'
 ```
 
 Sockperf playback mode requires a playback file as input.
@@ -284,15 +281,17 @@ It is a CSV file where each record describes a packet to be transmitted.
 First column is a timestamp (monotonically increasing); second column is UDP payload length (between 14 and 65000).
 The sample command uses [gen2.awk](https://github.com/Mellanox/sockperf/blob/19accb5229503dac7833f03713b978cb7fc48762/tools/gen2.awk) to generate a playback file.
 
-The `--data-file` flag should be set to the absolute path of the playback file.
+The `--data-file` flag should point to the playback file.
+If it is a relative path, it's resolved based on the Compose context directory.
 In a multi-host deployment, this file must be present on the host that runs the sockperf playback, which may or may not be the primary host.
+You can either generate the playback file directly on the host where it's needed, or transfer the file with scp command.
 The playback file would be bind-mounted into the container at the same path so that it is readable by sockperf.
 
 ### Troubleshooting
 
 During startup, `bind source path does not exist` for the playback file:
 
-* Did you specify the correct absolute path for the playback file?
+* Did you specify the correct path for the playback file?
 * Did you upload the playback file to the secondary host where the sender would be running?
 
 During startup, `Error Get "http://5gdeploy.localhost/v2/"`:
