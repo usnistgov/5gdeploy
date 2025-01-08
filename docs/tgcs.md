@@ -325,13 +325,21 @@ After finishing, log contains `ERROR: _seqN > m_maxSequenceNo`:
 
 # large number of sub-flows with IDT busy-wait disabled
 ./compose.sh tgcs --itg='internet | * | #poll=0 #flows=80 -t 30000 -O 100 -c 1250'
+
+# using -Ft and -Fs flags
+seq 0.1 0.2 0.9 >Ft.tsv
+seq 1300 -1 1200 >Fs.tsv
+./compose.sh tgcs --itg='internet | * | -t 30000 -Ft Ft.tsv -Fs Fs.tsv'
 ```
 
 Client flags are passed to [`ITGSend`](https://traffic.comics.unina.it/software/ITG/manual/index.html#SECTION00042000000000000000) command.
 Use `#start` preprocessor flag for delayed client start, described in [delayed client start](tgcs-advanced.md).
 Use `#R` preprocessor flag for reverse direction, described in [reverse direction](tgcs-advanced.md).
-Use `#flows` preprocessor flag to define multiple sub-flows from the each client.
+Use `#flows` preprocessor flag to define multiple sub-flows from each client.
 Apart from preprocessor flags, all ITGSend flags except log\_opts and address+port are permitted.
+
+The `-Ft` and `-Fs` flags allow reading inter-departure times (IDTs) and packet sizes from file.
+These are mounted into the container, in the same way as Sockperf `--data-file` flag.
 
 The brackets syntax `(# .. #)` may be used to define multiple sub-flows with different characteristics.
 When using this syntax, the `#flows` proprocessor flag should appear inside the brackets and apply to only these sub-flows, while all other proprocessor flags should appear outside the brackets and apply to the entire process.

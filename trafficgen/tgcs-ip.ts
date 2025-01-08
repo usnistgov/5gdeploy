@@ -301,7 +301,7 @@ export const itg: TrafficGen = {
     compose.annotate(s, "tgcs_docker_logerr", 1);
   },
   clientSetup(s, flow) {
-    let { prefix, group, port, cService, cIP, cFlags, sService, sIP, server } = flow;
+    let { dir, prefix, group, port, cService, cIP, cFlags, sService, sIP, server } = flow;
     const start = new ClientStartOpt(s);
     cFlags = start.rewriteFlag(cFlags);
     let noPoll: extractPpFlag.Match;
@@ -321,6 +321,7 @@ export const itg: TrafficGen = {
       let nFlows: extractPpFlag.Match | number;
       [gFlags, nFlows] = extractPpFlag(gFlags, /^#flows=(\d+)$/);
       nFlows = nFlows ? Number.parseInt(nFlows[1]!, 10) : 1;
+      gFlags = rewriteInputFlag(dir, s, gFlags, /-F[tsp]/);
 
       for (let i = 0; i < nFlows; ++i) {
         ++totalFlows;
@@ -339,7 +340,7 @@ export const itg: TrafficGen = {
     }
 
     compose.setCommands(s, [
-      "msg Creating multi-flow script",
+      "msg Writing multi-flow script",
       `echo ${shlex.quote(flows.join("\n"))} | tee /multi-flow.txt`,
       ...start.waitCommands(),
       "msg Starting ITGSend",
