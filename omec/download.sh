@@ -12,3 +12,7 @@ else
 fi
 
 make -C upf docker-build
+
+VERSION=$(cat upf/VERSION)
+docker image tag upf-epc-pfcpiface:$VERSION 5gdeploy.localhost/omec-upf-pfcpiface
+docker image tag upf-epc-bess:$VERSION 5gdeploy.localhost/omec-upf-bess

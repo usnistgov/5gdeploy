@@ -4,9 +4,11 @@ import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../ne
 import type { N } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 
+const pfcpifaceDockerImage = "5gdeploy.localhost/omec-upf-pfcpiface";
+const bessDockerImage = "5gdeploy.localhost/omec-upf-bess";
+
 /** Build OMEC BESS-UPF. */
 export async function bessUP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void> {
-  const version = (await file_io.readText(path.join(import.meta.dirname, "upf/VERSION"), { once: true })).trim();
   const ct = upf.name;
 
   const c: any = await file_io.readJSON(path.join(import.meta.dirname, "upf/conf/upf.jsonc"));
@@ -24,7 +26,7 @@ export async function bessUP(ctx: NetDefComposeContext, upf: N.UPF): Promise<voi
   delete c.slice_rate_limit_config;
   const cfg = await ctx.writeFile(`up-cfg/${ct}.json`, c);
 
-  const bess = ctx.defineService(ct, `upf-epc-bess:${version}`, ["mgmt", "n4", "n3", "n6"]);
+  const bess = ctx.defineService(ct, bessDockerImage, ["mgmt", "n4", "n3", "n6"]);
   bess.sysctls["net.ipv6.conf.default.disable_ipv6"] = 1; // route_control.py don't pick up ICMPv6 RAs
   compose.annotate(bess, "cpus", c.workers);
   bess.cap_add.push("IPC_LOCK", "NET_ADMIN");
@@ -55,16 +57,16 @@ export async function bessUP(ctx: NetDefComposeContext, upf: N.UPF): Promise<voi
     ]);
   });
 
-  const pfcpiface = ctx.defineService(ct.replace(/^upf/, "upfpfcp"), `upf-epc-pfcpiface:${version}`, []);
+  const pfcpiface = ctx.defineService(ct.replace(/^upf/, "upfpfcp"), pfcpifaceDockerImage, []);
   pfcpiface.network_mode = `service:${bess.container_name}`;
   compose.setCommands(pfcpiface, [
-    ...compose.waitReachable("bessd", ["127.0.0.1"], { mode: "nc:10514", sleep: 15 }),
+    ...compose.waitReachable("bessd", ["127.0.0.1"], { mode: "nc:10514", sleep: 10 }),
     "msg Starting pfcpiface",
     `exec pfcpiface -config /conf/${ct}.json`,
   ], { shell: "ash" });
   cfg.mountInto({ s: pfcpiface, target: `/conf/${ct}.json` });
 
-  const gui = ctx.defineService(ct.replace(/^upf/, "upfgui"), `upf-epc-bess:${version}`, []);
+  const gui = ctx.defineService(ct.replace(/^upf/, "upfgui"), bessDockerImage, []);
   gui.network_mode = `service:${bess.container_name}`;
   compose.setCommands(gui, [
     ...compose.waitReachable("bessd", ["127.0.0.1"], { mode: "tcp:10514" }),
@@ -75,7 +77,7 @@ export async function bessUP(ctx: NetDefComposeContext, upf: N.UPF): Promise<voi
   ]);
   cfg.mountInto({ s: gui, target: "/opt/bess/bessctl/conf/upf.jsonc" });
 
-  const route = ctx.defineService(ct.replace(/^upf/, "upfroute"), `upf-epc-bess:${version}`, []);
+  const route = ctx.defineService(ct.replace(/^upf/, "upfroute"), bessDockerImage, []);
   route.network_mode = `service:${bess.container_name}`;
   route.pid = `service:${bess.container_name}`;
   compose.setCommands(route, [
