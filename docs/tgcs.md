@@ -78,13 +78,13 @@ To transfer the image to secondary hosts, run `./PREFIX.sh upload` before the fi
 
 ```bash
 # prepare benchmark script
-./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10M | -i 1 -u -l 1250'
+./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10m | -i 1 -u -l 1250'
 
 # add '#text' client flag for text output
-./compose.sh tgcs --iperf2='internet | * | #text -t 60 -i 1 -u -l 1250 -b 10M | -i 1 -u -l 1250'
+./compose.sh tgcs --iperf2='internet | * | #text -t 60 -i 1 -u -l 1250 -b 10m | -i 1 -u -l 1250'
 
 # measure one-way latency with --trip-times
-./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10M --trip-times | -i 1 -u -l 1250'
+./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10m --trip-times | -i 1 -u -l 1250'
 
 # upload custom Docker image before the first run, see notes above
 ./tg.sh upload
@@ -128,7 +128,7 @@ To use the `--txstart-time` client flag, you can set its value to an environment
 
 ```bash
 # prepare the measurement, notice the single quotes so that bash does not expand the variable
-./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10M --txstart-time $IPERF2_TXSTART | -i 1 -u -l 1250'
+./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10m --txstart-time $IPERF2_TXSTART | -i 1 -u -l 1250'
 
 # run the traffic generators, pass the environment variable
 IPERF2_TXSTART="$(expr $(date -u +%s) + 30)" ./tg.sh
@@ -139,7 +139,7 @@ This is translated by tgcs script to an absolute timestamp as expected by iperf2
 
 ```bash
 # prepare the measurement
-./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10M --txstart-time +5 | -i 1 -u -l 1250'
+./compose.sh tgcs --iperf2='internet | * | -t 60 -i 1 -u -l 1250 -b 10m --txstart-time +5 | -i 1 -u -l 1250'
 
 # run the traffic generators
 ./tg.sh
