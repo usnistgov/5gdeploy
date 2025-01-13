@@ -9,11 +9,13 @@ if [[ ${NOPULL:-} -eq 1 ]]; then
 fi
 
 build_image() {
+  local NAME=$1
+  shift
   local PULL1=$PULL
-  if grep -q localhost/ docker/$1/Dockerfile; then
+  if grep -q localhost/ docker/$NAME/Dockerfile; then
     PULL1=''
   fi
-  docker build $PULL1 --progress=plain -t 5gdeploy.localhost/$1 docker/$1
+  docker build $PULL1 --progress=plain -t 5gdeploy.localhost/$NAME "$@" docker/$NAME
 }
 
 build_phoenix() {
@@ -59,6 +61,9 @@ build_oai_nwdaf() {
 }
 
 case $D in
+  gtp5g)
+    build_image gtp5g --build-arg BUILDPACK_TAG="$(lsb_release -c -s)"
+    ;;
   phoenix)
     build_phoenix
     ;;
