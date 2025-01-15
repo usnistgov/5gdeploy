@@ -9,7 +9,7 @@ import { collect, flatMap, pipeline } from "streaming-iterables";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
-import { assert, cmdOutput, file_io, splitVbar, tsrun, Yargs, YargsFloatNonNegative, type YargsOpt } from "../util/mod.js";
+import { assert, cmdOutput, file_io, splitVbar, tsrun, Yargs, YargsCoercedArray, YargsFloatNonNegative } from "../util/mod.js";
 import { copyPlacementNetns, ctxOptions, gatherPduSessions, loadCtx } from "./common.js";
 import { Direction, extractPpFlag, type TrafficGen, type TrafficGenFlowContext } from "./tgcs-defs.js";
 import * as tg_ip from "./tgcs-ip.js";
@@ -23,27 +23,22 @@ const trafficGenerators = {
 } satisfies Record<string, TrafficGen>;
 
 function makeOption(tgid: string) {
-  return {
-    array: true,
-    coerce(lines: readonly string[]): Array<{
+  return YargsCoercedArray({
+    coerce(line): {
       dnPattern: Minimatch;
       uePattern: Minimatch;
-    } & Pick<TrafficGenFlowContext, "cFlags" | "sFlags">> {
-      return Array.from(lines, (line) => {
-        const tokens = splitVbar(tgid, line, 2, 4);
-        return {
-          dnPattern: new Minimatch(tokens[0]),
-          uePattern: new Minimatch(tokens[1]),
-          cFlags: shlex.split(tokens[2] ?? ""),
-          sFlags: shlex.split(tokens[3] ?? ""),
-        };
-      });
+    } & Pick<TrafficGenFlowContext, "cFlags" | "sFlags"> {
+      const tokens = splitVbar(tgid, line, 2, 4);
+      return {
+        dnPattern: new Minimatch(tokens[0]),
+        uePattern: new Minimatch(tokens[1]),
+        cFlags: shlex.split(tokens[2] ?? ""),
+        sFlags: shlex.split(tokens[3] ?? ""),
+      };
     },
     desc: `define ${trafficGenerators[tgid as keyof typeof trafficGenerators].name ?? tgid} flows`,
     group: "Flow Definitions:",
-    nargs: 1,
-    type: "string",
-  } as const satisfies YargsOpt;
+  });
 }
 
 const args = Yargs()
@@ -98,7 +93,7 @@ const tgFlows = await pipeline(
   flatMap(function*(ctx) {
     const { sub: { supi }, dn: { dnn } } = ctx;
     for (const [tgid, tg] of Object.entries(trafficGenerators) as Iterable<[keyof typeof trafficGenerators, TrafficGen]>) {
-      for (const [index, { dnPattern, uePattern, cFlags, sFlags }] of (args[tgid] ?? []).entries()) {
+      for (const [index, { dnPattern, uePattern, cFlags, sFlags }] of args[tgid].entries()) {
         if (dnPattern.match(dnn) && uePattern.match(supi)) {
           yield { ...ctx, tgid, tg, group: `${tgid}_${index}`, cFlags, sFlags };
         }
@@ -342,7 +337,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() { // eslint-di
   yield "if [[ -z $ACT ]] || [[ $ACT == stats ]]; then";
   yield "  cd $STATS_DIR";
   for (const [tgid, tg] of Object.entries(trafficGenerators) as Iterable<[keyof typeof trafficGenerators, TrafficGen]>) {
-    if (!args[tgid]) {
+    if (args[tgid].length === 0) {
       continue;
     } else if (tg.statsCommands) {
       yield* oblMap(tg.statsCommands(prefix), (line) => `  ${line}`);

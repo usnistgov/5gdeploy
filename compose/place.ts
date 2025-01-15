@@ -5,7 +5,7 @@ import DefaultMap from "mnemonist/default-map.js";
 import { sortBy } from "sort-by-typescript";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";
-import { assert, parseCpuset, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { assert, parseCpuset, YargsCoercedArray, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate } from "./compose.js";
 
 export interface PlaceRule {
@@ -27,16 +27,10 @@ export function parsePlaceRule(line: string): PlaceRule {
 
 /** Yargs options definition for placing Compose services onto multiple hosts. */
 export const placeOptions = {
-  place: {
-    array: true,
-    coerce(lines: readonly string[]): PlaceRule[] {
-      return Array.from(lines, (line) => parsePlaceRule(line));
-    },
-    default: [],
+  place: YargsCoercedArray({
+    coerce: parsePlaceRule,
     desc: "PATTERN@HOST(CPUSET), place containers on host and set CPU isolation",
-    nargs: 1,
-    type: "string",
-  },
+  }),
   "ssh-uri": {
     array: true,
     coerce(lines: readonly string[]): Record<string, string> {

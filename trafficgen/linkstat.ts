@@ -7,23 +7,33 @@ import { collect, flatMap, flatTransform, map, pipeline } from "streaming-iterab
 import type { SetOptional } from "type-fest";
 
 import * as compose from "../compose/mod.js";
-import { dockerode, file_io, splitVbar, Yargs } from "../util/mod.js";
+import { dockerode, file_io, splitVbar, Yargs, YargsCoercedArray } from "../util/mod.js";
 import { ctxOptions, loadCtx, tableOutput, tableOutputOptions } from "./common.js";
 
 type LinkInfo64 = SetOptional<LinkInfo, "stats"> & {
   stats64?: LinkInfo["stats"];
 };
 
+interface Rule {
+  net: Minimatch;
+  ethStats: boolean;
+}
+
 const args = Yargs()
   .option(ctxOptions)
   .option(tableOutputOptions)
-  .option("link", {
-    array: true,
-    default: ["*|*"],
+  .option("link", YargsCoercedArray({
+    coerce(line): { ct: string } & Rule {
+      const [ct, net, opts = ""] = splitVbar("link", line, 2, 3);
+      return {
+        ct,
+        net: new Minimatch(net),
+        ethStats: opts.includes("#eth"),
+      };
+    },
+    default: "*|*",
     desc: "link matcher and options",
-    nargs: 1,
-    type: "string",
-  })
+  }))
   .option("sort-by", {
     choices: ["ct", "net"],
     default: "ct",
@@ -34,13 +44,8 @@ const args = Yargs()
 
 const [c] = await loadCtx(args);
 
-const netnsRules = new DefaultMap<string, Array<{ net: Minimatch; ethStats: boolean }>>(() => []);
-for (const line of args.link) {
-  const [ct, net, opts = ""] = splitVbar("link", line, 2, 3);
-  const rule = {
-    net: new Minimatch(net),
-    ethStats: opts.includes("#eth"),
-  };
+const netnsRules = new DefaultMap<string, Rule[]>(() => []);
+for (const { ct, ...rule } of args.link) {
   if (ct.startsWith("host:")) {
     netnsRules.get(`/${ct.slice(5)}`).push(rule);
   } else if (ct.startsWith("host-of:")) {

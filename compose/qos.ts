@@ -7,7 +7,7 @@ import * as shlex from "shlex";
 import type { ReadonlyDeep } from "type-fest";
 
 import type { ComposeFile, ComposeService, ComposeVolume } from "../types/mod.js";
-import { hexPad, joinVbar, scriptHead, splitVbar, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { hexPad, joinVbar, scriptHead, splitVbar, YargsCoercedArray, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate } from "./compose.js";
 import type { ComposeContext } from "./context.js";
 
@@ -36,35 +36,23 @@ interface NetemRule extends BaseRule {
 }
 
 export const qosOptions = {
-  "set-dscp": {
-    array: true,
-    coerce(lines: readonly string[]): DSCPRule[] {
-      return Array.from(lines, (line) => {
-        const tokens = splitVbar("set-dscp", line, 4, 4);
-        const dscp = Number.parseInt(tokens[3], 0); // eslint-disable-line radix
-        assert(Number.isInteger(dscp) && dscp >= 0 && dscp < 64, `bad DSCP in --set-dscp ${line}`);
-        return { ...buildBaseRule("set-dscp", tokens), dscp };
-      });
+  "set-dscp": YargsCoercedArray({
+    coerce(line): DSCPRule {
+      const tokens = splitVbar("set-dscp", line, 4, 4);
+      const dscp = Number.parseInt(tokens[3], 0); // eslint-disable-line radix
+      assert(Number.isInteger(dscp) && dscp >= 0 && dscp < 64, `bad DSCP in --set-dscp ${line}`);
+      return { ...buildBaseRule("set-dscp", tokens), dscp };
     },
-    default: [],
     desc: "alter outer IPv4 DSCP",
-    nargs: 1,
-    type: "string",
-  },
-  "set-netem": {
-    array: true,
-    coerce(lines: readonly string[]): NetemRule[] {
-      return Array.from(lines, (line) => {
-        const tokens = splitVbar("set-netem", line, 4, 4);
-        const netem = shlex.join(shlex.split(tokens[3]));
-        return { ...buildBaseRule("set-netem", tokens), netem };
-      });
+  }),
+  "set-netem": YargsCoercedArray({
+    coerce(line): NetemRule {
+      const tokens = splitVbar("set-netem", line, 4, 4);
+      const netem = shlex.join(shlex.split(tokens[3]));
+      return { ...buildBaseRule("set-netem", tokens), netem };
     },
-    default: [],
     desc: "set sch_netem parameters",
-    nargs: 1,
-    type: "string",
-  },
+  }),
 } satisfies YargsOptions;
 type QoSOpts = YargsInfer<typeof qosOptions>;
 

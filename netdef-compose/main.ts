@@ -13,7 +13,7 @@ import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod
 import { srsOptions, srsRAN } from "../srsran/mod.js";
 import type { N } from "../types/mod.js";
 import { ueransimOptions, ueransimRAN } from "../ueransim/netdef.js";
-import { assert, file_io, Yargs } from "../util/mod.js";
+import { assert, file_io, Yargs, YargsCoercedArray } from "../util/mod.js";
 import { annotateVm, useVm, useVmOptions } from "../virt/middleware.js";
 import { NetDefComposeContext } from "./context.js";
 import { defineDNServices, dnOptions, setDNCommands } from "./dn.js";
@@ -65,23 +65,19 @@ const args = await Yargs()
     desc: "Control Plane provider",
     type: "string",
   })
-  .option("up", {
-    array: true,
-    coerce(lines: readonly string[]): Array<[pattern: Minimatch | undefined, provider: string]> {
-      const choices = Object.keys(upProviders);
-      return Array.from(lines, (line) => {
-        const tokens = line.split("=");
-        assert(tokens.length <= 2 && choices.includes(tokens.at(-1)!), `bad --up=${line}`);
-        if (tokens.length === 1) {
-          return [undefined, tokens[0]!];
-        }
-        return [new Minimatch(tokens[0]!), tokens[1]!];
-      });
+  .option("up", YargsCoercedArray({
+    coerce(line): [pattern: Minimatch | undefined, provider: string] {
+      const tokens = line.split("=");
+      assert(tokens.length <= 2 && upProviders[tokens.at(-1)!], `bad --up=${line}`);
+      if (tokens.length === 1) {
+        return [undefined, tokens[0]!];
+      }
+      return [new Minimatch(tokens[0]!), tokens[1]!];
     },
     default: "phoenix",
     desc: "User Plane provider",
     type: "string",
-  })
+  }))
   .option("ran", {
     choices: Object.keys(ranProviders),
     default: "phoenix",

@@ -1,7 +1,7 @@
 import BiMap from "mnemonist/bi-map.js";
 import { ip2long, long2ip, Netmask } from "netmask";
 
-import { assert, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { assert, YargsCoercedArray, type YargsInfer, type YargsOptions } from "../util/mod.js";
 
 /** Yargs options definition for IPv4 address allocator. */
 export function ipAllocOptions(dfltSpace = "172.25.192.0/18") {
@@ -17,11 +17,16 @@ export function ipAllocOptions(dfltSpace = "172.25.192.0/18") {
       desc: `Compose networks IP address space, /${minBitmask} or larger`,
       type: "string",
     },
-    "ip-fixed": {
-      array: true,
+    "ip-fixed": YargsCoercedArray({
+      coerce(line): [net: string, host: string, ip: bigint] {
+        const m = /^(\w+),(\w+),([\d.]+)$/.exec(line);
+        assert(m, `bad --ip-fixed=${line}`);
+        const [, host, net, ipStr] = m as string[] as [string, string, string, string];
+        const ip = BigInt(ip2long(ipStr));
+        return [net, host, ip];
+      },
       desc: "fixed IP address assignment",
-      type: "string",
-    },
+    }),
   } as const satisfies YargsOptions;
 }
 
@@ -29,16 +34,12 @@ export function ipAllocOptions(dfltSpace = "172.25.192.0/18") {
 export class IPAlloc {
   constructor({
     "ip-space": space,
-    "ip-fixed": fixed = [],
+    "ip-fixed": fixed,
   }: YargsInfer<ReturnType<typeof ipAllocOptions>>) {
     this.nextNetwork.n = BigInt(space.netLong);
     this.nextNetwork.max = BigInt(ip2long(space.last));
 
-    for (const line of fixed) {
-      const m = /^(\w+),(\w+),([\d.]+)$/.exec(line);
-      assert(!!m, `bad --ip-fixed=${line}`);
-      const [, host, net, ipStr] = m as string[] as [string, string, string, string];
-      const ip = BigInt(ip2long(ipStr));
+    for (const [net, host, ip] of fixed) {
       saveFixed("network", this.networks, net, ip & ~0xFFn);
       saveFixed("host", this.hosts, host, ip & 0xFFn);
     }

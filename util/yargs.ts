@@ -1,6 +1,6 @@
 import * as shlex from "shlex";
 import assert from "tiny-invariant";
-import type { LessThan, NonNegativeInteger, PartialOnUndefinedDeep, ReadonlyDeep, Simplify, Subtract } from "type-fest";
+import type { Arrayable, Except, LessThan, NonNegativeInteger, PartialOnUndefinedDeep, ReadonlyDeep, Simplify, Subtract } from "type-fest";
 import yargs, { type Argv, type InferredOptionTypes, type Options } from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -37,11 +37,12 @@ export function YargsIntRange<O extends YargsIntRange.Options>(opts: O) {
       return n;
     },
     desc: `${desc} (${min}..${max})`,
+    nargs: 1,
     type: "number",
   } satisfies YargsOpt;
 }
 export namespace YargsIntRange {
-  export interface Options extends Exclude<YargsOpt, "array" | "coerce" | "type"> {
+  export interface Options extends Exclude<YargsOpt, "array" | "coerce" | "nargs" | "type"> {
     /**
      * Minimum value.
      * @defaultValue 1
@@ -62,8 +63,30 @@ export const YargsFloatNonNegative = {
     }
     return n;
   },
+  nargs: 1,
   type: "number",
 } satisfies YargsOpt;
+
+/** Define YargsOpt that accepts string array with coerce function. */
+export function YargsCoercedArray<T extends YargsCoercedArray.Options>(opts: T) {
+  const { coerce, ...rest } = opts;
+  return {
+    default: [],
+    ...rest,
+    array: true,
+    coerce(lines: readonly string[]): Array<ReturnType<T["coerce"]>> {
+      return Array.from(lines, coerce);
+    },
+    nargs: 1,
+    type: "string",
+  } as const satisfies YargsOpt;
+}
+export namespace YargsCoercedArray {
+  export interface Options extends Except<YargsOpt, "array" | "coerce" | "default" | "nargs" | "type"> {
+    coerce: (line: string) => any;
+    default?: Arrayable<string>;
+  }
+}
 
 /**
  * Split vertical-bar separated flag input.
@@ -78,15 +101,20 @@ export function splitVbar<Min extends number, Max extends number>(
     min: NonNegativeInteger<Min>,
     max: NonNegativeInteger<Max>,
 ): splitVbar.Result<Min, Max> {
-  const tokens = line.split(/\s\|\s/.test(line) ? /\s+\|\s+/ : /\s*\|\s*/);
-  assert(tokens.length >= min && tokens.length <= max,
-    `bad ${joinVbar(name, tokens)} (expecting ${min}~${max} parts)`);
-  return tokens as any;
+  return splitVbar.untyped(name, line, min, max) as any;
 }
 export namespace splitVbar {
   export type Result<Min extends number, Max extends number> =
     LessThan<Min, Max> extends true ? [...Result<Min, Subtract<Max, 1>>, string | undefined] :
     LessThan<Min, 1> extends true ? [] : [...Result<Subtract<Min, 1>, Subtract<Max, 1>>, string];
+
+  /** {@link splitVbar} returning array type, supports infinite maximum. */
+  export function untyped(name: string, line: string, min = 0, max = Number.MAX_SAFE_INTEGER): string[] {
+    const tokens = line.split(/\s\|\s/.test(line) ? /\s+\|\s+/ : /\s*\|\s*/);
+    assert(tokens.length >= min && tokens.length <= max,
+      `bad ${joinVbar(name, tokens)} (expecting ${min}~${max} parts)`);
+    return tokens;
+  }
 }
 
 /** Join vertical-bar separated flag input. */
