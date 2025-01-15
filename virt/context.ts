@@ -49,6 +49,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     const s = this.defineService("virt_ctrlif", virtDockerImage, []);
     s.network_mode = "host";
     s.cap_add.push("NET_ADMIN");
+    compose.annotate(s, "ip_vmctrl", ip);
     this.finalize.push(() => {
       const { services } = this.c;
       compose.setCommands(s, (function*() {

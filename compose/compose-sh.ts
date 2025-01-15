@@ -1,11 +1,10 @@
 import path from "node:path";
 
-import map from "obliterator/map.js";
 import * as shlex from "shlex";
 import type { Arrayable, SetOptional } from "type-fest";
 
 import type { ComposeFile } from "../types/mod.js";
-import { assert, codebaseRoot, scriptHead, tsrun } from "../util/mod.js";
+import { assert, codebaseRoot, indentLines, scriptHead, tsrun } from "../util/mod.js";
 import { annotate } from "./compose.js";
 import { classifyByHost } from "./place.js";
 
@@ -49,7 +48,7 @@ export function* makeComposeSh(
 
   for (const action of actions) {
     yield `elif [[ $ACT == ${action.act} ]]; then`;
-    yield* map(action.code(), (line) => `  ${line}`);
+    yield* indentLines(action.code());
   }
 
   yield "else";
@@ -114,7 +113,7 @@ function* makeHelp(help: typeof baseHelp): Iterable<string> {
     if (typeof desc === "string") {
       yield `    ${desc}`;
     } else {
-      yield* map(desc, (line) => `    ${line}`);
+      yield* indentLines(desc, "    ");
     }
   }
 }

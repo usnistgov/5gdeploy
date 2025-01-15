@@ -290,20 +290,7 @@ export function disconnectNetif(c: ComposeFile, ct: string, net: string): string
   return netif.ipv4_address;
 }
 
-/**
- * Retrieve IPv4 address.
- * @param ct - Either container name or network function named followed by "*".
- * @throws Error - Service or netif does not exist.
- */
-export function getIP(c: ReadonlyDeep<ComposeFile>, ct: string, net: string): string;
-
-/**
- * Retrieve IPv4 address.
- * @throws Error - Netif does not exist.
- */
-export function getIP(s: ReadonlyDeep<ComposeService>, net: string): string;
-
-export function getIP(c: ReadonlyDeep<ComposeFile> | ReadonlyDeep<ComposeService>, ct: string, net = ct): string {
+function getIPImpl([c, ct, net = ct]: getIP.Args): { s: ReadonlyDeep<ComposeService>; net: string; ip: string } {
   let s: ReadonlyDeep<ComposeService> | undefined;
   if ("services" in c) {
     if (ct.endsWith("*")) {
@@ -319,15 +306,29 @@ export function getIP(c: ReadonlyDeep<ComposeFile> | ReadonlyDeep<ComposeService
 
   const ip = annotate(s, `ip_${net}`);
   assert(ip, `netif ${s.container_name}:${net} missing`);
-  return ip;
+  return { s, net, ip };
+}
+
+/**
+ * Retrieve IPv4 address.
+ * @param args - `service, ct` or `ComposeFile, ct, net`
+ * @returns IPv4 address.
+ * @throws Error - Netif does not exist.
+ */
+export function getIP(...args: getIP.Args): string {
+  return getIPImpl(args).ip;
+}
+export namespace getIP {
+  export type Args = [c: ReadonlyDeep<ComposeFile>, ct: string, net: string] | [s: ReadonlyDeep<ComposeService>, net: string];
 }
 
 /**
  * Retrieve IPv4 and MAC address.
+ * @param args - `service, ct` or `ComposeFile, ct, net`
  * @throws Error - Netif does not exist.
  */
-export function getIPMAC(s: ReadonlyDeep<ComposeService>, net: string): [ip: string, mac: string] {
-  const ip = getIP(s, net);
+export function getIPMAC(...args: getIP.Args): [ip: string, mac: string] {
+  const { s, net, ip } = getIPImpl(args);
   const mac = annotate(s, `mac_${net}`) ?? ip2mac(ip);
   return [ip, mac];
 }

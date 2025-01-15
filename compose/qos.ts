@@ -2,12 +2,11 @@ import { assert } from "node:console";
 
 import { Minimatch } from "minimatch";
 import DefaultMap from "mnemonist/default-map.js";
-import map from "obliterator/map.js";
 import * as shlex from "shlex";
 import type { ReadonlyDeep } from "type-fest";
 
 import type { ComposeFile, ComposeService, ComposeVolume } from "../types/mod.js";
-import { hexPad, joinVbar, scriptHead, splitVbar, YargsCoercedArray, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { hexPad, indentLines, joinVbar, scriptHead, splitVbar, YargsCoercedArray, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate } from "./compose.js";
 import type { ComposeContext } from "./context.js";
 
@@ -110,7 +109,7 @@ function* generateScript(c: ComposeFile, opts: QoSOpts): Iterable<string> {
 
     yield "";
     yield `if [[ $CT == ${s.container_name} ]]; then`;
-    yield* map(generateScriptForContainer(c, s, opts), (line) => line === "" ? line : `  ${line}`);
+    yield* indentLines(generateScriptForContainer(c, s, opts));
     yield "fi";
   }
 

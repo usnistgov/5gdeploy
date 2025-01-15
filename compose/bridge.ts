@@ -1,10 +1,9 @@
 import { minimatch } from "minimatch";
-import { ip2long, Netmask } from "netmask";
-import * as shlex from "shlex";
+import { ip2long, long2ip, Netmask } from "netmask";
 import type { Except } from "type-fest";
 
 import type { ComposeFile } from "../types/mod.js";
-import { assert, scriptCleanup, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { assert, indentLines, joinVbar, scriptCleanup, splitVbar, YargsCoercedArray, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate, disconnectNetif, ip2mac } from "./compose.js";
 import type { ComposeContext } from "./context.js";
 import { setCommandsFile } from "./snippets.js";
@@ -13,59 +12,96 @@ export const bridgeDockerImage = "5gdeploy.localhost/bridge";
 
 /** Yargs options definition for bridge container. */
 export const bridgeOptions = {
-  bridge: {
-    array: true,
+  bridge: YargsCoercedArray({
+    coerce(line) {
+      if (!line.includes("|")) {
+        const [net, mode, ...rest] = line.split(",");
+        line = [net, mode, rest.join(mode === "vx" ? "," : " ")].join(" | ");
+      }
+      return splitVbar("bridge", line, 3, 3);
+    },
     desc: "bridge a network over several hosts",
-    nargs: 1,
-    type: "string",
-  },
+  }),
 } as const satisfies YargsOptions;
+export namespace bridgeOptions {
+  export type ResolveFn = (net: string, ip: string) => string | undefined;
+}
 type BridgeOpts = YargsInfer<typeof bridgeOptions>;
 
-function* buildVxlan(c: ComposeFile, net: string, ips: readonly string[], netIndex: number): Iterable<string> {
-  void c;
-  assert(ips.length >= 2, "at least 2 hosts");
-  assert(ips.every((ip) => ip2long(ip) !== 0), "some IP is invalid");
+abstract class BridgeMode {
+  public abstract build(c: ComposeFile, net: string, params: readonly string[], netIndex: number): Iterable<string>;
+  public resolve?: (net: string, ref: string) => string | undefined;
+}
 
-  // Find current host in `ips` array.
-  // SELF= index into `ips` that current host is assigned
-  // SELFIP= the corresponding IP address
-  yield "SELF=-1";
-  for (const [i, ip] of ips.entries()) {
-    yield `if [[ -n "$(ip -o addr show to ${ip})" ]]; then`;
-    yield `  SELF=${i}`;
-    yield `  SELFIP=${ip}`;
+class BridgeModeVxlan extends BridgeMode {
+  public override *build(c: ComposeFile, net: string, params: readonly string[], netIndex: number): Iterable<string> {
+    void c;
+    for (const [i, line] of params.entries()) {
+      const ipset = Array.from(line.split(","), (ip) => this.resolve?.(net, ip) ?? long2ip(ip2long(ip)));
+      yield* this.buildIpset(net, ipset, netIndex, i);
+    }
+  }
+
+  private *buildIpset(net: string, ipset: readonly string[], netIndex: number, ipsetIndex: number): Iterable<string> {
+    const vniBase = 100000 * netIndex + 10000 * ipsetIndex;
+    yield "";
+    yield `# ipset ${ipsetIndex}`;
+
+    // Find current host in ipset.
+    // SELF= index into ipset that current host is assigned
+    // SELFIP= the corresponding IP address
+    yield `SELF=0; for SELFIP in ${ipset.join(" ")}; do`;
+    yield " [[ -n \"$(ip -o addr show to $SELFIP)\" ]] && break";
+    yield "  SELF=$((SELF+1))";
+    yield "done";
+
+    yield `if [[ $SELF -lt ${ipset.length} ]]; then`;
+    yield `  msg Setting up VXLAN bridge for br-${net}`;
+    yield `  pipework --wait -i br-${net}`;
+
+    yield* indentLines(this.buildTunnels(`vx-${net}-${ipsetIndex}`, ipset, `br-${net}`, vniBase));
     yield "fi";
   }
 
-  yield "if [[ $SELF -ge 0 ]]; then";
-  yield `  msg Setting up VXLAN bridge for br-${net}`;
-  yield `  pipework --wait -i br-${net}`;
-  yield `elif [[ -n "$(ip -o link show dev br-${net} 2>/dev/null)" ]]; then`;
-  yield `  msg "This host is not part of br-${net} but the netif exists. If this is unexpected, assign ${ips.join(" or ")} to a host netif."`;
-  yield "fi";
-
-  // Unicast VXLAN tunnels are created between first host (SELF=0) and each subsequent host.
-  // VNI= 100000*netIndex + 1000*MIN(SELF,PEER) + 1*MAX(SELF,PEER)
-  for (const [i, ip] of ips.entries()) {
-    const netif = `vx-${net}-${i}`;
-    yield "";
-    yield `if [[ $SELF -ge 0 ]] && [[ $SELF -ne ${i} ]] && ( [[ $SELF -eq 0 ]] || [[ ${i} -eq 0 ]] ); then`;
-    yield `  if [[ $SELF -lt ${i} ]]; then`;
-    yield `    VNI=$((${1000000 * netIndex + i} + 1000 * SELF))`;
-    yield "  else";
-    yield `    VNI=$((${1000000 * netIndex + 1000 * i} + SELF))`;
+  private *buildTunnels(netifPrefix: string, ipset: readonly string[], br: string, vniBase: number): Iterable<string> {
+    // Unicast VXLAN tunnels are created between first host (SELF=0) and each subsequent host.
+    // VNI= 100000*netIndex + 10000*ipsetIndex + 100*MIN(SELF,PEER) + 1*MAX(SELF,PEER)
+    yield `PEER=0; for PEERIP in ${ipset.join(" ")}; do`;
+    yield "  if [[ $SELF -ne $PEER ]] && ( [[ $SELF -eq 0 ]] || [[ $PEER -eq 0 ]] ); then";
+    yield "    if [[ $SELF -lt $PEER ]]; then";
+    yield `      VNI=$((${vniBase} + 100 * SELF + PEER))`;
+    yield "    else";
+    yield `      VNI=$((${vniBase} + 100 * PEER + SELF))`;
+    yield "    fi";
+    yield `    NETIF=${netifPrefix}-$PEER`;
+    yield `    msg Connecting ${br} to $PEERIP on $NETIF with VXLAN id $VNI`;
+    yield "    ip link del $NETIF 2>/dev/null || true";
+    yield "    CLEANUPS=$CLEANUPS\"; ip link del $NETIF 2>/dev/null || true\"";
+    yield "    ip link add $NETIF type vxlan id $VNI remote $PEERIP local $SELFIP dstport 4789";
+    yield `    ip link set $NETIF up master ${br}`;
     yield "  fi";
-    yield `  msg Connecting br-${net} to ${ip} on ${netif} with VXLAN id $VNI`;
-    yield `  ip link del ${netif} 2>/dev/null || true`;
-    yield `  CLEANUPS=$CLEANUPS"; ip link del ${netif} 2>/dev/null || true"`;
-    yield `  ip link add ${netif} type vxlan id $VNI remote ${ip} local $SELFIP dstport 4789`;
-    yield `  ip link set ${netif} up master br-${net}`;
-    yield "fi";
+    yield "  PEER=$((PEER+1))";
+    yield "done";
+
+    // for (const [i, ip] of ipset.entries()) {
+    //   const netif = `${netifPrefix}-${i}`;
+    //   yield `if [[ $SELF -ne ${i} ]] && ( [[ $SELF -eq 0 ]] || [[ ${i} -eq 0 ]] ); then`;
+    //   yield `  if [[ $SELF -lt ${i} ]]; then`;
+    //   yield `    VNI=$((${vniBase + i} + 100 * SELF))`;
+    //   yield "  else";
+    //   yield `    VNI=$((${vniBase + 100 * i} + SELF))`;
+    //   yield "  fi";
+    //   yield `  msg Connecting ${br} to ${ip} on ${netif} with VXLAN id $VNI`;
+    //   yield `  ip link del ${netif} 2>/dev/null || true`;
+    //   yield `  CLEANUPS=$CLEANUPS"; ip link del ${netif} 2>/dev/null || true"`;
+    //   yield `  ip link add ${netif} type vxlan id $VNI remote ${ip} local $SELFIP dstport 4789`;
+    //   yield `  ip link set ${netif} up master ${br}`;
+    //   yield "fi";
+    // }
   }
 }
 
-interface EthDef {
+interface EthPortDef {
   ct: string;
   op: "=" | "@" | "~";
   hostif: string;
@@ -77,48 +113,74 @@ interface EthDef {
   };
 }
 
-function* parseEthDef(
-    c: ComposeFile, net: string, tokens: readonly string[],
-): Iterable<EthDef> {
-  const cts = new Set(Object.keys(c.services).filter((ct) => c.services[ct]!.networks[net]));
-  for (const token of tokens) {
-    const m = /([=@~])((?:[\da-f]{2}:){5}[\da-f]{2})(?:\+vlan(\d+))?(?:\+rss(\d+)\/(\d+)([sd]))?$/i.exec(token);
-    assert(m, `invalid parameter ${token}`);
-    const def: Except<EthDef, "ct"> = {
-      op: m[1]! as "=" | "@",
-      hostif: m[2]!.toLowerCase(),
-      vlan: m[3] ? Number.parseInt(m[3], 10) : undefined,
+class BridgeModeEth extends BridgeMode {
+  public *build(c: ComposeFile, net: string, params: readonly string[]): Iterable<string> {
+    yield `msg Setting up Ethernet adapters for br-${net}`;
+    const cidr = new Netmask(c.networks[net]!.ipam.config[0]!.subnet).bitmask;
+    const cts = new Set(Object.keys(c.services).filter((ct) => c.services[ct]!.networks[net]));
+    for (const param of params) {
+      for (const def of this.parsePorts(net, param, cts)) {
+        yield* this.buildPort(c, net, cidr, def);
+      }
+    }
+  }
+
+  private *parsePorts(net: string, param: string, cts: Set<string>): Iterable<EthPortDef> {
+    const errHdr = `BridgeModeEth(${param})`;
+    const m = /([=@~])(.*?)(?:\+vlan(\d+))?(?:\+rss(\d+)\/(\d+)([sd]))?$/i.exec(param);
+    assert(m, `${errHdr}: bad syntax`);
+    const def: Except<EthPortDef, "ct" | "hostif"> = {
+      op: m[1] as EthPortDef["op"],
     };
-    assert(def.vlan === undefined || (def.vlan >= 1 && def.vlan < 4095), "bad VLAN ID");
+    const hostifs = Array.from(m[2]!.split(","), (hostif) => {
+      hostif = this.resolve?.(net, hostif) ?? hostif;
+      assert(/^(?:[\da-f]{2}:){5}[\da-f]{2}$/i.test(hostif), `${errHdr}: bad MAC address`);
+      return hostif.toLowerCase();
+    });
+
+    if (m[3]) {
+      def.vlan = Number.parseInt(m[3], 10);
+      assert(def.vlan >= 1 && def.vlan < 4095, `${errHdr}: bad VLAN ID`);
+    }
 
     if (m[6]) {
-      assert(def.op === "=", "+rss only allowed with direct-phys");
+      assert(def.op === "=", `${errHdr}: +rss only allowed with '='`);
       def.rss = {
         start: Number.parseInt(m[4]!, 10),
         equal: Number.parseInt(m[5]!, 10),
         input: m[6] as "s" | "d",
       };
-      assert([1, 2, 4, 8, 16].includes(def.rss.equal), "+rss expects 1, 2, 4, 8, or 16 queues");
+      assert([1, 2, 4, 8, 16].includes(def.rss.equal),
+        `${errHdr}: +rss expects 1, 2, 4, 8, or 16 queues`);
     }
 
-    const pattern = token.slice(0, -m[0].length);
-    const matched = minimatch.match(Array.from(cts), pattern);
-    assert(matched.length > 0, `${pattern} does not match any container on br-${net}`);
-    assert(def.op === "@" || matched.length === 1, `${pattern} matches multiple containers (${
-      matched.join(", ")}) on br-${net} reusing a physical interface`);
-    for (const ct of matched) {
-      yield { ct, ...def };
+    const ctPattern = param.slice(0, -m[0].length);
+    const matched = minimatch.match(Array.from(cts), ctPattern);
+    switch (def.op) {
+      case "=": {
+        assert(matched.length >= hostifs.length,
+          `${errHdr}: ${matched.length} containers do not fit in ${hostifs.length} hostifs`);
+        break;
+      }
+      case "~": {
+        assert(matched.length === 1,
+          `${errHdr}: exactly one container required for '~' operator`);
+        // fallthrough
+      }
+      case "@": {
+        assert(hostifs.length === 1,
+          `${errHdr}: exactly one hostif required for '${def.op}' operator`);
+        break;
+      }
+    }
+
+    for (const [i, ct] of matched.entries()) {
+      yield { ...def, ct, hostif: hostifs[i] ?? hostifs[0]! };
       cts.delete(ct);
     }
   }
-  assert(cts.size === 0,
-    `containers ${Array.from(cts).join(", ")} on br-${net} did not match any pattern`);
-}
 
-function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]): Iterable<string> {
-  yield `msg Setting up Ethernet adapters for br-${net}`;
-  const cidr = new Netmask(c.networks[net]!.ipam.config[0]!.subnet).bitmask;
-  for (const { ct, op, hostif, vlan, rss } of parseEthDef(c, net, tokens)) {
+  private *buildPort(c: ComposeFile, net: string, cidr: number, { ct, op, hostif, vlan, rss }: EthPortDef): Iterable<string> {
     const ip = disconnectNetif(c, ct, net);
     const vlanDesc = vlan ? ` VLAN ${vlan}` : "";
     const vlanFlag = vlan ? `@${vlan}` : "";
@@ -164,10 +226,15 @@ function* buildEthernet(c: ComposeFile, net: string, tokens: readonly string[]):
   }
 }
 
-const bridgeModes: Record<string, (c: ComposeFile, net: string, tokens: readonly string[], netIndex: number) => Iterable<string>> = {
-  vx: buildVxlan,
-  eth: buildEthernet,
-};
+const bridgeModes = {
+  vx: new BridgeModeVxlan(),
+  eth: new BridgeModeEth(),
+} satisfies Record<string, BridgeMode>;
+
+/** Assign a function to resolve address reference in bridge parameters. */
+export function setBridgeResolveFn(mode: keyof typeof bridgeModes, fn: BridgeMode["resolve"]): void {
+  bridgeModes[mode].resolve = fn;
+}
 
 /** Define a bridge container. */
 export async function defineBridge(ctx: ComposeContext, opts: BridgeOpts): Promise<void> {
@@ -212,17 +279,13 @@ function* generateScript(c: ComposeFile, opts: BridgeOpts, modes: Set<string>): 
   yield* scriptCleanup({ shell: "ash" });
   yield "";
 
-  for (const [i, bridgeArg] of opts.bridge!.entries()) {
-    const tokens = bridgeArg.split(",");
-    assert(tokens.length >= 2);
-    const [net, mode, ...rest] = tokens as [string, string, ...string[]];
+  for (const [i, [net, mode, param]] of opts.bridge.entries()) {
     assert(c.networks[net], `unknown network ${net}`);
-    const impl = bridgeModes[mode];
-    assert(impl, `unknown mode ${mode}`);
+    assert(mode in bridgeModes, `unknown mode ${mode}`);
     modes.add(mode);
     yield "";
-    yield `# --bridge=${shlex.quote(bridgeArg)}`;
-    yield* impl(c, net, rest, i);
+    yield `# ${joinVbar("bridge", [net, mode, param])}`;
+    yield* bridgeModes[mode as keyof typeof bridgeModes].build(c, net, param.split(/\s+/), i);
     yield "";
   }
 

@@ -4,7 +4,7 @@ import type { WritableDeep } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeFile, ComposeService } from "../types/mod.js";
-import { assert, file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
 
 /** Yargs options definition for placing Compose services onto virtual machines. */
 export const useVmOptions = {
@@ -50,19 +50,23 @@ YargsInfer<typeof compose.placeOptions> & YargsInfer<typeof compose.bridgeOption
     args["vm-list"][sshUri] = name;
   }
 
-  args.bridge = Array.from(args.bridge ?? [], (line) => {
-    if (!line.includes(",eth,")) {
-      return line;
+  compose.setBridgeResolveFn("vx", (net, ref) => {
+    void net;
+    if (ref === "ctrlif") {
+      return compose.getIP(c, "virt_ctrlif", "vmctrl");
     }
-
-    const net = line.split(",", 2)[0]!;
-    return line.replaceAll(/=vm-(\w+)(?::(\w+))?/g, (str, name: string, netif = net) => {
-      void str;
-      const s = c.services[`vm_${name}`];
-      assert(s, `VM ${name} not found in eth bridge`);
-      const [, mac] = compose.getIPMAC(s, netif);
-      return `=${mac}`;
-    });
+    if (ref.startsWith("vm-")) {
+      return compose.getIP(c, `vm_${ref.slice(3)}`, "vmctrl");
+    }
+    return undefined;
+  });
+  compose.setBridgeResolveFn("eth", (net, ref) => {
+    if (ref.startsWith("vm-")) {
+      const [vmname, netif = net] = ref.slice(3).split(":");
+      const [, mac] = compose.getIPMAC(c, `vm_${vmname}`, netif);
+      return mac;
+    }
+    return undefined;
   });
 }
 

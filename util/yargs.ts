@@ -101,20 +101,15 @@ export function splitVbar<Min extends number, Max extends number>(
     min: NonNegativeInteger<Min>,
     max: NonNegativeInteger<Max>,
 ): splitVbar.Result<Min, Max> {
-  return splitVbar.untyped(name, line, min, max) as any;
+  const tokens = line.split(/\s\|\s/.test(line) ? /\s+\|\s+/ : /\s*\|\s*/);
+  assert(tokens.length >= min && tokens.length <= max,
+    `bad ${joinVbar(name, tokens)} (expecting ${min}~${max} parts)`);
+  return tokens as any;
 }
 export namespace splitVbar {
   export type Result<Min extends number, Max extends number> =
     LessThan<Min, Max> extends true ? [...Result<Min, Subtract<Max, 1>>, string | undefined] :
     LessThan<Min, 1> extends true ? [] : [...Result<Subtract<Min, 1>, Subtract<Max, 1>>, string];
-
-  /** {@link splitVbar} returning array type, supports infinite maximum. */
-  export function untyped(name: string, line: string, min = 0, max = Number.MAX_SAFE_INTEGER): string[] {
-    const tokens = line.split(/\s\|\s/.test(line) ? /\s+\|\s+/ : /\s*\|\s*/);
-    assert(tokens.length >= min && tokens.length <= max,
-      `bad ${joinVbar(name, tokens)} (expecting ${min}~${max} parts)`);
-    return tokens;
-  }
 }
 
 /** Join vertical-bar separated flag input. */
