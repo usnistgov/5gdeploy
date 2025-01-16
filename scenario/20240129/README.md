@@ -96,8 +96,8 @@ N4_CD=192.168.4.3
 
 # generate Compose context
 ./generate.sh 20240129 +dn=8 +upf=4 +gnb=2 +same-snssai=true --cp=phoenix --up=phoenix --ran=phoenix \
-  --bridge=n3,vx,$N3_PRIMARY,$N3_AB,$N3_CD \
-  --bridge=n4,vx,$N4_PRIMARY,$N4_AB,$N4_CD \
+  --bridge="n3 | vx | $N3_PRIMARY,$N3_AB,$N3_CD" \
+  --bridge="n4 | vx | $N4_PRIMARY,$N4_AB,$N4_CD" \
   --place="+(upf|dn)_[ab]*@$CTRL_AB$CPUSET_AB" \
   --place="+(upf|dn)_[cd]*@$CTRL_CD$CPUSET_CD" \
   --place="*@$CPUSET_PRIMARY"
@@ -140,8 +140,8 @@ N4_CD=02:00:00:04:00:03
 
 # generate Compose context
 ./generate.sh 20240129 +dn=8 +upf=4 +gnb=2 +same-snssai=true --cp=phoenix --up=phoenix --ran=phoenix \
-  --bridge="n3,eth,gnb*@$N3_PRIMARY,upf_[ab]@$N3_AB,upf_[cd]@$N3_CD" \
-  --bridge="n4,eth,smf@$N4_PRIMARY,upf_[ab]@$N4_AB,upf_[cd]@$N4_CD" \
+  --bridge="n3 | eth | gnb*@$N3_PRIMARY upf_[ab]@$N3_AB upf_[cd]@$N3_CD" \
+  --bridge="n4 | eth | smf@$N4_PRIMARY  upf_[ab]@$N4_AB upf_[cd]@$N4_CD" \
   --place="+(upf|dn)_[ab]*@$CTRL_AB$CPUSET_AB" \
   --place="+(upf|dn)_[cd]*@$CTRL_CD$CPUSET_CD" \
   --place="*@$CPUSET_PRIMARY"

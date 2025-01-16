@@ -82,22 +82,6 @@ class BridgeModeVxlan extends BridgeMode {
     yield "  fi";
     yield "  PEER=$((PEER+1))";
     yield "done";
-
-    // for (const [i, ip] of ipset.entries()) {
-    //   const netif = `${netifPrefix}-${i}`;
-    //   yield `if [[ $SELF -ne ${i} ]] && ( [[ $SELF -eq 0 ]] || [[ ${i} -eq 0 ]] ); then`;
-    //   yield `  if [[ $SELF -lt ${i} ]]; then`;
-    //   yield `    VNI=$((${vniBase + i} + 100 * SELF))`;
-    //   yield "  else";
-    //   yield `    VNI=$((${vniBase + 100 * i} + SELF))`;
-    //   yield "  fi";
-    //   yield `  msg Connecting ${br} to ${ip} on ${netif} with VXLAN id $VNI`;
-    //   yield `  ip link del ${netif} 2>/dev/null || true`;
-    //   yield `  CLEANUPS=$CLEANUPS"; ip link del ${netif} 2>/dev/null || true"`;
-    //   yield `  ip link add ${netif} type vxlan id $VNI remote ${ip} local $SELFIP dstport 4789`;
-    //   yield `  ip link set ${netif} up master ${br}`;
-    //   yield "fi";
-    // }
   }
 }
 

@@ -62,7 +62,7 @@ Defining a bridge allows network functions in different hosts to communicate wit
 5gdeploy supports two kinds of bridges:
 
 * The **VXLAN** bridge interconnects Docker networks of the same name across multiple hosts.
-  * A Docker network is created on each host.
+  * A Docker network is created on each host that has one or more containers attached to it.
   * Containers on each host are still attached to the Docker network, in the same way as a single-host deployment.
   * VXLAN tunnels are established to interconnect the Docker networks from multiple hosts, so that packets sent from a container on one host could reach another container attached to a Docker network with the same name on another host.
 * The **Ethernet** bridge replaces the Docker network with an external physical switch.
@@ -72,8 +72,8 @@ Defining a bridge allows network functions in different hosts to communicate wit
 
 You can mix-and-match both kinds of bridges, for different Docker networks.
 
-5gdeploy generates bridge configuration scripts as `bridge.sh`.
-They are executed in a special `bridge` container on every host netns.
+5gdeploy generates a bridge configuration script as `bridge.sh`.
+It is executed in the `bridge` container on every host, in the host network namespace.
 
 The `compose.sh` script would ensure:
 
@@ -81,19 +81,26 @@ The `compose.sh` script would ensure:
 * Each network function container is started on exactly one host machine.
 
 If you want to start the containers manually, you must ensure the same condition.
-The bridge configuration scripts would wait for other containers and physical Ethernet adapter to appear, and then configure the bridges.
+The bridge configuration script would wait for other containers and physical Ethernet adapters to appear, and then configure the bridges.
 
 ![bridge sample](multi-host.svg)
 
+The `--bridge` flag creates a bridge.
+Each flag value consists of three parts, separated by `|` character:
+
+1. A network name, such as "n3".
+2. Bridge mode, either "vx" or "eth".
+3. Mode-specific parameters, separated by whitespaces.
+
 ### VXLAN Bridge
 
-`--bridge=NETWORK,vx,IP0,IP1,...` creates a VXLAN bridge for Docker network *NETWORK*, over host IP addresses *IP0*, *IP1*, etc.
+`--bridge='NETWORK | vx | IP0,IP1,...'` creates a VXLAN bridge for Docker network *NETWORK*, over host IP addresses *IP0*, *IP1*, etc.
 In the example diagram, there are two VXLAN bridges for N2 and N4 networks, shown in fuchsia.
 They can be created with command line flags like this:
 
 ```text
---bridge=n2,vx,192.168.62.1,192.168.62.2
---bridge=n4,vx,192.168.64.1,192.168.64.3
+--bridge='n2 | vx | 192.168.62.1,192.168.62.2'
+--bridge='n4 | vx | 192.168.64.1,192.168.64.3'
 ```
 
 Notably, each bridge command lists two IPv4 addresses, one for each host participating in the bridge, regardless of how many network functions on a host would attach to the Docker network.
@@ -110,39 +117,63 @@ This is achieved by creating a VXLAN tunnel between the first host and each subs
 If there are more than two hosts in a VXLAN bridge, the first host serves as a virtual root switch and all traffic goes through it, including traffic flows between second and third hosts.
 This does not change the L3 network topology in any way, but can have performance implications.
 
+Formally, in the mode-specific parameters field, each parameter is an *IP set* that contains two or more comma-delimited IPv4 addresses.
+The first IP address in each IP set has a tunnel to each subsequent IP address.
+If a virtualization Compose context was loaded through `--use-vm` flag, the command can accept two additional syntaxes:
+
+* `ctrlif`: use host netif `vmctrl` of the primary host.
+* `vm-`*vmname*: use KVM guest *vmname*, guest netif `vmctrl`, which must be in MACVTAP mode.
+
+This allows creating a bridge that spans both physical hosts and KVM guests:
+
+```text
+--bridge='mgmt | vx | 192.168.60.1,192.168.60.2 ctrlif,vm-upf0,vm-upf1'
+```
+
 ### Physical Ethernet Ports
 
-`--bridge=NETWORK,eth,NF0=MAC0,NF1@MAC1,...` binds physical Ethernet ports to the containers.
+`--bridge='NETWORK | eth | NF0=MAC0 NF1@MAC1 ...'` binds physical Ethernet ports to the containers.
 It replaces a Docker network with a "physical" network connected to an external Ethernet switch, which could apply QoS and other policies.
 In the example diagram, there are one Ethernet bridge for N3 networks, shown in yellow.
 It can be created with command line flags like this:
 
 ```text
---bridge='n3,eth,gnb0=02:00:00:03:00:10,gnb1=02:00:00:03:00:11,upf0=02:00:00:03:00:20+vlan3+rss0/2s,upf1=02:00:00:03:00:21+vlan3+rss2/2s'
+--bridge='n3 | eth |
+  gnb0=02:00:00:03:00:10
+  gnb1=02:00:00:03:00:11
+  upf0=02:00:00:03:00:20+vlan3+rss0/2s
+  upf1=02:00:00:03:00:21+vlan3+rss2/2s
+'
 ```
 
-After "eth", each parameter consists of:
+In the mode-specific parameters field, each parameter consists of:
 
 1. A [minimatch](https://www.npmjs.com/package/minimatch)-compatible pattern that selects containers attached to the Docker network.
-   The patterns from all parameters in an `--bridge` flag must collectively match all containers originally attached to the Docker network.
+   The patterns from all parameters must collectively match all containers originally attached to the Docker network.
 2. An operator symbol, explained below.
-3. A host interface MAC address.
+3. One or more host interface MAC addresses.
 4. VLAN ID (optional).
 5. Receive Side Scaling setting (optional).
 
 The operator indicates what kind of network interface is put into the container:
 
 * The `=` operator moves the host interface into the container.
-  * The pattern must match exactly one container.
+  * Typically, the pattern should match exactly one container and there is exactly one MAC address.
+  * The quantity of containers matched by the pattern must be less than or equal to the quantity of MAC addresses.
+    * These host interfaces are sequentially assigned to matched containers; any extras are unused.
+    * This offers the convenience of writing assigning multiple host interfaces to multiple containers in similar roles.
   * The interface becomes inaccessible from the host and cannot be shared among multiple containers.
   * The original MAC address is adopted by the container.
 * The `@` operator creates a MACVLAN subinterface on the host interface.
   * The pattern may match one or more containers.
+  * There must be exactly one host interface MAC address.
   * The host interface remains accessible on the host.
   * Multiple containers may share the same host interface, where each container gets a random MAC address.
   * Currently this uses MACVLAN "bridge" mode, so that traffic between two containers on the same host interface is switched internally in the Ethernet adapter and does not appear on the external Ethernet switch.
   * This does not work if the host interface is itself a PCI Virtual Function that allows only one MAC address.
 * The `~` operator records the MAC address of a container interface, but does not create the interface.
+  * The pattern must match exactly one container.
+  * There must be exactly one MAC address.
   * This is only usable in [NDN-DPDK UPF](../ndndpdk/README.md) configured with an Ethernet adapter using PCI driver.
 
 If a virtualization Compose context was loaded through `--use-vm` flag, the host interface MAC address portion can accept two additional syntaxes:

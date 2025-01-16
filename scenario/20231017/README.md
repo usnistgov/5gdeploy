@@ -67,8 +67,8 @@ N4_UPF4=02:00:00:04:00:03
 
 # generate Compose context
 ./generate.sh 20231017 \
-  --bridge=n3,eth,gnb0=$N3_GNB0,upf1=$N3_UPF1,upf4=$N3_UPF4 \
-  --bridge=n4,eth,smf=$N4_SMF,upf1=$N4_UPF1,upf4=$N4_UPF4 \
+  --bridge="n3 | eth | gnb0=$N3_GNB0 upf1=$N3_UPF1 upf4=$N3_UPF4" \
+  --bridge="n4 | eth | smf=$N4_SMF   upf1=$N4_UPF1 upf4=$N4_UPF4" \
   --place="+(upf1|dn_internet)@$CTRL_UPF1$CPUSET_UPF1" \
   --place="+(upf4|dn_v*)@$CTRL_UPF4$CPUSET_UPF4" \
   --place="*@$CPUSET_PRIMARY"
@@ -81,8 +81,8 @@ N4_UPF4=02:00:00:04:00:03
 ```
 
 This scenario has 1 gNB by default.
-If you change gNB quantity in `+gnbs=` flag, you must also edit `--bridge=n3,eth,` flag, so that each gNB has its own N3 network interface.
-gNB does not use N4 network, so that `--bridge=n4,eth,` flag can remain unchanged.
+If you change gNB quantity in `+gnbs=` flag, you must also edit `--bridge=n3` flag, so that each gNB has its own N3 network interface.
+gNB does not use N4 network, so that `--bridge=n4` flag can remain unchanged.
 
 ## SONiC Switch QoS Setting
 

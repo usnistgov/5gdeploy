@@ -35,19 +35,19 @@ export const useVmOptions = {
  * "netif" defaults for the bridge network name.
  * This is achieved by performing regex replacements on bridge flags.
  */
-export async function useVm(args: WritableDeep<YargsInfer<typeof useVmOptions> &
+export async function useVm(opts: WritableDeep<YargsInfer<typeof useVmOptions> &
 YargsInfer<typeof compose.placeOptions> & YargsInfer<typeof compose.bridgeOptions>>) {
-  args["vm-list"] = {};
-  if (!args["use-vm"]) {
+  opts["vm-list"] = {};
+  if (!opts["use-vm"]) {
     return;
   }
-  const c = await file_io.readYAML(path.join(args["use-vm"], "compose.yml")) as ComposeFile;
+  const c = await file_io.readYAML(path.join(opts["use-vm"], "compose.yml")) as ComposeFile;
 
   for (const [s, name] of iterVm(c)) {
     const ip = compose.getIP(s, "vmctrl");
     const sshUri = `root@${ip}`;
-    (args["ssh-uri"] ??= {})[`vm-${name}`] = sshUri;
-    args["vm-list"][sshUri] = name;
+    (opts["ssh-uri"] ??= {})[`vm-${name}`] = sshUri;
+    opts["vm-list"][sshUri] = name;
   }
 
   compose.setBridgeResolveFn("vx", (net, ref) => {
@@ -70,12 +70,12 @@ YargsInfer<typeof compose.placeOptions> & YargsInfer<typeof compose.bridgeOption
   });
 }
 
-export function annotateVm(c: ComposeFile, args: YargsInfer<typeof useVmOptions>): void {
-  if (!args["vm-list"]) {
+export function annotateVm(c: ComposeFile, opts: YargsInfer<typeof useVmOptions>): void {
+  if (!opts["vm-list"]) {
     return;
   }
-  for (const s of compose.listByAnnotation(c, "host", (host) => !!args["vm-list"]![host])) {
-    compose.annotate(s, "vmname", args["vm-list"][compose.annotate(s, "host")!]!);
+  for (const s of compose.listByAnnotation(c, "host", (host) => !!opts["vm-list"]![host])) {
+    compose.annotate(s, "vmname", opts["vm-list"][compose.annotate(s, "host")!]!);
   }
 }
 

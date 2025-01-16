@@ -29,12 +29,12 @@ export const ctxOptions = {
 
 /**
  * Load Compose context and NetDef.
- * @param args - Parsed {@link ctxOptions}.
+ * @param opts - Parsed {@link ctxOptions}.
  * @returns Compose context and NetDef.
  */
-export async function loadCtx(args: YargsInfer<typeof ctxOptions>): Promise<[c: ComposeFile, network: N.Network]> {
-  const c = await file_io.readYAML(path.join(args.dir, "compose.yml")) as ComposeFile;
-  const network = await file_io.readJSON(args.netdef ?? path.join(args.dir, "netdef.json"));
+export async function loadCtx(opts: YargsInfer<typeof ctxOptions>): Promise<[c: ComposeFile, network: N.Network]> {
+  const c = await file_io.readYAML(path.join(opts.dir, "compose.yml")) as ComposeFile;
+  const network = await file_io.readJSON(opts.netdef ?? path.join(opts.dir, "netdef.json"));
   netdef.validate(network);
   return [c, network];
 }
@@ -50,14 +50,14 @@ export const tableOutputOptions = {
 
 /**
  * Print a table or write to TSV file.
- * @param args - Parsed {@link tableOutputOptions}.
+ * @param opts - Parsed {@link tableOutputOptions}.
  * @param table - Table prepared by {@link file_io.toTable}.
  */
-export function tableOutput(args: YargsInfer<typeof tableOutputOptions>, table: file_io.toTable.Result): Promise<void> {
-  if (!args.out) {
+export function tableOutput(opts: YargsInfer<typeof tableOutputOptions>, table: file_io.toTable.Result): Promise<void> {
+  if (!opts.out) {
     return file_io.write("-", table.tui);
   }
-  return file_io.write(args.out, table.tsv);
+  return file_io.write(opts.out, table.tsv);
 }
 
 export function gatherPduSessions(c: ComposeFile, network: N.Network) {

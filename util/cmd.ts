@@ -79,17 +79,17 @@ export const cmdOptions = {
 
 /**
  * Execute a bash script or write the commands to an output file.
- * @param args - Filename or result of {@link cmdOptions}.
+ * @param opts - Filename or result of {@link cmdOptions}.
  * @param lines - Script command lines.
  */
-export async function cmdOutput(args: string | YargsInfer<typeof cmdOptions>, lines: AnyIterable<string>): Promise<void> {
+export async function cmdOutput(opts: string | YargsInfer<typeof cmdOptions>, lines: AnyIterable<string>): Promise<void> {
   const script = [
     "#!/bin/bash",
     ...scriptHead,
     ...await collect(lines),
   ];
 
-  const filename = typeof args === "string" ? args : args.cmdout;
+  const filename = typeof opts === "string" ? opts : opts.cmdout;
   if (filename) {
     await file_io.write(filename, script);
   } else {
