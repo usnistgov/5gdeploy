@@ -1,3 +1,6 @@
+/** BESS-UPF related types. */
+export * as BESS from "./bess.js";
+
 /** OAI-CN5G related types. */
 export * as CN5G from "./cn5g.js";
 

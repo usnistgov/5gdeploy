@@ -1,35 +1,69 @@
-import path from "node:path";
-
 import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { N } from "../types/mod.js";
-import { file_io } from "../util/mod.js";
+import type { BESS, N } from "../types/mod.js";
+import { type YargsInfer, YargsIntRange, type YargsOptions } from "../util/mod.js";
 
 const pfcpifaceDockerImage = "5gdeploy.localhost/omec-upf-pfcpiface";
 const bessDockerImage = "5gdeploy.localhost/omec-upf-bess";
 
-/** Build OMEC BESS-UPF. */
-export async function bessUP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void> {
+/** Aether BESS-UPF options. */
+export const bessOptions = {
+  "bess-workers": YargsIntRange({
+    default: 2,
+    desc: "BESS UPF workers",
+    group: "bess",
+    max: 8,
+  }),
+} as const satisfies YargsOptions;
+
+/** Build Aether BESS-UPF. */
+export async function bessUP(
+    ctx: NetDefComposeContext, upf: N.UPF,
+    opts: YargsInfer<typeof bessOptions>,
+): Promise<void> {
   const ct = upf.name;
 
-  const c: any = await file_io.readJSON(path.join(import.meta.dirname, "upf/conf/upf.jsonc"));
-  c.mode = "af_packet";
-  c.log_level = "debug";
-  c.gtppsc = true;
-  c.access.ifname = "n3";
-  c.core.ifname = "n6";
-  c.workers = 2;
-  c.read_timeout = 0xFFFFFFFF;
-  c.cpiface = { peers: [] };
-  c.p4rtciface = {};
-  c.qci_qos_config = [];
-  delete c.sim;
-  delete c.slice_rate_limit_config;
+  const c: BESS.Config = {
+    mode: "af_packet",
+    access: {
+      ifname: "n3",
+    },
+    core: {
+      ifname: "n6",
+    },
+    cpiface: {
+      peers: [],
+      use_fqdn: false,
+      enable_ue_ip_alloc: false,
+    },
+    enable_p4rt: false,
+    enable_gtpu_path_monitoring: false,
+    measure_flow: false,
+    read_timeout: 0xFFFFFFFF,
+    enable_notify_bess: false,
+    enable_end_marker: false,
+    log_level: "debug",
+    qci_qos_config: [],
+    enable_hbTimer: false,
+    gtppsc: true,
+    hwcksum: false,
+    ddp: false,
+    measure_upf: true,
+    workers: opts["bess-workers"],
+    table_sizes: {
+      pdrLookup: 50000,
+      flowMeasure: 200000,
+      appQERLookup: 200000,
+      sessionQERLookup: 100000,
+      farLookup: 150000,
+    },
+  };
   const cfg = await ctx.writeFile(`up-cfg/${ct}.json`, c);
 
   const bess = ctx.defineService(ct, bessDockerImage, ["mgmt", "n4", "n3", "n6"]);
-  bess.sysctls["net.ipv6.conf.default.disable_ipv6"] = 1; // route_control.py don't pick up ICMPv6 RAs
   compose.annotate(bess, "cpus", c.workers);
-  bess.cap_add.push("IPC_LOCK", "NET_ADMIN");
+  bess.cap_add.push("IPC_LOCK");
+  bess.sysctls["net.ipv6.conf.default.disable_ipv6"] = 1; // route_control.py don't pick up ICMPv6 RAs
+
   const bessCommands = [
     // generate renameNetifs commands early, before netifs are detached in bridge configuration
     ...compose.renameNetifs(bess),

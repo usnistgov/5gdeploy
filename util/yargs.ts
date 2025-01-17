@@ -101,7 +101,7 @@ export function splitVbar<Min extends number, Max extends number>(
     min: NonNegativeInteger<Min>,
     max: NonNegativeInteger<Max>,
 ): splitVbar.Result<Min, Max> {
-  const tokens = line.split(/\s\|\s/.test(line) ? /\s+\|\s+/ : /\s*\|\s*/);
+  const tokens = line.trim().split(/\s\|\s/.test(line) ? /\s+\|\s+/ : /\s*\|\s*/);
   assert(tokens.length >= min && tokens.length <= max,
     `bad ${joinVbar(name, tokens)} (expecting ${min}~${max} parts)`);
   return tokens as any;

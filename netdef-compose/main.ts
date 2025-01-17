@@ -6,7 +6,7 @@ import { f5CP, f5Options, f5UP } from "../free5gc/mod.js";
 import { ndndpdkUP } from "../ndndpdk/upf.js";
 import * as netdef from "../netdef/mod.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
-import { bessUP, gnbsimRAN } from "../omec/mod.js";
+import { bessOptions, bessUP, gnbsimRAN } from "../omec/mod.js";
 import { o5CP, o5UP } from "../open5gs/mod.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
@@ -89,6 +89,7 @@ const args = await Yargs()
   .option(compose.ipAllocOptions())
   .option(compose.placeOptions)
   .option(compose.qosOptions)
+  .option(bessOptions)
   .option(dnOptions)
   .option(f5Options)
   .option(oaiOptions)

@@ -1,2 +1,2 @@
 export { gnbsimRAN } from "./gnbsim.js";
-export { bessUP } from "./upf.js";
+export { bessOptions, bessUP } from "./upf.js";

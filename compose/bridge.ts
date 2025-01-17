@@ -142,8 +142,8 @@ class BridgeModeEth extends BridgeMode {
     const matched = minimatch.match(Array.from(cts), ctPattern);
     switch (def.op) {
       case "=": {
-        assert(matched.length >= hostifs.length,
-          `${errHdr}: ${matched.length} containers do not fit in ${hostifs.length} hostifs`);
+        assert(matched.length <= hostifs.length,
+          `${errHdr}: cannot assign ${hostifs.length} hostifs to ${matched.length} containers`);
         break;
       }
       case "~": {
