@@ -1,5 +1,7 @@
 import stringify from "json-stringify-deterministic";
 import DefaultMap from "mnemonist/default-map.js";
+import set_helpers from "mnemonist/set.js";
+import map from "obliterator/map.js";
 import * as shlex from "shlex";
 
 import { compose, http2Port, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
@@ -217,6 +219,8 @@ class F5CPBuilder {
   }
 
   private async buildNSSF(): Promise<void> {
+    // NSSF is unconfigured, because it is impossible to configure due to design oversight.
+    // https://forum.free5gc.org/t/free5gc-oai-gnb-reroutenasrequest/2628?u=yoursunny
     const [s, nssfcfg] = await this.defineService<F5.nssf.Configuration>("nssf", ["cp"]);
     s.command = [
       "./nssf",
@@ -311,35 +315,31 @@ class F5CPBuilder {
       links: [],
     };
 
-    let gnbPeers: [name: string, peersJoined: string, peers: readonly string[]] | undefined;
+    let gnbPeers: [name: string, peers: Set<string>] | undefined;
     for (const gnb of netdef.listGnbs(network)) {
-      const peers: string[] = [];
+      const peers = new Set<string>();
       for (const [upfName] of netdef.listDataPathPeers(network, gnb.name)) {
         assert(typeof upfName === "string");
-        peers.push(upfName);
+        peers.add(upfName);
       }
-      peers.sort((a, b) => a.localeCompare(b));
-      const peersJoined = peers.join(",");
-      gnbPeers ??= [gnb.name, peersJoined, peers];
-      if (gnbPeers[1] !== peersJoined) {
-        // https://github.com/free5gc/go-upf/issues/35
-        throw new Error(`${gnb.name} peer list (${peersJoined}) differs from ${gnbPeers[0]} peer list (${gnbPeers[1]}), not supported by free5GC SMF`);
+      gnbPeers ??= [gnb.name, peers];
+      if (set_helpers.intersectionSize(gnbPeers[1], peers) !== peers.size) {
+        throw new Error(`${gnb.name} peer list differs from ${gnbPeers[0]} peer list, not supported by free5GC SMF`);
       }
     }
     if (gnbPeers) {
       upi.upNodes.GNB = {
         type: "AN",
       } satisfies F5.smf.UPNodeAN;
-      upi.links.push(...gnbPeers[2].map((upfName): F5.smf.UPLink => ({ A: "GNB", B: upfName })));
+      upi.links.push(...map(gnbPeers[1], (upfName): F5.smf.UPLink => ({ A: "GNB", B: upfName })));
     }
 
     for (const upf of network.upfs) {
-      const upfService = this.ctx.c.services[upf.name];
-      assert(upfService);
+      const n4 = compose.getIP(this.ctx.c, upf.name, "n4");
       const node: F5.smf.UPNodeUPF = {
         type: "UPF",
-        nodeID: compose.getIP(upfService, "n4"),
-        addr: compose.getIP(upfService, "n4"),
+        nodeID: n4,
+        addr: n4,
         sNssaiUpfInfos: [],
         interfaces: [],
       };
@@ -364,13 +364,15 @@ class F5CPBuilder {
       }
 
       for (const ifType of ["N3", "N9"] as const) {
-        const upfNet = upfService.networks[ifType.toLowerCase()];
-        if (!upfNet) {
+        let addr: string;
+        try {
+          addr = compose.getIP(this.ctx.c, upf.name, ifType.toLowerCase());
+        } catch {
           continue;
         }
         node.interfaces.push({
           interfaceType: ifType,
-          endpoints: [upfNet.ipv4_address],
+          endpoints: [addr],
           networkInstances,
         });
       }

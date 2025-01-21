@@ -111,7 +111,6 @@ export namespace readTable {
  * Other types are serialized as either JSON or YAML (when filename ends with ".yaml" or ".yml").
  *
  * Parent directories are created automatically.
- * File is set to executable when filename ends with ".sh".
  */
 export async function write(filename: string, body: unknown, { executable }: write.Options = {}): Promise<void> {
   while (typeof (body as Partial<write.Saver>).save === "function") {
