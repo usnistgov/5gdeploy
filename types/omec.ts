@@ -6,7 +6,7 @@ export type { Info, Logger, PLMNID, Root };
 
 export interface SNSSAI {
   sst: number;
-  sd?: string;
+  sd: string;
 }
 
 export namespace gnbsim {

@@ -46,7 +46,7 @@ function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: net
       tac: ctx.network.tac,
       broadcastPlmnList: [{
         plmnId,
-        taiSliceSupportList: Array.from(netdef.listNssai(ctx.network), (snssai) => netdef.splitSNSSAI(snssai).ih),
+        taiSliceSupportList: Array.from(netdef.listNssai(ctx.network), (snssai) => netdef.splitSNSSAI(snssai, true).ih),
       }],
     }],
     defaultAmf: {
@@ -101,7 +101,7 @@ function makeProfile(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Sub
     opc: sub.opc,
     sequenceNumber: "000000000020",
     dnn,
-    sNssai: netdef.splitSNSSAI(snssai).ih,
+    sNssai: netdef.splitSNSSAI(snssai, true).ih,
     execInParallel: true,
     plmnId,
     ...base,
