@@ -39,7 +39,7 @@ Generate Compose file:
 ```bash
 cd ~/5gdeploy/scenario
 ./generate.sh 20230510 \
-  --cp=phoenix --up=phoenix --ran=ueransim \
+  --cp=phoenix --up=phoenix --ran=phoenix \
   --bridge="n2 | vx | ${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2}" \
   --bridge="n4 | vx | ${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2}" \
   --bridge="n9 | vx | ${EXP_CLOUD},${EXP_EDGE1},${EXP_EDGE2}"
@@ -47,3 +47,5 @@ cd ~/5gdeploy/scenario
 
 The Compose context is created at `~/compose/20230510`.
 See [scenario general README](../README.md) on how to interact with the Compose context.
+
+This scenario uses N9 interface that is only supported in Open5GCore UPF.

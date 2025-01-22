@@ -1,5 +1,5 @@
 import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { PH } from "../types/mod.js";
+import type { N, PH } from "../types/mod.js";
 import { assert } from "../util/mod.js";
 import { PhoenixScenarioBuilder } from "./builder.js";
 import { type PhoenixOpts, tasksetScript, USIM } from "./options.js";
@@ -32,10 +32,16 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
   }
 
   private async buildGNB(gnb: netdef.GNB): Promise<string> {
-    const sliceKeys = ["slice", "slice2"] as const;
-    const slices = Array.from(netdef.listNssai(this.ctx.network), (snssai) => netdef.splitSNSSAI(snssai).ih);
-    assert(slices.length <= sliceKeys.length, `gNB allows up to ${sliceKeys.length} slices`);
     const nWorkers = this.opts["phoenix-gnb-workers"];
+    const sliceKeys = ["slice", "slice2"] as const;
+    const slices = new Set<N.SNSSAI>();
+    for (const sub of netdef.listSubscribers(this.ctx.network, { gnb: gnb.name })) {
+      for (const { snssai } of sub.subscribedNSSAI) {
+        slices.add(snssai);
+      }
+    }
+    assert(slices.size <= sliceKeys.length, `gNB allows up to ${sliceKeys.length} slices`);
+    const sliceValues = Array.from(slices, (snssai) => netdef.splitSNSSAI(snssai).ih);
 
     const { s, nf, initCommands } = await this.defineService(gnb.name, ["air", "n2", "n3"], "5g/gnb1.json");
     s.sysctls["net.ipv4.ip_forward"] = 0;
@@ -52,7 +58,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
       config.cell_id = gnb.nci.nci;
       config.tac = this.tac;
       for (const [i, k] of sliceKeys.entries()) {
-        config[k] = slices[i];
+        config[k] = sliceValues[i];
       }
 
       config.forwarding_worker = nWorkers;

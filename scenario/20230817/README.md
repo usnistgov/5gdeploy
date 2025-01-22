@@ -24,17 +24,17 @@ Generate Compose file:
 
 ```bash
 cd ~/5gdeploy/scenario
-./generate.sh 20230817 --ran=ueransim
+./generate.sh 20230817 --cp=free5gc --up=free5gc --ran=ueransim
 
 # adjust gNB and UE quantities
-./generate.sh 20230817 +gnbs=2 +phones=48 +vehicles=12 --ran=ueransim
+./generate.sh 20230817 +gnbs=2 +phones=48 +vehicles=12 --cp=free5gc --up=free5gc --ran=ueransim
 ```
 
 Open5GCore gNB simulator allows up to 2 slices so that it is incompatible with this scenario that has 3 slices.
 If you want to run with Open5GCore gNB simulator, add `+sst4` flag to change SSTs:
 
 ```bash
-./generate.sh 20230817 +sst4 --ran=phoenix
+./generate.sh 20230817 +sst4 --cp=phoenix --up=phoenix --ran=phoenix
 ```
 
 The Compose context is created at `~/compose/20230817`.

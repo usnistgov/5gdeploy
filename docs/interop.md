@@ -49,11 +49,11 @@ Known to be compatible:
 * `--cp=phoenix --ran=packetrusher`
 * `--cp=phoenix --ran=phoenix`
 * `--cp=phoenix --ran=srsran`
-* `--cp=phoenix --ran=ueransim`
 
 Known to be incompatible:
 
 * `--cp=free5gc --ran=oai`: [openairinterface5g issue 881](https://gitlab.eurecom.fr/oai/openairinterface5g/-/issues/881)
+* `--cp=phoenix --ran=ueransim`: AMF cannot handle UserLocationInformation in NGAP PDUSessionResourceSetupResponse
 
 ## UP-RAN
 

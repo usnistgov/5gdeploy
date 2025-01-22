@@ -23,8 +23,6 @@ Generate Compose file:
 ```bash
 cd ~/5gdeploy/scenario
 ./generate.sh 20231017
-# Add --up=free5gc to select free5GC UPF instead of Open5GCore UPF.
-# Add --ran=ueransim to select UERANSIM gNB+UE instead of Open5GCore gNB+UE.
 
 # adjust gNB and UE quantities
 ./generate.sh 20231017 +gnbs=2 +phones=12 +vehicles=6
