@@ -1,53 +1,58 @@
 import type { N } from "../../types/mod.js";
-import { file_io } from "../../util/mod.js";
+import { file_io, Yargs, YargsIntRange } from "../../util/mod.js";
+
+const args = Yargs()
+  .option("edges", YargsIntRange({
+    desc: "edge network quantity",
+    default: 2,
+    max: 9,
+  }))
+  .option("sub-per-edge", YargsIntRange({
+    desc: "subscriber quantity per edge",
+    default: 2,
+    max: 99,
+  }))
+  .parseSync();
 
 const network: N.Network = {
   plmn: "001-01",
   gnbIdLength: 24,
   tac: "000005",
-  subscribers: [
-    {
-      supi: "001017005551001",
-      count: 2,
-      subscribedNSSAI: [
-        { snssai: "01", dnns: ["cloud"] },
-        { snssai: "81", dnns: ["edge1"] },
-      ],
-      gnbs: ["gnb1"],
-    },
-    {
-      supi: "001017005552001",
-      count: 2,
-      subscribedNSSAI: [
-        { snssai: "01", dnns: ["cloud"] },
-        { snssai: "82", dnns: ["edge2"] },
-      ],
-      gnbs: ["gnb2"],
-    },
-  ],
-  gnbs: [
-    { name: "gnb1" },
-    { name: "gnb2" },
-  ],
+  subscribers: [],
+  gnbs: [],
   upfs: [
     { name: "upf0" },
-    { name: "upf1" },
-    { name: "upf2" },
   ],
   dataNetworks: [
     { snssai: "01", dnn: "cloud", type: "IPv4", subnet: "10.1.0.0/16" },
-    { snssai: "81", dnn: "edge1", type: "IPv4", subnet: "10.129.0.0/16" },
-    { snssai: "82", dnn: "edge2", type: "IPv4", subnet: "10.130.0.0/16" },
   ],
   dataPaths: [
     ["upf0", { snssai: "01", dnn: "cloud" }],
-    ["upf1", { snssai: "81", dnn: "edge1" }],
-    ["upf1", "upf0"],
-    ["gnb1", "upf1"],
-    ["upf2", { snssai: "82", dnn: "edge2" }],
-    ["upf2", "upf0"],
-    ["gnb2", "upf2"],
   ],
 };
+
+const { edges, subPerEdge } = args;
+
+for (let i = 1; i <= edges; ++i) {
+  const snssai: N.SNSSAI = `8${i}`;
+  const dnn = `edge${i}`;
+  network.subscribers.push({
+    supi: `00101700555${i}000`,
+    count: subPerEdge,
+    subscribedNSSAI: [
+      { snssai: "01", dnns: ["cloud"] },
+      { snssai, dnns: [dnn] },
+    ],
+    gnbs: [`gnb${i}`],
+  });
+  network.gnbs.push({ name: `gnb${i}` });
+  network.upfs.push({ name: `upf${i}` });
+  network.dataNetworks.push({ snssai, dnn, type: "IPv4", subnet: `10.${128 + i}.0.0/16` });
+  network.dataPaths.push(
+    [`upf${i}`, { snssai, dnn }],
+    [`upf${i}`, "upf0"],
+    [`gnb${i}`, `upf${i}`],
+  );
+}
 
 await file_io.write("-.json", network);

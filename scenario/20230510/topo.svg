@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" style="background:#ffffff;">
+  <!-- CP -->
+  <g transform="translate(150 0)">
+    <rect width="100" height="50" fill="#0074b9"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">cp</text>
+  </g>
+  <!-- gNB -->
+  <g transform="translate(0 150)">
+    <rect width="100" height="50" fill="#aaaaaa"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">gnb1</text>
+  </g>
+  <g transform="translate(0 250)">
+    <rect width="100" height="50" fill="#aaaaaa"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">gnb2</text>
+  </g>
+  <!-- UPF -->
+  <g transform="translate(350 50)">
+    <rect width="100" height="50" fill="#3d9970"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf0</text>
+  </g>
+  <g transform="translate(250 150)">
+    <rect width="100" height="50" fill="#2ecc40"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf1</text>
+  </g>
+  <g transform="translate(250 250)">
+    <rect width="100" height="50" fill="#2ecc40"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">upf2</text>
+  </g>
+  <!-- DN -->
+  <g transform="translate(500 50)">
+    <rect width="100" height="50" fill="#dddddd"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">dn_cloud</text>
+  </g>
+  <g transform="translate(500 150)">
+    <rect width="100" height="50" fill="#dddddd"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">dn_edge1</text>
+  </g>
+  <g transform="translate(500 250)">
+    <rect width="100" height="50" fill="#dddddd"/>
+    <text x="50" y="25" text-anchor="middle" font-size="18">dn_edge2</text>
+  </g>
+  <!-- N2 -->
+  <text x="180" y="50" text-anchor="middle" font-size="18">N2</text>
+  <line x1="180" y1="50" x2="100" y2="150" stroke="#0074b9"/>
+  <line x1="180" y1="50" x2="100" y2="250" stroke="#0074b9"/>
+  <!-- N4 -->
+  <text x="220" y="50" text-anchor="middle" font-size="18">N4</text>
+  <line x1="220" y1="50" x2="350" y2="75" stroke="#0074b9"/>
+  <line x1="220" y1="50" x2="250" y2="150" stroke="#0074b9"/>
+  <line x1="220" y1="50" x2="250" y2="250" stroke="#0074b9"/>
+  <!-- N3 -->
+  <text x="200" y="270" text-anchor="middle" font-size="18">N3</text>
+  <line x1="100" y1="175" x2="250" y2="175" stroke="#2ecc40"/>
+  <line x1="100" y1="275" x2="250" y2="275" stroke="#2ecc40"/>
+  <!-- N9 -->
+  <text x="370" y="100" text-anchor="middle" font-size="18">N9</text>
+  <line x1="350" y1="150" x2="370" y2="100" stroke="#3d9970"/>
+  <line x1="350" y1="250" x2="370" y2="100" stroke="#3d9970"/>
+  <!-- N6 -->
+  <text x="480" y="270" text-anchor="middle" font-size="18">N6</text>
+  <line x1="450" y1="75" x2="500" y2="75" stroke="#3d9970"/>
+  <line x1="350" y1="175" x2="500" y2="175" stroke="#2ecc40"/>
+  <line x1="350" y1="275" x2="500" y2="275" stroke="#2ecc40"/>
+</svg>

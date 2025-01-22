@@ -6,7 +6,7 @@ This package offers these choices in the **netdef-compose** command:
 * `--up=ndndpdk`: NDN-DPDK UPF
 
 5gdeploy does not build NDN-DPDK Docker images because compilation options are hardware dependent.
-You must [build the `localhost/ndn-dpdk` container image](https://github.com/usnistgov/ndn-dpdk/blob/main/docs/Docker.md) and made it available on each UPF host.
+You must [build the `localhost/ndn-dpdk` container image](https://github.com/usnistgov/ndn-dpdk/blob/main/docs/Docker.md) and make it available on each UPF host.
 
 ## NDN-UPF
 
