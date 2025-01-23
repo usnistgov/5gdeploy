@@ -2,7 +2,7 @@ import { default as fastJsonPatch } from "fast-json-patch"; // eslint-disable-li
 import type { CommandModule } from "yargs";
 
 import { file_io, Yargs } from "../util/mod.js";
-import { loadLibconf } from "./conf.js";
+import { loadLibconf } from "./common.js";
 
 function loadLibconfOrYaml(filename: string): Promise<any> {
   if (filename.endsWith(".yaml") || filename.endsWith(".json")) {

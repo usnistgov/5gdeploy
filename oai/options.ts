@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import type { YargsInfer, YargsOptions } from "../util/mod.js";
-import * as oai_conf from "./conf.js";
+import * as oai_common from "./common.js";
 
 /** Yargs options definition for OAI. */
 export const oaiOptions = {
@@ -42,7 +42,7 @@ export const oaiOptions = {
     type: "string",
   },
   "oai-gnb-conf": {
-    default: path.join(oai_conf.composePath, "ran-conf/gnb.conf"),
+    default: path.join(oai_common.composePath, "ran-conf/gnb.conf"),
     desc: "OpenAirInterface5G gNB config file",
     group: "oai",
     normalize: true,
@@ -55,7 +55,7 @@ export const oaiOptions = {
     type: "string",
   },
   "oai-ue-conf": {
-    default: path.join(oai_conf.composePath, "ran-conf/nr-ue.conf"),
+    default: path.join(oai_common.composePath, "ran-conf/nr-ue.conf"),
     desc: "OpenAirInterface5G UE config file",
     group: "oai",
     normalize: true,

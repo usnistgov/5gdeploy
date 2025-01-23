@@ -5,7 +5,7 @@ import { execa } from "execa";
 import * as yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
 
-import { compose } from "../netdef-compose/mod.js";
+import { compose, type netdef } from "../netdef-compose/mod.js";
 import type { CN5G } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 import type { OAIOpts } from "./options.js";
@@ -104,4 +104,16 @@ export async function loadCN5G(): Promise<CN5G.Config> {
     }
     return value;
   }));
+}
+
+export function makeUpfFqdn(name: string, { mcc, mnc }: netdef.PLMN): string {
+  // https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-upf-vpp/-/blob/7f0065980493ebc49d5e8ce8ca5a9498878c110a/scripts/upf_conf/create_configuration.py#L240
+  return `${makeUpfFqdn.cleanName(name)}.node.5gcn.mnc${mnc}.mcc${mcc}.${makeUpfFqdn.realm}`;
+}
+export namespace makeUpfFqdn {
+  export function cleanName(name: string): string {
+    return name.toLowerCase().replaceAll(/[^\da-z]/gi, "-").replaceAll(/^-|-$/g, "");
+  }
+
+  export const realm = "3gppnetwork.org";
 }

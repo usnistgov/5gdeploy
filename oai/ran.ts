@@ -4,7 +4,7 @@ import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mo
 import * as UHD from "../srsran/uhd.js";
 import type { ComposeService, OAI } from "../types/mod.js";
 import { assert } from "../util/mod.js";
-import * as oai_conf from "./conf.js";
+import * as oai_common from "./common.js";
 import type { OAIOpts } from "./options.js";
 
 /** Build RAN functions using OpenAirInterface5G. */
@@ -27,11 +27,11 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, gnb: netdef.GNB
   if (opts["oai-gnb-usrp"]) {
     nets.shift();
   }
-  const s = ctx.defineService(gnb.name, await oai_conf.getTaggedImageName(opts, "gnb"), nets);
+  const s = ctx.defineService(gnb.name, await oai_common.getTaggedImageName(opts, "gnb"), nets);
   compose.annotate(s, "cpus", 4);
   s.privileged = true;
 
-  const c = await oai_conf.loadLibconf<OAI.gnb.Config>(opts["oai-gnb-conf"], gnb.name);
+  const c = await oai_common.loadLibconf<OAI.gnb.Config>(opts["oai-gnb-conf"], gnb.name);
   c.Active_gNBs = [gnb.name];
 
   assert(c.gNBs.length === 1);
@@ -101,7 +101,7 @@ function enableUSRP(usrp: OAIOpts["oai-gnb-usrp"], s: ComposeService, softmodemA
 
 /** Define UE container and generate configuration. */
 async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub: netdef.Subscriber): Promise<void> {
-  const s = ctx.defineService(ct, await oai_conf.getTaggedImageName(opts, "ue"), ["mgmt", "air"]);
+  const s = ctx.defineService(ct, await oai_common.getTaggedImageName(opts, "ue"), ["mgmt", "air"]);
   compose.annotate(s, "cpus", 1);
   compose.annotate(s, "ue_supi", sub.supi);
   s.privileged = true;
@@ -111,7 +111,7 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
   // prevent IPv6 traffic from appearing on the PDU session netif.
   s.sysctls["net.ipv6.conf.default.disable_ipv6"] = 1;
 
-  const c = await oai_conf.loadLibconf<OAI.ue.Config>(opts["oai-ue-conf"], ct);
+  const c = await oai_common.loadLibconf<OAI.ue.Config>(opts["oai-ue-conf"], ct);
   c.uicc0 = {
     imsi: sub.supi,
     nmc_size: netdef.splitPLMN(ctx.network.plmn).mnc.length,

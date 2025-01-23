@@ -61,7 +61,7 @@ export interface SNSSAI {
 }
 
 /** Split S-NSSAI as sst and sd. */
-export function splitSNSSAI(snssai: N.SNSSAI): SNSSAI;
+export function splitSNSSAI(snssai: N.SNSSAI, sdFilled?: boolean): SNSSAI;
 
 /** Split S-NSSAI as sst and sd, filling default sd 0xFFFFFF. */
 export function splitSNSSAI(snssai: N.SNSSAI, sdFilled: true): RequiredDeep<SNSSAI>;

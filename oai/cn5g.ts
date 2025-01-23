@@ -7,21 +7,40 @@ import sql from "sql-tagged-template-literal";
 import { compose, http2Port, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { CN5G, ComposeFile, ComposeService, N } from "../types/mod.js";
 import { assert, file_io, hexPad } from "../util/mod.js";
-import * as oai_conf from "./conf.js";
+import { composePath, getTaggedImageName, loadCN5G, makeUpfFqdn } from "./common.js";
 import type { OAIOpts } from "./options.js";
 
 const iproute2Available = new Set(["upf"]); // images known to have iproute2 package
+
+export function makeSUIL(network: N.Network, peers: netdef.UPFPeers, sdFilled = false): CN5G.upf.SNSSAIInfo[] {
+  const suil: CN5G.upf.SNSSAIInfo[] = [];
+  for (const snssai of netdef.listNssai(network)) {
+    const sPeers = peers.N6IPv4.filter((peer) => peer.snssai === snssai);
+    if (sPeers.length === 0) {
+      continue;
+    }
+
+    suil.push({
+      sNssai: netdef.splitSNSSAI(snssai, sdFilled).ih,
+      dnnUpfInfoList: sPeers.map(({ dnn }) => ({ dnn })),
+    });
+  }
+  return suil;
+}
 
 abstract class CN5GBuilder {
   constructor(
       protected readonly ctx: NetDefComposeContext,
       protected readonly opts: OAIOpts,
-  ) {}
+  ) {
+    this.plmn = netdef.splitPLMN(ctx.network.plmn);
+  }
 
+  protected readonly plmn: netdef.PLMN;
   protected c!: CN5G.Config;
 
   protected async loadTemplateConfig(): Promise<void> {
-    this.c = await oai_conf.loadCN5G();
+    this.c = await loadCN5G();
     this.c.register_nf.general = this.opts["oai-cn5g-nrf"];
     if (!this.c.register_nf.general) {
       delete this.c.nfs.nrf;
@@ -49,7 +68,7 @@ abstract class CN5GBuilder {
       // XXX ethI is incompatible with Ethernet bridge
     }
 
-    const image = await oai_conf.getTaggedImageName(this.opts, nf);
+    const image = await getTaggedImageName(this.opts, nf);
     const s = this.ctx.defineService(ct, image, Array.from(nets, ([net]) => net));
     s.stop_signal = "SIGQUIT";
     s.cap_add.push("NET_ADMIN");
@@ -88,22 +107,9 @@ abstract class CN5GBuilder {
   }
 
   protected makeUPFInfo(peers: netdef.UPFPeers): CN5G.upf.UPFInfo {
-    const info: CN5G.upf.UPFInfo = {
-      sNssaiUpfInfoList: [],
+    return {
+      sNssaiUpfInfoList: makeSUIL(this.ctx.network, peers),
     };
-    for (const snssai of netdef.listNssai(this.ctx.network)) {
-      const sPeers = peers.N6IPv4.filter((peer) => peer.snssai === snssai);
-      if (sPeers.length === 0) {
-        continue;
-      }
-
-      const item: CN5G.upf.SNSSAIInfo = {
-        sNssai: netdef.splitSNSSAI(snssai).ih,
-        dnnUpfInfoList: sPeers.map(({ dnn }) => ({ dnn })),
-      };
-      info.sNssaiUpfInfoList.push(item);
-    }
-    return info;
   }
 }
 
@@ -140,14 +146,13 @@ class CPBuilder extends CN5GBuilder {
         `GRANT SELECT,INSERT,UPDATE,DELETE ON ${dbc.database_name}.* TO ${
           dbc.user}@'%' IDENTIFIED BY '${dbc.password}'`,
       ],
-      await file_io.readText(path.resolve(oai_conf.composePath, "database/oai_db2.sql")),
+      await file_io.readText(path.resolve(composePath, "database/oai_db2.sql")),
       this.populateSQL(),
     ));
   }
 
   private *populateSQL(): Iterable<string> {
-    const { mcc, mnc } = netdef.splitPLMN(this.ctx.network.plmn);
-    const servingPlmnid = `${mcc}${mnc}`;
+    const servingPlmnid = `${this.plmn.mcc}${this.plmn.mnc}`;
 
     yield "SELECT @sqn_json:=sequenceNumber FROM AuthenticationSubscription LIMIT 1";
     yield "DELETE FROM AuthenticationSubscription";
@@ -231,8 +236,8 @@ class CPBuilder extends CN5GBuilder {
     const upfTpl = c.upfs[0]!;
     c.upfs = this.ctx.network.upfs.map((upf): CN5G.smf.UPF => {
       const upfService = this.ctx.c.services[upf.name]!;
-      const host = compose.getIP(upfService, "n4");
-      s.extra_hosts[`${upf.name}.5gdeploy.oai`] = host; // SMF would attempt RDNS lookup
+      const host = makeUpfFqdn(upf.name, this.plmn);
+      s.extra_hosts[host] = compose.getIP(upfService, "n4");
       const upfCfg: CN5G.smf.UPF = { ...upfTpl, host };
       if (!this.opts["oai-cn5g-nrf"]) {
         const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
@@ -269,7 +274,7 @@ class NWDAFBuilder extends CN5GBuilder {
   private readonly mongoUrl = compose.mongo.makeUrl("nwdaf");
 
   public async build(): Promise<void> {
-    this.tplC = await file_io.readYAML(path.join(oai_conf.composePath, "nwdaf/docker-compose-nwdaf-cn-http2.yaml")) as any;
+    this.tplC = await file_io.readYAML(path.join(composePath, "nwdaf/docker-compose-nwdaf-cn-http2.yaml")) as any;
     this.ipRepl.push(
       ["192.168.70.132", compose.getIP(this.ctx.c, "amf*", "cp")],
       ["192.168.70.133", compose.getIP(this.ctx.c, "smf*", "cp")],
@@ -329,7 +334,7 @@ class NWDAFBuilder extends CN5GBuilder {
     }
     if (ms === "nbi-gateway") {
       s.environment.KONG_PROXY_LISTEN = "0.0.0.0:80";
-      const kong = await file_io.readText(path.join(oai_conf.composePath, "nwdaf/conf/kong.yml"));
+      const kong = await file_io.readText(path.join(composePath, "nwdaf/conf/kong.yml"));
       await this.ctx.writeFile("cp-cfg/nbi-gateway.yaml", this.replaceIPs("", kong), {
         s,
         target: "/kong/declarative/kong.yml",

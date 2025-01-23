@@ -13,10 +13,8 @@ This package offers these choices in the **netdef-compose** command:
 * `--up=oai`: [CN5G UPF](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-upf)
   * does not support N9 interface
 * `--up=oai-vpp`: [UPF using a VPP implementation](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-upf-vpp)
-  * does not support Ethernet bridge
-  * does not support N9 interface
-  * requires exactly one IPv4 Data Network
-  * CPU isolation strongly recommended, currently supports up to 8 worker threads
+  * must have N3+N6 or N3+N9 or N9+N6
+  * CPU isolation strongly recommended, currently recognizes up to 6 worker threads
 
 ## Advanced Options
 

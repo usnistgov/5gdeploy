@@ -41,7 +41,6 @@ Known to be compatible:
 * `--cp=oai --ran=gnbsim`
 * `--cp=oai --ran=oai`
 * `--cp=oai --ran=packetrusher`
-* `--cp=oai --ran=ueransim`
 * `--cp=open5gs --ran=oai`
 * `--cp=open5gs --ran=packetrusher`
 * `--cp=open5gs --ran=srsran`
@@ -53,6 +52,7 @@ Known to be compatible:
 Known to be incompatible:
 
 * `--cp=free5gc --ran=oai`: [openairinterface5g issue 881](https://gitlab.eurecom.fr/oai/openairinterface5g/-/issues/881)
+* `--cp=oai --ran=ueransim`: AMF cannot handle UserLocationInformation in NGAP PDUSessionResourceSetupResponse
 * `--cp=phoenix --ran=ueransim`: AMF cannot handle UserLocationInformation in NGAP PDUSessionResourceSetupResponse
 
 ## UP-RAN

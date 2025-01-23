@@ -10,17 +10,22 @@ msg() {
 msg Listing IP addresses
 ip addr
 
-msg Editing etc/init.conf
-N4_IP=$(ip -o -4 addr | awk '$2~"^n4" { split($4,a,"/"); print a[1] }')
-sed -i "/node-id/ s|.*|upf node-id ip4 $N4_IP|" etc/init.conf
+msg Showing etc/init.conf
 cat etc/init.conf
 
 msg Editing etc/upf_profile.json
 python3 <<EOT
 import json
+import os
+
 file = open("etc/upf_profile.json", "r+")
 profile = json.load(file)
-del profile["fqdn"]
+
+profile['upfInfo']['sNssaiUpfInfoList'] = json.loads(os.environ['PROFILE_SUIL'])
+profile['sNssais'] = []
+for sui in profile['upfInfo']['sNssaiUpfInfoList']:
+  profile['sNssais'].append(sui["sNssai"])
+
 file.seek(0)
 file.truncate()
 json.dump(profile, file, indent=2, sort_keys=True)
@@ -35,7 +40,7 @@ CORE_COUNT=$(awk '$1=="Cpus_allowed_list:" { print $2 }' /proc/1/status | awk -v
   END { print n }
 ')
 VPP_WORKERS='d'
-if [[ $CORE_COUNT -gt 1 ]] && [[ $CORE_COUNT -le 8 ]]; then
+if [[ $CORE_COUNT -gt 1 ]] && [[ $CORE_COUNT -le 6 ]]; then
   VPP_WORKERS="s|.*|  workers $CORE_COUNT|"
 fi
 sed -i \
