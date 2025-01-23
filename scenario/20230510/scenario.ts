@@ -17,8 +17,11 @@ const network: N.Network = {
 function defineDnns(snssai: N.SNSSAI, dnnPrefix: string, subnetBase: number, upf: string, cnt: number): N.SubscriberSNSSAI[] {
   const dnns: string[] = [];
   const subscriberNSSAI: N.SubscriberSNSSAI[] = [];
+  let dnn = dnnPrefix;
   for (let j = 0; j < cnt; ++j) {
-    const dnn = `${dnnPrefix}${j}`;
+    if (cnt > 1) {
+      dnn += j;
+    }
     dnns.push(dnn);
     network.dataNetworks.push({ snssai: "01", dnn, type: "IPv4", subnet: `10.${subnetBase + j}.0.0/16` });
     network.dataPaths.push([upf, { snssai: "01", dnn }]);

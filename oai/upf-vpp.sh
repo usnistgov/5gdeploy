@@ -21,10 +21,14 @@ import os
 file = open("etc/upf_profile.json", "r+")
 profile = json.load(file)
 
-profile['upfInfo']['sNssaiUpfInfoList'] = json.loads(os.environ['PROFILE_SUIL'])
-profile['sNssais'] = []
-for sui in profile['upfInfo']['sNssaiUpfInfoList']:
-  profile['sNssais'].append(sui["sNssai"])
+upfInfo = profile['upfInfo']
+upfInfo['sNssaiUpfInfoList'] = json.loads(os.environ['PROFILE_SUIL'])
+profile['sNssais'] = [sui["sNssai"] for sui in upfInfo['sNssaiUpfInfoList']]
+
+upfInfo['interfaceUpfInfoList'] = [
+    iui for iui in upfInfo['interfaceUpfInfoList'] if iui['interfaceType'] != 'N9']
+upfInfo['interfaceUpfInfoList'] += json.loads(
+    os.environ['PROFILE_IUIL'])
 
 file.seek(0)
 file.truncate()

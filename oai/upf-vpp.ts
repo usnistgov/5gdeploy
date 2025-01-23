@@ -59,10 +59,8 @@ class VppEnv {
       this.ifaces.push({ type: "N6", intf: "n6", nwi: "core.oai.org" });
     }
     if (this.peers.N9.length > 0) {
-      // TODO support multiple N9 peers through different Docker networks
-      assert(this.peers.N9.length === 1, "oai-cn5g-upf-vpp supports at most 1 N9 peer");
       this.nets.push("n9");
-      this.ifaces.push({ type: "N9", intf: "n9", nwi: makeUpfFqdn(this.peers.N9[0]!.name, this.plmn) });
+      this.ifaces.push({ type: "N9", intf: "n9", nwi: "invalid" });
     }
   }
 
@@ -85,6 +83,7 @@ class VppEnv {
       SNSSAI_SST: 255, // overwritten by PROFILE_SUIL
       SNSSAI_SD: "000000", // overwritten by PROFILE_SUIL
       DNN: "default", // overwritten by PROFILE_SUIL
+      PROFILE_IUIL: stringify(this.nets.includes("n9") ? this.makeIUIL(compose.getIP(s, "n9")) : []),
     });
 
     for (const [i, { type, intf, nwi }] of this.ifaces.entries()) {
@@ -95,5 +94,19 @@ class VppEnv {
         s.environment[`${prefix}NWI`] = nwi;
       }
     }
+  }
+
+  private makeIUIL(n9ip: string): unknown {
+    const list: unknown[] = [];
+    for (const peer of this.peers.N9) {
+      const fqdn = makeUpfFqdn(peer.name, this.plmn);
+      list.push({
+        interfaceType: "N9",
+        ipv4EndpointAddresses: [n9ip],
+        endpointFqdn: fqdn,
+        networkInstance: fqdn,
+      });
+    }
+    return list;
   }
 }
