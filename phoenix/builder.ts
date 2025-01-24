@@ -81,6 +81,7 @@ export abstract class PhoenixScenarioBuilder {
     });
 
     const nf = NetworkFunction.parse(body);
+    nf.Phoenix.Platform.Debug.level = this.opts["phoenix-debug"];
 
     for (const binaryName of ["httpd", "json_rpc", "remote_command", "rest_api"] as const) {
       nf.editModule(binaryName, true, (m) => {

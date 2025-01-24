@@ -1,6 +1,6 @@
 # 5gdeploy/phoenix
 
-Package **phoenix** reads and writes Open5GCore configuration files.
+Package **phoenix** reads and writes Open5GCore v7.4.3 configuration files.
 
 * `nf.ts`: edit network function JSON
 * `netdef.ts`: apply a [network definition](../netdef) to a scenario folder

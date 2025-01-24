@@ -7,18 +7,14 @@ import { assert, type file_io } from "../util/mod.js";
 export class NetworkFunction implements file_io.write.Saver {
   /** Parse network function JSON document. */
   public static parse(body: string): NetworkFunction {
-    const nf = new NetworkFunction();
-    nf.Phoenix = JSON.parse(body).Phoenix;
-    assert(nf.Phoenix?.Platform);
-    assert(Array.isArray(nf.Phoenix.Module));
-    nf.Phoenix.Module.sort(sortBy("binaryFile"));
-    return nf;
+    const j = JSON.parse(body).Phoenix;
+    assert(j?.Platform);
+    assert(Array.isArray(j.Module));
+    j.Module.sort(sortBy("binaryFile"));
+    return new NetworkFunction(j);
   }
 
-  public Phoenix: PH.Phoenix = {
-    Platform: {},
-    Module: [],
-  };
+  private constructor(public Phoenix: PH.Phoenix) {}
 
   /**
    * Edit a module.

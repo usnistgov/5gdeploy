@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { compose } from "../netdef-compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
-import { assert, codebaseRoot, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { assert, codebaseRoot, type YargsInfer, YargsIntRange, type YargsOptions } from "../util/mod.js";
 
 export const phoenixDockerImage = "5gdeploy.localhost/phoenix";
 export const cfgdir = "/opt/phoenix/cfg/5gdeploy";
@@ -33,6 +33,13 @@ export const phoenixOptions = {
     group: "phoenix",
     type: "string",
   },
+  "phoenix-debug": YargsIntRange({
+    default: 5,
+    desc: "debug log level (higher number is more verbose)",
+    group: "phoenix",
+    min: 0,
+    max: 9,
+  }),
   "phoenix-pcf": {
     default: false,
     desc: "enable PCF",

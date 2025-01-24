@@ -1,6 +1,13 @@
 export interface Phoenix {
-  Platform: unknown;
+  Platform: Platform;
   Module: Module[];
+}
+
+export interface Platform {
+  Debug: {
+    level: number;
+  };
+  [k: string]: unknown;
 }
 
 export interface Module<T extends {} = any> {

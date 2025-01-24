@@ -4,7 +4,7 @@ import { type YargsInfer, YargsIntRange, type YargsOptions } from "../util/mod.j
 export const f5Options = {
   "gtp5g-dbg": YargsIntRange({
     default: 1,
-    desc: "gtp5g log level",
+    desc: "gtp5g log level (higher number is more verbose)",
     group: "free5gc",
     min: 0,
     max: 4,
