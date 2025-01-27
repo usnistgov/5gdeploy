@@ -14,7 +14,7 @@ This package offers these choices in the **netdef-compose** command:
   * does not support N9 interface
 * `--up=oai-vpp`: [UPF using a VPP implementation](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-upf-vpp)
   * must have N3+N6 or N3+N9 or N9+N6
-  * CPU isolation strongly recommended, currently recognizes up to 6 worker threads
+  * CPU isolation strongly recommended, expecting 2 cores for main and worker
 
 ## Advanced Options
 

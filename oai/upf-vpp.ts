@@ -4,7 +4,7 @@ import stringify from "json-stringify-deterministic";
 
 import { compose, http2Port, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, N } from "../types/mod.js";
-import { assert, file_io } from "../util/mod.js";
+import { assert, file_io, parseCpuset } from "../util/mod.js";
 import { makeSUIL } from "./cn5g.js";
 import { getTaggedImageName, makeUpfFqdn } from "./common.js";
 import type { OAIOpts } from "./options.js";
@@ -16,7 +16,7 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIO
   const ve = new VppEnv(ctx.network, upf);
   const image = await getTaggedImageName(opts, "upf-vpp");
   const s = ctx.defineService(ct, image, ve.nets);
-  compose.annotate(s, "cpus", opts["oai-upf-workers"]);
+  compose.annotate(s, "cpus", Math.max(2, opts["oai-upf-workers"]));
   s.privileged = true;
   s.command = ["/bin/bash", "/upf-vpp.sh"];
   await ctx.writeFile("oai-upf-vpp.sh", file_io.write.copyFrom(path.join(import.meta.dirname, "upf-vpp.sh")), {
@@ -24,17 +24,22 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIO
   });
   ve.assignTo(s);
 
-  if (opts["oai-cn5g-nrf"]) {
-    ctx.finalize.push(() => {
+  ctx.finalize.push(() => {
+    const cpuset = s.cpuset ? parseCpuset(s.cpuset) : [0];
+    s.environment.VPP_MAIN_CORE = `${cpuset.at(-1)}`;
+    s.environment.VPP_CORE_WORKER = `${cpuset[0]}`;
+
+    if (opts["oai-cn5g-nrf"]) {
       Object.assign(s.environment, {
         REGISTER_NRF: "yes",
         NRF_IP_ADDR: compose.getIP(ctx.c, "nrf", "cp"),
         NRF_PORT: `${http2Port}`,
+        HTTP_VERSION: "2",
       });
-    });
-  } else {
-    s.environment.REGISTER_NRF = "no";
-  }
+    } else {
+      s.environment.REGISTER_NRF = "no";
+    }
+  });
 }
 
 interface VppIface {
@@ -75,10 +80,7 @@ class VppEnv {
       MCC: this.plmn.mcc,
       MNC: this.plmn.mnc,
       REALM: makeUpfFqdn.realm,
-      VPP_MAIN_CORE: "0",
-      VPP_CORE_WORKER: "1",
       VPP_PLUGIN_PATH: "/usr/lib/x86_64-linux-gnu/vpp_plugins/",
-      HTTP_VERSION: 2,
       PROFILE_SUIL: stringify(makeSUIL(this.network, this.peers, true)),
       SNSSAI_SST: 255, // overwritten by PROFILE_SUIL
       SNSSAI_SD: "000000", // overwritten by PROFILE_SUIL
