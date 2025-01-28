@@ -7,26 +7,10 @@ import sql from "sql-tagged-template-literal";
 import { compose, http2Port, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { CN5G, ComposeFile, ComposeService, N } from "../types/mod.js";
 import { assert, file_io, hexPad } from "../util/mod.js";
-import { composePath, getTaggedImageName, loadCN5G, makeUpfFqdn } from "./common.js";
+import { composePath, getTaggedImageName, loadCN5G, makeDnaiFqdn, makeSUIL } from "./common.js";
 import type { OAIOpts } from "./options.js";
 
 const iproute2Available = new Set(["upf"]); // images known to have iproute2 package
-
-export function makeSUIL(network: N.Network, peers: netdef.UPFPeers, sdFilled = false): CN5G.upf.SNSSAIInfo[] {
-  const suil: CN5G.upf.SNSSAIInfo[] = [];
-  for (const snssai of netdef.listNssai(network)) {
-    const sPeers = peers.N6IPv4.filter((peer) => peer.snssai === snssai);
-    if (sPeers.length === 0) {
-      continue;
-    }
-
-    suil.push({
-      sNssai: netdef.splitSNSSAI(snssai, sdFilled).ih,
-      dnnUpfInfoList: sPeers.map(({ dnn }) => ({ dnn })),
-    });
-  }
-  return suil;
-}
 
 abstract class CN5GBuilder {
   constructor(
@@ -39,8 +23,8 @@ abstract class CN5GBuilder {
   protected readonly plmn: netdef.PLMN;
   protected c!: CN5G.Config;
 
-  protected async loadTemplateConfig(): Promise<void> {
-    this.c = await loadCN5G();
+  protected async loadTemplateConfig(filename: string): Promise<void> {
+    this.c = await loadCN5G(filename);
     this.c.register_nf.general = this.opts["oai-cn5g-nrf"];
     if (!this.c.register_nf.general) {
       delete this.c.nfs.nrf;
@@ -115,9 +99,11 @@ abstract class CN5GBuilder {
 
 class CPBuilder extends CN5GBuilder {
   public async build(): Promise<void> {
-    await this.loadTemplateConfig();
-    delete this.c.nfs.upf;
-    delete this.c.upf;
+    await this.loadTemplateConfig("ulcl_config.yaml");
+    if (!this.opts["oai-cn5g-dnai"]) {
+      delete this.c.nfs.pcf;
+      delete this.c.pcf;
+    }
 
     await this.buildSQL();
     const configPath = "cp-cfg/config.yaml";
@@ -128,6 +114,9 @@ class CPBuilder extends CN5GBuilder {
     this.updateConfigDNNs();
     this.updateConfigAMF();
     this.updateConfigSMF();
+    if (this.opts["oai-cn5g-dnai"]) {
+      await this.buildPCF();
+    }
     await this.ctx.writeFile(configPath, this.c);
   }
 
@@ -236,7 +225,7 @@ class CPBuilder extends CN5GBuilder {
     const upfTpl = c.upfs[0]!;
     c.upfs = this.ctx.network.upfs.map((upf): CN5G.smf.UPF => {
       const upfService = this.ctx.c.services[upf.name]!;
-      const host = makeUpfFqdn(upf.name, this.plmn);
+      const [,host] = makeDnaiFqdn(upf, this.plmn);
       s.extra_hosts[host] = compose.getIP(upfService, "n4");
       const upfCfg: CN5G.smf.UPF = { ...upfTpl, host };
       if (!this.opts["oai-cn5g-nrf"]) {
@@ -264,6 +253,69 @@ class CPBuilder extends CN5GBuilder {
       single_nssai: netdef.splitSNSSAI(dn.snssai).ih,
       dnn: dn.dnn,
     }));
+  }
+
+  private async buildPCF(): Promise<void> {
+    const s = this.ctx.c.services.pcf!;
+    assert(this.c.pcf);
+
+    const { local_policy: policy } = this.c.pcf;
+    policy.traffic_rules_path = "/openair-pcf/etc/traffic_rules";
+    policy.pcc_rules_path = "/openair-pcf/etc/pcc_rules";
+    policy.policy_decisions_path = "/openair-pcf/etc/policy_decisions";
+    delete policy.qos_data_path;
+
+    // These hard-coded values are compatible with scenario/20230510 +dn-in-cloud=1 +edges=1 +dn-per-edge=1 +sub-per-edge=2
+    // TODO delete hard-coded values
+
+    const trafficRules: CN5G.pcf.TrafficRules = {};
+    trafficRules["cloud-scenario"] = {
+      routeToLocs: [
+        { dnai: "access" },
+        { dnai: "upf1" },
+        { dnai: "upf0" },
+        { dnai: "cloud" },
+      ],
+    };
+    trafficRules["edge1-scenario"] = {
+      routeToLocs: [
+        { dnai: "access" },
+        { dnai: "upf1" },
+        { dnai: "edge1" },
+      ],
+    };
+
+    const pccRules: CN5G.pcf.PccRules = {};
+    pccRules["cloud-rule"] = {
+      flowInfos: [{ flowDescription: "permit out ip from any to assigned" }],
+      precedence: 10,
+      refTcData: ["cloud-scenario"],
+    };
+    pccRules["edge1-rule"] = {
+      flowInfos: [{ flowDescription: "permit out ip from any to assigned" }],
+      precedence: 10,
+      refTcData: ["edge1-scenario"],
+    };
+
+    const policyDecisions: CN5G.pcf.PolicyDecisions = {};
+    policyDecisions["decision-cloud"] = {
+      dnn: "cloud",
+      pcc_rules: ["cloud-rule"],
+    };
+    policyDecisions["decision-edge1"] = {
+      dnn: "edge1",
+      pcc_rules: ["edge1-rule"],
+    };
+
+    await this.ctx.writeFile("cp-cfg/pcf-traffic-rules.yaml", trafficRules, {
+      s, target: path.join(policy.traffic_rules_path, "r.yaml"),
+    });
+    await this.ctx.writeFile("cp-cfg/pcf-pcc-rules.yaml", pccRules, {
+      s, target: path.join(policy.pcc_rules_path, "r.yaml"),
+    });
+    await this.ctx.writeFile("cp-cfg/pcf-policy-decisions.yaml", policyDecisions, {
+      s, target: path.join(policy.policy_decisions_path, "r.yaml"),
+    });
   }
 }
 
@@ -386,7 +438,7 @@ export async function oaiCP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<v
 
 class UPBuilder extends CN5GBuilder {
   public async build(upf: N.UPF): Promise<void> {
-    await this.loadTemplateConfig();
+    await this.loadTemplateConfig("basic_nrf_config.yaml");
     for (const [nf, c] of Object.entries(this.c.nfs)) {
       if (["nrf", "smf", "upf"].includes(nf)) {
         c.sbi.port = http2Port;

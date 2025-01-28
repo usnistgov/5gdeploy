@@ -17,6 +17,12 @@ export const oaiOptions = {
     group: "oai",
     type: "boolean",
   },
+  "oai-cn5g-dnai": {
+    default: true,
+    desc: "enable DNAI in OAI-CN5G",
+    group: "oai",
+    type: "boolean",
+  },
   "oai-cn5g-nwdaf": {
     default: false,
     desc: "enable NWDAF in OAI-CN5G",

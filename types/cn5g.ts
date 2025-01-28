@@ -1,3 +1,5 @@
+import type { RequireExactlyOne } from "type-fest";
+
 type GeneralRecord<K extends PropertyKey, T> = {
   general: T;
 } & Partial<Record<K, T>>;
@@ -11,6 +13,7 @@ export interface Config {
   dnns: DNN[];
   amf?: amf.Config;
   smf?: smf.Config;
+  pcf?: pcf.Config;
   upf?: upf.Config;
   [k: string]: unknown;
 }
@@ -155,6 +158,58 @@ export namespace upf {
 
   export interface SNSSAIInfo {
     sNssai: SNSSAI;
-    dnnUpfInfoList: Array<{ dnn: string }>;
+    dnnUpfInfoList: DNNInfo[];
   }
+
+  export interface DNNInfo {
+    dnn: string;
+    dnaiList?: string[];
+    dnaiNwInstanceList?: Record<string, string>;
+  }
+}
+
+export namespace pcf {
+  export interface Config {
+    local_policy: PolicyConfig;
+  }
+
+  export interface PolicyConfig {
+    traffic_rules_path?: string; // folder of YAMLs with TrafficRules
+    pcc_rules_path: string; // folder of YAMLs with PccRules
+    policy_decisions_path: string; // folder of YAMLs with PolicyDecisions
+    qos_data_path?: string;
+  }
+
+  export type TrafficRules = Record<string, TrafficControlData>;
+
+  export interface TrafficControlData {
+    routeToLocs: RouteToLocation[];
+  }
+
+  export interface RouteToLocation {
+    dnai: string;
+  }
+
+  export type PccRules = Record<string, PccRule>;
+
+  export interface PccRule {
+    flowInfos: FlowInformation[];
+    precedence: number;
+    refTcData: string[]; // keyof TrafficRules
+  }
+
+  export interface FlowInformation {
+    flowDescription: string;
+  }
+
+  export type PolicyDecisions = Record<string, PolicyDecision>;
+
+  export type PolicyDecision = {
+    pcc_rules: string[]; // keyof PccRules
+  } & RequireExactlyOne<{
+    supi_imsi: string;
+    dnn: string;
+    slice: Required<SNSSAI>;
+    default: true;
+  }>;
 }
