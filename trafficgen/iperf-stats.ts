@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import DefaultMap from "mnemonist/default-map.js";
+import { DefaultMap } from "mnemonist";
 import map from "obliterator/map.js";
 import { sortBy } from "sort-by-typescript";
 import type { SetRequired } from "type-fest";

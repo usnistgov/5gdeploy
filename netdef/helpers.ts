@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import DefaultMap from "mnemonist/default-map.js";
+import { DefaultMap } from "mnemonist";
 import map from "obliterator/map.js";
 import type { RequiredDeep, SetRequired } from "type-fest";
 import { arr2hex } from "uint8-util";

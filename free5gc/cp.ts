@@ -1,6 +1,5 @@
 import stringify from "json-stringify-deterministic";
-import DefaultMap from "mnemonist/default-map.js";
-import set_helpers from "mnemonist/set.js";
+import { DefaultMap, set as set_helpers } from "mnemonist";
 import map from "obliterator/map.js";
 import * as shlex from "shlex";
 

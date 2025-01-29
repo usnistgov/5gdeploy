@@ -7,7 +7,7 @@ import getStdin from "get-stdin";
 import * as yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
 import * as jsonc from "jsonc-parser";
-import DefaultMap from "mnemonist/default-map.js";
+import { DefaultMap } from "mnemonist";
 import { type AnyIterable, collect } from "streaming-iterables";
 import type { Promisable } from "type-fest";
 

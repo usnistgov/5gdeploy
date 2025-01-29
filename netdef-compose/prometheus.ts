@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import DefaultWeakMap from "mnemonist/default-weak-map.js";
+import { DefaultWeakMap } from "mnemonist";
 import map from "obliterator/map.js";
 import type { OverrideProperties } from "type-fest";
 

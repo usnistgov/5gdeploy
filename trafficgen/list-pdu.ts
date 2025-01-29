@@ -1,4 +1,4 @@
-import DefaultMap from "mnemonist/default-map.js";
+import { DefaultMap } from "mnemonist";
 import oblMap from "obliterator/map.js";
 import { sortBy } from "sort-by-typescript";
 import { collect, map, pipeline } from "streaming-iterables";

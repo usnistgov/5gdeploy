@@ -1,7 +1,7 @@
 import { assert } from "node:console";
 
 import { Minimatch } from "minimatch";
-import DefaultMap from "mnemonist/default-map.js";
+import { DefaultMap } from "mnemonist";
 import * as shlex from "shlex";
 import type { ReadonlyDeep } from "type-fest";
 

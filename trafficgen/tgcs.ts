@@ -1,8 +1,8 @@
 import path from "node:path";
 
 import { Minimatch } from "minimatch";
-import DefaultMap from "mnemonist/default-map.js";
-import oblMap from "obliterator/map.js";
+import { DefaultMap } from "mnemonist";
+import map from "obliterator/map.js";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 import { collect, flatMap, pipeline } from "streaming-iterables";
@@ -340,7 +340,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() { // eslint-di
     if (args[tgid].length === 0) {
       continue;
     } else if (tg.statsCommands) {
-      yield* oblMap(tg.statsCommands(prefix), (line) => `  ${line}`);
+      yield* map(tg.statsCommands(prefix), (line) => `  ${line}`);
     } else {
       yield `  msg ${tg.name ?? tgid} statistics analysis is not supported`;
     }
@@ -354,7 +354,7 @@ for (const row of table) {
   const group = row[0]! as string;
   ++counts.get(group).cnt;
 }
-table.push(...oblMap(counts.values(),
+table.push(...map(counts.values(),
   ({ group, cnt }) => [group, "*", "*", "COUNT", cnt],
 ));
 const tTable = file_io.toTable(

@@ -1,7 +1,7 @@
 import os from "node:os";
 
 import { Minimatch } from "minimatch";
-import DefaultMap from "mnemonist/default-map.js";
+import { DefaultMap } from "mnemonist";
 import { sortBy } from "sort-by-typescript";
 
 import type { ComposeFile, ComposeService } from "../types/mod.js";

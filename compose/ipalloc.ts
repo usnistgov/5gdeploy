@@ -1,4 +1,4 @@
-import BiMap from "mnemonist/bi-map.js";
+import { BiMap } from "mnemonist";
 import { ip2long, long2ip, Netmask } from "netmask";
 
 import { assert, YargsCoercedArray, type YargsInfer, type YargsOptions } from "../util/mod.js";

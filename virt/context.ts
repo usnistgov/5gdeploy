@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import * as yaml from "js-yaml";
-import DefaultMap from "mnemonist/default-map.js";
+import { DefaultMap } from "mnemonist";
 import { Netmask } from "netmask";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";

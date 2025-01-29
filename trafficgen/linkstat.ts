@@ -1,7 +1,7 @@
 import { parse as csvParse } from "csv/sync";
 import type { LinkInfo } from "iproute";
 import { Minimatch } from "minimatch";
-import DefaultMap from "mnemonist/default-map.js";
+import { DefaultMap } from "mnemonist";
 import { sortBy } from "sort-by-typescript";
 import { collect, flatMap, flatTransform, map, pipeline } from "streaming-iterables";
 import type { SetOptional } from "type-fest";
