@@ -109,6 +109,7 @@ export namespace smf {
   }
 
   export interface UPFConfig {
+    enable_usage_reporting?: boolean;
     n3_local_ipv4?: string;
     [k: string]: unknown;
   }

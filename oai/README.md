@@ -25,7 +25,7 @@ This package adds several OAI-specific options to the **netdef-compose** command
 The default is gathered from oai-cn5g-fed repository checkout.
 
 `--oai-cn5g-nrf=false` disables Network Repository Function (NRF) globally.
-The default is using NRF, which includes UPF discovery by SMF.
+The default is enabling NRF, which includes UPF discovery by SMF.
 
 `--oai-cn5g-dnai=true` enables Policy Control Function (PCF) that supplies Data Network Access Identifier (DNAI) information to the SMF.
 This allows precise definition of User Plane topology.

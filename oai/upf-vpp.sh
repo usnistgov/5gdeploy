@@ -1,14 +1,5 @@
-#!/bin/bash
-set -euo pipefail
-
-msg() {
-  echo -ne "\e[35m[5gdeploy] \e[94m"
-  echo -n "$*"
-  echo -e "\e[0m"
-}
-
-msg Listing IP addresses
-ip addr
+msg Listing post-renaming IP addresses
+ip addr list up
 
 msg Showing etc/init.conf
 cat etc/init.conf

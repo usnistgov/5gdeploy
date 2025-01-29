@@ -1,6 +1,9 @@
 import path from "node:path";
 
 import stringify from "json-stringify-deterministic";
+import map from "obliterator/map.js";
+import * as shlex from "shlex";
+import { sortBy } from "sort-by-typescript";
 
 import { compose, http2Port, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, N } from "../types/mod.js";
@@ -17,29 +20,35 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIO
   const s = ctx.defineService(ct, image, ve.nets);
   compose.annotate(s, "cpus", Math.max(2, opts["oai-upf-workers"]));
   s.privileged = true;
-  s.command = ["/bin/bash", "/upf-vpp.sh"];
-  await ctx.writeFile("oai-upf-vpp.sh", file_io.write.copyFrom(path.join(import.meta.dirname, "upf-vpp.sh")), {
-    s, target: "/upf-vpp.sh",
-  });
-  ve.assignTo(s);
+  const commandsEarly = [...compose.renameNetifs(s, { disableTxOffload: false })];
+  const env: Env = {};
+  ve.assignTo(s, env);
 
-  ctx.finalize.push(() => {
+  ctx.finalize.push(async () => {
     const cpuset = s.cpuset ? parseCpuset(s.cpuset) : [0];
-    s.environment.VPP_MAIN_CORE = `${cpuset.at(-1)}`;
-    s.environment.VPP_CORE_WORKER = `${cpuset[0]}`;
+    env.VPP_MAIN_CORE = cpuset.at(-1)!;
+    env.VPP_CORE_WORKER = cpuset[0]!;
 
     if (opts["oai-cn5g-nrf"]) {
-      Object.assign(s.environment, {
-        REGISTER_NRF: "yes",
-        NRF_IP_ADDR: compose.getIP(ctx.c, "nrf", "cp"),
-        NRF_PORT: `${http2Port}`,
-        HTTP_VERSION: "2",
-      });
+      env.REGISTER_NRF = "yes";
+      env.NRF_IP_ADDR = compose.getIP(ctx.c, "nrf", "cp");
+      env.NRF_PORT = http2Port;
+      env.HTTP_VERSION = 2;
     } else {
-      s.environment.REGISTER_NRF = "no";
+      env.REGISTER_NRF = "no";
     }
+
+    await compose.setCommandsFile(ctx, s, [
+      ...commandsEarly,
+      ...map(Object.entries(env).toSorted(sortBy("0")), ([k, v]) => `export ${k}=${shlex.quote(`${v}`)}`),
+      "msg Invoking entrypoint.sh",
+      "/openair-upf/bin/entrypoint.sh true",
+      await file_io.readText(path.join(import.meta.dirname, "upf-vpp.sh"), { once: true }),
+    ], { filename: `up-cfg/${ct}.sh` });
   });
 }
+
+type Env = Record<string, string | number>;
 
 interface VppIface {
   type: `N${4 | 6 | 3 | 9}`;
@@ -108,9 +117,9 @@ class VppEnv {
     }
   }
 
-  public assignTo(s: ComposeService): void {
+  public assignTo(s: ComposeService, env: Env): void {
     const [dnai] = makeDnaiFqdn(this.upf, this.plmn);
-    Object.assign(s.environment, {
+    Object.assign(env, {
       NAME: dnai,
       MCC: this.plmn.mcc,
       MNC: this.plmn.mnc,
@@ -127,9 +136,9 @@ class VppEnv {
 
     for (const [i, { intf, ...rest }] of this.ifaces.entries()) {
       const prefix = `IF_${1 + i}_`;
-      s.environment[`${prefix}IP`] = compose.getIP(s, intf);
+      env[`${prefix}IP`] = compose.getIP(s, intf);
       for (const [k, v] of Object.entries(rest)) {
-        s.environment[`${prefix}${k.toUpperCase()}`] = v;
+        env[`${prefix}${k.toUpperCase()}`] = v;
       }
     }
   }

@@ -94,7 +94,7 @@ abstract class CN5GBuilder {
 
   protected makeUPFInfo(peers: netdef.UPFPeers): CN5G.upf.UPFInfo {
     return {
-      sNssaiUpfInfoList: makeSUIL(this.ctx.network, peers),
+      sNssaiUpfInfoList: makeSUIL(this.ctx.network, peers, { withDnai: this.opts["oai-cn5g-dnai"] }),
     };
   }
 }
@@ -224,21 +224,26 @@ class CPBuilder extends CN5GBuilder {
     const s = this.ctx.c.services.smf!;
     const c = this.c.smf!;
 
-    const upfTpl = c.upfs[0]!;
     c.upfs = this.ctx.network.upfs.map((upf): CN5G.smf.UPF => {
-      const upfService = this.ctx.c.services[upf.name]!;
-      const [,host] = makeDnaiFqdn(upf, this.plmn);
-      s.extra_hosts[host] = compose.getIP(upfService, "n4");
-      const upfCfg: CN5G.smf.UPF = { ...upfTpl, host };
+      const n4 = compose.getIP(this.ctx.c, upf.name, "n4");
+      const [,fqdn] = makeDnaiFqdn(upf, this.plmn);
+      s.extra_hosts[fqdn] = n4;
+      const smfUpf: CN5G.smf.UPF = {
+        host: this.ctx.c.services[upf.name]!.image.includes("upf-vpp:") ? fqdn : n4,
+        config: {
+          enable_usage_reporting: false,
+        },
+      };
+
       if (!this.opts["oai-cn5g-nrf"]) {
         const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
-        upfCfg.upf_info = this.makeUPFInfo(peers);
-        upfCfg.config = {
-          ...upfCfg.config,
-          n3_local_ipv4: compose.getIP(upfService, "n3"),
-        };
+        smfUpf.upf_info = this.makeUPFInfo(peers);
+        if (peers.N3.length > 0) {
+          smfUpf.config!.n3_local_ipv4 = compose.getIP(this.ctx.c, upf.name, "n3");
+        }
       }
-      return upfCfg;
+
+      return smfUpf;
     });
 
     c.smf_info.sNssaiSmfInfoList = Array.from(netdef.listNssai(this.ctx.network), (snssai): CN5G.smf.SNSSAIInfo => {

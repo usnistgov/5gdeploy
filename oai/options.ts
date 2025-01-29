@@ -18,7 +18,7 @@ export const oaiOptions = {
     type: "boolean",
   },
   "oai-cn5g-dnai": {
-    default: true,
+    default: false,
     desc: "enable DNAI in OAI-CN5G",
     group: "oai",
     type: "boolean",
