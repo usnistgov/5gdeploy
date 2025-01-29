@@ -365,6 +365,33 @@ export function* listDataPathPeers({ dataPaths }: N.Network, self: N.DataPathNod
     }
   }
 }
+export namespace listDataPathPeers {
+  /**
+   * Find UPFs adjacent to every gNB.
+   * @throws Error if gNBs are connected to different sets of UPFs.
+   */
+  export function ofGnbs(network: N.Network): Iterable<[peer: string, cost: number]> {
+    let peers: Map<string, number> | undefined;
+    for (const gnb of network.gnbs) {
+      if (!peers) {
+        peers = new Map();
+        for (const [upf, cost] of listDataPathPeers(network, gnb.name)) {
+          peers.set(upf as string, cost);
+        }
+        continue;
+      }
+
+      const myPeers = new Set<string>();
+      for (const [upf] of listDataPathPeers(network, gnb.name)) {
+        myPeers.add(upf as string);
+      }
+      assert(myPeers.size === peers.size && myPeers.isSubsetOf(peers),
+        `${gnb.name} has different N3 peers than other gNBs`);
+    }
+    assert(peers, "no gNB");
+    return peers;
+  }
+}
 
 /** N3,N9,N6 peers of a UPF. */
 export interface UPFPeers {

@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import consume from "obliterator/consume.js";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 import sql from "sql-tagged-template-literal";
@@ -271,31 +272,30 @@ class CPBuilder extends CN5GBuilder {
     const policyDecisions: CN5G.pcf.PolicyDecisions = {};
 
     const upg = new UPGraph(this.ctx.network);
-    for (const gnb of this.ctx.network.gnbs) { // eslint-disable-line no-unreachable-loop
-      for (const dn of this.ctx.network.dataNetworks) {
-        const upfPath = upg.computePath(gnb.name, dn);
-        if (!upfPath) {
-          continue;
-        }
-
-        const key = `${gnb.name}-${dn.dnn}`;
-        trafficRules[key] = {
-          routeToLocs: Array.from(
-            ["access", ...upfPath, dn.dnn],
-            (dnai) => ({ dnai }),
-          ),
-        };
-        pccRules[key] = {
-          flowInfos: [{ flowDescription: "permit out ip from any to assigned" }],
-          precedence: 10,
-          refTcData: [key],
-        };
-        policyDecisions[key] = {
-          dnn: dn.dnn,
-          pcc_rules: [key],
-        };
+    // check that all gNBs have the same N3 peers
+    consume(netdef.listDataPathPeers.ofGnbs(this.ctx.network)[Symbol.iterator]());
+    for (const dn of this.ctx.network.dataNetworks) {
+      const upfPath = upg.computePath(this.ctx.network.gnbs[0]!.name, dn);
+      if (!upfPath) {
+        continue;
       }
-      break; // TODO distinguish multiple gNBs
+
+      const key = `dn-${dn.dnn}`;
+      trafficRules[key] = {
+        routeToLocs: Array.from(
+          ["access", ...upfPath, dn.dnn],
+          (dnai) => ({ dnai }),
+        ),
+      };
+      pccRules[key] = {
+        flowInfos: [{ flowDescription: "permit out ip from any to assigned" }],
+        precedence: 10,
+        refTcData: [key],
+      };
+      policyDecisions[key] = {
+        dnn: dn.dnn,
+        pcc_rules: [key],
+      };
     }
 
     await this.ctx.writeFile("cp-cfg/pcf-traffic-rules.yaml", trafficRules, {

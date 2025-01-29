@@ -1,11 +1,11 @@
 import stringify from "json-stringify-deterministic";
-import { DefaultMap, set as set_helpers } from "mnemonist";
+import { DefaultMap } from "mnemonist";
 import map from "obliterator/map.js";
 import * as shlex from "shlex";
 
 import { compose, http2Port, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, F5, N } from "../types/mod.js";
-import { assert, hexPad } from "../util/mod.js";
+import { hexPad } from "../util/mod.js";
 import * as f5_conf from "./conf.js";
 import type { F5Opts } from "./options.js";
 import type * as W from "./webconsole-openapi/models/index.js";
@@ -314,24 +314,13 @@ class F5CPBuilder {
       links: [],
     };
 
-    let gnbPeers: [name: string, peers: Set<string>] | undefined;
-    for (const gnb of network.gnbs) {
-      const peers = new Set<string>();
-      for (const [upfName] of netdef.listDataPathPeers(network, gnb.name)) {
-        assert(typeof upfName === "string");
-        peers.add(upfName);
-      }
-      gnbPeers ??= [gnb.name, peers];
-      if (set_helpers.intersectionSize(gnbPeers[1], peers) !== peers.size) {
-        throw new Error(`${gnb.name} peer list differs from ${gnbPeers[0]} peer list, not supported by free5GC SMF`);
-      }
-    }
-    if (gnbPeers) {
-      upi.upNodes.GNB = {
-        type: "AN",
-      } satisfies F5.smf.UPNodeAN;
-      upi.links.push(...map(gnbPeers[1], (upfName): F5.smf.UPLink => ({ A: "GNB", B: upfName })));
-    }
+    upi.upNodes.GNB = {
+      type: "AN",
+    } satisfies F5.smf.UPNodeAN;
+    upi.links.push(...map(
+      netdef.listDataPathPeers.ofGnbs(network),
+      ([upf]): F5.smf.UPLink => ({ A: "GNB", B: upf }),
+    ));
 
     for (const upf of network.upfs) {
       const n4 = compose.getIP(this.ctx.c, upf.name, "n4");
