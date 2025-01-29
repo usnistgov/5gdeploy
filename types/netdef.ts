@@ -112,11 +112,8 @@ export interface SubscriberSNSSAI {
 
 /** gNodeB definition. */
 export interface GNB {
-  /**
-   * Short name.
-   * @defaultValue sequentially assigned "gnbI"
-   */
-  name?: string;
+  /** Short name. */
+  name: string;
 
   /**
    * NR Cell Identity (gNB ID + cell ID, 36 bits, 9 hexadecimal digits).

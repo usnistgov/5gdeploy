@@ -315,7 +315,7 @@ class F5CPBuilder {
     };
 
     let gnbPeers: [name: string, peers: Set<string>] | undefined;
-    for (const gnb of netdef.listGnbs(network)) {
+    for (const gnb of network.gnbs) {
       const peers = new Set<string>();
       for (const [upfName] of netdef.listDataPathPeers(network, gnb.name)) {
         assert(typeof upfName === "string");

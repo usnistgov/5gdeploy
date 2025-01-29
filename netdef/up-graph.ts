@@ -3,7 +3,6 @@ import { dijkstra } from "graphology-shortest-path";
 
 import type { N } from "../types/mod.js";
 import { findByName } from "../util/mod.js";
-import { listGnbs } from "./helpers.js";
 
 /**
  * User Plane topology in a graph data structure.
@@ -45,7 +44,7 @@ export namespace UPGraph {
 function buildGraph(network: N.Network): UPGraph.Graph {
   const g: UPGraph.Graph = new UndirectedGraph({ allowSelfLoops: false });
 
-  for (const gnb of listGnbs(network)) {
+  for (const gnb of network.gnbs) {
     g.addNode(gnb.name, {
       kind: "gNB",
     });

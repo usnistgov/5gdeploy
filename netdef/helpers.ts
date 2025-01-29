@@ -132,7 +132,7 @@ export function listSubscribers(network: N.Network, { expandCount = true, gnb }:
     dnBySNSSAI.get(snssai).push(dnn);
   }
   const dfltSubscribedNSSAI: N.SubscriberSNSSAI[] = Array.from(dnBySNSSAI, ([snssai, dnns]) => ({ snssai, dnns }));
-  const allGNBs = listGnbs(network).map((gnb) => gnb.name);
+  const allGNBs = network.gnbs.map((gnb) => gnb.name);
 
   const list: Subscriber[] = [];
   for (const subscriber of network.subscribers) {
@@ -206,9 +206,9 @@ export namespace listSubscribers {
 }
 
 /** Information about a gNB. */
-export interface GNB extends Required<N.GNB> {
-  nci: string & GNB.NCI;
-}
+export type GNB = N.GNB & {
+  nci: GNB.NCI;
+};
 export namespace GNB {
   /** NR Cell Identity components. */
   export interface NCI {
@@ -222,11 +222,10 @@ export namespace GNB {
 export function listGnbs({ gnbs, gnbIdLength }: N.Network): GNB[] {
   return gnbs.map((gnb, i) => {
     const {
-      name = `gnb${i}`,
       nci = hexPad(((1 + i) << (36 - gnbIdLength)) | 0xF, 9),
     } = gnb;
     return {
-      name,
+      ...gnb,
       nci: Object.assign(nci, splitNCI(nci, gnbIdLength)),
     };
   });

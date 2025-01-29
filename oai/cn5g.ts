@@ -271,7 +271,7 @@ class CPBuilder extends CN5GBuilder {
     const policyDecisions: CN5G.pcf.PolicyDecisions = {};
 
     const upg = new UPGraph(this.ctx.network);
-    for (const gnb of netdef.listGnbs(this.ctx.network)) { // eslint-disable-line no-unreachable-loop
+    for (const gnb of this.ctx.network.gnbs) { // eslint-disable-line no-unreachable-loop
       for (const dn of this.ctx.network.dataNetworks) {
         const upfPath = upg.computePath(gnb.name, dn);
         if (!upfPath) {
