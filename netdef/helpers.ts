@@ -5,7 +5,7 @@ import map from "obliterator/map.js";
 import type { RequiredDeep, SetRequired } from "type-fest";
 import { arr2hex } from "uint8-util";
 
-import { type N } from "../types/mod.js";
+import type { N } from "../types/mod.js";
 import netdefSchema from "../types/netdef.schema.json";
 import { assert, decPad, findByName, hexPad, makeSchemaValidator } from "../util/mod.js";
 
@@ -390,9 +390,10 @@ export function gatherUPFPeers(network: N.Network, upf: N.UPF): UPFPeers {
     N6IPv4: [],
     N6IPv6: [],
   };
+  let gnbs: GNB[] | undefined;
   for (const [peer, cost] of listDataPathPeers(network, upf.name)) {
     if (typeof peer === "string") {
-      const gnb = findByName(peer, listGnbs(network));
+      const gnb = findByName(peer, gnbs ??= listGnbs(network));
       if (gnb) {
         peers.N3.push(gnb);
         continue;

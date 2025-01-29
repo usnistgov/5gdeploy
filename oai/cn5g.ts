@@ -4,6 +4,7 @@ import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 import sql from "sql-tagged-template-literal";
 
+import { UPGraph } from "../netdef/mod.js";
 import { compose, http2Port, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { CN5G, ComposeFile, ComposeService, N } from "../types/mod.js";
 import { assert, file_io, hexPad } from "../util/mod.js";
@@ -265,47 +266,37 @@ class CPBuilder extends CN5GBuilder {
     policy.policy_decisions_path = "/openair-pcf/etc/policy_decisions";
     delete policy.qos_data_path;
 
-    // These hard-coded values are compatible with scenario/20230510 +dn-in-cloud=1 +edges=1 +dn-per-edge=1 +sub-per-edge=2
-    // TODO delete hard-coded values
-
     const trafficRules: CN5G.pcf.TrafficRules = {};
-    trafficRules["cloud-scenario"] = {
-      routeToLocs: [
-        { dnai: "access" },
-        { dnai: "upf1" },
-        { dnai: "upf0" },
-        { dnai: "cloud" },
-      ],
-    };
-    trafficRules["edge1-scenario"] = {
-      routeToLocs: [
-        { dnai: "access" },
-        { dnai: "upf1" },
-        { dnai: "edge1" },
-      ],
-    };
-
     const pccRules: CN5G.pcf.PccRules = {};
-    pccRules["cloud-rule"] = {
-      flowInfos: [{ flowDescription: "permit out ip from any to assigned" }],
-      precedence: 10,
-      refTcData: ["cloud-scenario"],
-    };
-    pccRules["edge1-rule"] = {
-      flowInfos: [{ flowDescription: "permit out ip from any to assigned" }],
-      precedence: 10,
-      refTcData: ["edge1-scenario"],
-    };
-
     const policyDecisions: CN5G.pcf.PolicyDecisions = {};
-    policyDecisions["decision-cloud"] = {
-      dnn: "cloud",
-      pcc_rules: ["cloud-rule"],
-    };
-    policyDecisions["decision-edge1"] = {
-      dnn: "edge1",
-      pcc_rules: ["edge1-rule"],
-    };
+
+    const upg = new UPGraph(this.ctx.network);
+    for (const gnb of netdef.listGnbs(this.ctx.network)) { // eslint-disable-line no-unreachable-loop
+      for (const dn of this.ctx.network.dataNetworks) {
+        const upfPath = upg.computePath(gnb.name, dn);
+        if (!upfPath) {
+          continue;
+        }
+
+        const key = `${gnb.name}-${dn.dnn}`;
+        trafficRules[key] = {
+          routeToLocs: Array.from(
+            ["access", ...upfPath, dn.dnn],
+            (dnai) => ({ dnai }),
+          ),
+        };
+        pccRules[key] = {
+          flowInfos: [{ flowDescription: "permit out ip from any to assigned" }],
+          precedence: 10,
+          refTcData: [key],
+        };
+        policyDecisions[key] = {
+          dnn: dn.dnn,
+          pcc_rules: [key],
+        };
+      }
+      break; // TODO distinguish multiple gNBs
+    }
 
     await this.ctx.writeFile("cp-cfg/pcf-traffic-rules.yaml", trafficRules, {
       s, target: path.join(policy.traffic_rules_path, "r.yaml"),
