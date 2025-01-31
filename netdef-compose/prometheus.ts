@@ -6,24 +6,22 @@ import type { OverrideProperties } from "type-fest";
 
 import * as compose from "../compose/mod.js";
 import type { ComposeService, process_exporter, prom } from "../types/mod.js";
-import { file_io, YargsDefaults, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { file_io, YargsDefaults, YargsGroup, type YargsInfer } from "../util/mod.js";
 import type { NetDefComposeContext } from "./context.js";
 
 /** Yargs options definition for Prometheus. */
-export const prometheusOptions = {
+export const prometheusOptions = YargsGroup("Measurements options:", {
   prometheus: {
     default: true,
     desc: "add Prometheus and Grafana containers",
-    group: "measurements",
     type: "boolean",
   },
   "prometheus-scrape-interval": {
     default: 15,
     desc: "Prometheus scrape interval (seconds)",
-    group: "measurements",
     type: "number",
   },
-} as const satisfies YargsOptions;
+});
 
 class PromBuilder {
   constructor(

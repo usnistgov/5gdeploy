@@ -24,6 +24,14 @@ export function YargsDefaults<T extends YargsOptions>(opts: T): YargsInfer<T> {
   return yargs([]).option(opts).parseSync() as any;
 }
 
+/** Place each YargsOpt into a group. */
+export function YargsGroup<T extends YargsOptions>(group: string, opts: T): T {
+  for (const opt of Object.values(opts)) {
+    opt.group = group;
+  }
+  return opts;
+}
+
 /** Define YargsOpt that accepts integer scalar in a range. */
 export function YargsIntRange<O extends YargsIntRange.Options>(opts: O) {
   const { min = 1, max, desc = "", ...rest } = opts;

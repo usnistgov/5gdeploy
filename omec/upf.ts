@@ -1,19 +1,18 @@
 import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { BESS, N } from "../types/mod.js";
-import { type YargsInfer, YargsIntRange, type YargsOptions } from "../util/mod.js";
+import { YargsGroup, type YargsInfer, YargsIntRange } from "../util/mod.js";
 
 const pfcpifaceDockerImage = "5gdeploy.localhost/omec-upf-pfcpiface";
 const bessDockerImage = "5gdeploy.localhost/omec-upf-bess";
 
 /** Aether BESS-UPF options. */
-export const bessOptions = {
+export const bessOptions = YargsGroup("BESS options:", {
   "bess-workers": YargsIntRange({
     default: 2,
     desc: "BESS UPF workers",
-    group: "bess",
     max: 8,
   }),
-} as const satisfies YargsOptions;
+});
 
 /** Build Aether BESS-UPF. */
 export async function bessUP(

@@ -2,17 +2,16 @@ import type { PartialDeep } from "type-fest";
 
 import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { UERANSIM } from "../types/mod.js";
-import type { YargsInfer, YargsOptions } from "../util/mod.js";
+import { YargsGroup, type YargsInfer } from "../util/mod.js";
 
 /** Yargs options definition for UERANSIM. */
-export const ueransimOptions = {
+export const ueransimOptions = YargsGroup("UERANSIM options:", {
   "ueransim-single-ue": {
     default: false,
     desc: "run a separate UERANSIM container for each UE",
-    group: "ueransim",
     type: "boolean",
   },
-} as const satisfies YargsOptions;
+});
 export type UeransimOpts = YargsInfer<typeof ueransimOptions>;
 
 export const ueransimDockerImage = "5gdeploy.localhost/ueransim";
