@@ -74,7 +74,7 @@ class VppEnv {
   public readonly ifaces: VppIface[] = [{ type: "N4", intf: "n4" }];
 
   private buildNetsIfaces(): void {
-    const hasDnai = this.opts["oai-cn5g-dnai"];
+    const hasDnai = this.opts["oai-cn5g-pcf"];
 
     if (this.peers.N3.length > 0) {
       this.nets.push("n3");
@@ -126,7 +126,7 @@ class VppEnv {
       REALM: makeDnaiFqdn.realm,
       VPP_PLUGIN_PATH: "/usr/lib/x86_64-linux-gnu/vpp_plugins/",
       PROFILE_SUIL: stringify(makeSUIL(
-        this.network, this.peers, { sdFilled: true, withDnai: this.opts["oai-cn5g-dnai"] },
+        this.network, this.peers, { sdFilled: true, withDnai: this.opts["oai-cn5g-pcf"] },
       )),
       SNSSAI_SST: 255, // overwritten by PROFILE_SUIL
       SNSSAI_SD: "000000", // overwritten by PROFILE_SUIL

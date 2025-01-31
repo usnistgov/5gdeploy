@@ -20,9 +20,11 @@ abstract class CN5GBuilder {
       protected readonly opts: OAIOpts,
   ) {
     this.plmn = netdef.splitPLMN(ctx.network.plmn);
+    this.hasPCF = opts["oai-cn5g-pcf"];
   }
 
   protected readonly plmn: netdef.PLMN;
+  protected readonly hasPCF: boolean;
   protected c!: CN5G.Config;
 
   protected async loadTemplateConfig(filename: string): Promise<void> {
@@ -94,7 +96,7 @@ abstract class CN5GBuilder {
 
   protected makeUPFInfo(peers: netdef.UPFPeers): CN5G.upf.UPFInfo {
     return {
-      sNssaiUpfInfoList: makeSUIL(this.ctx.network, peers, { withDnai: this.opts["oai-cn5g-dnai"] }),
+      sNssaiUpfInfoList: makeSUIL(this.ctx.network, peers, { withDnai: this.hasPCF }),
     };
   }
 }
@@ -102,7 +104,7 @@ abstract class CN5GBuilder {
 class CPBuilder extends CN5GBuilder {
   public async build(): Promise<void> {
     await this.loadTemplateConfig("ulcl_config.yaml");
-    if (!this.opts["oai-cn5g-dnai"]) {
+    if (!this.hasPCF) {
       delete this.c.nfs.pcf;
       delete this.c.pcf;
     }
@@ -116,7 +118,7 @@ class CPBuilder extends CN5GBuilder {
     this.updateConfigDNNs();
     this.updateConfigAMF();
     this.updateConfigSMF();
-    if (this.opts["oai-cn5g-dnai"]) {
+    if (this.hasPCF) {
       await this.buildPCF();
     }
     await this.ctx.writeFile(configPath, this.c);
@@ -223,6 +225,8 @@ class CPBuilder extends CN5GBuilder {
 
     const s = this.ctx.c.services.smf!;
     const c = this.c.smf!;
+
+    c.support_features.use_local_pcc_rules = !this.hasPCF;
 
     c.upfs = this.ctx.network.upfs.map((upf): CN5G.smf.UPF => {
       const n4 = compose.getIP(this.ctx.c, upf.name, "n4");

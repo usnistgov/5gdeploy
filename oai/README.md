@@ -22,14 +22,15 @@ This package adds several OAI-specific options to the **netdef-compose** command
 
 `--oai-cn5g-tag` specifies Docker image tag for core network functions.
 `--oai-ran-tag` specifies Docker image tag for RAN functions.
-The default is gathered from oai-cn5g-fed repository checkout.
+The default is extracting from oai-cn5g-fed repository checkout.
 
-`--oai-cn5g-nrf=false` disables Network Repository Function (NRF) globally.
+`--oai-cn5g-nrf=false` disables Network Repository Function (NRF).
 The default is enabling NRF, which includes UPF discovery by SMF.
 
-`--oai-cn5g-dnai=true` enables Policy Control Function (PCF) that supplies Data Network Access Identifier (DNAI) information to the SMF.
-This allows precise definition of User Plane topology.
-It is only compatible with OAI-CN5G-UPF-VPP.
+`--oai-cn5g-pcf=true` enables Policy Control Function (PCF).
+PCF supplies Data Network Access Identifier (DNAI) information to the SMF, which allows precise definition of User Plane topology.
+This is only compatible with OAI-CN5G-UPF-VPP.
+The default is disabling PCF and DNAI.
 
 `--oai-cn5g-nwdaf=true` enables Network Data Analytics Function (NWDAF).
 Docker images must be built manually with `./docker/build.sh oai-nwdaf`.

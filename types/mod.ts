@@ -16,8 +16,8 @@ export * as N from "./netdef.js";
 /** Open5GS related types. */
 export * as O5G from "./open5gs.js";
 
-/** OpenAirInterface related types. */
-export * as OAI from "./oai.js";
+/** OpenAirInterface5G related types. */
+export * as OAI5G from "./oai5g.js";
 
 /** Open Mobile Evolved Core related types. */
 export * as OMEC from "./omec.js";

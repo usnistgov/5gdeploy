@@ -95,10 +95,16 @@ export namespace amf {
 
 export namespace smf {
   export interface Config {
+    support_features: SupportFeatures;
     upfs: UPF[];
     smf_info: SMFInfo;
     local_subscription_infos: LocalSubscription[];
     [k: string]: unknown;
+  }
+
+  export interface SupportFeatures {
+    use_local_subscription_info: boolean;
+    use_local_pcc_rules: boolean;
   }
 
   export interface UPF {

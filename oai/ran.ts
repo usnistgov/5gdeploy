@@ -2,7 +2,7 @@ import * as shlex from "shlex";
 
 import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import * as UHD from "../srsran/uhd.js";
-import type { ComposeService, OAI } from "../types/mod.js";
+import type { ComposeService, OAI5G } from "../types/mod.js";
 import { assert } from "../util/mod.js";
 import * as oai_common from "./common.js";
 import type { OAIOpts } from "./options.js";
@@ -31,7 +31,7 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, gnb: netdef.GNB
   compose.annotate(s, "cpus", 4);
   s.privileged = true;
 
-  const c = await oai_common.loadLibconf<OAI.gnb.Config>(opts["oai-gnb-conf"], gnb.name);
+  const c = await oai_common.loadLibconf<OAI5G.gnb.Config>(opts["oai-gnb-conf"], gnb.name);
   c.Active_gNBs = [gnb.name];
 
   assert(c.gNBs.length === 1);
@@ -111,7 +111,7 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
   // prevent IPv6 traffic from appearing on the PDU session netif.
   s.sysctls["net.ipv6.conf.default.disable_ipv6"] = 1;
 
-  const c = await oai_common.loadLibconf<OAI.ue.Config>(opts["oai-ue-conf"], ct);
+  const c = await oai_common.loadLibconf<OAI5G.ue.Config>(opts["oai-ue-conf"], ct);
   c.uicc0 = {
     imsi: sub.supi,
     nmc_size: netdef.splitPLMN(ctx.network.plmn).mnc.length,

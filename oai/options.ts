@@ -6,7 +6,7 @@ import * as oai_common from "./common.js";
 /** Yargs options definition for OAI. */
 export const oaiOptions = {
   "oai-cn5g-tag": {
-    defaultDescription: "gather from docker-compose-slicing-basic-nrf.yaml",
+    defaultDescription: "extract from oai-cn5g-fed repository checkout",
     desc: "OAI-CN5G Docker image tag",
     group: "oai",
     type: "string",
@@ -17,9 +17,9 @@ export const oaiOptions = {
     group: "oai",
     type: "boolean",
   },
-  "oai-cn5g-dnai": {
+  "oai-cn5g-pcf": {
     default: false,
-    desc: "enable DNAI in OAI-CN5G",
+    desc: "enable PCF in OAI-CN5G",
     group: "oai",
     type: "boolean",
   },
@@ -31,7 +31,7 @@ export const oaiOptions = {
   },
   "oai-upf-workers": {
     default: 2,
-    desc: "number of worker threads in OAI-CN5G-UPF or OAI-UPF-VPP",
+    desc: "number of worker threads in OAI-CN5G-UPF or OAI-CN5G-UPF-VPP",
     group: "oai",
     type: "number",
   },
@@ -42,7 +42,7 @@ export const oaiOptions = {
     type: "boolean",
   },
   "oai-ran-tag": {
-    defaultDescription: "gather from docker-compose-slicing-ransim.yaml",
+    defaultDescription: "extract from oai-cn5g-fed repository checkout",
     desc: "OpenAirInterface5G Docker image tag",
     group: "oai",
     type: "string",
