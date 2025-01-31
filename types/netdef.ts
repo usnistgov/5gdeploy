@@ -191,7 +191,7 @@ export interface DataNetwork extends DataNetworkID {
   type: DataNetworkType;
 
   /**
-   * IP subnet (CIDR format).
+   * UE IP subnet (CIDR format).
    *
    * @remarks
    * IPv4 example: `10.5.5.0/24`

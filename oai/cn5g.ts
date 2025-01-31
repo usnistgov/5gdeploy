@@ -20,27 +20,29 @@ abstract class CN5GBuilder {
       protected readonly opts: OAIOpts,
   ) {
     this.plmn = netdef.splitPLMN(ctx.network.plmn);
+    this.hasNRF = opts["oai-cn5g-nrf"];
     this.hasPCF = opts["oai-cn5g-pcf"];
   }
 
   protected readonly plmn: netdef.PLMN;
+  protected readonly hasNRF: boolean;
   protected readonly hasPCF: boolean;
   protected c!: CN5G.Config;
 
   protected async loadTemplateConfig(filename: string): Promise<void> {
     this.c = await loadCN5G(filename);
-    this.c.register_nf.general = this.opts["oai-cn5g-nrf"];
-    if (!this.c.register_nf.general) {
+    this.c.register_nf.general = this.hasNRF;
+    if (!this.hasNRF) {
       delete this.c.nfs.nrf;
     }
   }
 
-  protected async defineService(ct: string, nf: string, c: CN5G.NF, db: boolean, configPath: string): Promise<ComposeService> {
+  protected async defineService(ct: string, nf: string, nfc: CN5G.NF, db: boolean, configPath: string): Promise<ComposeService> {
     const nets: Array<[net: string, intf: CN5G.NF.Interface | undefined]> = [];
     if (db) {
       nets.push(["db", undefined]);
     }
-    for (const [key, intf] of Object.entries(c)) {
+    for (const [key, intf] of Object.entries(nfc)) {
       if (key === "sbi") {
         intf.port = http2Port;
         nets.push(["cp", intf]);
@@ -67,7 +69,7 @@ abstract class CN5GBuilder {
       read_only: true,
     });
 
-    c.host = compose.getIP(s, "cp");
+    nfc.host = compose.getIP(s, "cp");
 
     compose.setCommands(s, this.makeExecCommands(s, nf));
     return s;
@@ -111,8 +113,8 @@ class CPBuilder extends CN5GBuilder {
 
     await this.buildSQL();
     const configPath = "cp-cfg/config.yaml";
-    for (const [nf, c] of Object.entries(this.c.nfs)) {
-      await this.defineService(nf, nf, c, true, configPath);
+    for (const [nf, nfc] of Object.entries(this.c.nfs)) {
+      await this.defineService(nf, nf, nfc, true, configPath);
     }
 
     this.updateConfigDNNs();
@@ -126,7 +128,7 @@ class CPBuilder extends CN5GBuilder {
 
   private async buildSQL(): Promise<void> {
     const s = compose.mysql.define(this.ctx, "cp-sql");
-    const dbc = this.c.database;
+    const dbc = this.c.database!;
     dbc.host = compose.getIP(s, "db");
     dbc.user = "oai";
     dbc.password = "oai";
@@ -239,7 +241,7 @@ class CPBuilder extends CN5GBuilder {
         },
       };
 
-      if (!this.opts["oai-cn5g-nrf"]) {
+      if (!this.hasNRF) {
         const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
         smfUpf.upf_info = this.makeUPFInfo(peers);
         if (peers.N3.length > 0) {
@@ -437,26 +439,33 @@ export async function oaiCP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<v
 }
 
 class UPBuilder extends CN5GBuilder {
+  private useBPF = false;
+
   public async build(upf: N.UPF): Promise<void> {
+    this.useBPF = this.opts["oai-upf-bpf"];
+
     await this.loadTemplateConfig("basic_nrf_config.yaml");
-    for (const [nf, c] of Object.entries(this.c.nfs)) {
+    delete this.c.database;
+    delete this.c.amf;
+    delete this.c.smf;
+    for (const [nf, nfc] of Object.entries(this.c.nfs)) {
+      // if NRF is diabled, c.nfs.nrf is deleted by loadTemplateConfig
       if (["nrf", "smf", "upf"].includes(nf)) {
-        c.sbi.port = http2Port;
+        nfc.sbi.port = http2Port;
       } else {
         delete this.c.nfs[nf as CN5G.NFName]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
       }
     }
-    delete this.c.amf;
-    delete this.c.smf;
 
     const ct = upf.name;
     const configPath = `up-cfg/${ct}.yaml`;
     const s = await this.defineService(ct, "upf", this.c.nfs.upf!, false, configPath);
     compose.annotate(s, "cpus", this.opts["oai-upf-workers"]);
     s.devices.push("/dev/net/tun:/dev/net/tun");
-    if (this.opts["oai-upf-bpf"]) {
+    if (this.useBPF) {
       s.cap_add.push("BPF", "SYS_ADMIN", "SYS_RESOURCE");
     }
+    s.image = "localhost/oai-cn5g-upf";
 
     const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
     assert(peers.N9.length === 0, "N9 not supported");
@@ -469,19 +478,28 @@ class UPBuilder extends CN5GBuilder {
   }
 
   private updateConfigUPF(peers: netdef.UPFPeers): void {
-    if (this.c.nfs.nrf) {
-      this.c.nfs.nrf.host = compose.getIP(this.ctx.c, "nrf", "cp");
+    if (this.hasNRF) {
+      this.c.nfs.nrf!.host = compose.getIP(this.ctx.c, "nrf", "cp");
     }
-    this.c.upf!.smfs = Array.from(
+
+    const c = this.c.upf!;
+    c.smfs = Array.from(
       compose.listByNf(this.ctx.c, "smf"),
-      (smf) => ({ host: compose.getIP(smf, "n4") }),
+      (smf, i) => {
+        if (i === 0) {
+          this.c.nfs.smf!.host = compose.getIP(smf, "cp");
+        }
+        return { host: compose.getIP(smf, "n4") };
+      },
     );
-    this.c.nfs.smf!.host = this.c.upf!.smfs[0]!.host;
 
     this.updateConfigDNNs();
-    this.c.upf!.support_features.enable_bpf_datapath = this.opts["oai-upf-bpf"];
-    this.c.upf!.support_features.enable_snat = false;
-    this.c.upf!.upf_info = this.makeUPFInfo(peers);
+    c.support_features.enable_bpf_datapath = this.useBPF;
+    c.support_features.enable_snat = false;
+    if (peers.N6IPv4.length > 0) {
+      c.remote_n6_gw = compose.getIP(this.ctx.c, `dn_${peers.N6IPv4[0]!.dnn}`, "n6");
+    }
+    c.upf_info = this.makeUPFInfo(peers);
   }
 }
 

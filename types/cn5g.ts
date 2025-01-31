@@ -8,7 +8,7 @@ export interface Config {
   log_level: GeneralRecord<NFName, LogLevel>;
   register_nf: GeneralRecord<NFName, boolean>;
   nfs: Partial<Record<NFName, NF>>;
-  database: Database;
+  database?: Database;
   snssais: SNSSAI[];
   dnns: DNN[];
   amf?: amf.Config;
@@ -95,14 +95,14 @@ export namespace amf {
 
 export namespace smf {
   export interface Config {
-    support_features: SupportFeatures;
+    support_features: Features;
     upfs: UPF[];
     smf_info: SMFInfo;
     local_subscription_infos: LocalSubscription[];
     [k: string]: unknown;
   }
 
-  export interface SupportFeatures {
+  export interface Features {
     use_local_subscription_info: boolean;
     use_local_pcc_rules: boolean;
   }
