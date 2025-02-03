@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { execa } from "execa";
-import * as yaml from "js-yaml";
 import stringify from "json-stringify-deterministic";
 
 import { compose, netdef } from "../netdef-compose/mod.js";
@@ -80,31 +79,6 @@ async function saveLibconf(this: unknown): Promise<string> {
     stderr: "inherit",
   });
   return subprocess.stdout;
-}
-
-/** Load OAI CN5G config.yaml file. */
-export async function loadCN5G(filename: string): Promise<CN5G.Config> {
-  const c = await file_io.readYAML(path.resolve(composePath, "conf", filename), {
-    once: true,
-    schema: yaml.FAILSAFE_SCHEMA,
-  });
-  return JSON.parse(JSON.stringify(c, (key, value) => {
-    switch (value) {
-      case "true":
-      case "yes": {
-        return true;
-      }
-      case "false":
-      case "no": {
-        return false;
-      }
-    }
-    if (typeof value === "string" && /^\d+$/.test(value) &&
-        !["sd", "mcc", "mnc", "amf_region_id", "amf_set_id", "amf_pointer", "dnn"].includes(key)) {
-      return Number.parseInt(value, 10);
-    }
-    return value;
-  }));
 }
 
 /** Construct DNAI and FQDN/NWI for UPF or Data Network. */

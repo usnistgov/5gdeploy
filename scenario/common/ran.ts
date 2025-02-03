@@ -8,8 +8,8 @@ export function addUEsPerGNB(network: N.Network, firstSUPI: string, total: numbe
   const nGNBs = network.gnbs.length;
   assert(nGNBs >= 1);
   const gnbs = Array.from(network.gnbs, (gnb): [string, number] => [
-    gnb.name!,
-    network.subscribers.filter((sub) => sub.gnbs!.includes(gnb.name!)).reduce((cnt, sub) => cnt + sub.count!, 0),
+    gnb.name,
+    network.subscribers.filter((sub) => sub.gnbs!.includes(gnb.name)).reduce((cnt, sub) => cnt + sub.count!, 0),
   ]);
   gnbs.sort(sortBy("1", "0"));
 
