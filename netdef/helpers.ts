@@ -393,25 +393,47 @@ export namespace listDataPathPeers {
   }
 }
 
-/** N3,N9,N6 peers of a UPF. */
-export interface UPFPeers {
-  nets: string[];
-  N3: GNB[];
-  N9: N.UPF[];
-  N6Ethernet: UPFPeers.N6[];
-  N6IPv4: UPFPeers.N6[];
-  N6IPv6: UPFPeers.N6[];
+/** Information about a UPF. */
+export interface UPF extends N.UPF {
+  peers: UPF.Peers;
+  /** N4/N6/N3/N9 networks. */
+  nets: readonly string[];
 }
-export namespace UPFPeers {
-  export interface N6 extends DataNetwork {
+export namespace UPF {
+  export interface Peers {
+    N3: GNB[];
+    N9: N.UPF[];
+    N6Ethernet: N6Peer[];
+    N6IPv4: N6Peer[];
+    N6IPv6: N6Peer[];
+  }
+
+  export interface N6Peer extends DataNetwork {
     cost: number;
   }
 }
 
+/** List all UPFs. */
+export function listUpfs(network: N.Network): UPF[] {
+  return Array.from(network.upfs, (upf) => {
+    const peers = gatherUPFPeers(network, upf);
+    const nets = ["n4"];
+    if (peers.N6Ethernet.length + peers.N6IPv4.length + peers.N6IPv6.length > 0) {
+      nets.push("n6");
+    }
+    if (peers.N3.length > 0) {
+      nets.push("n3");
+    }
+    if (peers.N9.length > 0) {
+      nets.push("n9");
+    }
+    return { ...upf, peers, nets };
+  });
+}
+
 /** Gather N3,N9,N6 peers of a UPF. */
-export function gatherUPFPeers(network: N.Network, upf: N.UPF): UPFPeers {
-  const peers: UPFPeers = {
-    nets: [],
+function gatherUPFPeers(network: N.Network, upf: N.UPF): UPF.Peers {
+  const peers: UPF.Peers = {
     N3: [],
     N9: [],
     N6Ethernet: [],
@@ -439,16 +461,6 @@ export function gatherUPFPeers(network: N.Network, upf: N.UPF): UPFPeers {
 
     const dn = findDN(network, peer);
     peers[`N6${dn.type}`].push({ ...dn, cost });
-  }
-
-  if (peers.N6Ethernet.length + peers.N6IPv4.length + peers.N6IPv6.length > 0) {
-    peers.nets.push("n6");
-  }
-  if (peers.N3.length > 0) {
-    peers.nets.push("n3");
-  }
-  if (peers.N9.length > 0) {
-    peers.nets.push("n9");
   }
 
   return peers;

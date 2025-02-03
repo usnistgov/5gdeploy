@@ -164,13 +164,10 @@ class O5CPBuilder {
         pfcp: {
           server: [makeSockNode(s, "n4")],
           client: {
-            upf: Array.from(this.ctx.network.upfs, (upf): O5G.smf.PfcpUpf => {
-              const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
-              return {
-                address: compose.getIP(this.ctx.c, upf.name, "n4"),
-                dnn: Array.from([...peers.N6IPv4, ...peers.N6IPv6], ({ dnn }) => dnn),
-              };
-            }),
+            upf: Array.from(netdef.listUpfs(this.ctx.network), ({ name: ct, peers }): O5G.smf.PfcpUpf => ({
+              address: compose.getIP(this.ctx.c, ct, "n4"),
+              dnn: Array.from([...peers.N6IPv4, ...peers.N6IPv6], ({ dnn }) => dnn),
+            })),
           },
         },
         gtpu: { server: [makeSockNode(s, "n4")] },

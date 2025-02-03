@@ -322,7 +322,7 @@ class F5CPBuilder {
       ([upf]): F5.smf.UPLink => ({ A: "GNB", B: upf }),
     ));
 
-    for (const upf of network.upfs) {
+    for (const upf of netdef.listUpfs(network)) {
       const n4 = compose.getIP(this.ctx.c, upf.name, "n4");
       const node: F5.smf.UPNodeUPF = {
         type: "UPF",
@@ -342,8 +342,7 @@ class F5CPBuilder {
         node.sNssaiUpfInfos.push(info);
         return info;
       });
-      const peers = netdef.gatherUPFPeers(network, upf);
-      for (const { snssai, dnn, subnet } of peers.N6IPv4) {
+      for (const { snssai, dnn, subnet } of upf.peers.N6IPv4) {
         dnBySNSSAI.get(snssai).dnnUpfInfoList.push({
           dnn,
           pools: [{ cidr: subnet! }],

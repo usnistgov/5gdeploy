@@ -147,7 +147,7 @@ class CPBuilder extends CN5GBuilder {
 
     c.support_features.use_local_pcc_rules = !this.hasPCF;
 
-    c.upfs = this.ctx.network.upfs.map((upf): CN5G.smf.UPF => {
+    c.upfs = Array.from(netdef.listUpfs(this.ctx.network), (upf): CN5G.smf.UPF => {
       const n4 = compose.getIP(this.ctx.c, upf.name, "n4");
       const [,fqdn] = makeDnaiFqdn(upf, this.plmn);
       s.extra_hosts[fqdn] = n4;
@@ -159,9 +159,8 @@ class CPBuilder extends CN5GBuilder {
       };
 
       if (!this.hasNRF) {
-        const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
-        smfUpf.upf_info = this.makeUPFInfo(peers);
-        if (peers.N3.length > 0) {
+        smfUpf.upf_info = this.makeUPFInfo(upf.peers);
+        if (upf.peers.N3.length > 0) {
           smfUpf.config!.n3_local_ipv4 = compose.getIP(this.ctx.c, upf.name, "n3");
         }
       }

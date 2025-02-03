@@ -79,7 +79,7 @@ export function setDNCommands({ c, network }: NetDefComposeContext): void {
  * @remarks
  * This shall be called after {@link defineDNServices} and before {@link setDNCommands}.
  */
-export function* makeUPFRoutes({ c }: NetDefComposeContext, peers: netdef.UPFPeers, upfNetif?: string): Iterable<string> {
+export function* makeUPFRoutes({ c }: NetDefComposeContext, peers: netdef.UPF.Peers, upfNetif?: string): Iterable<string> {
   for (const { index, snssai, dnn, subnet, cost } of peers.N6IPv4) {
     const dest = new Netmask(subnet!);
     const table = upfRouteTableBase + index;

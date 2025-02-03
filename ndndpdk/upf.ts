@@ -1,17 +1,17 @@
 
-import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { ComposeService, N } from "../types/mod.js";
+import { compose, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import type { ComposeService } from "../types/mod.js";
 import { assert } from "../util/mod.js";
 
 const ndndpdkDockerImage = "localhost/ndn-dpdk";
 
 /** Build NDN-DPDK UPF. */
-export function ndndpdkUP(ctx: NetDefComposeContext, upf: N.UPF): void {
+export function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF): void {
   const s = ctx.defineService(upf.name, ndndpdkDockerImage, ["mgmt", "n4", "n3", "n6"]);
   ctx.finalize.push(() => setCommands(ctx, s, upf));
 }
 
-function setCommands(ctx: NetDefComposeContext, s: ComposeService, upf: N.UPF): void {
+function setCommands(ctx: NetDefComposeContext, s: ComposeService, { name: ct, peers }: netdef.UPF): void {
   const [upfN4ip] = compose.getIPMAC(s, "n4");
   const [upfN3ip, upfN3mac] = compose.getIPMAC(s, "n3");
   const flags = [
@@ -21,8 +21,7 @@ function setCommands(ctx: NetDefComposeContext, s: ComposeService, upf: N.UPF): 
     `--upf-mac=${upfN3mac}`,
   ];
 
-  const peers = netdef.gatherUPFPeers(ctx.network, upf);
-  assert(peers.N6IPv4.length === 1, `UPF ${upf.name} must handle exactly 1 IPv4 DN`);
+  assert(peers.N6IPv4.length === 1, `UPF ${ct} must handle exactly 1 IPv4 DN`);
   flags.push(`--dn=${compose.getIP(ctx.c, `dn_${peers.N6IPv4[0]!.dnn}`, "n6")}`);
   for (const gnb of peers.N3) {
     const [gnbN3ip, gnbN3mac] = compose.getIPMAC(ctx.c.services[gnb.name]!, "n3");

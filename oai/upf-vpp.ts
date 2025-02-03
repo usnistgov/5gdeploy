@@ -12,12 +12,12 @@ import { getTaggedImageName, makeDnaiFqdn, makeSUIL } from "./common.js";
 import type { OAIOpts } from "./options.js";
 
 /** Build oai-upf-vpp UPF. */
-export async function oaiUPvpp(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIOpts): Promise<void> {
+export async function oaiUPvpp(ctx: NetDefComposeContext, upf: netdef.UPF, opts: OAIOpts): Promise<void> {
   const ct = upf.name;
 
   const ve = new VppEnv(ctx.network, upf, opts);
   const image = await getTaggedImageName(opts, "upf-vpp");
-  const s = ctx.defineService(ct, image, ve.nets);
+  const s = ctx.defineService(ct, image, ["cp", ...upf.nets]);
   compose.annotate(s, "cpus", Math.max(2, opts["oai-upf-workers"]));
   s.privileged = true;
   const commandsEarly = [...compose.renameNetifs(s, { disableTxOffload: false })];
@@ -60,24 +60,21 @@ interface VppIface {
 class VppEnv {
   constructor(
       private readonly network: N.Network,
-      private readonly upf: N.UPF,
+      private readonly upf: netdef.UPF,
       private readonly opts: OAIOpts,
   ) {
     this.plmn = netdef.splitPLMN(this.network.plmn);
-    this.peers = netdef.gatherUPFPeers(network, upf);
-    this.buildNetsIfaces();
+    this.buildIfaces();
   }
 
   private readonly plmn: netdef.PLMN;
-  private readonly peers: netdef.UPFPeers;
-  public readonly nets = ["cp", "n4"];
   public readonly ifaces: VppIface[] = [{ type: "N4", intf: "n4" }];
 
-  private buildNetsIfaces(): void {
+  private buildIfaces(): void {
     const hasDnai = this.opts["oai-cn5g-pcf"];
+    const { peers } = this.upf;
 
-    if (this.peers.N3.length > 0) {
-      this.nets.push("n3");
+    if (peers.N3.length > 0) {
       this.ifaces.push({
         type: "N3",
         intf: "n3",
@@ -85,12 +82,11 @@ class VppEnv {
       });
     }
 
-    assert(this.peers.N6Ethernet.length === 0, "oai-cn5g-upf-vpp does not support Ethernet DN");
-    assert(this.peers.N6IPv6.length === 0, "oai-cn5g-upf-vpp does not support IPv6 DN");
-    if (this.peers.N6IPv4.length > 0) {
-      assert(this.peers.N6IPv4.length === 1, "oai-cn5g-upf-vpp supports at most 1 IPv4 DN");
-      this.nets.push("n6");
-      const [dnai, fqdn] = makeDnaiFqdn(this.peers.N6IPv4[0]!, this.plmn);
+    assert(peers.N6Ethernet.length === 0, "oai-cn5g-upf-vpp does not support Ethernet DN");
+    assert(peers.N6IPv6.length === 0, "oai-cn5g-upf-vpp does not support IPv6 DN");
+    if (peers.N6IPv4.length > 0) {
+      assert(peers.N6IPv4.length === 1, "oai-cn5g-upf-vpp supports at most 1 IPv4 DN");
+      const [dnai, fqdn] = makeDnaiFqdn(peers.N6IPv4[0]!, this.plmn);
       this.ifaces.push({
         type: "N6",
         intf: "n6",
@@ -99,9 +95,8 @@ class VppEnv {
       });
     }
 
-    if (this.peers.N9.length > 0) {
-      this.nets.push("n9");
-      const [dnai, fqdn] = makeDnaiFqdn(this.peers.N9[0]!, this.plmn);
+    if (peers.N9.length > 0) {
+      const [dnai, fqdn] = makeDnaiFqdn(peers.N9[0]!, this.plmn);
       this.ifaces.push({
         type: "N9",
         intf: "n9",
@@ -126,12 +121,12 @@ class VppEnv {
       REALM: makeDnaiFqdn.realm,
       VPP_PLUGIN_PATH: "/usr/lib/x86_64-linux-gnu/vpp_plugins/",
       PROFILE_SUIL: stringify(makeSUIL(
-        this.network, this.peers, { sdFilled: true, withDnai: this.opts["oai-cn5g-pcf"] },
+        this.network, this.upf.peers, { sdFilled: true, withDnai: this.opts["oai-cn5g-pcf"] },
       )),
       SNSSAI_SST: 255, // overwritten by PROFILE_SUIL
       SNSSAI_SD: "000000", // overwritten by PROFILE_SUIL
       DNN: "default", // overwritten by PROFILE_SUIL
-      PROFILE_IUIL: stringify(this.nets.includes("n9") ? this.makeIUIL(compose.getIP(s, "n9")) : []),
+      PROFILE_IUIL: stringify(this.upf.nets.includes("n9") ? this.makeIUIL(compose.getIP(s, "n9")) : []),
     });
 
     for (const [i, { intf, ...rest }] of this.ifaces.entries()) {
@@ -145,7 +140,7 @@ class VppEnv {
 
   private makeIUIL(n9ip: string): unknown {
     const list: unknown[] = [];
-    for (const peer of this.peers.N9) {
+    for (const peer of this.upf.peers.N9) {
       const [, fqdn] = makeDnaiFqdn(peer, this.plmn);
       list.push({
         interfaceType: "N9",

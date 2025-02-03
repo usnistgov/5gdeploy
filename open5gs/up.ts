@@ -1,16 +1,15 @@
 import type { PartialDeep } from "type-fest";
 
-import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { N, O5G } from "../types/mod.js";
+import { compose, makeUPFRoutes, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import type { O5G } from "../types/mod.js";
 import { makeLaunchCommands, makeMetrics, o5DockerImage } from "./common.js";
 
 /** Build Open5GS UPF. */
-export async function o5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void> {
-  const s = ctx.defineService(upf.name, o5DockerImage, ["mgmt", "n4", "n6", "n3"]);
+export async function o5UP(ctx: NetDefComposeContext, { name: ct, peers }: netdef.UPF): Promise<void> {
+  const s = ctx.defineService(ct, o5DockerImage, ["mgmt", "n4", "n6", "n3"]);
   s.devices.push("/dev/net/tun:/dev/net/tun");
   compose.annotate(s, "cpus", 1);
 
-  const peers = netdef.gatherUPFPeers(ctx.network, upf);
   const cfg: PartialDeep<O5G.upf.Root> = {
     upf: {
       pfcp: {
@@ -35,6 +34,6 @@ export async function o5UP(ctx: NetDefComposeContext, upf: N.UPF): Promise<void>
     "ip link set ogstun up",
     ...compose.renameNetifs(s),
     ...makeUPFRoutes(ctx, peers, "ogstun"),
-    ...makeLaunchCommands(upf.name, cfg),
+    ...makeLaunchCommands(ct, cfg),
   ]);
 }

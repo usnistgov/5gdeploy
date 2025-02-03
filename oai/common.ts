@@ -95,7 +95,7 @@ export namespace makeDnaiFqdn {
 /** Construct sNssaiUpfInfoList. */
 export function makeSUIL(
     network: N.Network,
-    peers: netdef.UPFPeers,
+    peers: netdef.UPF.Peers,
     { sdFilled = false, withDnai = false }: makeSUIL.Options = {},
 ): CN5G.upf.SNSSAIInfo[] {
   const plmn = netdef.splitPLMN(network.plmn);

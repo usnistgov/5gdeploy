@@ -141,7 +141,7 @@ export abstract class CN5GBuilder {
   }
 
   /** Construct UPFInfo structure. */
-  protected makeUPFInfo(peers: netdef.UPFPeers): CN5G.upf.UPFInfo {
+  protected makeUPFInfo(peers: netdef.UPF.Peers): CN5G.upf.UPFInfo {
     return {
       sNssaiUpfInfoList: makeSUIL(this.ctx.network, peers, { withDnai: this.hasPCF }),
     };

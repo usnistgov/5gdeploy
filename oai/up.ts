@@ -1,11 +1,11 @@
-import { compose, http2Port, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { CN5G, N } from "../types/mod.js";
+import { compose, http2Port, makeUPFRoutes, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import type { CN5G } from "../types/mod.js";
 import { assert } from "../util/mod.js";
 import { CN5GBuilder } from "./cn5g.js";
 import type { OAIOpts } from "./options.js";
 
 /** Build oai-cn5g-upf. */
-export async function oaiUP(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIOpts): Promise<void> {
+export async function oaiUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts: OAIOpts): Promise<void> {
   const b = new UPBuilder(ctx, opts);
   await b.build(upf);
 }
@@ -13,10 +13,9 @@ export async function oaiUP(ctx: NetDefComposeContext, upf: N.UPF, opts: OAIOpts
 class UPBuilder extends CN5GBuilder {
   private useBPF!: boolean;
 
-  public async build(upf: N.UPF): Promise<void> {
+  public async build({ name: ct, peers }: netdef.UPF): Promise<void> {
     this.useBPF = this.opts["oai-upf-bpf"];
 
-    const ct = upf.name;
     await this.loadConfig("basic_nrf_config.yaml", `up-cfg/${ct}.yaml`);
     delete this.c.database;
     delete this.c.amf;
@@ -38,7 +37,6 @@ class UPBuilder extends CN5GBuilder {
     }
     // s.image = "localhost/oai-cn5g-upf";
 
-    const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
     assert(peers.N9.length === 0, "N9 not supported");
     compose.setCommands(s, this.makeExecCommands(s, "upf", makeUPFRoutes(this.ctx, peers)));
 
@@ -48,7 +46,7 @@ class UPBuilder extends CN5GBuilder {
     });
   }
 
-  private updateConfigUPF(peers: netdef.UPFPeers): void {
+  private updateConfigUPF(peers: netdef.UPF.Peers): void {
     if (this.hasNRF) {
       this.c.nfs.nrf!.host = compose.getIP(this.ctx.c, "nrf", "cp");
     }

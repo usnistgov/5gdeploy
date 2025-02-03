@@ -1,5 +1,5 @@
-import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { BESS, N } from "../types/mod.js";
+import { compose, makeUPFRoutes, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import type { BESS } from "../types/mod.js";
 import { YargsGroup, type YargsInfer, YargsIntRange } from "../util/mod.js";
 
 const pfcpifaceDockerImage = "5gdeploy.localhost/omec-upf-pfcpiface";
@@ -16,11 +16,9 @@ export const bessOptions = YargsGroup("BESS options:", {
 
 /** Build Aether BESS-UPF. */
 export async function bessUP(
-    ctx: NetDefComposeContext, upf: N.UPF,
+    ctx: NetDefComposeContext, { name: ct, peers }: netdef.UPF,
     opts: YargsInfer<typeof bessOptions>,
 ): Promise<void> {
-  const ct = upf.name;
-
   const c: BESS.Config = {
     mode: "af_packet",
     access: {
@@ -66,7 +64,7 @@ export async function bessUP(
   const bessCommands = [
     // generate renameNetifs commands early, before netifs are detached in bridge configuration
     ...compose.renameNetifs(bess),
-    ...makeUPFRoutes(ctx, netdef.gatherUPFPeers(ctx.network, upf)),
+    ...makeUPFRoutes(ctx, peers),
   ];
   ctx.finalize.push(() => { // gNB IPs are available in ctx.finalize
     compose.setCommands(bess, [

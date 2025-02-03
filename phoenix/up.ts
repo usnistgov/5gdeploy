@@ -1,11 +1,11 @@
-import { compose, makeUPFRoutes, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import type { N, PH } from "../types/mod.js";
+import { compose, makeUPFRoutes, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import type { PH } from "../types/mod.js";
 import { assert } from "../util/mod.js";
 import { PhoenixScenarioBuilder } from "./builder.js";
 import { type PhoenixOpts, tasksetScript } from "./options.js";
 
 /** Build UP functions using Open5GCore as UPF. */
-export async function phoenixUP(ctx: NetDefComposeContext, upf: N.UPF, opts: PhoenixOpts): Promise<void> {
+export async function phoenixUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts: PhoenixOpts): Promise<void> {
   const b = new PhoenixUPBuilder(ctx, opts);
   await b.build(upf);
 }
@@ -13,26 +13,19 @@ export async function phoenixUP(ctx: NetDefComposeContext, upf: N.UPF, opts: Pho
 class PhoenixUPBuilder extends PhoenixScenarioBuilder {
   protected override nfKind = "up";
 
-  public async build(upf: N.UPF): Promise<void> {
+  public async build(upf: netdef.UPF): Promise<void> {
     await this.buildUPF(upf);
     await this.finish();
   }
 
-  private async buildUPF(upf: N.UPF): Promise<void> {
-    const ct = upf.name;
+  private async buildUPF({ name: ct, peers, nets }: netdef.UPF): Promise<void> {
     const nWorkers = this.opts["phoenix-upf-workers"];
     assert(nWorkers <= 8, "pfcp.so allows up to 8 threads");
 
-    const peers = netdef.gatherUPFPeers(this.ctx.network, upf);
     assert(peers.N6Ethernet.length <= 1, "UPF only supports one Ethernet DN");
     assert(peers.N6IPv6.length === 0, "UPF does not support IPv6 DN");
 
-    const { s, nf, initCommands } = await this.defineService(ct, ([
-      ["n4", 1],
-      ["n3", peers.N3.length],
-      ["n9", peers.N9.length],
-      ["n6", peers.N6IPv4.length],
-    ] satisfies Array<[string, number]>).filter(([, cnt]) => cnt > 0).map(([net]) => net), "5g/upf1.json");
+    const { s, nf, initCommands } = await this.defineService(ct, nets, "5g/upf1.json");
     for (const netif of ["all", "default"]) {
       s.sysctls[`net.ipv4.conf.${netif}.accept_local`] = 1;
       s.sysctls[`net.ipv4.conf.${netif}.rp_filter`] = 2;

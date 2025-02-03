@@ -12,7 +12,6 @@ import { o5CP, o5UP } from "../open5gs/mod.js";
 import { packetrusherRAN } from "../packetrusher/netdef.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { srsOptions, srsRAN } from "../srsran/mod.js";
-import type { N } from "../types/mod.js";
 import { ueransimOptions, ueransimRAN } from "../ueransim/netdef.js";
 import { assert, file_io, Yargs, YargsCoercedArray } from "../util/mod.js";
 import { annotateVm, useVm, useVmOptions } from "../virt/middleware.js";
@@ -21,7 +20,7 @@ import { defineDNServices, dnOptions, setDNCommands } from "./dn.js";
 import { prometheus, prometheusOptions } from "./prometheus.js";
 
 type Provider = (ctx: NetDefComposeContext, opts: typeof args) => Promisable<void>;
-type UpProvider = (ctx: NetDefComposeContext, upf: N.UPF, opts: typeof args) => Promisable<void>;
+type UpProvider = (ctx: NetDefComposeContext, upf: netdef.UPF, opts: typeof args) => Promisable<void>;
 
 const cpProviders: Record<string, Provider> = {
   free5gc: f5CP,
@@ -107,7 +106,7 @@ const network = await file_io.readJSON(args.netdef);
 netdef.validate(network);
 const ctx = new NetDefComposeContext(network, args.out, new compose.IPAlloc(args));
 defineDNServices(ctx, args);
-for (const upf of ctx.network.upfs) {
+for (const upf of netdef.listUpfs(network)) {
   const up = args.up.find(([pattern]) => pattern === undefined || pattern.match(upf.name));
   assert(up, `User Plane provider not found for ${upf.name}`);
   await upProviders[up[1]]!(ctx, upf, args);
