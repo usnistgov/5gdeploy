@@ -21,6 +21,7 @@ Known to be compatible:
 Known to be incompatible:
 
 * `--cp=free5gc --up=bess`: [BESS-UPF issue 873](https://github.com/omec-project/upf/issues/873)
+* `--cp=free5gc --up=eupf`: [eUPF PR 591](https://github.com/edgecomllc/eupf/pull/591)
 * `--cp=free5gc --up=oai`: [free5GC SMF issue 137](https://github.com/free5gc/smf/issues/137)
 * `--cp=free5gc --up=phoenix`: UPF does not support PDI with both F-TEID and UE IP Address
 * `--cp=oai --up=free5gc` with `--oai-cn5g-nrf=false`: [free5GC UPF issue 65](https://github.com/free5gc/go-upf/issues/65)
@@ -62,6 +63,7 @@ Known to be incompatible:
 Known to be compatible:
 
 * `--up=bess --ran=phoenix`
+* `--up=eupf --ran=ueransim`
 * `--up=free5gc --ran=gnbsim`
 * `--up=free5gc --ran=packetrusher`
 * `--up=free5gc --ran=srsran`

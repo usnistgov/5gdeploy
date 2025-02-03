@@ -395,6 +395,7 @@ export namespace listDataPathPeers {
 
 /** N3,N9,N6 peers of a UPF. */
 export interface UPFPeers {
+  nets: string[];
   N3: GNB[];
   N9: N.UPF[];
   N6Ethernet: UPFPeers.N6[];
@@ -410,12 +411,14 @@ export namespace UPFPeers {
 /** Gather N3,N9,N6 peers of a UPF. */
 export function gatherUPFPeers(network: N.Network, upf: N.UPF): UPFPeers {
   const peers: UPFPeers = {
+    nets: [],
     N3: [],
     N9: [],
     N6Ethernet: [],
     N6IPv4: [],
     N6IPv6: [],
   };
+
   let gnbs: GNB[] | undefined;
   for (const [peer, cost] of listDataPathPeers(network, upf.name)) {
     if (typeof peer === "string") {
@@ -437,5 +440,16 @@ export function gatherUPFPeers(network: N.Network, upf: N.UPF): UPFPeers {
     const dn = findDN(network, peer);
     peers[`N6${dn.type}`].push({ ...dn, cost });
   }
+
+  if (peers.N6Ethernet.length + peers.N6IPv4.length + peers.N6IPv6.length > 0) {
+    peers.nets.push("n6");
+  }
+  if (peers.N3.length > 0) {
+    peers.nets.push("n3");
+  }
+  if (peers.N9.length > 0) {
+    peers.nets.push("n9");
+  }
+
   return peers;
 }

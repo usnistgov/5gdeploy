@@ -2,6 +2,7 @@ import { Minimatch } from "minimatch";
 import type { Promisable } from "type-fest";
 
 import * as compose from "../compose/mod.js";
+import { eUPF } from "../eupf/up.js";
 import { f5CP, f5Options, f5UP } from "../free5gc/mod.js";
 import { ndndpdkUP } from "../ndndpdk/upf.js";
 import * as netdef from "../netdef/mod.js";
@@ -31,6 +32,7 @@ const cpProviders: Record<string, Provider> = {
 
 const upProviders: Record<string, UpProvider> = {
   bess: bessUP,
+  eupf: eUPF,
   free5gc: f5UP,
   ndndpdk: ndndpdkUP,
   oai: oaiUP,

@@ -4,6 +4,9 @@ export * as BESS from "./bess.js";
 /** OAI-CN5G related types. */
 export * as CN5G from "./cn5g.js";
 
+/** eUPF related types. */
+export * as EUPF from "./eupf.js";
+
 /** free5GC related types. */
 export * as F5 from "./free5gc.js";
 
