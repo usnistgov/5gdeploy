@@ -16,7 +16,8 @@ class UPBuilder extends CN5GBuilder {
   public async build(upf: N.UPF): Promise<void> {
     this.useBPF = this.opts["oai-upf-bpf"];
 
-    await this.loadTemplateConfig("basic_nrf_config.yaml");
+    const ct = upf.name;
+    await this.loadConfig("basic_nrf_config.yaml", `up-cfg/${ct}.yaml`);
     delete this.c.database;
     delete this.c.amf;
     delete this.c.smf;
@@ -29,9 +30,7 @@ class UPBuilder extends CN5GBuilder {
       }
     }
 
-    const ct = upf.name;
-    const configPath = `up-cfg/${ct}.yaml`;
-    const s = await this.defineService(ct, "upf", this.c.nfs.upf!, false, configPath);
+    const s = await this.defineService(ct, "upf", this.c.nfs.upf!, false);
     compose.annotate(s, "cpus", this.opts["oai-upf-workers"]);
     s.devices.push("/dev/net/tun:/dev/net/tun");
     if (this.useBPF) {
@@ -45,7 +44,7 @@ class UPBuilder extends CN5GBuilder {
 
     this.ctx.finalize.push(async () => {
       this.updateConfigUPF(peers); // depends on known NRF and SMF IPs
-      await this.ctx.writeFile(configPath, this.c);
+      await this.saveConfig();
     });
   }
 

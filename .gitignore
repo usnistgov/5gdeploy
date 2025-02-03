@@ -3,6 +3,8 @@
 /free5gc/free5gc-compose
 /free5gc/webconsole-openapi
 /oai/docker-compose
+/oai/fed
+/oai/nwdaf
 /omec/upf
 /open5gs/open5gs-dbctl
 /pnpm-lock.yaml

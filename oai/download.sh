@@ -1,12 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
-TAG=${1:-master}
+FED_TAG=${1:-master}
 NWDAF_TAG=${2:-master}
 
-curl -sfLS "https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed/-/archive/${TAG}/oai-cn5g-fed-${TAG}.tar.gz?path=docker-compose" |
-  tar -xzv --strip-components=1
+mkdir -p fed
+curl -sfLS "https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed/-/archive/${FED_TAG}/oai-cn5g-fed-${FED_TAG}.tar.gz?path=docker-compose" |
+  tar -C fed -xzv --strip-components=2
 
-mkdir -p docker-compose/nwdaf
-curl -sfLS "https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-nwdaf/-/archive/${TAG}/oai-cn5g-nwdaf-${TAG}.tar.gz?path=docker-compose" |
-  tar -C docker-compose/nwdaf -xzv --strip-components=2
+mkdir -p nwdaf
+curl -sfLS "https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-nwdaf/-/archive/${NWDAF_TAG}/oai-cn5g-nwdaf-${NWDAF_TAG}.tar.gz?path=docker-compose" |
+  tar -C nwdaf -xzv --strip-components=2

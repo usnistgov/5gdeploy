@@ -9,7 +9,6 @@ import type { CN5G, N } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 import type { OAIOpts } from "./options.js";
 
-export const composePath = path.join(import.meta.dirname, "docker-compose");
 export const convertCommand = path.join(import.meta.dirname, "libconf_convert.py");
 
 /** Determine OAI Docker image name with version tag. */
@@ -39,7 +38,7 @@ export async function getTaggedImageName(opts: OAIOpts, nf: string): Promise<str
   if (tagOpt) {
     return `${image}:${tagOpt}`;
   }
-  return await compose.getTaggedImageName(path.resolve(composePath, filename), image) ?? `${image}:${dfltTag}`;
+  return await compose.getTaggedImageName(path.resolve(import.meta.dirname, "fed", filename), image) ?? `${image}:${dfltTag}`;
 }
 
 /**

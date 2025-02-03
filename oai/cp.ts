@@ -9,7 +9,7 @@ import { compose, http2Port, netdef, type NetDefComposeContext } from "../netdef
 import type { CN5G, ComposeFile } from "../types/mod.js";
 import { assert, file_io, hexPad } from "../util/mod.js";
 import { CN5GBuilder } from "./cn5g.js";
-import { composePath, makeDnaiFqdn } from "./common.js";
+import { makeDnaiFqdn } from "./common.js";
 import type { OAIOpts } from "./options.js";
 
 /** Build CP functions using OAI-CN5G. */
@@ -17,22 +17,21 @@ export async function oaiCP(ctx: NetDefComposeContext, opts: OAIOpts): Promise<v
   const b = new CPBuilder(ctx, opts);
   await b.build();
   if (opts["oai-cn5g-nwdaf"]) {
-    await new NWDAFBuilder(ctx, opts).build();
+    await new NWDAFBuilder(ctx).build();
   }
 }
 
 class CPBuilder extends CN5GBuilder {
   public async build(): Promise<void> {
-    await this.loadTemplateConfig("ulcl_config.yaml");
+    await this.loadConfig("ulcl_config.yaml", "cp-cfg/config.yaml");
     if (!this.hasPCF) {
       delete this.c.nfs.pcf;
       delete this.c.pcf;
     }
 
     await this.buildSQL();
-    const configPath = "cp-cfg/config.yaml";
     for (const [nf, nfc] of Object.entries(this.c.nfs)) {
-      await this.defineService(nf, nf, nfc, true, configPath);
+      await this.defineService(nf, nf, nfc, true);
     }
 
     this.updateConfigDNNs();
@@ -41,7 +40,7 @@ class CPBuilder extends CN5GBuilder {
     if (this.hasPCF) {
       await this.buildPCF();
     }
-    await this.ctx.writeFile(configPath, this.c);
+    await this.saveConfig();
   }
 
   private async buildSQL(): Promise<void> {
@@ -59,7 +58,7 @@ class CPBuilder extends CN5GBuilder {
         `GRANT SELECT,INSERT,UPDATE,DELETE ON ${dbc.database_name}.* TO ${
           dbc.user}@'%' IDENTIFIED BY '${dbc.password}'`,
       ],
-      await file_io.readText(path.resolve(composePath, "database/oai_db2.sql")),
+      await file_io.readText(path.resolve(import.meta.dirname, "fed/database/oai_db2.sql")),
       this.populateSQL(),
     ));
   }
@@ -239,14 +238,17 @@ class CPBuilder extends CN5GBuilder {
   }
 }
 
-class NWDAFBuilder extends CN5GBuilder {
-  declare protected c: never;
+class NWDAFBuilder {
+  constructor(
+      protected readonly ctx: NetDefComposeContext,
+  ) {}
+
   private tplC!: ComposeFile;
   private ipRepl: Array<[string, string]> = [];
   private readonly mongoUrl = compose.mongo.makeUrl("nwdaf");
 
   public async build(): Promise<void> {
-    this.tplC = await file_io.readYAML(path.join(composePath, "nwdaf/docker-compose-nwdaf-cn-http2.yaml")) as any;
+    this.tplC = await file_io.readYAML(path.join(import.meta.dirname, "nwdaf/docker-compose-nwdaf-cn-http2.yaml")) as any;
     this.ipRepl.push(
       ["192.168.70.132", compose.getIP(this.ctx.c, "amf*", "cp")],
       ["192.168.70.133", compose.getIP(this.ctx.c, "smf*", "cp")],
@@ -263,7 +265,7 @@ class NWDAFBuilder extends CN5GBuilder {
     const tplS = this.tplC.services[`oai-nwdaf-${ms}`];
     assert(!!tplS);
     const tplEnv = Array.isArray(tplS.environment) ?
-      Object.fromEntries(Array.from(tplS.environment, (line) => line.split("=") as [string, string])) :
+      Object.fromEntries(Array.from(tplS.environment, (line: string) => line.split("=") as [string, string])) :
       tplS.environment;
 
     const ct = `nwdaf_${ms.replaceAll("-", "")}`;
@@ -296,7 +298,7 @@ class NWDAFBuilder extends CN5GBuilder {
     }
     if (ms === "sbi") {
       compose.setCommands(s, [
-        ...compose.waitReachable("AMF and SMF", [
+        ...compose.waitReachable("AMF+SMF", [
           compose.getIP(this.ctx.c, "amf*", "cp"),
           compose.getIP(this.ctx.c, "smf*", "cp"),
         ], { mode: `tcp:${http2Port}` }),
@@ -306,7 +308,7 @@ class NWDAFBuilder extends CN5GBuilder {
     }
     if (ms === "nbi-gateway") {
       s.environment.KONG_PROXY_LISTEN = "0.0.0.0:80";
-      const kong = await file_io.readText(path.join(composePath, "nwdaf/conf/kong.yml"));
+      const kong = await file_io.readText(path.join(import.meta.dirname, "nwdaf/conf/kong.yml"));
       await this.ctx.writeFile("cp-cfg/nbi-gateway.yaml", this.replaceIPs("", kong), {
         s,
         target: "/kong/declarative/kong.yml",
