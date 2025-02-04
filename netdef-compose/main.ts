@@ -9,7 +9,7 @@ import * as netdef from "../netdef/mod.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { bessOptions, bessUP, gnbsimRAN } from "../omec/mod.js";
 import { o5CP, o5UP } from "../open5gs/mod.js";
-import { packetrusherRAN } from "../packetrusher/netdef.js";
+import { packetrusherRAN } from "../packetrusher/ran.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { srsOptions, srsRAN } from "../srsran/mod.js";
 import { ueransimOptions, ueransimRAN } from "../ueransim/netdef.js";
@@ -85,14 +85,15 @@ const args = await Yargs()
     desc: "Radio Access Network provider",
     type: "string",
   })
+  .option(bessOptions)
   .option(compose.bridgeOptions)
   .option(compose.cpufreqOptions)
   .option(compose.ipAllocOptions())
   .option(compose.placeOptions)
   .option(compose.qosOptions)
-  .option(bessOptions)
   .option(dnOptions)
   .option(f5Options)
+  .option(netdef.subscriberSingleDnOptions)
   .option(oaiOptions)
   .option(phoenixOptions)
   .option(prometheusOptions)

@@ -5,11 +5,14 @@ import type { ComposeService, OMEC } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
 
 /** Build RAN functions using gNBSim. */
-export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
+export async function gnbsimRAN(
+    ctx: NetDefComposeContext,
+    opts: netdef.SubscriberSingleDnOpt,
+): Promise<void> {
   for (const gnb of netdef.listGnbs(ctx.network)) {
     const s = ctx.defineService(gnb.name, "5gdeploy.localhost/gnbsim", ["mgmt", "n2", "n3"]);
     s.stop_signal = "SIGQUIT";
-    const c = makeConfigUpdate(ctx, s, gnb);
+    const c = makeConfigUpdate(ctx, opts, s, gnb);
     await ctx.writeFile(`ran-cfg/${gnb.name}.yaml`, c, { s, target: "/config.update.yaml" });
     compose.setCommands(s, [
       ...compose.renameNetifs(s, { disableTxOffload: true }),
@@ -26,7 +29,12 @@ export async function gnbsimRAN(ctx: NetDefComposeContext): Promise<void> {
   }
 }
 
-function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: netdef.GNB): PartialDeep<OMEC.Root<OMEC.gnbsim.Configuration>> {
+function makeConfigUpdate(
+    ctx: NetDefComposeContext,
+    opts: netdef.SubscriberSingleDnOpt,
+    s: ComposeService,
+    gnb: netdef.GNB,
+): PartialDeep<OMEC.Root<OMEC.gnbsim.Configuration>> {
   const plmnId: OMEC.PLMNID = netdef.splitPLMN(ctx.network.plmn);
   const amfIP = compose.getIP(ctx.c, "amf*", "n2");
   const g: OMEC.gnbsim.GNB = {
@@ -46,7 +54,10 @@ function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: net
       tac: ctx.network.tac,
       broadcastPlmnList: [{
         plmnId,
-        taiSliceSupportList: Array.from(netdef.listNssai(ctx.network), (snssai) => netdef.splitSNSSAI(snssai, true).ih),
+        taiSliceSupportList: Array.from(
+          netdef.listNssai(ctx.network),
+          (snssai) => netdef.splitSNSSAI(snssai, true).ih,
+        ),
       }],
     }],
     defaultAmf: {
@@ -56,7 +67,8 @@ function makeConfigUpdate(ctx: NetDefComposeContext, s: ComposeService, gnb: net
     },
   };
 
-  const subs = netdef.listSubscribers(ctx.network, { expandCount: false, gnb: gnb.name });
+  const subs = netdef.listSubscribers(ctx.network,
+    { expandCount: false, gnb: gnb.name, singleDn: opts["ue-single-dn"] });
   const profiles: OMEC.gnbsim.Profile[] = [];
   for (const profile of PROFILES) {
     for (const sub of subs) {
@@ -84,7 +96,12 @@ const PROFILES: readonly ProfileBase[] = [
   },
 ];
 
-function makeProfile(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Subscriber, base: ProfileBase): OMEC.gnbsim.Profile {
+function makeProfile(
+    ctx: NetDefComposeContext,
+    gnb: netdef.GNB,
+    sub: netdef.Subscriber,
+    base: ProfileBase,
+): OMEC.gnbsim.Profile {
   assert(sub.requestedDN.length > 0);
   const { dnn, snssai } = netdef.findDN(ctx.network, sub.requestedDN[0]!);
   const dnIP = compose.getIP(ctx.c, `dn_${dnn}`, "n6");

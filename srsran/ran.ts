@@ -14,12 +14,18 @@ const srate = 23.04;
 const validateGNB: (input: unknown) => asserts input is SRSRAN.GnbConfig = makeSchemaValidator<SRSRAN.GnbConfig>(srsgnbSchema);
 
 /** Build RAN functions using srsRAN. */
-export async function srsRAN(ctx: NetDefComposeContext, opts: SRSOpts): Promise<void> {
+export async function srsRAN(
+    ctx: NetDefComposeContext,
+    opts: SRSOpts & netdef.SubscriberSingleDnOpt,
+): Promise<void> {
   await new RANBuilder(ctx, opts).build();
 }
 
 class RANBuilder {
-  constructor(private readonly ctx: NetDefComposeContext, private readonly opts: SRSOpts) {
+  constructor(
+      private readonly ctx: NetDefComposeContext,
+      private readonly opts: SRSOpts & netdef.SubscriberSingleDnOpt,
+  ) {
     this.plmn = netdef.splitPLMN(ctx.network.plmn);
   }
 
@@ -44,7 +50,9 @@ class RANBuilder {
   }
 
   private async buildZmq(): Promise<void> {
-    for (const [gnb, sub] of netdef.pairGnbUe(this.ctx.network)) {
+    for (const [gnb, sub] of netdef.pairGnbUe(
+      this.ctx.network, { singleDn: this.opts["ue-single-dn"] },
+    )) {
       const ue = this.ctx.defineService(gnb.name.replace("gnb", "ue"), ueDockerImage, ["mgmt", "air"]);
       const gnbIP = await this.buildGNBzmq(gnb, compose.getIP(ue, "air"));
       this.buildUE(ue, sub, gnbIP);

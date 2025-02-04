@@ -20,3 +20,12 @@ To use this mode, there must be exactly one UE (NetDef subscriber with `.count` 
 
 When using GTP-U tunnel mode, PacketRusher depends on gtp5g kernel module.
 See [free5GC README](../free5gc/README.md) for how to load this kernel module.
+
+## UE Single DN Option
+
+PacketRusher can only connect to one Data Network from each UE.
+If there are multiple Data Networks defined in the NetDef subscriber, you can choose a Data Network with one of these options:
+
+* `--ue-single-dn=first` chooses the first Data Network.
+* `--ue-single-dn=last` chooses the last Data Network.
+* `--ue-single-dn=rotate` chooses a different Data Network from each consecutive UE.

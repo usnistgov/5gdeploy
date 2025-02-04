@@ -7,9 +7,15 @@ import type { ComposeService, prush } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
 
 /** Build RAN functions using PacketRusher. */
-export async function packetrusherRAN(ctx: NetDefComposeContext, opts: F5Opts): Promise<void> {
+export async function packetrusherRAN(
+    ctx: NetDefComposeContext,
+    opts: F5Opts & netdef.SubscriberSingleDnOpt,
+): Promise<void> {
   assert(ctx.network.gnbIdLength === 24, "only support 24-bit gNB ID");
-  for (const [gnb, sub] of netdef.pairGnbUe(ctx.network, true)) {
+  for (const [gnb, sub] of netdef.pairGnbUe(ctx.network, {
+    allowMultiUE: true,
+    singleDn: opts["ue-single-dn"],
+  })) {
     defineGnbUe(ctx, gnb, sub, opts);
   }
 }

@@ -8,7 +8,10 @@ import * as oai_common from "./common.js";
 import type { OAIOpts } from "./options.js";
 
 /** Build RAN functions using OpenAirInterface5G. */
-export async function oaiRAN(ctx: NetDefComposeContext, opts: OAIOpts): Promise<void> {
+export async function oaiRAN(
+    ctx: NetDefComposeContext,
+    opts: OAIOpts & netdef.SubscriberSingleDnOpt,
+): Promise<void> {
   for (const gnb of netdef.listGnbs(ctx.network)) {
     await makeGNB(ctx, opts, gnb);
   }
@@ -16,7 +19,9 @@ export async function oaiRAN(ctx: NetDefComposeContext, opts: OAIOpts): Promise<
   if (opts["oai-gnb-usrp"]) {
     return;
   }
-  for (const [ct, subscriber] of compose.suggestUENames(netdef.listSubscribers(ctx.network))) {
+  for (const [ct, subscriber] of compose.suggestUENames(
+    netdef.listSubscribers(ctx.network, { singleDn: opts["ue-single-dn"] }),
+  )) {
     await makeUE(ctx, opts, ct, subscriber);
   }
 }
@@ -106,7 +111,7 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
   compose.annotate(s, "ue_supi", sub.supi);
   s.privileged = true;
   // As of v2.1.0, UE may transmit ICMPv6 router solicitation over PDU session. When this packet
-  // reaches OAI-UPF-VPP, the UPF would reply with a malformed T-PDU, which then causes the gNB to
+  // reaches OAI-CN5F-UPF-VPP, the UPF would reply with a malformed T-PDU, which then causes the gNB to
   // stop transmitting over the PDU session. Therefore, we disable IPv6 on newly created netifs to
   // prevent IPv6 traffic from appearing on the PDU session netif.
   s.sysctls["net.ipv6.conf.default.disable_ipv6"] = 1;

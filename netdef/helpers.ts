@@ -1,13 +1,12 @@
 import { randomBytes } from "node:crypto";
 
-import { DefaultMap } from "mnemonist";
 import map from "obliterator/map.js";
-import type { RequiredDeep, SetRequired } from "type-fest";
+import type { Except, RequiredDeep, SetRequired } from "type-fest";
 import { arr2hex } from "uint8-util";
 
 import type { N } from "../types/mod.js";
 import netdefSchema from "../types/netdef.schema.json";
-import { assert, decPad, findByName, hexPad, makeSchemaValidator } from "../util/mod.js";
+import { assert, decPad, findByName, hexPad, makeSchemaValidator, type YargsInfer, type YargsOptions } from "../util/mod.js";
 
 /** Validate NetDef object against JSON schema. */
 export const validate: (input: unknown) => asserts input is N.Network = makeSchemaValidator<N.Network>(netdefSchema);
@@ -122,19 +121,66 @@ export interface Subscriber extends SetRequired<N.Subscriber, "count" | "k" | "o
  * Iterate over subscribers.
  * @param expandCount - If true, emit each `.count>1` entry as multiple entries.
  */
-export function listSubscribers(network: N.Network, { expandCount = true, gnb }: listSubscribers.Options = {}): Subscriber[] {
+export function listSubscribers(
+    network: N.Network,
+    { expandCount = true, singleDn, gnb }: listSubscribers.Options = {},
+): Subscriber[] {
+  const list: Subscriber[] = [];
+  for (const sub of listSubscribersUnexpanded(network, gnb)) {
+    if (!expandCount) {
+      list.push(sub);
+      continue;
+    }
+
+    let supiN = BigInt(sub.supi);
+    for (let i = 0; i < sub.count; ++i) {
+      const supi = decPad(supiN++, 15);
+      list.push({ ...sub, supi, count: 1 });
+    }
+  }
+  if (singleDn) {
+    listSubscribersReduceToSingleDn(list, singleDn);
+  }
+  return list;
+}
+export namespace listSubscribers {
+  /** {@link listSubscribers} options. */
+  export interface Options {
+    /**
+     * If true, emit `.count>1` entry as multiple entries.
+     * @defaultValue true
+     */
+    expandCount?: boolean;
+
+    /**
+     * Criteria to choose a singular requestedDN.
+     *
+     * @remarks
+     * If a UE simulator only supports one requestedDN, it should accept
+     * {@link subscriberSingleDnOptions} flag and pass its value as this option. When requested,
+     * {@link Subscriber.requestedDN} has no more than one Data Network, which is chosen as:
+     * - "first" chooses the first requestedDN.
+     * - "last" chooses the last requestedDN.
+     * - "rotate" chooses the i-th requestedDN, where i is incremented successively.
+     */
+    singleDn?: SubscriberSingleDnOpt["ue-single-dn"];
+
+    /** If specified, emit subscribers connected to this gNB only. */
+    gnb?: string;
+  }
+}
+
+function* listSubscribersUnexpanded(network: N.Network, gnb: listSubscribers.Options["gnb"]): Iterable<Subscriber> {
   network.subscriberDefault ??= {};
   network.subscriberDefault.k ??= arr2hex(randomBytes(16));
   network.subscriberDefault.opc ??= arr2hex(randomBytes(16));
 
-  const dnBySNSSAI = new DefaultMap<N.SNSSAI, string[]>(() => []);
-  for (const { snssai, dnn } of network.dataNetworks) {
-    dnBySNSSAI.get(snssai).push(dnn);
-  }
-  const dfltSubscribedNSSAI: N.SubscriberSNSSAI[] = Array.from(dnBySNSSAI, ([snssai, dnns]) => ({ snssai, dnns }));
+  const dfltSubscribedNSSAI: N.SubscriberSNSSAI[] = Array.from(
+    Map.groupBy(network.dataNetworks, ({ snssai }) => snssai),
+    ([snssai, dns]) => ({ snssai, dnns: dns.map(({ dnn }) => dnn) }),
+  );
   const allGNBs = network.gnbs.map((gnb) => gnb.name);
 
-  const list: Subscriber[] = [];
   for (const subscriber of network.subscribers) {
     const sub: Subscriber = {
       count: 1,
@@ -179,29 +225,47 @@ export function listSubscribers(network: N.Network, { expandCount = true, gnb }:
       sub.requestedDN.push(...sub.subscribedDN);
     }
 
-    let supiN = BigInt(sub.supi);
-    if (expandCount && sub.count > 1) {
-      for (let i = 0; i < sub.count; ++i) {
-        const supi = decPad(supiN++, 15);
-        list.push({ ...sub, supi, count: 1 });
-      }
-    } else {
-      list.push(sub);
-    }
+    yield sub;
   }
-  return list;
 }
-export namespace listSubscribers {
-  /** {@link listSubscribers} options. */
-  export interface Options {
-    /**
-     * If true, emit `.count>1` entry as multiple entries.
-     * @defaultValue true
-     */
-    expandCount?: boolean;
 
-    /** If specified, emit subscribers connected to this gNB only. */
-    gnb?: string;
+export const subscriberSingleDnOptions = {
+  "ue-single-dn": {
+    array: false,
+    choices: ["first", "last", "rotate"],
+    default: "first",
+    desc: "criteria to choose a singular requestedDN",
+    type: "string",
+  },
+} as const satisfies YargsOptions;
+export type SubscriberSingleDnOpt = YargsInfer<typeof subscriberSingleDnOptions>;
+
+function listSubscribersReduceToSingleDn(
+    list: readonly Subscriber[],
+    singleDn: Exclude<listSubscribers.Options["singleDn"], undefined>,
+): void {
+  for (const [i, sub] of list.entries()) {
+    const { requestedDN } = sub;
+    if (requestedDN.length <= 1) {
+      continue;
+    }
+
+    let index: number;
+    switch (singleDn) {
+      case "first": {
+        index = 0;
+        break;
+      }
+      case "last": {
+        index = -1;
+        break;
+      }
+      case "rotate": {
+        index = i % requestedDN.length;
+        break;
+      }
+    }
+    sub.requestedDN = [requestedDN[index]!];
   }
 }
 
@@ -243,22 +307,31 @@ function splitNCI(nci: string, gnbIdLength: number): GNB.NCI {
   };
 }
 
-/**
- * Ensure 1-1 mapping between gNB and UE, to satisfy restriction of RAN simulators.
- * @param allowMultiUE - Allow multiple UEs if they have consecutive SUPIs.
- */
-export function* pairGnbUe(network: N.Network, allowMultiUE = false): Iterable<[gnb: GNB, sub: Subscriber]> {
+/** Ensure 1-1 mapping between gNB and UE, to satisfy restriction of RAN simulators. */
+export function* pairGnbUe(
+    network: N.Network,
+    { allowMultiUE = false, ...listSubscribersOpts }: pairGnbUe.Options = {},
+): Iterable<[gnb: GNB, sub: Subscriber]> {
   const gnbs = new Map<string, GNB>();
   for (const gnb of listGnbs(network)) {
     gnbs.set(gnb.name, gnb);
   }
 
-  for (const sub of listSubscribers(network, { expandCount: !allowMultiUE })) {
+  for (const sub of listSubscribers(network, { ...listSubscribersOpts, expandCount: !allowMultiUE })) {
     assert(sub.gnbs.length === 1, `${sub.supi} must connect to exactly one gNB`);
     const gnb = gnbs.get(sub.gnbs[0]!);
     gnbs.delete(sub.gnbs[0]!);
     assert(gnb !== undefined, `${sub.gnbs[0]} must serve exactly one UE`);
     yield [gnb, sub];
+  }
+}
+export namespace pairGnbUe {
+  export interface Options extends Except<listSubscribers.Options, "expandCount"> {
+    /**
+     * Allow multiple UEs if they have consecutive SUPIs.
+     * @defaultValue false
+     */
+    allowMultiUE?: boolean;
   }
 }
 

@@ -5,6 +5,7 @@ This package offers these choices in the **netdef-compose** command:
 
 * `--ran=gnbsim`: [gNBSim](https://github.com/omec-project/gnbsim) RAN simulator
   * gNB can only connect to the first AMF
+  * UE can only establish one PDU session, see [PacketRusher](../packetrusher/README.md) "UE Single DN option" on how it's chosen
   * signaling only, no PDU session
   * "deregister" profile: Registration + UE initiated PDU Session Establishment + User Data packets + Deregister
 * `--up=bess`: [BESS-UPF](https://github.com/omec-project/upf) v2.0.1
