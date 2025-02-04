@@ -2,9 +2,11 @@ import path from "node:path";
 
 import stringify from "json-stringify-deterministic";
 import * as shlex from "shlex";
+import { sortBy } from "sort-by-typescript";
 
 import type { ComposeService } from "../types/mod.js";
 import { assert, scriptHead, scriptHeadStrict } from "../util/mod.js";
+import { annotate } from "./compose.js";
 import type { ComposeContext } from "./context.js";
 
 /**
@@ -73,14 +75,19 @@ export function* renameNetifs(s: ComposeService, {
 }: renameNetifs.Options = {}): Iterable<string> {
   s.cap_add.push("NET_ADMIN");
 
-  for (const [net, { ipv4_address }] of Object.entries(s.networks)) {
-    yield `IFNAME=$(ip -o addr show to ${ipv4_address} | awk '{ print $2 }')`;
+  const netifAnnotatePrefix = `${annotate.PREFIX}ip_`;
+  const netifs = Object.entries(s.annotations ?? {})
+    .filter(([k]) => k.startsWith(netifAnnotatePrefix))
+    .map(([k, v]) => [k.slice(netifAnnotatePrefix.length), v]);
+  netifs.sort(sortBy("0"));
+  for (const [net, ip] of netifs) {
+    yield `IFNAME=$(ip -o addr show to ${ip} | awk '{ print $2 }')`;
     yield "if [[ -z $IFNAME ]]; then";
     yield `  msg Waiting for netif ${net} to appear`;
     yield `  with_retry ip link show dev ${net} &>/dev/null`;
     yield "  NETIF_WAITED=1";
     yield `elif [[ $IFNAME != ${net} ]]; then`;
-    yield `  msg Renaming netif $IFNAME with IPv4 ${ipv4_address} to ${net}`;
+    yield `  msg Renaming netif $IFNAME with IPv4 ${ip} to ${net}`;
     yield "  ip link set dev $IFNAME down";
     yield `  ip link set dev $IFNAME up name ${net}`;
     yield "fi";

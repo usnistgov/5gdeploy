@@ -1,4 +1,4 @@
-FROM 5gdeploy.localhost/phoenix-base
+FROM localhost/phoenix-base
 SHELL ["/bin/bash", "-c"]
 
 RUN <<EOF

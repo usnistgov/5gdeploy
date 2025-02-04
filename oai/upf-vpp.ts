@@ -20,7 +20,6 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, upf: netdef.UPF, opts:
   const s = ctx.defineService(ct, image, ["cp", ...upf.nets]);
   compose.annotate(s, "cpus", Math.max(2, opts["oai-upf-workers"]));
   s.privileged = true;
-  const commandsEarly = [...compose.renameNetifs(s, { disableTxOffload: false })];
   const env: Env = {};
   ve.assignTo(s, env);
 
@@ -39,7 +38,7 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, upf: netdef.UPF, opts:
     }
 
     await compose.setCommandsFile(ctx, s, [
-      ...commandsEarly,
+      ...compose.renameNetifs(s, { disableTxOffload: false }),
       ...map(Object.entries(env).toSorted(sortBy("0")), ([k, v]) => `export ${k}=${shlex.quote(`${v}`)}`),
       "msg Invoking entrypoint.sh",
       "/openair-upf/bin/entrypoint.sh true",

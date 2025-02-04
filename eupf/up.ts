@@ -2,24 +2,22 @@
 import { compose, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, EUPF } from "../types/mod.js";
 
+const eupfDockerImage = "5gdeploy.localhost/eupf";
+
 /** Build eUPF. */
 export async function eUPF(ctx: NetDefComposeContext, upf: netdef.UPF): Promise<void> {
-  const s = ctx.defineService(upf.name, "ghcr.io/edgecomllc/eupf:main", upf.nets);
+  const s = ctx.defineService(upf.name, eupfDockerImage, upf.nets);
   compose.annotate(s, "cpus", 1);
   s.environment.GIN_MODE = "release";
   s.privileged = true;
   s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
-
-  compose.setCommands(s, [
-    ...compose.renameNetifs(s),
-    "exec ash /app/bin/entrypoint.sh",
-  ], { shell: "ash" });
 
   ctx.finalize.push(async () => {
     const c = makeConfig(upf, s);
     await ctx.writeFile(`up-cfg/${upf.name}.yaml`, c, {
       s, target: "/config.yml",
     });
+    compose.setCommands(s, makeCommands(ctx, upf, s), { shell: "ash" });
   });
 }
 
@@ -47,4 +45,29 @@ function makeConfig({ nets }: netdef.UPF, s: ComposeService): EUPF.Config {
   }
 
   return c;
+}
+
+function* makeCommands(
+    { c }: NetDefComposeContext,
+    { peers }: netdef.UPF,
+    s: ComposeService,
+): Iterable<string> {
+  yield* compose.renameNetifs(s, { disableTxOffload: true });
+
+  yield "msg Inserting ARP/NDP entries";
+  for (const { dnn } of peers.N6IPv4) {
+    const [ip, mac] = compose.getIPMAC(c, `dn_${dnn}`, "n6");
+    yield `ip neigh replace ${ip} lladdr ${mac} nud permanent dev n6`;
+  }
+  for (const gnb of peers.N3) {
+    const [ip, mac] = compose.getIPMAC(c, gnb.name, "n3");
+    yield `ip neigh replace ${ip} lladdr ${mac} nud permanent dev n3`;
+  }
+  for (const upf of peers.N9) {
+    const [ip, mac] = compose.getIPMAC(c, upf.name, "n9");
+    yield `ip neigh replace ${ip} lladdr ${mac} nud permanent dev n9`;
+  }
+
+  yield "msg Starting eUPF";
+  yield "exec ash /app/bin/entrypoint.sh";
 }

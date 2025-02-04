@@ -61,31 +61,26 @@ export async function bessUP(
   bess.cap_add.push("IPC_LOCK");
   bess.sysctls["net.ipv6.conf.default.disable_ipv6"] = 1; // route_control.py don't pick up ICMPv6 RAs
 
-  const bessCommands = [
-    // generate renameNetifs commands early, before netifs are detached in bridge configuration
-    ...compose.renameNetifs(bess),
-    ...makeUPFRoutes(ctx, peers),
-  ];
   ctx.finalize.push(() => { // gNB IPs are available in ctx.finalize
-    compose.setCommands(bess, [
-      ...bessCommands,
-      ...(function*() {
-        yield "n3_routes() {";
-        yield "  while true; do";
-        for (const gnb of compose.listByNf(ctx.c, "gnb")) {
-          const [ip, mac] = compose.getIPMAC(gnb, "n3");
-          yield `    ip neigh replace ${ip} lladdr ${mac} nud permanent dev n3`;
-          yield `    ip route replace ${ip} via ${ip}`; // trigger n3Dst* creation by route_control.py
-        }
-        yield "    sleep 10";
-        yield "  done";
-        yield "}";
-        yield "n3_routes &";
-      })(),
-      "iptables -I OUTPUT -p icmp --icmp-type port-unreachable -j DROP",
-      "msg Starting bessd",
-      "exec bessd -f -grpc-url=127.0.0.1:10514 -m=0",
-    ]);
+    compose.setCommands(bess, (function*() {
+      yield* compose.renameNetifs(bess);
+      yield* makeUPFRoutes(ctx, peers);
+      yield "n3_routes() {";
+      yield "  while true; do";
+      for (const gnb of compose.listByNf(ctx.c, "gnb")) {
+        const [ip, mac] = compose.getIPMAC(gnb, "n3");
+        yield `    ip neigh replace ${ip} lladdr ${mac} nud permanent dev n3`;
+        yield `    ip route replace ${ip} via ${ip}`; // trigger n3Dst* creation by route_control.py
+      }
+      yield "    sleep 10";
+      yield "  done";
+      yield "}";
+      yield "n3_routes &";
+      yield "iptables -I OUTPUT -p icmp --icmp-type port-unreachable -j DROP";
+      yield "msg Starting bessd";
+      yield "exec bessd -f -grpc-url=127.0.0.1:10514 -m=0";
+    })(),
+    );
   });
 
   const pfcpiface = ctx.defineService(ct.replace(/^upf/, "upfpfcp"), pfcpifaceDockerImage, []);

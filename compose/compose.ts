@@ -205,7 +205,7 @@ export function annotate(s: ReadonlyDeep<ComposeService>, key: string): string |
 export function annotate(s: ComposeService, key: string, value: string | number): ComposeService;
 
 export function annotate(s: any, key: string, value?: string | number) {
-  key = `5gdeploy.${key}`;
+  key = `${annotate.PREFIX}${key}`;
   if (value === undefined) {
     return s.annotations?.[key];
   }
@@ -213,6 +213,10 @@ export function annotate(s: any, key: string, value?: string | number) {
   s.annotations ??= {};
   s.annotations[key] = `${value}`;
   return s;
+}
+
+export namespace annotate {
+  export const PREFIX = "5gdeploy.";
 }
 
 /**
@@ -237,7 +241,7 @@ export function listByAnnotation<T extends Pick<ReadonlyDeep<ComposeService>, "a
     c: { readonly services: Record<string, T> }, key: string,
     predicate: string | number | ((value: string) => boolean) = () => true,
 ): T[] {
-  key = `5gdeploy.${key}`;
+  key = `${annotate.PREFIX}${key}`;
   if (typeof predicate !== "function") {
     const expected = `${predicate}`;
     predicate = (v) => v === expected;
