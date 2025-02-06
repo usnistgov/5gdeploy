@@ -2,6 +2,7 @@
 /docker/ns3http/ns3http
 /free5gc/free5gc-compose
 /free5gc/webconsole-openapi
+/free5gc/webconsole.yaml
 /oai/docker-compose
 /oai/fed
 /oai/nwdaf
