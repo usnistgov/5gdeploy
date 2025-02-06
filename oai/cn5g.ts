@@ -4,7 +4,7 @@ import * as yaml from "js-yaml";
 import { sortBy } from "sort-by-typescript";
 
 import { compose, http2Port, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
-import { type CN5G, type ComposeService } from "../types/mod.js";
+import type { CN5G, ComposeService } from "../types/mod.js";
 import { file_io } from "../util/mod.js";
 import { getTaggedImageName, makeSUIL } from "./common.js";
 import type { OAIOpts } from "./options.js";
