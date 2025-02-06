@@ -116,6 +116,7 @@ function createService(name: string, image: string): ComposeService {
       HTTPS_PROXY: "",
       https_proxy: "",
     },
+    network_mode: "none",
     networks: {},
     ports: [],
     extra_hosts: {},
@@ -168,7 +169,7 @@ function createService(name: string, image: string): ComposeService {
     });
   }
 
-  let networkMode: string | undefined;
+  let networkMode: string | undefined = s.network_mode;
   Object.defineProperty(s, "network_mode", {
     enumerable: true,
     get() {
@@ -273,6 +274,7 @@ export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string
   const subnet = new Netmask(network.ipam.config[0]?.subnet ?? "255.255.255.255/32");
   const addr = new Netmask(`${ip}/32`);
   assert(subnet.contains(addr), `network ${net} subnet ${subnet} does not contain IP ${ip}`);
+  delete s.network_mode;
   s.networks[net] = {
     mac_address: ip2mac(addr.netLong),
     ipv4_address: addr.base,
@@ -286,11 +288,14 @@ export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string
  * @returns IPv4 address previously assigned to the netif.
  */
 export function disconnectNetif(c: ComposeFile, ct: string, net: string): string {
-  const service = c.services[ct];
-  assert(service, `service ${ct} missing`);
-  const netif = service.networks[net];
+  const s = c.services[ct];
+  assert(s, `service ${ct} missing`);
+  const netif = s.networks[net];
   assert(netif, `netif ${ct}:${net} missing`);
-  delete service.networks[net]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+  delete s.networks[net]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+  if (Object.keys(s.networks).length === 0) {
+    s.network_mode = "none";
+  }
   return netif.ipv4_address;
 }
 

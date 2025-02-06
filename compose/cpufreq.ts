@@ -19,7 +19,6 @@ export function makeCpufreqService(c: ComposeContext, opts: YargsInfer<typeof cp
   }
 
   const s = c.defineService(ct, "alpine:3.21", []);
-  s.network_mode = "none";
   s.privileged = true;
   annotate(s, "every_host", 1);
 

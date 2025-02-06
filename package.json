@@ -38,7 +38,7 @@
     "json-stringify-deterministic": "^1.0.12",
     "jsonc-parser": "^3.3.1",
     "minimatch": "^10.0.1",
-    "mnemonist": "^0.40.0",
+    "mnemonist": "^0.40.1",
     "multimatch": "^7.0.0",
     "netmask": "^2.0.2",
     "obliterator": "^2.0.5",

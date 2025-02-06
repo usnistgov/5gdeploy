@@ -77,7 +77,6 @@ export class VirtComposeContext extends compose.ComposeContext {
     compose.defineVolume(this.c, vmbuildVolume.source, this.volumePrefix[0] + vmbuildVolume.source);
     const s = this.defineService("virt_kern", "rclone/rclone", []);
     compose.annotate(s, "only_if_needed", 1);
-    s.network_mode = "none";
     s.volumes.push({
       type: "bind",
       source: "/boot",
