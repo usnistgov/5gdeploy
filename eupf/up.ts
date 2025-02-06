@@ -11,6 +11,10 @@ export async function eUPF(ctx: NetDefComposeContext, upf: netdef.UPF): Promise<
   s.environment.GIN_MODE = "release";
   s.privileged = true;
   s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
+  // Ensure ARP replies are sent via the correct netif. Without this sysctl, if both N4 and N6 are
+  // attached to the same VLAN, the kernel may send ARP reply from N6 IP via N4, which causes N6
+  // traffic to arrive at N4 netif and not handled by the eBPF program.
+  s.sysctls["net.ipv4.conf.all.arp_filter"] = 1;
 
   ctx.finalize.push(async () => {
     const c = makeConfig(upf, s);
