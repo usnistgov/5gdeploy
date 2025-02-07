@@ -26,10 +26,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
     assert(peers.N6IPv6.length === 0, "UPF does not support IPv6 DN");
 
     const { s, nf, initCommands } = await this.defineService(ct, nets, "5g/upf1.json");
-    for (const netif of ["all", "default"]) {
-      s.sysctls[`net.ipv4.conf.${netif}.accept_local`] = 1;
-      s.sysctls[`net.ipv4.conf.${netif}.rp_filter`] = 2;
-    }
+    s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
     s.devices.push("/dev/net/tun:/dev/net/tun");
 
     nf.editModule("pfcp", ({ config }) => {

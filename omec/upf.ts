@@ -59,7 +59,6 @@ export async function bessUP(
   const bess = ctx.defineService(ct, bessDockerImage, ["mgmt", "n4", "n3", "n6"]);
   compose.annotate(bess, "cpus", c.workers);
   bess.cap_add.push("IPC_LOCK");
-  bess.sysctls["net.ipv6.conf.default.disable_ipv6"] = 1; // route_control.py don't pick up ICMPv6 RAs
 
   ctx.finalize.push(() => { // gNB IPs are available in ctx.finalize
     compose.setCommands(bess, (function*() {

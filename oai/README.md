@@ -4,17 +4,18 @@ Package **oai** generates OpenAirInterface and CN5G configurations.
 This package offers these choices in the **netdef-compose** command:
 
 * `--ran=oai`: [OpenAirInterface5G](https://gitlab.eurecom.fr/oai/openairinterface5g)
-  * runs in either RFSimulator mode (very slow) or with USRP hardware (gNB only)
-  * gNB crashes upon receiving RerouteNASRequest
-  * UE can only establish one PDU session, see [PacketRusher](../packetrusher/README.md) "UE Single DN option" on how it's chosen
+  * RAN runs in either RFSimulator mode (very slow) or with USRP hardware (gNB only).
+  * gNB crashes upon receiving RerouteNASRequest.
+  * UE can only establish one PDU session, see [PacketRusher](../packetrusher/README.md) "UE Single DN option" on how it's chosen.
 * `--cp=oai`: [CN5G control plane](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed)
-  * does not support Ethernet bridge
-  * requires exactly one AMF and exactly one SMF
+  * SMF does not support Ethernet bridge.
+  * CP requires exactly one AMF and exactly one SMF.
 * `--up=oai`: [CN5G UPF](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-upf)
-  * does not support N9 interface
+  * This UPF does not support N9 interface.
 * `--up=oai-vpp`: [UPF using a VPP implementation](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-upf-vpp)
-  * must have N3+N6 or N3+N9 or N9+N6
-  * CPU isolation strongly recommended, expecting 2 cores for main and worker
+  * This UPF must have either N3+N6 or N3+N9 or N9+N6.
+  * CPU isolation is strongly recommended, expecting 2 cores for main and worker.
+  * If the UPF receives an IPv6 packet, it would reply with a malformed T-PDU, which then causes the gNB to stop transmitting over the PDU session.
 
 ## Advanced Options
 

@@ -7,8 +7,9 @@ import { makeLaunchCommands, makeMetrics, o5DockerImage } from "./common.js";
 /** Build Open5GS UPF. */
 export async function o5UP(ctx: NetDefComposeContext, { name: ct, peers }: netdef.UPF): Promise<void> {
   const s = ctx.defineService(ct, o5DockerImage, ["mgmt", "n4", "n6", "n3"]);
-  s.devices.push("/dev/net/tun:/dev/net/tun");
   compose.annotate(s, "cpus", 1);
+  s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
+  s.devices.push("/dev/net/tun:/dev/net/tun");
 
   const cfg: PartialDeep<O5G.upf.Root> = {
     upf: {

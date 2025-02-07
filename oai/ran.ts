@@ -110,11 +110,6 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
   compose.annotate(s, "cpus", 1);
   compose.annotate(s, "ue_supi", sub.supi);
   s.privileged = true;
-  // As of v2.1.0, UE may transmit ICMPv6 router solicitation over PDU session. When this packet
-  // reaches OAI-CN5F-UPF-VPP, the UPF would reply with a malformed T-PDU, which then causes the gNB to
-  // stop transmitting over the PDU session. Therefore, we disable IPv6 on newly created netifs to
-  // prevent IPv6 traffic from appearing on the PDU session netif.
-  s.sysctls["net.ipv6.conf.default.disable_ipv6"] = 1;
 
   const c = await oai_common.loadLibconf<OAI5G.ue.Config>(opts["oai-ue-conf"], ct);
   c.uicc0 = {

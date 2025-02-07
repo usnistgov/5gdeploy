@@ -44,7 +44,6 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     const sliceValues = Array.from(slices, (snssai) => netdef.splitSNSSAI(snssai).ih);
 
     const { s, nf, initCommands } = await this.defineService(gnb.name, ["air", "n2", "n3"], "5g/gnb1.json");
-    s.sysctls["net.ipv4.conf.all.forwarding"] = 0;
 
     nf.editModule("gnb", ({ config }) => {
       Object.assign(config, this.plmn);

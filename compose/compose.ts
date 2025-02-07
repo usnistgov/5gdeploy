@@ -1,7 +1,7 @@
 import stringify from "json-stringify-deterministic";
 import { ip2long, Netmask } from "netmask";
 import { filter, take } from "obliterator";
-import type { ConditionalKeys, ReadonlyDeep, UnknownRecord } from "type-fest";
+import type { ConditionalKeys, ReadonlyDeep } from "type-fest";
 
 import type { ComposeFile, ComposeNamedVolume, ComposeNetwork, ComposePort, ComposeService, ComposeVolume } from "../types/mod.js";
 import { assert, hexPad } from "../util/mod.js";
@@ -90,10 +90,17 @@ export namespace defineNetwork {
 }
 
 /**
- * Define a Compose service.
+ * Define a Compose service if it does not yet exist.
  *
- * @remarks
- * If a service with same name already exists, it is not replaced.
+ * @returns
+ * New or existing ComposeService.
+ *
+ * The returned object has certain enhanced semantics:
+ * - `.network_mode` defaults to "none", but will be cleared if a network interface is connected
+ *   via {@link connectNetif}.
+ * - If `.network_mode` is changed to "host" or pointing to another container, "net.*" entries are
+ *   deleted from `.sysctls` because they will not be allowed by Docker.
+ * - `.cap_add`, `.devices`, `.volumes`, and `.ports` are deduplicated via their `push` method.
  */
 export function defineService(c: ComposeFile, name: string, image: string): ComposeService {
   return (c.services[name] ??= createService(name, image));
@@ -103,12 +110,19 @@ function createService(name: string, image: string): ComposeService {
   const s: ComposeService = {
     container_name: name,
     hostname: name,
-    image: image,
+    image,
     init: true,
     stop_signal: "SIGTERM",
     cap_add: [],
     devices: [],
-    sysctls: {},
+    sysctls: {
+      "net.ipv4.conf.all.arp_filter": 1,
+      "net.ipv4.conf.all.forwarding": 0,
+      "net.ipv4.conf.all.rp_filter": 2,
+      "net.ipv4.conf.default.rp_filter": 2,
+      "net.ipv6.conf.all.forwarding": 0,
+      "net.ipv6.conf.default.disable_ipv6": 1,
+    },
     volumes: [],
     environment: {
       HTTP_PROXY: "",
@@ -123,16 +137,6 @@ function createService(name: string, image: string): ComposeService {
     depends_on: {},
   };
 
-  for (const key of [
-    "sysctls", "environment", "networks", "extra_hosts", "depends_on",
-  ] as const satisfies ReadonlyArray<ConditionalKeys<ComposeService, UnknownRecord>>) {
-    Object.defineProperty(s, key, {
-      enumerable: true,
-      writable: false,
-      value: s[key],
-    });
-  }
-
   for (const [key, uniqBy] of [
     ["cap_add", (cap: string) => cap],
     ["devices", (device: string) => device.split(":")[1]!],
@@ -142,12 +146,6 @@ function createService(name: string, image: string): ComposeService {
       key: ConditionalKeys<ComposeService, unknown[]>,
       uniqBy: (value: any) => string,
   ]>) {
-    Object.defineProperty(s, key, {
-      enumerable: true,
-      writable: false,
-      value: s[key],
-    });
-
     Object.defineProperty(s[key], "push", {
       enumerable: false,
       value: function<T>(this: T[], ...items: T[]): number {
@@ -169,18 +167,24 @@ function createService(name: string, image: string): ComposeService {
     });
   }
 
-  let networkMode: string | undefined = s.network_mode;
+  let networkMode = s.network_mode;
   Object.defineProperty(s, "network_mode", {
     enumerable: true,
     get() {
       return networkMode;
     },
-    set(value?: string) {
+    set(value?: typeof networkMode) {
       networkMode = value;
-      if (value) {
-        s.hostname = "";
-        assert(Object.keys(s.networks).length === 0,
-          "cannot set ComposeService.network_mode with non-empty ComposeService.networks");
+      if (value === undefined || value === "none") {
+        return;
+      }
+      delete s.hostname;
+      assert(Object.keys(s.networks).length === 0,
+        "cannot set ComposeService.network_mode with non-empty ComposeService.networks");
+      for (const key of Object.keys(s.sysctls)) {
+        if (key.startsWith("net.")) {
+          delete s.sysctls[key]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
+        }
       }
     },
   });

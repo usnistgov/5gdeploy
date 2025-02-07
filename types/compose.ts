@@ -25,7 +25,7 @@ export interface ComposeNetwork {
 export interface ComposeService {
   annotations?: Record<string, string>;
   container_name: string;
-  hostname: string;
+  hostname?: string;
   image: string;
   entrypoint?: string[];
   command?: string[];
@@ -50,7 +50,7 @@ export interface ComposeService {
   readonly ports: ComposePort[];
   readonly extra_hosts: Record<string, string>;
   healthcheck?: ComposeHealthCheck | { disable: true };
-  depends_on: Record<string, ComposeDependency>;
+  readonly depends_on: Record<string, ComposeDependency>;
 }
 
 /** Compose service logging options. */
