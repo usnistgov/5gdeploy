@@ -152,10 +152,11 @@ class RANBuilder {
   }
 
   private buildUE(s: ComposeService, sub: netdef.Subscriber, gnbIP: string): void {
-    compose.annotate(s, "cpus", 2);
-    compose.annotate(s, "ue_supi", sub.supi);
     s.cap_add.push("NET_ADMIN", "SYS_NICE");
     s.devices.push("/dev/net/tun:/dev/net/tun");
+    s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
+    compose.annotate(s, "cpus", 2);
+    compose.annotate(s, "ue_supi", sub.supi);
 
     compose.setCommands(s, [
       ...compose.renameNetifs(s),

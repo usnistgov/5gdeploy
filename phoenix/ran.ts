@@ -76,6 +76,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     const isolated = this.opts["phoenix-ue-isolated"].some((suffix) => sub.supi.endsWith(suffix));
 
     const { s, nf } = await this.defineService(ct, ["air"], "5g/ue1.json");
+    s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
     compose.annotate(s, "cpus", Number(isolated));
     compose.annotate(s, "ue_supi", sub.supi);
 

@@ -110,6 +110,7 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
   compose.annotate(s, "cpus", 1);
   compose.annotate(s, "ue_supi", sub.supi);
   s.privileged = true;
+  s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
 
   const c = await oai_common.loadLibconf<OAI5G.ue.Config>(opts["oai-ue-conf"], ct);
   c.uicc0 = {

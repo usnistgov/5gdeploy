@@ -41,7 +41,7 @@ export interface ComposeService {
   cpuset?: string;
   logging?: ComposeLogging;
   readonly devices: string[];
-  readonly sysctls: Record<string, string | number>;
+  readonly sysctls: ComposeSysctls;
   readonly volumes: ComposeVolume[];
   readonly environment: Record<string, string>;
   pid?: "host" | `service:${string}` | `container:${string}`;
@@ -63,6 +63,21 @@ export interface ComposeLogging {
     "max-file": number;
   };
 }
+
+/**
+ * Compose service sysctls options.
+ *
+ * @see {@link https://docs.kernel.org/networking/ip-sysctl.html}
+ * @see {@link https://docs.docker.com/reference/cli/docker/container/run/#currently-supported-sysctls}
+ */
+export type ComposeSysctls = Partial<{
+  "net.ipv4.conf.all.arp_filter": 0 | 1;
+  "net.ipv4.conf.all.forwarding": 0 | 1;
+  "net.ipv4.conf.all.rp_filter": 0 | 1 | 2;
+  "net.ipv4.conf.default.rp_filter": 0 | 1 | 2;
+  "net.ipv6.conf.all.forwarding": 0 | 1;
+  "net.ipv6.conf.default.disable_ipv6": 0 | 1;
+}> & Record<string, string | number>;
 
 /** Compose service volume. */
 export interface ComposeVolume {

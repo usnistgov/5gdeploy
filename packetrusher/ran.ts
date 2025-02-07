@@ -23,11 +23,11 @@ export async function packetrusherRAN(
 function defineGnbUe(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Subscriber, opts: F5Opts): void {
   const s = ctx.defineService(gnb.name, "5gdeploy.localhost/packetrusher", ["mgmt", "n2", "n3"]);
   s.stop_signal = "SIGINT";
-  s.cap_add.push("NET_ADMIN");
   compose.annotate(s, "cpus", 1);
   compose.annotate(s, "ue_supi", sub.supis.join(","));
   if (sub.count === 1) {
     s.devices.push("/dev/net/tun:/dev/net/tun");
+    s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
     dependOnGtp5g(s, ctx.c, opts);
   }
 

@@ -79,9 +79,9 @@ class UeransimBuilder {
 
   private async buildUE(ct: string, sub: netdef.Subscriber): Promise<void> {
     const s = this.ctx.defineService(ct, ueransimDockerImage, ["mgmt", "air"]);
-    compose.annotate(s, "cpus", 1);
-    s.cap_add.push("NET_ADMIN");
     s.devices.push("/dev/net/tun:/dev/net/tun");
+    s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
+    compose.annotate(s, "cpus", 1);
     compose.annotate(s, "ue_supi", sub.supis.join(","));
 
     const nssai: UERANSIM.Slice[] = Array.from(

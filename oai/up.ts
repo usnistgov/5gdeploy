@@ -30,12 +30,13 @@ class UPBuilder extends CN5GBuilder {
     }
 
     const s = await this.defineService(ct, "upf", this.c.nfs.upf!, false);
+    s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
     compose.annotate(s, "cpus", this.opts["oai-upf-workers"]);
-    s.devices.push("/dev/net/tun:/dev/net/tun");
     if (this.useBPF) {
       s.cap_add.push("BPF", "SYS_ADMIN", "SYS_RESOURCE");
+    } else {
+      s.devices.push("/dev/net/tun:/dev/net/tun");
     }
-    // s.image = "localhost/oai-cn5g-upf";
 
     assert(peers.N9.length === 0, "N9 not supported");
     compose.setCommands(s, this.makeExecCommands(s, "upf", makeUPFRoutes(this.ctx, peers)));

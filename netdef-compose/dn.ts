@@ -36,6 +36,7 @@ export function defineDNServices(ctx: NetDefComposeContext, opts: DNOpts): void 
   const nWorkers = opts["dn-workers"];
   for (const { snssai, dnn } of ctx.network.dataNetworks.filter(({ type }) => type === "IPv4")) {
     const s = ctx.defineService(`dn_${dnn}`, dnDockerImage, ["mgmt", "n6"]);
+    s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
     compose.annotate(s, "cpus", nWorkers);
     compose.annotate(s, "dn", `${snssai}_${dnn}`);
   }
