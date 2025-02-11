@@ -4,7 +4,7 @@ import type { Promisable } from "type-fest";
 import * as compose from "../compose/mod.js";
 import { eUPF } from "../eupf/up.js";
 import { f5CP, f5Options, f5UP } from "../free5gc/mod.js";
-import { ndndpdkUP } from "../ndndpdk/upf.js";
+import { ndndpdkOptions, ndndpdkUP } from "../ndndpdk/upf.js";
 import * as netdef from "../netdef/mod.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { bessOptions, bessUP, gnbsimRAN } from "../omec/mod.js";
@@ -93,6 +93,7 @@ const args = await Yargs()
   .option(compose.qosOptions)
   .option(dnOptions)
   .option(f5Options)
+  .option(ndndpdkOptions)
   .option(netdef.subscriberSingleDnOptions)
   .option(oaiOptions)
   .option(phoenixOptions)

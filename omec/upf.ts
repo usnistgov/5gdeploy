@@ -83,7 +83,7 @@ export async function bessUP(
   });
 
   const pfcpiface = ctx.defineService(ct.replace(/^upf/, "upfpfcp"), pfcpifaceDockerImage, []);
-  pfcpiface.network_mode = `service:${bess.container_name}`;
+  pfcpiface.network_mode = `service:${ct}`;
   compose.setCommands(pfcpiface, [
     ...compose.waitReachable("bessd", ["127.0.0.1"], { mode: "nc:10514", sleep: 10 }),
     "msg Starting pfcpiface",
@@ -92,7 +92,7 @@ export async function bessUP(
   cfg.mountInto({ s: pfcpiface, target: `/conf/${ct}.json` });
 
   const gui = ctx.defineService(ct.replace(/^upf/, "upfgui"), bessDockerImage, []);
-  gui.network_mode = `service:${bess.container_name}`;
+  gui.network_mode = `service:${ct}`;
   compose.setCommands(gui, [
     ...compose.waitReachable("bessd", ["127.0.0.1"], { mode: "tcp:10514" }),
     "msg Loading BESS pipeline",
@@ -103,8 +103,8 @@ export async function bessUP(
   cfg.mountInto({ s: gui, target: "/opt/bess/bessctl/conf/upf.jsonc" });
 
   const route = ctx.defineService(ct.replace(/^upf/, "upfroute"), bessDockerImage, []);
-  route.network_mode = `service:${bess.container_name}`;
-  route.pid = `service:${bess.container_name}`;
+  route.network_mode = `service:${ct}`;
+  route.pid = `service:${ct}`;
   compose.setCommands(route, [
     ...compose.waitReachable("bessd", ["127.0.0.1"], { mode: "tcp:10514" }),
     "msg Starting route_control",

@@ -19,9 +19,14 @@ Specify `--up=UPF-NAME=ndndpdk` flag to select NDN-DPDK for the UPF serving the 
 Then, specify a general `--up` flag after this flag to select a different UPF implementation for other UPFs.
 For example: `--up=upf6=ndndpdk --up=free5gc`.
 
-The NDN UPF requires two containers: NDN-DPDK service (`ndndpdk-svc`), NDN-UPF service (`ndndpdk-upf`).
-5gdeploy only defines a container for the NDN-UPF service.
-The entrypoint script of this container performs these steps:
+The NDN UPF requires two containers:
+
+* NDN-UPF service (`ndndpdk-upf`): always created by 5gdeploy
+* NDN-DPDK service (`ndndpdk-svc`): optionally created by 5gdeploy
+
+### NDN-UPF with Manual NDN-DPDK Activation
+
+The entrypoint script of the NDN-UPF service performs these steps:
 
 1. Wait for N4, N3, N6 netifs to become ready.
 2. Wait for NDN-DPDK forwarder to become ready and have an EthDev on the N3 netif.
@@ -39,3 +44,14 @@ For step 2 to succeed, you must manually perform these steps:
 Once these steps are completed, the UPF would be launched and start responding to PFCP commands from the SMF.
 When the SMF instructs the UPF to establish/release a GTPv1U tunnel, the UPF would create/destroy a face in the NDN-DPDK forwarder.
 Currently there's no way to modify FIB entries, which means the UEs can only act as consumers.
+
+### NDN-UPF with Automatic NDN-DPDK Activation
+
+When `--ndndpdk-activate` and `--ndndpdk-create-eth-port` flags are provided, the NDN-DPDK service is created through the Compose file.
+In the entrypoint script of the NDN-UPF service, step 2 is replaced with these sub-steps:
+
+1. Activate NDN-DPDK forwarder with the JSON activation parameters provided in `--ndndpdk-activate` flag.
+2. Create EthDev with the parameters provided in `--ndndpdk-create-eth-port`.
+
+The CPU allocation of the NDN-DPDK service shall be specified in the JSON activation parameters.
+CPUSET in the `--place` flag shall be omitted.
