@@ -64,7 +64,7 @@ export class VirtComposeContext extends compose.ComposeContext {
             continue;
           }
           const [ip, mac] = compose.getIPMAC(s, "vmctrl");
-          yield `ip neigh replace ${ip} lladdr ${mac} nud noarp dev vmctrl`;
+          yield `ip neigh replace ${ip} lladdr ${mac} nud permanent dev vmctrl`;
         }
         yield "ip neigh show dev vmctrl nud all";
 

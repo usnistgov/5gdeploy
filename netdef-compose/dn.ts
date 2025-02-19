@@ -75,12 +75,15 @@ export function setDNCommands({ c, network }: NetDefComposeContext): void {
 
 /**
  * Generate commands to configure routes for Data Networks in UPF.
- * @param upfNetif - TUN/TAP netif of the UPF software, will create back-route to it.
  *
  * @remarks
  * This shall be called after {@link defineDNServices} and before {@link setDNCommands}.
  */
-export function* makeUPFRoutes({ c }: NetDefComposeContext, peers: netdef.UPF.Peers, upfNetif?: string): Iterable<string> {
+export function* makeUPFRoutes(
+    { c }: NetDefComposeContext,
+    peers: netdef.UPF.Peers,
+    { upfNetif, upfNetifNeigh = false }: makeUPFRoutes.Options = {},
+): Iterable<string> {
   for (const { index, snssai, dnn, subnet, cost } of peers.N6IPv4) {
     const dest = new Netmask(subnet!);
     const table = upfRouteTableBase + index;
@@ -88,7 +91,12 @@ export function* makeUPFRoutes({ c }: NetDefComposeContext, peers: netdef.UPF.Pe
     yield `ip rule add from ${dest} priority ${upfRouteRulePriority} table ${table}`;
     yield `ip route add default via ${compose.getIP(c, `dn_${dnn}`, "n6")} table ${table} metric ${cost}`;
     if (upfNetif) {
-      yield `ip route add ${dest} dev ${upfNetif} metric 0`;
+      if (upfNetifNeigh) {
+        yield `ip neigh add ${dest.last} lladdr ${compose.ip2mac(dest.last)} nud permanent dev ${upfNetif}`;
+        yield `ip route add ${dest} via ${dest.last} dev ${upfNetif} onlink metric 0`;
+      } else {
+        yield `ip route add ${dest} dev ${upfNetif} metric 0`;
+      }
     }
   }
 
@@ -96,4 +104,20 @@ export function* makeUPFRoutes({ c }: NetDefComposeContext, peers: netdef.UPF.Pe
   yield "ip rule list";
   yield "msg Listing IP routes";
   yield "ip route list table all type unicast";
+}
+export namespace makeUPFRoutes {
+  /** {@link makeUPFRoutes} options */
+  export interface Options {
+    /**
+     * TUN/TAP netif of the UPF software, will create back-route to it.
+     * This is not escaped and bash variables may be used.
+     */
+    upfNetif?: string;
+
+    /**
+     * If set to true, static ARP entries are inserted.
+     * This allows kernel to forward traffic to the UPF without sending ARP requests.
+     */
+    upfNetifNeigh?: boolean;
+  }
 }

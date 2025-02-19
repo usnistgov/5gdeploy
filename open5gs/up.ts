@@ -34,7 +34,7 @@ export async function o5UP(ctx: NetDefComposeContext, { name: ct, peers }: netde
     "ip tuntap add name ogstun mode tun",
     "ip link set ogstun up",
     ...compose.renameNetifs(s),
-    ...makeUPFRoutes(ctx, peers, "ogstun"),
+    ...makeUPFRoutes(ctx, peers, { upfNetif: "ogstun" }),
     ...makeLaunchCommands(ct, cfg),
   ]);
 }

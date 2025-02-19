@@ -1,16 +1,18 @@
+import stringify from "json-stringify-deterministic";
 import { Netmask } from "netmask";
+import { map } from "obliterator";
 import * as shlex from "shlex";
 
-import { compose, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import { compose, makeUPFRoutes, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
 import { assert, YargsGroup, type YargsInfer } from "../util/mod.js";
 
 const ndndpdkDockerImage = "localhost/ndn-dpdk";
 
 export const ndndpdkOptions = YargsGroup("NDN-DPDK options:", {
-  "ndndpdk-passthru": {
+  "ndndpdk-gtpip": {
     default: true,
-    desc: "create pass-through face in NDN-DPDK forwarder",
+    desc: "enable GTP-IP handler",
     type: "boolean",
   },
   "ndndpdk-activate": {
@@ -27,7 +29,10 @@ type NdndpdkOpts = YargsInfer<typeof ndndpdkOptions>;
 /** Build NDN-DPDK UPF. */
 export function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts: NdndpdkOpts): void {
   const { name: ct, nets, peers } = upf;
-  const { "ndndpdk-activate": activate } = opts;
+  const {
+    "ndndpdk-gtpip": gtpip,
+    "ndndpdk-activate": activate,
+  } = opts;
   assert(peers.N6IPv4.length === 1, `UPF ${ct} must handle exactly 1 IPv4 DN`);
 
   let gtpNet: "n3" | "n9";
@@ -41,6 +46,9 @@ export function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts: Ndnd
   const gtpCidr = new Netmask(ctx.c.networks[gtpNet]!.ipam.config[0]!.subnet).bitmask;
 
   const s = ctx.defineService(ct, ndndpdkDockerImage, ["mgmt", ...nets]);
+  if (gtpip) {
+    s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
+  }
   let svc: ComposeService | undefined;
   if (activate) {
     svc = ctx.defineService(ct.replace(/^upf/, "upfsvc"), ndndpdkDockerImage, []);
@@ -58,17 +66,18 @@ export function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts: Ndnd
 }
 
 function setCommands(
-    { c }: NetDefComposeContext,
+    ctx: NetDefComposeContext,
     s: ComposeService,
     { peers }: netdef.UPF,
     {
+      "ndndpdk-gtpip": gtpip,
       "ndndpdk-activate": activate,
-      "ndndpdk-passthru": enablePassthru,
       "ndndpdk-create-eth-port": createEthPort,
     }: NdndpdkOpts,
     gtpNet: "n3" | "n9",
     gtpCidr: number,
 ): void {
+  const { c } = ctx;
   const [upfN4ip] = compose.getIPMAC(s, "n4");
   const flags = [
     `--smf-n4=${compose.getIP(c, "smf*", "n4")}`,
@@ -86,13 +95,18 @@ function setCommands(
     flags.push(`--n3=${peerIP}=${peerMAC}`);
   }
 
+  const passthruLocatorBase: any = {
+    scheme: "passthru",
+  };
+  if (gtpip) {
+    passthruLocatorBase.gtpip = {};
+  }
+
   compose.setCommands(s, (function*() {
     yield* compose.renameNetifs(s);
 
-    if (enablePassthru) {
-      yield `msg Flushing IP addresses on ${gtpNet} netif`;
-      yield `ip -4 addr flush ${gtpNet} || true`; // skip if netif does not exist, e.g. vfio-pci
-    }
+    yield `msg Flushing IP addresses on ${gtpNet} netif`;
+    yield `ip -4 addr flush ${gtpNet} || true`; // skip if netif does not exist, e.g. vfio-pci
 
     if (activate) {
       yield "msg Activating NDN-DPDK service";
@@ -109,14 +123,20 @@ function setCommands(
     yield "msg Listing NDN-DPDK ethdevs";
     yield "ndndpdk-ctrl list-ethdev | tee ethdev.ndjson";
 
-    yield `if [[ $(ip -o addr show to ${gtpIP} | wc -l) -eq 0 ]]; then`;
+    yield `if [[ $(ip -o addr show to ${gtpIP} | wc -l) -ne 0 ]]; then`;
+    yield `  msg Found ${gtpIP} on a netif, cannot create passthru face`;
+    yield "else";
     yield `  ETHDEV_ID=$(jq -r --arg MAC ${gtpMAC} 'select(.macAddr==$MAC) | .id' ethdev.ndjson | head -1)`;
     yield "  msg Making NDN-DPDK passthru face on $ETHDEV_ID";
-    yield `  jq -n --arg MAC ${gtpMAC} --arg PORT $ETHDEV_ID '{scheme:"passthru",local:$MAC,port:$PORT}' | ndndpdk-ctrl create-face`;
+    yield `  echo ${shlex.quote(stringify(passthruLocatorBase))} | jq --arg MAC ${
+      gtpMAC} --arg PORT $ETHDEV_ID '. * {local:$MAC,port:$PORT}' | ndndpdk-ctrl create-face`;
     yield `  PASSTHRU_NETIF=$(ip -j link show | jq -r --arg MAC ${gtpMAC} '.[] | select(.address==$MAC and (.ifname|startswith("ndndpdkPT"))) | .ifname')`;
     yield `  ip addr add ${gtpIP}/${gtpCidr} dev $PASSTHRU_NETIF`;
     yield "  msg Listing passthru device";
     yield "  ip addr show dev $PASSTHRU_NETIF";
+    if (gtpip) {
+      yield* map(makeUPFRoutes(ctx, peers, { upfNetif: "$PASSTHRU_NETIF", upfNetifNeigh: true }), (line) => `  ${line}`);
+    }
     yield "fi";
 
     yield "msg Starting UPF";
