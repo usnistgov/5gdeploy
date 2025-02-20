@@ -47,11 +47,14 @@ Currently there's no way to modify FIB entries, which means the UEs can only act
 
 ### NDN-UPF with Automatic NDN-DPDK Activation
 
-When `--ndndpdk-activate` and `--ndndpdk-create-eth-port` flags are provided, the NDN-DPDK service is created through the Compose file.
+When `--ndndpdk-activate` flag is provided, the NDN-DPDK service is created through the Compose file.
+This flag should refer to a directory that contains JSON files named after the UPFs, such as `upf1.json`.
+Each file must contain a JSON object that is NDN-DPDK forwarder activation parameters, with an additional field "5gdeploy-create-eth-port" that contains `ndndpdk-ctrl create-eth-port` command line parameters.
+
 In the entrypoint script of the NDN-UPF service, step 2 is replaced with these sub-steps:
 
-1. Activate NDN-DPDK forwarder with the JSON activation parameters provided in `--ndndpdk-activate` flag.
-2. Create EthDev with the parameters provided in `--ndndpdk-create-eth-port`.
+1. Activate NDN-DPDK forwarder with the provided activation parameters.
+2. Create EthDev with the provided command line parameters.
 
-The CPU allocation of the NDN-DPDK service shall be specified in the JSON activation parameters.
+The CPU allocation of the NDN-DPDK service shall be specified in the activation parameters.
 CPUSET in the `--place` flag shall be omitted.

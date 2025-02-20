@@ -17,6 +17,26 @@ function doReadText(filename: string): Promise<string> {
 const readOnce = new DefaultMap((filename: string) => doReadText(filename));
 
 /**
+ * Obtain a filename from either filename or directory name.
+ * @param fileOrDir - File or directory name.
+ * @param ct - Container name.
+ * @param ext - File extension (starts with '.').
+ * @returns If {@link ct} is specified and {@link fileOrDir} is a directory name, return
+ *          {@link fileOrDir} + {@link ct} + {@link ext}. Otherwise, return {@link fileOrDir}.
+ */
+export async function resolveFilenameInDirectory(fileOrDir: string, ct?: string, ext = ""): Promise<string> {
+  if (ct) {
+    try {
+      const stat = await fs.stat(fileOrDir);
+      if (stat.isDirectory()) {
+        return path.join(fileOrDir, `${ct}${ext}`);
+      }
+    } catch {}
+  }
+  return fileOrDir;
+}
+
+/**
  * Read file as UTF-8 text.
  * @param filename - Filename, "-" for stdin.
  */

@@ -5,7 +5,7 @@ import * as shlex from "shlex";
 
 import { compose, makeUPFRoutes, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
-import { assert, YargsGroup, type YargsInfer } from "../util/mod.js";
+import { assert, file_io, YargsGroup, type YargsInfer } from "../util/mod.js";
 
 const ndndpdkDockerImage = "localhost/ndn-dpdk";
 
@@ -16,24 +16,26 @@ export const ndndpdkOptions = YargsGroup("NDN-DPDK options:", {
     type: "boolean",
   },
   "ndndpdk-activate": {
-    desc: "activate NDN-DPDK forwarder with JSON parameters",
-    type: "string",
-  },
-  "ndndpdk-create-eth-port": {
-    desc: "ndndpdk-ctrl create-eth-port command line",
+    desc: "activate NDN-DPDK forwarder with JSON parameter file",
+    normalize: true,
     type: "string",
   },
 });
 type NdndpdkOpts = YargsInfer<typeof ndndpdkOptions>;
 
 /** Build NDN-DPDK UPF. */
-export function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts: NdndpdkOpts): void {
+export async function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts: NdndpdkOpts): Promise<void> {
   const { name: ct, nets, peers } = upf;
   const {
     "ndndpdk-gtpip": gtpip,
     "ndndpdk-activate": activate,
   } = opts;
   assert(peers.N6IPv4.length === 1, `UPF ${ct} must handle exactly 1 IPv4 DN`);
+
+  const s = ctx.defineService(ct, ndndpdkDockerImage, ["mgmt", ...nets]);
+  if (gtpip) {
+    s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
+  }
 
   let gtpNet: "n3" | "n9";
   if (nets.includes("n3")) {
@@ -45,12 +47,16 @@ export function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts: Ndnd
   }
   const gtpCidr = new Netmask(ctx.c.networks[gtpNet]!.ipam.config[0]!.subnet).bitmask;
 
-  const s = ctx.defineService(ct, ndndpdkDockerImage, ["mgmt", ...nets]);
-  if (gtpip) {
-    s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
-  }
+  let activateJSON: unknown;
+  let createEthPort = "";
   let svc: ComposeService | undefined;
   if (activate) {
+    ({
+      "5gdeploy-create-eth-port": createEthPort,
+      ...activateJSON
+    } = await file_io.readJSON(await file_io.resolveFilenameInDirectory(activate, ct, ".json")) as any);
+    assert(typeof createEthPort === "string");
+
     svc = ctx.defineService(ct.replace(/^upf/, "upfsvc"), ndndpdkDockerImage, []);
     svc.network_mode = `service:${ct}`;
     svc.privileged = true;
@@ -62,20 +68,18 @@ export function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts: Ndnd
     });
   }
 
-  ctx.finalize.push(() => setCommands(ctx, s, upf, opts, gtpNet, gtpCidr));
+  ctx.finalize.push(() => setCommands(ctx, s, upf, gtpNet, gtpCidr, gtpip, activateJSON, createEthPort));
 }
 
 function setCommands(
     ctx: NetDefComposeContext,
     s: ComposeService,
     { peers }: netdef.UPF,
-    {
-      "ndndpdk-gtpip": gtpip,
-      "ndndpdk-activate": activate,
-      "ndndpdk-create-eth-port": createEthPort,
-    }: NdndpdkOpts,
     gtpNet: "n3" | "n9",
     gtpCidr: number,
+    gtpip: boolean,
+    activateJSON: unknown,
+    createEthPort: string,
 ): void {
   const { c } = ctx;
   const [upfN4ip] = compose.getIPMAC(s, "n4");
@@ -95,11 +99,12 @@ function setCommands(
     flags.push(`--n3=${peerIP}=${peerMAC}`);
   }
 
-  const passthruLocatorBase: any = {
+  const passthruLocator: any = {
     scheme: "passthru",
+    local: gtpMAC,
   };
   if (gtpip) {
-    passthruLocatorBase.gtpip = {};
+    passthruLocator.gtpip = {};
   }
 
   compose.setCommands(s, (function*() {
@@ -108,9 +113,9 @@ function setCommands(
     yield `msg Flushing IP addresses on ${gtpNet} netif`;
     yield `ip -4 addr flush ${gtpNet} || true`; // skip if netif does not exist, e.g. vfio-pci
 
-    if (activate) {
+    if (activateJSON) {
       yield "msg Activating NDN-DPDK service";
-      yield `echo ${shlex.quote(activate)} | ndndpdk-ctrl activate-forwarder`;
+      yield `echo ${shlex.quote(stringify(activateJSON))} | ndndpdk-ctrl activate-forwarder`;
       yield "msg Creating NDN-DPDK ethdev";
       yield `ndndpdk-ctrl create-eth-port ${createEthPort}`;
     } else {
@@ -128,8 +133,7 @@ function setCommands(
     yield "else";
     yield `  ETHDEV_ID=$(jq -r --arg MAC ${gtpMAC} 'select(.macAddr==$MAC) | .id' ethdev.ndjson | head -1)`;
     yield "  msg Making NDN-DPDK passthru face on $ETHDEV_ID";
-    yield `  echo ${shlex.quote(stringify(passthruLocatorBase))} | jq --arg MAC ${
-      gtpMAC} --arg PORT $ETHDEV_ID '. * {local:$MAC,port:$PORT}' | ndndpdk-ctrl create-face`;
+    yield `  echo ${shlex.quote(stringify(passthruLocator))} | jq --arg PORT $ETHDEV_ID '.*{port:$PORT}' | ndndpdk-ctrl create-face`;
     yield `  PASSTHRU_NETIF=$(ip -j link show | jq -r --arg MAC ${gtpMAC} '.[] | select(.address==$MAC and (.ifname|startswith("ndndpdkPT"))) | .ifname')`;
     yield `  ip addr add ${gtpIP}/${gtpCidr} dev $PASSTHRU_NETIF`;
     yield "  msg Listing passthru device";
