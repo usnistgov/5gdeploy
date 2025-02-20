@@ -15,6 +15,11 @@ export const ndndpdkOptions = YargsGroup("NDN-DPDK options:", {
     desc: "enable GTP-IP handler",
     type: "boolean",
   },
+  "ndndpdk-ndn-ip": {
+    defaultDescription: "first N6 IPv4 peer address",
+    desc: "IPv4 address for NDN traffic termination",
+    type: "string",
+  },
   "ndndpdk-activate": {
     desc: "activate NDN-DPDK forwarder with JSON parameter file",
     normalize: true,
@@ -27,13 +32,14 @@ type NdndpdkOpts = YargsInfer<typeof ndndpdkOptions>;
 export async function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts: NdndpdkOpts): Promise<void> {
   const { name: ct, nets, peers } = upf;
   const {
-    "ndndpdk-gtpip": gtpip,
+    "ndndpdk-gtpip": enableGtpip,
+    "ndndpdk-ndn-ip": ndnIP,
     "ndndpdk-activate": activate,
   } = opts;
-  assert(peers.N6IPv4.length === 1, `UPF ${ct} must handle exactly 1 IPv4 DN`);
+  assert(peers.N6IPv4.length > 0, `UPF ${ct} must handle at least one 1 IPv4 DN`);
 
   const s = ctx.defineService(ct, ndndpdkDockerImage, ["mgmt", ...nets]);
-  if (gtpip) {
+  if (enableGtpip) {
     s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
   }
 
@@ -68,7 +74,7 @@ export async function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts
     });
   }
 
-  ctx.finalize.push(() => setCommands(ctx, s, upf, gtpNet, gtpCidr, gtpip, activateJSON, createEthPort));
+  ctx.finalize.push(() => setCommands(ctx, s, upf, gtpNet, gtpCidr, enableGtpip, ndnIP, activateJSON, createEthPort));
 }
 
 function setCommands(
@@ -77,7 +83,8 @@ function setCommands(
     { peers }: netdef.UPF,
     gtpNet: "n3" | "n9",
     gtpCidr: number,
-    gtpip: boolean,
+    enableGtpip: boolean,
+    ndnIP: string | undefined,
     activateJSON: unknown,
     createEthPort: string,
 ): void {
@@ -86,7 +93,7 @@ function setCommands(
   const flags = [
     `--smf-n4=${compose.getIP(c, "smf*", "n4")}`,
     `--upf-n4=${upfN4ip}`,
-    `--dn=${compose.getIP(c, `dn_${peers.N6IPv4[0]!.dnn}`, "n6")}`,
+    `--dn=${ndnIP ?? compose.getIP(c, `dn_${peers.N6IPv4[0]!.dnn}`, "n6")}`,
   ];
 
   const [gtpIP, gtpMAC] = compose.getIPMAC(s, gtpNet);
@@ -103,7 +110,7 @@ function setCommands(
     scheme: "passthru",
     local: gtpMAC,
   };
-  if (gtpip) {
+  if (enableGtpip) {
     passthruLocator.gtpip = {};
   }
 
@@ -138,7 +145,7 @@ function setCommands(
     yield `  ip addr add ${gtpIP}/${gtpCidr} dev $PASSTHRU_NETIF`;
     yield "  msg Listing passthru device";
     yield "  ip addr show dev $PASSTHRU_NETIF";
-    if (gtpip) {
+    if (enableGtpip) {
       yield* map(makeUPFRoutes(ctx, peers, { upfNetif: "$PASSTHRU_NETIF", upfNetifNeigh: true }), (line) => `  ${line}`);
     }
     yield "fi";
