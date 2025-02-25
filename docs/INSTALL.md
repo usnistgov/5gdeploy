@@ -7,7 +7,7 @@
 To setup a single-host deployment or the *primary* host of a multi-host deployment, these should be installed:
 
 * Node.js 22.x
-* Docker Engine
+* Docker Engine 28.x
 * APT packages:
   * `httpie jq`: used in bash scripts
   * `wireshark-common`: for capturing traffic traces with `dumpcap` in scenarios

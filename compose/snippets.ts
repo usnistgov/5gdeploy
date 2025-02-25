@@ -67,12 +67,12 @@ export namespace setCommandsFile {
 }
 
 /**
- * Generate commands to rename netifs to network names.
+ * Generate commands to wait for netifs to become ready.
  * @param s - Compose service. NET_ADMIN capability is added.
  */
-export function* renameNetifs(s: ComposeService, {
+export function* waitNetifs(s: ComposeService, {
   disableTxOffload = false,
-}: renameNetifs.Options = {}): Iterable<string> {
+}: waitNetifs.Options = {}): Iterable<string> {
   s.cap_add.push("NET_ADMIN");
 
   const netifAnnotatePrefix = `${annotate.PREFIX}ip_`;
@@ -87,9 +87,7 @@ export function* renameNetifs(s: ComposeService, {
     yield `  with_retry ip link show dev ${net} &>/dev/null`;
     yield "  NETIF_WAITED=1";
     yield `elif [[ $IFNAME != ${net} ]]; then`;
-    yield `  msg Renaming netif $IFNAME with IPv4 ${ip} to ${net}`;
-    yield "  ip link set dev $IFNAME down";
-    yield `  ip link set dev $IFNAME up name ${net}`;
+    yield `  die Found ${ip} on $IFNAME instead of ${net}`;
     yield "fi";
 
     if (disableTxOffload) {
@@ -103,9 +101,9 @@ export function* renameNetifs(s: ComposeService, {
   yield "sleep ${NETIF_WAITED:-0}"; // give 1 second for newly appeared netifs to stabilize
   yield "msg Listing IP addresses";
   yield "ip addr list up";
-  yield "msg Finished renaming netifs";
+  yield "msg All netifs are ready";
 }
-export namespace renameNetifs {
+export namespace waitNetifs {
   export interface Options {
     /**
      * Whether to disable netif TX offload with ethtool.

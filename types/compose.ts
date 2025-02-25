@@ -98,6 +98,7 @@ export interface ComposeVolume {
 export interface ComposeNetif {
   mac_address: string;
   ipv4_address: string;
+  driver_opts?: Record<string, string | number>;
 }
 
 /** Compose service exposed port. */

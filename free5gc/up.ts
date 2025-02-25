@@ -7,9 +7,10 @@ import type { F5Opts } from "./options.js";
 /** Build free5GC UPF. */
 export async function f5UP(ctx: NetDefComposeContext, { name: ct, peers, nets }: netdef.UPF, opts: F5Opts): Promise<void> {
   const s = ctx.defineService(ct, await f5_conf.getTaggedImageName(opts, "upf"), nets);
+  s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
   f5_conf.mountTmpfsVolumes(s);
   compose.setCommands(s, [
-    ...compose.renameNetifs(s),
+    ...compose.waitNetifs(s),
     ...compose.applyQoS(s),
     ...makeUPFRoutes(ctx, peers),
     "msg Starting free5GC UPF",

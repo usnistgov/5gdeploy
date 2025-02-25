@@ -62,7 +62,7 @@ export async function bessUP(
 
   ctx.finalize.push(() => { // gNB IPs are available in ctx.finalize
     compose.setCommands(bess, (function*() {
-      yield* compose.renameNetifs(bess);
+      yield* compose.waitNetifs(bess);
       yield* makeUPFRoutes(ctx, peers);
       yield "n3_routes() {";
       yield "  while true; do";

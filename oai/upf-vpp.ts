@@ -38,7 +38,7 @@ export async function oaiUPvpp(ctx: NetDefComposeContext, upf: netdef.UPF, opts:
     }
 
     await compose.setCommandsFile(ctx, s, [
-      ...compose.renameNetifs(s, { disableTxOffload: false }),
+      ...compose.waitNetifs(s, { disableTxOffload: false }),
       ...map(Object.entries(env).toSorted(sortBy("0")), ([k, v]) => `export ${k}=${shlex.quote(`${v}`)}`),
       "msg Invoking entrypoint.sh",
       "/openair-upf/bin/entrypoint.sh true",

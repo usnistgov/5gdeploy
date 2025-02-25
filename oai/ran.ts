@@ -91,7 +91,7 @@ async function makeGNB(ctx: NetDefComposeContext, opts: OAIOpts, gnb: netdef.GNB
 
   await ctx.writeFile(`ran-cfg/${gnb.name}.conf`, c, { s, target: "/opt/oai-gnb/etc/gnb.conf" });
   compose.setCommands(s, [
-    ...compose.renameNetifs(s),
+    ...compose.waitNetifs(s),
     ...compose.waitReachable("AMF", amfIPs, { sleep: 10 }),
     "msg Starting OpenAirInterface5G gNB",
     `exec /opt/oai-gnb/bin/nr-softmodem ${shlex.join(softmodemArgs)}`,
@@ -154,7 +154,7 @@ async function makeUE(ctx: NetDefComposeContext, opts: OAIOpts, ct: string, sub:
     "-E",
   ];
   compose.setCommands(s, [
-    ...compose.renameNetifs(s),
+    ...compose.waitNetifs(s),
     ...compose.waitReachable("gNB", [c.rfsimulator.serveraddr], { sleep: 20 }),
     "msg Starting OpenAirInterface5G UE simulator",
     `exec /opt/oai-nr-ue/bin/entrypoint.sh /opt/oai-nr-ue/bin/nr-uesoftmodem ${shlex.join(ueArgs)}`,

@@ -115,7 +115,7 @@ function setCommands(
   }
 
   compose.setCommands(s, (function*() {
-    yield* compose.renameNetifs(s);
+    yield* compose.waitNetifs(s);
 
     yield `msg Flushing IP addresses on ${gtpNet} netif`;
     yield `ip -4 addr flush ${gtpNet} || true`; // skip if netif does not exist, e.g. vfio-pci

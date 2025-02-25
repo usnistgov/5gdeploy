@@ -120,7 +120,7 @@ export abstract class CN5GBuilder {
   /** Construct service commands. */
   protected *makeExecCommands(s: ComposeService, nf: string, insert: Iterable<string> = []): Iterable<string> {
     if (iproute2Available.has(nf)) {
-      yield* compose.renameNetifs(s);
+      yield* compose.waitNetifs(s);
     } else {
       yield "msg Listing IP addresses";
       yield "ip addr list up || /usr/sbin/ifconfig || true";

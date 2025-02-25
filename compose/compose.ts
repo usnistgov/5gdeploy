@@ -63,6 +63,8 @@ export function defineNetwork(c: ComposeFile, name: string, subnet: string, {
     driver_opts: {
       "com.docker.network.bridge.name": `br-${name}`,
       "com.docker.network.bridge.enable_ip_masquerade": Number(wantNAT),
+      "com.docker.network.bridge.gateway_mode_ipv4": wantNAT ? "nat-unprotected" : "routed",
+      "com.docker.network.bridge.gateway_mode_ipv6": "routed",
       "com.docker.network.driver.mtu": mtu,
     },
     ipam: {
@@ -282,6 +284,9 @@ export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string
   s.networks[net] = {
     mac_address: ip2mac(addr.netLong),
     ipv4_address: addr.base,
+    driver_opts: {
+      "com.docker.network.endpoint.ifname": net,
+    },
   };
   annotate(s, `ip_${net}`, ip);
   return ip;

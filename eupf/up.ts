@@ -52,7 +52,7 @@ function* makeCommands(
     { peers }: netdef.UPF,
     s: ComposeService,
 ): Iterable<string> {
-  yield* compose.renameNetifs(s, { disableTxOffload: true });
+  yield* compose.waitNetifs(s, { disableTxOffload: true });
 
   yield "msg Inserting ARP/NDP entries";
   for (const { dnn } of peers.N6IPv4) {

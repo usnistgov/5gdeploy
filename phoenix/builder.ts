@@ -142,7 +142,7 @@ export abstract class PhoenixScenarioBuilder {
         s, target: path.join(cfgdir, `${ct}.json`),
       });
       compose.setCommands(s, [
-        ...compose.renameNetifs(s, { disableTxOffload: true }),
+        ...compose.waitNetifs(s, { disableTxOffload: true }),
         ...initCommands,
         `exec /opt/phoenix/dist/phoenix.sh -j ${ct}.json -p /opt/phoenix/dist/lib`,
       ]);

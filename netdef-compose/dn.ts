@@ -57,7 +57,7 @@ export function setDNCommands({ c, network }: NetDefComposeContext): void {
     }
 
     compose.setCommands(s, (function*() {
-      yield* compose.renameNetifs(s, { disableTxOffload: true });
+      yield* compose.waitNetifs(s, { disableTxOffload: true });
 
       yield `msg Adding routes for ${shlex.quote(`${snssai}:${dnn}`)} toward UPFs`;
       for (const [upfName, cost] of netdef.listDataPathPeers(network, dn)) {

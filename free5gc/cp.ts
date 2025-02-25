@@ -260,7 +260,7 @@ class F5CPBuilder {
     c.supportDnnList = this.ctx.network.dataNetworks.map((dn) => dn.dnn);
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s),
+      ...compose.waitNetifs(s),
       shlex.join([
         "./amf",
         "-c", await this.saveConfig(s, `cp-cfg/${amf.name}.yaml`, "amfcfg.yaml", amfcfg),
@@ -296,7 +296,7 @@ class F5CPBuilder {
     c.nwInstFqdnEncoding = true;
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s),
+      ...compose.waitNetifs(s),
       shlex.join([
         "./smf",
         "-c", await this.saveConfig(s, `cp-cfg/${smf.name}.yaml`, "smfcfg.yaml", smfcfg),

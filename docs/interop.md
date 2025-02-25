@@ -84,4 +84,3 @@ Known to be compatible:
 * `--up=phoenix --ran=packetrusher` with `--phoenix-upf-xdp=true`: must disable GTP-U sequence number with `--gtp5g-seq=false`
 * `--up=phoenix --ran=phoenix`
 * `--up=phoenix --ran=srsran`
-* `--up=phoenix --ran=ueransim`

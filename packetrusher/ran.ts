@@ -42,7 +42,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Sub
     flags.push("-d", "-t", "--tunnel-vrf=false");
   }
   compose.setCommands(s, [
-    ...compose.renameNetifs(s, { disableTxOffload: true }),
+    ...compose.waitNetifs(s, { disableTxOffload: true }),
     ...compose.applyQoS(s, "ash"),
     "msg Preparing PacketRusher config",
     ...compose.mergeConfigFile(c, { base: "/config.base.yml", merged: filename }),

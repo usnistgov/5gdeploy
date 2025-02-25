@@ -145,7 +145,7 @@ class RANBuilder {
     await this.ctx.writeFile(`ran-cfg/${gnb.name}.yml`, c, { s, target: "/gnb.yml" });
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s, { disableTxOffload: true }),
+      ...compose.waitNetifs(s, { disableTxOffload: true }),
       ...compose.waitReachable("AMF", [amfIP]),
       "exec /opt/srsRAN_Project/target/bin/gnb -c /gnb.yml",
     ]);
@@ -159,7 +159,7 @@ class RANBuilder {
     compose.annotate(s, "ue_supi", sub.supi);
 
     compose.setCommands(s, [
-      ...compose.renameNetifs(s),
+      ...compose.waitNetifs(s),
       ...compose.waitReachable("gNB", [gnbIP], { mode: "tcp:2000", sleep: 2 }),
       "",
       "ue_route() {",

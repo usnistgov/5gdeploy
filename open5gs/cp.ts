@@ -247,7 +247,7 @@ class O5CPBuilder {
   }
 
   private *netCommands(s: ComposeService): Iterable<string> {
-    yield* compose.renameNetifs(s);
+    yield* compose.waitNetifs(s);
     if (s.networks.db) {
       yield* this.waitMongo;
     }
