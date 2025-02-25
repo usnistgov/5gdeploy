@@ -150,7 +150,7 @@ export class VirtComposeContext extends compose.ComposeContext {
       target: "/vmrun",
     };
     compose.defineVolume(this.c, vmrunVolume.source, this.volumePrefix[0] + this.volumePrefix[1] + vmrunVolume.source);
-    const vmc = { ...opts, vmrunVolume };
+    const vmc: VMContext = { ...opts, vmrunVolume };
 
     const vm = this.defineService(`vm_${name}`, virtDockerImage, networks.map(([net]) => net));
     const netplan = this.makeNetplan(vmc, vm);

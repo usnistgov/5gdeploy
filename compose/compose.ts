@@ -132,7 +132,6 @@ function createService(name: string, image: string): ComposeService {
       HTTPS_PROXY: "",
       https_proxy: "",
     },
-    network_mode: "none",
     networks: {},
     ports: [],
     extra_hosts: {},
@@ -169,13 +168,13 @@ function createService(name: string, image: string): ComposeService {
     });
   }
 
-  let networkMode = s.network_mode;
+  let networkMode: ComposeService["network_mode"] = "none";
   Object.defineProperty(s, "network_mode", {
     enumerable: true,
     get() {
       return networkMode;
     },
-    set(value?: typeof networkMode) {
+    set(value?: ComposeService["network_mode"]) {
       networkMode = value;
       if (value === undefined || value === "none") {
         return;
@@ -280,7 +279,7 @@ export function connectNetif(c: ComposeFile, ct: string, net: string, ip: string
   const subnet = new Netmask(network.ipam.config[0]?.subnet ?? "255.255.255.255/32");
   const addr = new Netmask(`${ip}/32`);
   assert(subnet.contains(addr), `network ${net} subnet ${subnet} does not contain IP ${ip}`);
-  delete s.network_mode;
+  s.network_mode = undefined;
   s.networks[net] = {
     mac_address: ip2mac(addr.netLong),
     ipv4_address: addr.base,
