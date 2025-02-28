@@ -3,9 +3,10 @@ import type { PartialDeep } from "type-fest";
 import { compose, makeUPFRoutes, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { O5G } from "../types/mod.js";
 import { makeLaunchCommands, makeMetrics, o5DockerImage } from "./common.js";
+import type { O5GOpts } from "./options.js";
 
 /** Build Open5GS UPF. */
-export async function o5UP(ctx: NetDefComposeContext, { name: ct, peers }: netdef.UPF): Promise<void> {
+export async function o5UP(ctx: NetDefComposeContext, { name: ct, peers }: netdef.UPF, opts: O5GOpts): Promise<void> {
   const s = ctx.defineService(ct, o5DockerImage, ["mgmt", "n4", "n6", "n3"]);
   compose.annotate(s, "cpus", 1);
   s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
@@ -35,6 +36,6 @@ export async function o5UP(ctx: NetDefComposeContext, { name: ct, peers }: netde
     "ip link set ogstun up",
     ...compose.waitNetifs(s),
     ...makeUPFRoutes(ctx, peers, { upfNetif: "ogstun" }),
-    ...makeLaunchCommands(ct, cfg),
+    ...makeLaunchCommands(ct, cfg, opts),
   ]);
 }

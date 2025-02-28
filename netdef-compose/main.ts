@@ -8,7 +8,7 @@ import { ndndpdkOptions, ndndpdkUP } from "../ndndpdk/upf.js";
 import * as netdef from "../netdef/mod.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { bessOptions, bessUP, gnbsimRAN } from "../omec/mod.js";
-import { o5CP, o5UP } from "../open5gs/mod.js";
+import { o5CP, o5gOptions, o5UP } from "../open5gs/mod.js";
 import { packetrusherRAN } from "../packetrusher/ran.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { srsOptions, srsRAN } from "../srsran/mod.js";
@@ -85,22 +85,25 @@ const args = await Yargs()
     desc: "Radio Access Network provider",
     type: "string",
   })
-  .option(bessOptions)
-  .option(compose.bridgeOptions)
-  .option(compose.cpufreqOptions)
-  .option(compose.ipAllocOptions())
-  .option(compose.placeOptions)
-  .option(compose.qosOptions)
-  .option(dnOptions)
-  .option(f5Options)
-  .option(ndndpdkOptions)
-  .option(netdef.subscriberSingleDnOptions)
-  .option(oaiOptions)
-  .option(phoenixOptions)
-  .option(prometheusOptions)
-  .option(srsOptions)
-  .option(ueransimOptions)
-  .option(useVmOptions)
+  .option({
+    ...bessOptions,
+    ...compose.bridgeOptions,
+    ...compose.cpufreqOptions,
+    ...compose.ipAllocOptions(),
+    ...compose.placeOptions,
+    ...compose.qosOptions,
+    ...dnOptions,
+    ...f5Options,
+    ...ndndpdkOptions,
+    ...netdef.subscriberSingleDnOptions,
+    ...o5gOptions,
+    ...oaiOptions,
+    ...phoenixOptions,
+    ...prometheusOptions,
+    ...srsOptions,
+    ...ueransimOptions,
+    ...useVmOptions,
+  })
   .middleware(useVm)
   .parseAsync();
 

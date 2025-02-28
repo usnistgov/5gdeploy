@@ -189,13 +189,13 @@ export function* mergeConfigFile(
     { base, op = "*", dels = [], merged }: mergeConfigFile.Options,
 ): Iterable<string> {
   const fmt = {
-    ".json": "-oj",
+    ".json": " -oj",
     ".yaml": "",
     ".yml": "",
   }[path.extname(base)];
   assert(fmt !== undefined, "unknown config file format");
 
-  yield `yq ${fmt} -P ${shlex.quote([
+  yield `yq${fmt} -P ${shlex.quote([
     "... comments=\"\"",
     ...Array.from(dels, (expr) => `del(${expr})`),
     `. ${op} ${typeof cfg === "string" ? `load(${JSON.stringify(cfg)})` : stringify(cfg)}`,

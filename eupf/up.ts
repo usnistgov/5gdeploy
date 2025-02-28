@@ -28,6 +28,7 @@ function makeConfig({ nets }: netdef.UPF, s: ComposeService): EUPF.Config {
     n9_address: "127.0.0.1",
     heartbeat_interval: 60,
     logging_level: "trace",
+    feature_ftup: true,
   };
 
   c.pfcp_node_id = compose.getIP(s, "n4");

@@ -25,7 +25,7 @@ export function YargsDefaults<T extends YargsOptions>(opts: T): YargsInfer<T> {
 }
 
 /** Place each YargsOpt into a group. */
-export function YargsGroup<T extends YargsOptions>(group: string, opts: T): T {
+export function YargsGroup<const T extends YargsOptions>(group: string, opts: T): T {
   for (const opt of Object.values(opts)) {
     opt.group = group;
   }

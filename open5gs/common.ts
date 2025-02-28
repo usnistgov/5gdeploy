@@ -1,5 +1,8 @@
+import type { PartialDeep } from "type-fest";
+
 import { compose } from "../netdef-compose/mod.js";
 import type { ComposeService, O5G } from "../types/mod.js";
+import type { O5GOpts } from "./options.js";
 
 export const o5DockerImage = "5gdeploy.localhost/open5gs";
 export const webuiDockerImage = "gradiant/open5gs-webui:2.7.2";
@@ -24,10 +27,15 @@ export function makeMetrics(s: ComposeService): O5G.Metrics {
   };
 }
 
-export function* makeLaunchCommands(
-    name: string, cfg: unknown,
-    { dels = [] }: Pick<compose.mergeConfigFile.Options, "dels"> = {},
+export function* makeLaunchCommands<C extends PartialDeep<O5G.RootBase>>(
+    name: string, cfg: C,
+    {
+      "o5g-loglevel": level,
+      dels = [],
+    }: O5GOpts & Pick<compose.mergeConfigFile.Options, "dels">,
 ): Iterable<string> {
+  cfg.logger = { level };
+
   const nf = compose.nameToNf(name);
   yield `msg Preparing Open5GS ${nf.toUpperCase()} config`;
   yield* compose.mergeConfigFile(cfg, {
@@ -35,6 +43,7 @@ export function* makeLaunchCommands(
     merged: `/${name}.yaml`,
     dels: [".db_uri", ...dels],
   });
+
   yield `msg Starting Open5GS ${nf.toUpperCase()} service`;
   yield `exec yasu open5gs open5gs-${nf}d -c /${name}.yaml`;
 }

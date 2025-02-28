@@ -8,11 +8,14 @@ This page lists interoperability information between the implementations.
 
 Known to be compatible:
 
+* `--cp=free5gc --up=eupf`
 * `--cp=free5gc --up=free5gc`
 * `--cp=free5gc --up=ndndpdk`
+* `--cp=oai --up=eupf`: must disable NRF with `--oai-cn5g-nrf=false`
 * `--cp=oai --up=ndndpdk`
 * `--cp=oai --up=oai-vpp`
 * `--cp=oai --up=oai`
+* `--cp=open5gs --up=eupf`
 * `--cp=open5gs --up=open5gs`
 * `--cp=phoenix --up=bess`
 * `--cp=phoenix --up=ndndpdk`
@@ -21,7 +24,6 @@ Known to be compatible:
 Known to be incompatible:
 
 * `--cp=free5gc --up=bess`: [BESS-UPF issue 873](https://github.com/omec-project/upf/issues/873)
-* `--cp=free5gc --up=eupf`: [eUPF PR 591](https://github.com/edgecomllc/eupf/pull/591)
 * `--cp=free5gc --up=oai`: [free5GC SMF issue 137](https://github.com/free5gc/smf/issues/137)
 * `--cp=free5gc --up=phoenix`: UPF does not support PDI with both F-TEID and UE IP Address
 * `--cp=oai --up=free5gc` with `--oai-cn5g-nrf=false`: [free5GC UPF issue 65](https://github.com/free5gc/go-upf/issues/65)
@@ -63,6 +65,10 @@ Known to be incompatible:
 Known to be compatible:
 
 * `--up=bess --ran=phoenix`
+* `--up=eupf --ran=gnbsim`
+* `--up=eupf --ran=oai`
+* `--up=eupf --ran=packetrusher`
+* `--up=eupf --ran=srsran`
 * `--up=eupf --ran=ueransim`
 * `--up=free5gc --ran=gnbsim`
 * `--up=free5gc --ran=packetrusher`

@@ -7,15 +7,16 @@ import { compose, http2Port, netdef, type NetDefComposeContext } from "../netdef
 import type { ComposeService, N, O5G } from "../types/mod.js";
 import { file_io, scriptHead } from "../util/mod.js";
 import { makeLaunchCommands, makeMetrics, makeSockNode, o5DockerImage, webuiDockerImage } from "./common.js";
+import type { O5GOpts } from "./options.js";
 
 /** Build CP functions using Open5GS. */
-export async function o5CP(ctx: NetDefComposeContext): Promise<void> {
-  const b = new O5CPBuilder(ctx);
+export async function o5CP(ctx: NetDefComposeContext, opts: O5GOpts): Promise<void> {
+  const b = new O5CPBuilder(ctx, opts);
   await b.build();
 }
 
 class O5CPBuilder {
-  constructor(protected readonly ctx: NetDefComposeContext) {
+  constructor(protected readonly ctx: NetDefComposeContext, protected readonly opts: O5GOpts) {
     this.plmn = netdef.splitPLMN(ctx.network.plmn);
   }
 
@@ -73,7 +74,7 @@ class O5CPBuilder {
 
     compose.setCommands(s, [
       ...this.netCommands(s),
-      ...makeLaunchCommands("nrf", cfg),
+      ...makeLaunchCommands("nrf", cfg, this.opts),
     ]);
   }
 
@@ -89,7 +90,7 @@ class O5CPBuilder {
 
     compose.setCommands(s, [
       ...this.netCommands(s),
-      ...makeLaunchCommands("pcf", cfg),
+      ...makeLaunchCommands("pcf", cfg, this.opts),
     ]);
   }
 
@@ -108,7 +109,7 @@ class O5CPBuilder {
 
     compose.setCommands(s, [
       ...this.netCommands(s),
-      ...makeLaunchCommands("nssf", cfg),
+      ...makeLaunchCommands("nssf", cfg, this.opts),
     ]);
   }
 
@@ -142,7 +143,7 @@ class O5CPBuilder {
 
     compose.setCommands(s, [
       ...this.netCommands(s),
-      ...makeLaunchCommands(amf.name, cfg),
+      ...makeLaunchCommands(amf.name, cfg, this.opts),
     ]);
   }
 
@@ -150,6 +151,7 @@ class O5CPBuilder {
     const s = this.defineService(smf.name, ["mgmt", "cp", "n4"]);
 
     const cfg: PartialDeep<O5G.smf.Root> = {
+      logger: { level: "trace" },
       smf: {
         info: [{
           s_nssai: Array.from(smf.nssai, (snssai) => {
@@ -187,7 +189,7 @@ class O5CPBuilder {
 
     compose.setCommands(s, [
       ...this.netCommands(s),
-      ...makeLaunchCommands(smf.name, cfg, { dels }),
+      ...makeLaunchCommands(smf.name, cfg, { ...this.opts, dels }),
     ]);
   }
 
@@ -220,7 +222,7 @@ class O5CPBuilder {
 
     compose.setCommands(s, [
       ...this.netCommands(s),
-      ...makeLaunchCommands(ct, cfg),
+      ...makeLaunchCommands(ct, cfg, this.opts),
     ]);
     return s;
   }

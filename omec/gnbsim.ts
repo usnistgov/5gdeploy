@@ -11,7 +11,7 @@ export async function gnbsimRAN(
 ): Promise<void> {
   for (const gnb of netdef.listGnbs(ctx.network)) {
     const s = ctx.defineService(gnb.name, "5gdeploy.localhost/gnbsim", ["mgmt", "n2", "n3"]);
-    s.stop_signal = "SIGQUIT";
+    s.stop_signal = "SIGQUIT"; // SIGQUIT - immediate stop with panic; SIGTERM - 5-second delayed stop
     const c = makeConfigUpdate(ctx, opts, s, gnb);
     await ctx.writeFile(`ran-cfg/${gnb.name}.yaml`, c, { s, target: "/config.update.yaml" });
     compose.setCommands(s, [

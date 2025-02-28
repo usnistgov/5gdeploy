@@ -94,11 +94,10 @@ export abstract class CN5GBuilder {
       }
     }
     nets.sort(sortBy("0"));
-    for (const [i, [net, intf]] of nets.entries()) {
+    for (const [net, intf] of nets.values()) {
       if (intf) {
-        intf.interface_name = iproute2Available.has(nf) ? net : `eth${i}`;
+        intf.interface_name = net;
       }
-      // XXX ethI is incompatible with Ethernet bridge
     }
 
     const image = await getTaggedImageName(this.opts, nf);
