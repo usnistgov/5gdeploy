@@ -13,14 +13,14 @@
     "typecheck": "tsc",
     "virt": "tsx ./virt/main.ts"
   },
-  "packageManager": "pnpm@10.5.2+sha512.da9dc28cd3ff40d0592188235ab25d3202add8a207afbedc682220e4a0029ffbff4562102b9e6e46b4e3f9e8bd53e6d05de48544b0c57d4b0179e22c76d1199b",
+  "packageManager": "pnpm@10.6.2+sha512.47870716bea1572b53df34ad8647b42962bc790ce2bf4562ba0f643237d7302a3d6a8ecef9e4bdfc01d23af1969aa90485d4cebb0b9638fa5ef1daef656f6c1b",
   "dependencies": {
     "@nodelib/fs.walk": "^3.0.1",
     "@segment/ajv-human-errors": "^2.15.0",
     "@types/dockerode": "^3.3.35",
     "@types/js-yaml": "^4.0.9",
     "@types/netmask": "^2.0.5",
-    "@types/node": "^22.13.8",
+    "@types/node": "^22.13.10",
     "@types/sql-tagged-template-literal": "^1.2.2",
     "@types/yargs": "^17.0.33",
     "ajv": "^8.17.1",
@@ -51,7 +51,7 @@
     "ts-json-schema-generator": "2.3.0",
     "tslib": "^2.8.1",
     "tsx": "^4.19.3",
-    "type-fest": "^4.36.0",
+    "type-fest": "^4.37.0",
     "typescript": "~5.8.2",
     "uint8-util": "^2.2.5",
     "yargs": "^17.7.2"

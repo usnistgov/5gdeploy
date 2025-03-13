@@ -198,6 +198,7 @@ class BridgeModeEth extends BridgeMode {
       }
       case "~": {
         annotate(c.services[ct]!, `mac_${net}`, hostif);
+        annotate(c.services[ct]!, `assume_net_${net}`, 1);
         yield `      msg Assuming ${hostif} is setup as ${ct}:${net}`;
         break;
       }

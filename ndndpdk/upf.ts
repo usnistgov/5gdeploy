@@ -5,7 +5,7 @@ import * as shlex from "shlex";
 
 import { compose, makeUPFRoutes, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService } from "../types/mod.js";
-import { assert, file_io, YargsGroup, type YargsInfer } from "../util/mod.js";
+import { assert, file_io, YargsCoercedArray, YargsGroup, type YargsInfer } from "../util/mod.js";
 
 const ndndpdkDockerImage = "localhost/ndn-dpdk";
 
@@ -25,6 +25,14 @@ export const ndndpdkOptions = YargsGroup("NDN-DPDK options:", {
     normalize: true,
     type: "string",
   },
+  "ndndpdk-log": YargsCoercedArray({
+    coerce(line) {
+      const tokens = line.split("=");
+      assert(tokens.length === 2);
+      return [`NDNDPDK_LOG_${tokens[0]}`, tokens[1]] as [string, string];
+    },
+    desc: "set NDN-DPDK log levels - module=lvl",
+  }),
 });
 type NdndpdkOpts = YargsInfer<typeof ndndpdkOptions>;
 
@@ -35,6 +43,7 @@ export async function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts
     "ndndpdk-gtpip": enableGtpip,
     "ndndpdk-ndn-ip": ndnIP,
     "ndndpdk-activate": activate,
+    "ndndpdk-log": logLevels,
   } = opts;
   assert(peers.N6IPv4.length > 0, `UPF ${ct} must handle at least one 1 IPv4 DN`);
 
@@ -72,6 +81,7 @@ export async function ndndpdkUP(ctx: NetDefComposeContext, upf: netdef.UPF, opts
       target: "/run/ndn",
       bind: { create_host_path: true },
     });
+    Object.assign(svc.environment, Object.fromEntries(logLevels));
   }
 
   ctx.finalize.push(() => setCommands(ctx, s, upf, gtpNet, gtpCidr, enableGtpip, ndnIP, activateJSON, createEthPort));

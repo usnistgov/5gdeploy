@@ -25,6 +25,10 @@ This survives even if the `.networks[net]` field is deleted by `compose/bridge.t
 The default MAC address is derived from the IP address by `compose.ip2mac()` function.
 This annotation is added when a different MAC address is defined as part of an Ethernet bridge.
 
+**assume\_net\_***net* indicates that the network interface is assumed to be setup manually.
+This annotation is added when the `~` operator is used in a `--bridge` flag.
+It informs the container to not wait for the network interface to appear.
+
 ## Prometheus
 
 **prometheus\_target** indicates the container is a Prometheus scrape target.

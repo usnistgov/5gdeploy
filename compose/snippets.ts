@@ -81,6 +81,11 @@ export function* waitNetifs(s: ComposeService, {
     .map(([k, v]) => [k.slice(netifAnnotatePrefix.length), v]);
   netifs.sort(sortBy("0"));
   for (const [net, ip] of netifs) {
+    if (annotate(s, `assume_net_${net}`)) {
+      yield `msg Assuming network interface ${net} is manually setup`;
+      continue;
+    }
+
     yield `IFNAME=$(ip -o addr show to ${ip} | awk '{ print $2 }')`;
     yield "if [[ -z $IFNAME ]]; then";
     yield `  msg Waiting for netif ${net} to appear`;
