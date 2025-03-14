@@ -30,7 +30,7 @@ bash ./free5gc/download.sh
 bash ./oai/download.sh
 bash ./open5gs/download.sh
 
-for IMG in bridge dn free5gc-webclient gnbsim gtp5g iperf2 ns3http open5gs packetrusher phoenix sockperf srsran5g ueransim virt; do
+for IMG in bridge dn eupf free5gc-webclient gnbsim gtp5g iperf2 ns3http open5gs packetrusher phoenix sockperf srsran5g ueransim virt; do
   if [[ $IMG == phoenix ]] && [[ ${NOPHOENIX:-} -eq 1 ]]; then
     msg Skipping Docker image $IMG
     continue
