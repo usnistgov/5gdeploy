@@ -269,7 +269,7 @@ function* generateScript(c: ComposeFile, opts: BridgeOpts, modes: Set<string>): 
     assert(mode in bridgeModes, `unknown mode ${mode}`);
     modes.add(mode);
     yield "";
-    yield `# ${joinVbar("bridge", [net, mode, param])}`;
+    yield `# ${joinVbar("bridge", [net, mode, param.replaceAll(/\s+/g, " ")])}`;
     yield* bridgeModes[mode as keyof typeof bridgeModes].build(c, net, param.split(/\s+/), i);
     yield "";
   }

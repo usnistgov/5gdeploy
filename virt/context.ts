@@ -348,7 +348,7 @@ export class VirtComposeContext extends compose.ComposeContext {
     yield "msg Starting QEMU";
     yield `qemu-system-x86_64 -name ${shlex.quote(name)} -runas $RUNAS ${
       shlex.join(qemuFlags)} ${qemuRedirects.join(" ")} &`;
-    yield "wait $!";
+    yield "wait $!"; // XXX stdin is not working
   }
 
   public createSriov(): void {
@@ -391,6 +391,7 @@ export class VirtComposeContext extends compose.ComposeContext {
           yield "fi";
           yield `CLEANUPS=$CLEANUPS"; echo 0 >${sysPci}/sriov_numvfs"`;
           yield `PFNIC=$(basename $(readlink -f ${sysPci}/net/* | head -1))`;
+          yield "ip link set $PFNIC up";
           yield "VFS=''";
           for (const [i, mac] of vfs.entries()) {
             yield `ip link set $PFNIC vf ${i} mac ${mac}`;

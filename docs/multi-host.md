@@ -226,7 +226,7 @@ Host NICs are not configured automatically, but they can be manually configured 
 Note that changing RSS setting on a host NIC would affect all attached MACVLAN subinterfaces.
 The same script supports changing container NIC RSS rules at runtime, as an alternative of writing "+rss" as part of bridge parameter.
 
-For i40 Ethernet adapter used inside KVM guest via PCI passthrough, the mapping between queue number and CPU core may change during virtual machine reboots.
+For i40e (Physical Function) Ethernet adapter used inside KVM guest via PCI passthrough, the mapping between queue number and CPU core may change during virtual machine reboots.
 This causes difficulty in providing a queue number in the *S* parameter when it's desired to handle the traffic in a specific CPU core.
 To solve this issue, the `toeplitz.sh` script allows *S* parameter to be written as i40e:*C*, where *C* is a CPU core.
 This would invoke `i40e-queue-cpu.sh` script to search for a queue number among `/proc/irq/*/effective_affinity_list`.

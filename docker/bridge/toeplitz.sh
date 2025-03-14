@@ -24,6 +24,10 @@ INPUT=$4
 
 if [[ $START == i40e:* ]]; then
   START=$($CTNS i40e-queue-cpu.sh $NETIF ${START#i40e:})
+  if [[ -z $START ]] || [[ $(echo $START | wc -l) -ne 1 ]]; then
+    echo 'Unable to determine i40e queue number.'
+    exit 1
+  fi
 fi
 
 HKEY40=$(echo | awk -vINPUT=$INPUT -vEQUAL=$EQUAL -vOFS=: '
