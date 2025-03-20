@@ -34,6 +34,7 @@ export interface GnbConfig {
 export interface CUCP {
   amf: CUCP.AMF;
   inactivity_timer?: number;
+  pdu_session_setup_timeout?: number; // renaming request_pdu_session_timeout in 25.x
   [k: string]: unknown;
 }
 export namespace CUCP {

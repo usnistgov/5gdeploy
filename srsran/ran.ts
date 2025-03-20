@@ -123,6 +123,7 @@ class RANBuilder {
         },
         // https://github.com/srsran/srsRAN_Project/discussions/527#discussioncomment-8980792
         inactivity_timer: 7200,
+        pdu_session_setup_timeout: 300,
       },
       cu_up: {
         upf: {
