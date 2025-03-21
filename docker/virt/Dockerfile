@@ -4,11 +4,18 @@ FROM crazymax/yasu AS yasu
 FROM debian:bookworm
 SHELL ["/bin/bash", "-c"]
 
-RUN <<EOF
+RUN --mount=type=cache,id=bookworm-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=bookworm-apt-cache,target=/var/lib/apt,sharing=locked \
+<<EOF
   set -euxo pipefail
+  rm -f /etc/apt/apt.conf.d/docker-clean
+  echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache
   apt-get update
   apt-get install -y --no-install-recommends gnupg guestfs-tools jq python3-minimal qemu-system-x86
-  rm -rf /var/lib/apt/lists/*
+EOF
+
+RUN <<EOF
+  set -euxo pipefail
   find /etc/virt-builder/repos.d -type f ! -name 'libguestfs.*' -delete
   sed -i '/archive\.libguestfs\.org/Q' /etc/virt-builder/repos.d/libguestfs.conf
 EOF

@@ -2,7 +2,8 @@ FROM golang:1.23-alpine3.21 AS build
 SHELL ["/bin/ash", "-c"]
 ADD https://github.com/HewlettPackard/PacketRusher/archive/fd83fec05d964cab7a16fe0d55ff230dd6d9a77a.zip /PacketRusher.zip
 
-RUN <<EOF
+RUN --mount=type=cache,id=go1.23-build,target=/root/.cache/go-build,sharing=locked \
+<<EOF
   set -euxo pipefail
   cd /
   unzip -n PacketRusher.zip

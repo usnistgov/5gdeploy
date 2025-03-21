@@ -75,7 +75,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
   private async buildUE(ct: string, sub: netdef.Subscriber): Promise<void> {
     const isolated = this.opts["phoenix-ue-isolated"].some((suffix) => sub.supi.endsWith(suffix));
 
-    const { s, nf } = await this.defineService(ct, ["air"], "5g/ue1.json");
+    const { s, nf, initCommands } = await this.defineService(ct, ["air"], "5g/ue1.json");
     s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
     compose.annotate(s, "cpus", Number(isolated));
     compose.annotate(s, "ue_supi", sub.supi);
@@ -115,5 +115,9 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
 
       config.ip_tool = "/opt/phoenix/cfg/5g/ue-tunnel-mgmt.sh";
     });
+
+    initCommands.push(
+      "touch /executor-version.txt", // used by ue-tunnel-mgmt.sh
+    );
   }
 }

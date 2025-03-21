@@ -1,11 +1,14 @@
 FROM buildpack-deps:jammy AS build
 SHELL ["/bin/bash", "-c"]
 
-RUN <<EOF
+RUN --mount=type=cache,id=jammy-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=jammy-apt-cache,target=/var/lib/apt,sharing=locked \
+<<EOF
   set -euxo pipefail
+  rm -f /etc/apt/apt.conf.d/docker-clean
+  echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache
   apt-get update
   apt-get install -y --no-install-recommends libgsl-dev libns3-dev
-  rm -rf /var/lib/apt/lists/*
 EOF
 
 COPY main.cpp /app/
@@ -20,11 +23,14 @@ EOF
 FROM ubuntu:jammy
 SHELL ["/bin/bash", "-c"]
 
-RUN <<EOF
+RUN --mount=type=cache,id=jammy-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=jammy-apt-cache,target=/var/lib/apt,sharing=locked \
+<<EOF
   set -euxo pipefail
+  rm -f /etc/apt/apt.conf.d/docker-clean
+  echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache
   apt-get update
   apt-get install -y --no-install-recommends iproute2 iptables jq libns3-3v5 ns3
-  rm -rf /var/lib/apt/lists/*
 EOF
 
 COPY --from=build /app/ns3http /usr/local/bin/

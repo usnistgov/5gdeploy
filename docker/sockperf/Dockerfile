@@ -17,11 +17,14 @@ EOF
 FROM debian:bookworm
 SHELL ["/bin/bash", "-c"]
 
-RUN <<EOF
+RUN --mount=type=cache,id=bookworm-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=bookworm-apt-cache,target=/var/lib/apt,sharing=locked \
+<<EOF
   set -euxo pipefail
+  rm -f /etc/apt/apt.conf.d/docker-clean
+  echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache
   apt-get update
   apt-get install -y --no-install-recommends gawk iproute2 jq
-  rm -rf /var/lib/apt/lists/*
 EOF
 
 COPY --from=build /target/ /
