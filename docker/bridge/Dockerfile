@@ -1,4 +1,5 @@
 FROM alpine:3.21
+SHELL ["/bin/ash", "-c"]
 
 # ethtool 6.11 is failing in '-X hkey' command on Linux kernel 6.1
 RUN <<EOF

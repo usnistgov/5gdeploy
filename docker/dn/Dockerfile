@@ -1,2 +1,7 @@
 FROM alpine:3.21
-RUN apk add --no-cache ethtool iproute2 iptables jq mtr
+SHELL ["/bin/ash", "-c"]
+
+RUN <<EOF
+  set -euxo pipefail
+  apk add --no-cache ethtool iproute2 iptables jq mtr
+EOF

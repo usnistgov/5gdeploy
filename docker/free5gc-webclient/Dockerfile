@@ -1,2 +1,7 @@
 FROM alpine:3.21
-RUN apk add --no-cache httpie jq
+SHELL ["/bin/ash", "-c"]
+
+RUN <<EOF
+  set -euxo pipefail
+  apk add --no-cache httpie jq
+EOF
