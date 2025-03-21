@@ -45,7 +45,7 @@ function defineGnbUe(ctx: NetDefComposeContext, gnb: netdef.GNB, sub: netdef.Sub
     ...compose.waitNetifs(s, { disableTxOffload: true }),
     ...compose.applyQoS(s, "ash"),
     "msg Preparing PacketRusher config",
-    ...compose.mergeConfigFile(c, { base: "/config.base.yml", merged: filename }),
+    ...compose.mergeConfigFile(c, { base: "/config.yml", merged: filename }),
     "sleep 20",
     `msg Starting PacketRusher ${sub.count === 1 ? "with 1 UE, tunnel enabled" : `with ${sub.count} UEs, tunnel disabled`}`,
     `exec /packetrusher ${shlex.join(flags)}`,

@@ -22,7 +22,7 @@ export async function f5UP(ctx: NetDefComposeContext, { name: ct, peers, nets }:
   c.pfcp.addr = compose.getIP(s, "n4");
   c.pfcp.nodeID = compose.getIP(s, "n4");
   // go-upf gtp5g driver listens on the first interface defined in ifList and does not distinguish N3 or N9
-  // https://github.com/free5gc/go-upf/blob/efae7532f8f9ed081065cdaa0589b0c76d11b204/internal/forwarder/driver.go#L53-L58
+  // https://github.com/free5gc/go-upf/blob/07801dcf3cfd0516610aae3fa08809cfd0b2497f/internal/forwarder/driver.go#L53-L58
   c.gtpu.ifList = [{
     addr: "0.0.0.0",
     type: "N3",

@@ -26,11 +26,11 @@ export interface UE {
   msin: string;
   key: string;
   opc: string;
+  dnn: string;
   hplmn: {
     mcc: string;
     mnc: string;
   };
-  dnn: string;
   snssai: {
     sst: number;
     sd: string;

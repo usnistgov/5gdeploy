@@ -1,8 +1,8 @@
-FROM golang:1.23-alpine3.21 AS build
+FROM golang:1.24-alpine3.21 AS build
 SHELL ["/bin/ash", "-c"]
-ADD https://github.com/HewlettPackard/PacketRusher/archive/fd83fec05d964cab7a16fe0d55ff230dd6d9a77a.zip /PacketRusher.zip
+ADD https://github.com/HewlettPackard/PacketRusher/archive/d51f7cb7644dedb9cfc19796ef6da4fbeee0d936.zip /PacketRusher.zip
 
-RUN --mount=type=cache,id=go1.23-build,target=/root/.cache/go-build,sharing=locked \
+RUN --mount=type=cache,id=go1.24-build,target=/root/.cache/go-build,sharing=locked \
 <<EOF
   set -euxo pipefail
   cd /
@@ -10,10 +10,9 @@ RUN --mount=type=cache,id=go1.23-build,target=/root/.cache/go-build,sharing=lock
   mv PacketRusher-* PacketRusher
   cd /PacketRusher
   env CGO_ENABLED=0 go build cmd/packetrusher.go
-  cp config/config.yml config.base.yml
 EOF
 
 
 FROM alpine:3.21
 RUN apk add --no-cache ethtool iproute2 iptables yq
-COPY --from=build /PacketRusher/packetrusher /PacketRusher/config.base.yml /
+COPY --from=build /PacketRusher/packetrusher /PacketRusher/config/config.yml /
