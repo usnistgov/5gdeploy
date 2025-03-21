@@ -1,12 +1,10 @@
-import { assert } from "node:console";
-
 import { Minimatch } from "minimatch";
 import { DefaultMap } from "mnemonist";
 import * as shlex from "shlex";
 import type { ReadonlyDeep } from "type-fest";
 
 import type { ComposeFile, ComposeService, ComposeVolume } from "../types/mod.js";
-import { hexPad, indentLines, joinVbar, scriptHead, splitVbar, YargsCoercedArray, type YargsInfer, type YargsOptions } from "../util/mod.js";
+import { assert, hexPad, indentLines, joinVbar, scriptHead, splitVbar, YargsCoercedArray, type YargsInfer, type YargsOptions } from "../util/mod.js";
 import { annotate } from "./compose.js";
 import type { ComposeContext } from "./context.js";
 
@@ -197,7 +195,7 @@ function* listRules<R extends ReadonlyDeep<BaseRule>>(
     if (rule.dst.pattern === "*") {
       const net = c.networks[rule.net];
       assert(!!net, `network ${rule.net} does not exist`);
-      dstSubnets.push(`${net!.ipam.config[0]!.subnet}`);
+      dstSubnets.push(`${net.ipam.config[0]!.subnet}`);
     } else {
       for (const dst of Object.values(c.services)) {
         if (!rule.dst.match(dst.container_name)) {
@@ -212,7 +210,7 @@ function* listRules<R extends ReadonlyDeep<BaseRule>>(
     }
 
     if (dstSubnets.length > 0) {
-      yield { ...rule, index, srcIP: srcIP!, dstSubnets };
+      yield { ...rule, index, srcIP: srcIP, dstSubnets };
     }
   }
 }
