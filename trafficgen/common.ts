@@ -9,7 +9,7 @@ import type { ReadonlyDeep } from "type-fest";
 import { compose, netdef } from "../netdef-compose/mod.js";
 import { prushDockerImage, prushSupiToMsin } from "../packetrusher/ran.js";
 import type { ComposeFile, ComposeService, N, UERANSIM } from "../types/mod.js";
-import { ueransimDockerImage } from "../ueransim/netdef.js";
+import { ueransimDockerImage } from "../ueransim/ran.js";
 import { assert, dockerode, file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
 
 /** Yargs options `--dir` and `--netdef`. */

@@ -12,7 +12,7 @@ import { o5CP, o5gOptions, o5UP } from "../open5gs/mod.js";
 import { prushOptions, prushRAN } from "../packetrusher/ran.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { srsOptions, srsRAN } from "../srsran/mod.js";
-import { ueransimOptions, ueransimRAN } from "../ueransim/netdef.js";
+import { ueransimOptions, ueransimRAN } from "../ueransim/ran.js";
 import { assert, file_io, Yargs, YargsCoercedArray } from "../util/mod.js";
 import { annotateVm, useVm, useVmOptions } from "../virt/middleware.js";
 import { NetDefComposeContext } from "./context.js";

@@ -17,8 +17,8 @@ export type UeransimOpts = YargsInfer<typeof ueransimOptions>;
 export const ueransimDockerImage = "5gdeploy.localhost/ueransim";
 
 /** Build RAN functions using UERANSIM. */
-export async function ueransimRAN(ctx: NetDefComposeContext, opts: UeransimOpts): Promise<void> {
-  await new UeransimBuilder(ctx, opts).build();
+export function ueransimRAN(ctx: NetDefComposeContext, opts: UeransimOpts): void {
+  new UeransimBuilder(ctx, opts).build();
 }
 
 class UeransimBuilder {
@@ -28,18 +28,18 @@ class UeransimBuilder {
 
   private readonly plmn: netdef.PLMN;
 
-  public async build(): Promise<void> {
+  public build(): void {
     for (const gnb of netdef.listGnbs(this.ctx.network)) {
-      await this.buildGNB(gnb);
+      this.buildGNB(gnb);
     }
 
     const expandCount = this.opts["ueransim-single-ue"];
     for (const [ct, sub] of compose.suggestUENames(netdef.listSubscribers(this.ctx.network, { expandCount }))) {
-      await this.buildUE(ct, sub);
+      this.buildUE(ct, sub);
     }
   }
 
-  private async buildGNB(gnb: netdef.GNB): Promise<void> {
+  private buildGNB(gnb: netdef.GNB): void {
     const s = this.ctx.defineService(gnb.name, ueransimDockerImage, ["air", "n2", "n3"]);
     compose.annotate(s, "cpus", 1);
 
@@ -61,13 +61,12 @@ class UeransimBuilder {
         (snssai) => netdef.splitSNSSAI(snssai).int,
       ),
     };
-    await this.ctx.writeFile(`ran-cfg/${gnb.name}.yaml`, c, { s, target: "/ueransim/config/update.yaml" });
 
     compose.setCommands(s, [
       ...compose.waitNetifs(s, { disableTxOffload: true }),
       ...compose.applyQoS(s),
       "msg Preparing UERANSIM gNB config",
-      ...compose.mergeConfigFile("/ueransim/config/update.yaml", {
+      ...compose.mergeConfigFile(c, {
         base: "/ueransim/config/custom-gnb.yaml",
         merged: `/ueransim/config/${gnb.name}.yaml`,
       }),
@@ -77,7 +76,7 @@ class UeransimBuilder {
     ]);
   }
 
-  private async buildUE(ct: string, sub: netdef.Subscriber): Promise<void> {
+  private buildUE(ct: string, sub: netdef.Subscriber): void {
     const s = this.ctx.defineService(ct, ueransimDockerImage, ["mgmt", "air"]);
     s.devices.push("/dev/net/tun:/dev/net/tun");
     s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
@@ -107,13 +106,13 @@ class UeransimBuilder {
       "configured-nssai": nssai,
       "default-nssai": nssai,
     };
-    await this.ctx.writeFile(`ran-cfg/${ct}.yaml`, c, { s, target: "/ueransim/config/update.yaml" });
 
     compose.setCommands(s, [
       ...compose.waitNetifs(s, { disableTxOffload: true }),
       "msg Preparing UERANSIM UE config",
-      ...compose.mergeConfigFile("/ueransim/config/update.yaml", {
+      ...compose.mergeConfigFile(c, {
         base: "/ueransim/config/custom-ue.yaml",
+        post: sub.count > 1 ? [`.supi line_comment="upto ${sub.supis.at(-1)!}"`] : [],
         merged: `/ueransim/config/${ct}.yaml`,
       }),
       "sleep 20",

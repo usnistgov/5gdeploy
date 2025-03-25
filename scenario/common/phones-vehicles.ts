@@ -43,20 +43,26 @@ function qosOption(dnn: string) {
 
 export const cliOptions = {
   gnbs: YargsIntRange({
-    desc: "gNB quantity",
     default: 1,
+    desc: "gNB quantity",
     max: 9,
   }),
+  "gnb-visibility": {
+    choices: ["single", "full"],
+    default: "single",
+    desc: "gNB visibility from UEs",
+    type: "string",
+  },
   phones: YargsIntRange({
-    desc: "phone quantity",
     default: 4,
+    desc: "phone quantity",
     min: 0,
     max: 1000,
   }),
   "phone-ambr": ambrOption("phones"),
   vehicles: YargsIntRange({
-    desc: "vehicle quantity",
     default: 4,
+    desc: "vehicle quantity",
     min: 0,
     max: 1000,
   }),
@@ -78,7 +84,7 @@ Record<`${ArrayValues<typeof dnDef>["dnn"]}UPF`, string>
 >;
 
 /** Build a network with phones and vehicles. */
-export function buildNetwork(c: YargsInfer<typeof cliOptions>, s: ScenarioOptions): N.Network {
+export function buildNetwork(opts: YargsInfer<typeof cliOptions>, s: ScenarioOptions): N.Network {
   const upfs = Array.from(new Set(dnDef.map(({ dnn }) => s[`${dnn}UPF`]))).toSorted(sortBy());
 
   const network: N.Network = {
@@ -93,7 +99,7 @@ export function buildNetwork(c: YargsInfer<typeof cliOptions>, s: ScenarioOption
       dnn,
       type: "IPv4",
       subnet,
-      ...c[`qos-${dnn}`],
+      ...opts[`qos-${dnn}`],
     })),
     dataPaths: dnDef.map(({ dnn }) => [
       s[`${dnn}UPF`],
@@ -101,26 +107,30 @@ export function buildNetwork(c: YargsInfer<typeof cliOptions>, s: ScenarioOption
     ]),
   };
 
-  for (let i = 0; i < c.gnbs; ++i) {
+  for (let i = 0; i < opts.gnbs; ++i) {
     const name = `gnb${i}`;
     network.gnbs.push({ name });
     network.dataPaths.push(...upfs.map((upf): N.DataPathLink => [name, upf]));
   }
 
-  ran.addUEsPerGNB(network, "001017005551000", c.phones, {
+  let addUEs = ran.addUEsPerGnb;
+  if (opts["gnb-visibility"] === "full") {
+    addUEs = ran.addUEsFullConnect;
+  }
+  addUEs(network, "001017005551000", opts.phones, {
     subscribedNSSAI: [
       { snssai: s.internetSNSSAI, dnns: ["internet"] },
     ],
-    ...c["phone-ambr"],
+    ...opts["phone-ambr"],
   });
-  ran.addUEsPerGNB(network, "001017005554000", c.vehicles, {
+  addUEs(network, "001017005554000", opts.vehicles, {
     subscribedNSSAI: s.vcamSNSSAI === s.vctlSNSSAI ? [
       { snssai: s.vcamSNSSAI, dnns: ["vcam", "vctl"] },
     ] : [
       { snssai: s.vcamSNSSAI, dnns: ["vcam"] },
       { snssai: s.vctlSNSSAI, dnns: ["vctl"] },
     ],
-    ...c["vehicle-ambr"],
+    ...opts["vehicle-ambr"],
   });
 
   return network;

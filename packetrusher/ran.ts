@@ -101,8 +101,8 @@ function defineGnbUe(
     dependOnGtp5g(s, ctx.c, f5Opts);
   }
 
-  const post: string[] = [];
-  const c = makeConfigUpdate(ctx, s, gnb, sub, nGnbs, nUes, post);
+  const [c, post] = makeConfigUpdate(ctx, s, gnb, sub, nGnbs, nUes);
+
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
   const flags = [`--config=${filename}`, "multi-ue", `-n=${nUes}`];
   if (tunnel) {
@@ -128,8 +128,9 @@ function defineGnbUe(
 function makeConfigUpdate(
     ctx: NetDefComposeContext, s: ComposeService,
     gnb: netdef.GNB, sub: netdef.Subscriber,
-    nGnbs: number, nUes: number, post: string[],
-): PartialDeep<prush.Root> {
+    nGnbs: number, nUes: number,
+): [c: PartialDeep<prush.Root>, post: string[]] {
+  const post: string[] = [];
   const plmn = netdef.splitPLMN(ctx.network.plmn);
 
   const c: PartialDeep<prush.Root> = {};
@@ -148,8 +149,8 @@ function makeConfigUpdate(
   };
   if (nGnbs > 1) {
     post.push(
-      `(.gnodeb.controlif.ip) line_comment="upto ${long2ip(ip2long(c.gnodeb.controlif!.ip!) + nGnbs - 1)}"`,
-      `(.gnodeb.dataif.ip) line_comment="upto ${long2ip(ip2long(c.gnodeb.dataif!.ip!) + nGnbs - 1)}"`,
+      `.gnodeb.controlif.ip line_comment="upto ${long2ip(ip2long(c.gnodeb.controlif!.ip!) + nGnbs - 1)}"`,
+      `.gnodeb.dataif.ip line_comment="upto ${long2ip(ip2long(c.gnodeb.dataif!.ip!) + nGnbs - 1)}"`,
     );
   }
 
@@ -161,7 +162,7 @@ function makeConfigUpdate(
   };
   if (nUes > 1) {
     post.push(
-      `(.ue.msin) line_comment="upto ${decPad(BigInt(c.ue.msin!) + BigInt(nUes - 1), c.ue.msin!.length)}"`,
+      `.ue.msin line_comment="upto ${decPad(BigInt(c.ue.msin!) + BigInt(nUes - 1), c.ue.msin!.length)}"`,
     );
   }
 
@@ -173,7 +174,7 @@ function makeConfigUpdate(
     c.ue.dnn = dn.dnn;
   }
 
-  return c;
+  return [c, post];
 }
 
 /** Determine MSIN from SUPI. */

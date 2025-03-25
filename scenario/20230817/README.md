@@ -30,6 +30,9 @@ cd ~/5gdeploy/scenario
 ./generate.sh 20230817 +gnbs=2 +phones=48 +vehicles=12 --cp=free5gc --up=free5gc --ran=ueransim
 ```
 
+By default, only one gNB is visible to each UE, so that the UE can only connect to this gNB.
+Use `+gnb-visibility=full` flag to make every gNB visible to every UE.
+
 Open5GCore gNB simulator allows up to 2 slices so that it is incompatible with this scenario that has 3 slices.
 If you want to run with Open5GCore gNB simulator, add `+sst4` flag to change SSTs:
 

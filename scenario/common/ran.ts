@@ -4,7 +4,7 @@ import { sortBy } from "sort-by-typescript";
 import type { N } from "../../types/mod.js";
 import { assert, decPad } from "../../util/mod.js";
 
-export function addUEsPerGNB(network: N.Network, firstSUPI: string, total: number, sub: Partial<N.Subscriber>): void {
+export function addUEsPerGnb(network: N.Network, firstSUPI: string, total: number, sub: Partial<N.Subscriber>): void {
   const nGNBs = network.gnbs.length;
   assert(nGNBs >= 1);
   const gnbs = Array.from(network.gnbs, (gnb): [string, number] => [
@@ -28,4 +28,15 @@ export function addUEsPerGNB(network: N.Network, firstSUPI: string, total: numbe
     total -= each;
     supi += BigInt(each);
   }
+}
+
+export function addUEsFullConnect(network: N.Network, firstSUPI: string, total: number, sub: Partial<N.Subscriber>): void {
+  if (total === 0) {
+    return;
+  }
+  network.subscribers.push({
+    ...sub,
+    supi: firstSUPI,
+    count: total,
+  });
 }
