@@ -205,7 +205,7 @@ export namespace waitReachable {
  */
 export function* mergeConfigFile(
     cfg: unknown,
-    { base, op = "*", dels = [], merged }: mergeConfigFile.Options,
+    { base, dels = [], op = "*", post = [], merged }: mergeConfigFile.Options,
 ): Iterable<string> {
   const fmt = {
     ".json": " -oj",
@@ -219,6 +219,7 @@ export function* mergeConfigFile(
     ...Array.from(dels, (expr) => `del(${expr})`),
     `. ${op} ${typeof cfg === "string" ? `load(${JSON.stringify(cfg)})` : stringify(cfg)}`,
     "sort_keys(..)",
+    ...post,
   ].join(" | "))} ${base} | tee ${merged}`;
 }
 export namespace mergeConfigFile {
@@ -240,6 +241,15 @@ export namespace mergeConfigFile {
      * @defaultValue "*"
      */
     op?: string;
+
+    /**
+     * Post operations, such as adding comments.
+     * @example
+     * ```
+     * ["(.gnodeb.controlif | key) line_comment = \"172.25.198.18 ~ 172.25.198.21\""]
+     * ```
+     */
+    post?: string[];
 
     /** Merged filename. */
     merged: string;

@@ -22,7 +22,7 @@ Behavior:
 * PacketRusher creates a GTP-U tunnel netif that allows user traffic through the PDU session.
 
 When using this mode, PacketRusher depends on gtp5g kernel module.
-See [free5GC README](../free5gc/README.md) for how to load this kernel module.
+See [free5GC README](../free5gc/README.md) for how to load this kernel module and how to recover from PacketRusher crash.
 
 ### `--prush-tunnel=false`
 
@@ -65,6 +65,7 @@ Constraints:
 Behavior:
 
 * There is one container for all gNBs and UEs.
+* 1 gNB + 1 UE is automatically changed to 2 gNBs + 1 UE for handover scenarios.
 
 ## UE Single DN Option
 
@@ -74,3 +75,28 @@ If there are multiple Data Networks defined in the NetDef subscriber, you can ch
 * `--ue-single-dn=first` chooses the first Data Network.
 * `--ue-single-dn=last` chooses the last Data Network.
 * `--ue-single-dn=rotate` chooses a different Data Network from each consecutive UE.
+  * This choice is ineffective when there are multiple UEs in the same container.
+
+## Extra Flags Option
+
+`--prush-extra` accepts a string of extra flags passed to PacketRusher multi-ue scenario.
+Run this command to view available flags:
+
+```bash
+docker run --rm 5gdeploy.localhost/packetrusher multi-ue --help
+```
+
+Notes on specific flags:
+
+* `--number-of-ues`, `--tunnel`, `--tunnel-vrf`, `--dedicatedGnb` must be omitted because they are derived from other 5gdeploy options.
+* `--pcap` is unusable due to lack of volume mounts.
+* `--timeBeforeNgapHandover`, `--timeBeforeXnHandover` are usable only with `--prush-multi=true`.
+* `--numPduSessions` is at most 15.
+* If `--prush-tunnel=true` is enabled, using `--timeBeforeDeregistration` and `--loop` together would cause a crash.
+
+Examples:
+
+```text
+--prush-extra='--timeBeforeXnHandover=12000'
+--prush-extra='--timeBeforeIdle=12000 --timeBeforeReconnecting=3000'
+```

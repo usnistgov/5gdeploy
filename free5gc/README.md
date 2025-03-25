@@ -30,8 +30,7 @@ If a network function terminates abnormally, gtp5g kernel objects may not releas
 To recover from this situation, either reboot the host, or run this command to manually unload and re-load the kernel module:
 
 ```bash
-sudo rmmod gtp5g
-sudo modprobe gtp5g
+sudo sh -c 'rmmod gtp5g; modprobe gtp5g'
 # omit 'sudo' in KVM guest
 ```
 
@@ -44,4 +43,4 @@ These logs can be viewed with `sudo journalctl --dmesg --grep gtp5g --follow` co
 `--gtp5g-seq` enables/disables GTP-U sequence number feature in gtp5g kernel module.
 
 The above flags are applied every time the gtp5g service is started, including when it's running in KVM guest.
-They do not need reboots or module re-loading.
+Changing them does not need reboots or module re-loading.

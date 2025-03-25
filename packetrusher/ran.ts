@@ -1,10 +1,11 @@
+import { ip2long, long2ip } from "netmask";
 import * as shlex from "shlex";
 import type { PartialDeep } from "type-fest";
 
 import { dependOnGtp5g, type F5Opts } from "../free5gc/mod.js";
 import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, prush } from "../types/mod.js";
-import { assert, hexPad, YargsGroup, type YargsInfer } from "../util/mod.js";
+import { assert, decPad, hexPad, YargsGroup, type YargsInfer } from "../util/mod.js";
 
 /** Yargs options definition for PacketRusher. */
 export const prushOptions = YargsGroup("PacketRusher options:", {
@@ -15,8 +16,12 @@ export const prushOptions = YargsGroup("PacketRusher options:", {
   },
   "prush-multi": {
     default: false,
-    desc: "put all gNBs in the same container, enables handover",
+    desc: "put all gNBs in the same container",
     type: "boolean",
+  },
+  "prush-extra": {
+    desc: "extra flags passed to PacketRusher",
+    type: "string",
   },
 });
 export type PRushOpts = YargsInfer<typeof prushOptions>;
@@ -69,11 +74,21 @@ function defineGnbUe(
     ctx: NetDefComposeContext,
     gnb: netdef.GNB,
     sub: netdef.Subscriber,
-    { "prush-tunnel": tunnel, "prush-multi": multi, ...f5Opts }: PRushOpts & F5Opts,
+    {
+      "prush-tunnel": tunnel,
+      "prush-multi": multi,
+      "prush-extra": extra,
+      ...f5Opts
+    }: PRushOpts & F5Opts,
     nGnbs: number,
 ): ComposeService {
+  let nUes = sub.count;
   if (multi) {
+    nUes = nGnbs;
+    nGnbs = Math.max(2, nGnbs);
     ctx.ipAlloc.allocNetif("n2", gnb.name, nGnbs);
+  } else {
+    nGnbs = 1;
   }
 
   const s = ctx.defineService(gnb.name, prushDockerImage, ["mgmt", "n2", "n3"]);
@@ -86,21 +101,22 @@ function defineGnbUe(
     dependOnGtp5g(s, ctx.c, f5Opts);
   }
 
-  const c = makeConfigUpdate(ctx, s, gnb, sub);
+  const post: string[] = [];
+  const c = makeConfigUpdate(ctx, s, gnb, sub, nGnbs, nUes, post);
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
-  const flags = [`--config=${filename}`, "multi-ue", `-n=${multi ? nGnbs : sub.count}`];
+  const flags = [`--config=${filename}`, "multi-ue", `-n=${nUes}`];
   if (tunnel) {
     flags.push("-d", "-t", "--tunnel-vrf=false");
   }
+  if (extra) {
+    flags.push(...shlex.split(extra));
+  }
 
   compose.setCommands(s, [
-    ...compose.waitNetifs(s, {
-      disableTxOffload: true,
-      ipCount: multi ? { n2: nGnbs, n3: nGnbs } : undefined,
-    }),
+    ...compose.waitNetifs(s, { disableTxOffload: true, ipCount: { n2: nGnbs, n3: nGnbs } }),
     ...compose.applyQoS(s, "ash"),
     "msg Preparing PacketRusher config",
-    ...compose.mergeConfigFile(c, { base: "/config.yml", merged: filename }),
+    ...compose.mergeConfigFile(c, { base: "/config.yml", post, merged: filename }),
     "sleep 20",
     `msg Starting PacketRusher with tunnel=${Number(tunnel)} multi=${Number(multi)}`,
     `exec /packetrusher ${shlex.join(flags)}`,
@@ -112,6 +128,7 @@ function defineGnbUe(
 function makeConfigUpdate(
     ctx: NetDefComposeContext, s: ComposeService,
     gnb: netdef.GNB, sub: netdef.Subscriber,
+    nGnbs: number, nUes: number, post: string[],
 ): PartialDeep<prush.Root> {
   const plmn = netdef.splitPLMN(ctx.network.plmn);
 
@@ -129,6 +146,12 @@ function makeConfigUpdate(
       gnbid: hexPad(gnb.nci.gnb, 6),
     },
   };
+  if (nGnbs > 1) {
+    post.push(
+      `(.gnodeb.controlif.ip) line_comment="upto ${long2ip(ip2long(c.gnodeb.controlif!.ip!) + nGnbs - 1)}"`,
+      `(.gnodeb.dataif.ip) line_comment="upto ${long2ip(ip2long(c.gnodeb.dataif!.ip!) + nGnbs - 1)}"`,
+    );
+  }
 
   c.ue = {
     msin: prushSupiToMsin(sub.supi),
@@ -136,6 +159,11 @@ function makeConfigUpdate(
     opc: sub.opc,
     hplmn: plmn,
   };
+  if (nUes > 1) {
+    post.push(
+      `(.ue.msin) line_comment="upto ${decPad(BigInt(c.ue.msin!) + BigInt(nUes - 1), c.ue.msin!.length)}"`,
+    );
+  }
 
   if (sub.requestedDN.length > 0) {
     const dn = sub.requestedDN[0]!;
