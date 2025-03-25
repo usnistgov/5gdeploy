@@ -7,6 +7,7 @@ import { flatTransform, pipeline } from "streaming-iterables";
 import type { ReadonlyDeep } from "type-fest";
 
 import { compose, netdef } from "../netdef-compose/mod.js";
+import { prushDockerImage, prushSupiToMsin } from "../packetrusher/ran.js";
 import type { ComposeFile, ComposeService, N, UERANSIM } from "../types/mod.js";
 import { ueransimDockerImage } from "../ueransim/netdef.js";
 import { assert, dockerode, file_io, type YargsInfer, type YargsOptions } from "../util/mod.js";
@@ -98,7 +99,7 @@ export function gatherPduSessions(c: ComposeFile, network: N.Network) {
         if (!dn.subnet) {
           continue;
         }
-        const pduSess = findPduIP(dn, ueIPs, uePDUs);
+        const pduSess = findPduIP(sub, ueService, dn, ueIPs, uePDUs);
         if (!pduSess) {
           continue;
         }
@@ -117,17 +118,21 @@ export function gatherPduSessions(c: ComposeFile, network: N.Network) {
 }
 
 function findPduIP(
-    dn: N.DataNetwork,
+    { supi }: netdef.Subscriber,
+    { image }: ComposeService,
+    { dnn, subnet }: N.DataNetwork,
     ipAddr: readonly LinkWithAddressInfo[],
     psList: UERANSIM.PSList | undefined,
 ): [ip: string, netif: string] | undefined {
-  let ueSubnet = new Netmask(dn.subnet!);
+  let ueSubnet = new Netmask(subnet!);
   if (psList) {
     for (const ps of Object.values(psList)) {
-      if (ps.apn === dn.dnn && !!ps.address) {
+      if (ps.apn === dnn && !!ps.address) {
         ueSubnet = new Netmask(`${ps.address}/32`);
       }
     }
+  } else if (image === prushDockerImage) {
+    ipAddr = ipAddr.filter(({ ifname }) => ifname === `val${prushSupiToMsin(supi)}`);
   }
 
   for (const link of ipAddr) {

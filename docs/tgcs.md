@@ -10,7 +10,7 @@ Many traffic generators have a client-server architecture, including:
 * D-ITG
 
 These traffic generators are supported through `./compose.sh tgcs` subcommand.
-See [traffic generators](trafficgen.md) for other traffic generators.
+See [traffic generators](../trafficgen/README.md) for other traffic generators.
 
 ## Basic Usage
 
