@@ -56,8 +56,12 @@ export class IPAlloc {
    * @returns /24 subnet.
    */
   public allocNetwork(net: string): string {
-    const c = allocOne("network", this.networks, this.nextNetwork, net);
+    const c = this.allocNetworkNumber(net);
     return `${long2ip(Number(c))}/24`;
+  }
+
+  private allocNetworkNumber(net: string): bigint {
+    return allocOne("network", this.networks, this.nextNetwork, net, 1);
   }
 
   /**
@@ -72,15 +76,13 @@ export class IPAlloc {
 
   /**
    * Allocate a netif address.
-   * @param net - Subnet name. It must exist.
+   * @param net - Subnet name.
    * @param host - Host name.
    * @returns IPv4 address within subnet.
    */
-  public allocNetif(net: string, host: string): string {
-    const c = this.networks.get(net);
-    assert(c, "network does not exist");
-
-    const d = allocOne("host", this.hosts, this.nextHost, host);
+  public allocNetif(net: string, host: string, count = 1): string {
+    const c = this.allocNetworkNumber(net);
+    const d = allocOne("host", this.hosts, this.nextHost, host, count);
     return long2ip(Number(c | d));
   }
 }
@@ -99,16 +101,40 @@ function saveFixed(kind: string, m: BiMap<string, bigint>, key: string, value: b
   m.set(key, value);
 }
 
-function allocOne(kind: string, m: BiMap<string, bigint>, next: { n: bigint; step: bigint; max: bigint }, key: string): bigint {
-  let v = m.get(key);
-  if (v === undefined) {
-    do {
-      v = next.n;
-      next.n += next.step;
-      assert(v <= next.max, `too many ${kind}s`);
-    } while (m.inverse.get(v) !== undefined);
+function allocOne(
+    kind: string,
+    m: BiMap<string, bigint>,
+    next: { n: bigint; step: bigint; max: bigint },
+    key: string,
+    count: number,
+): bigint {
+  assert(count >= 1);
 
-    m.set(key, v);
+  let firstValue = m.get(key);
+  let allValues: bigint[];
+  const updateAllValues = () => {
+    allValues = Array.from({ length: count }, (v, i) => {
+      void v;
+      return firstValue! + next.step * BigInt(i);
+    });
+  };
+  const allUnused = (begin = 0) => allValues.every((value, i) => i < begin || !m.inverse.has(value));
+
+  if (firstValue === undefined) {
+    do {
+      firstValue = next.n;
+      next.n += next.step;
+      updateAllValues();
+      assert(allValues!.at(-1)! <= next.max, `too many ${kind}s`);
+    } while (!allUnused());
+  } else {
+    updateAllValues();
+    assert(allUnused(1), "some numbers are assigned elsewhere");
   }
-  return v;
+
+  for (const [i, value] of allValues!.entries()) {
+    m.set(i === 0 ? key : `key:${i}`, value);
+  }
+
+  return firstValue;
 }

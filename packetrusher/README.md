@@ -5,21 +5,66 @@ This package offers these choices in the **netdef-compose** command:
 
 * `--ran=packetrusher`
 
-PacketRusher can operate in either control plane mode or GTP-U tunnel mode, described below.
-In either mode, only the first Data Network defined in the NetDef subscriber is connected to.
+## GTP-U Tunnel Option
 
-## Control Plane Mode
+### `--prush-tunnel=true`
 
-In control plane mode, PacketRusher performs control plane signaling procedures including UE registration and PDU session establishment, but it isn't possible to send user traffic through the PDU sessions.
-To use this mode, there must be exactly one NetDef subscriber connected to each gNB, in which the subscriber has a `.count` greater than 1 to define multiple UEs with consecutive SUPIs.
+This choice (default) enables GTP-U tunnels that allow user traffic through the PDU sessions.
 
-## GTP-U Tunnel Mode
+Constraints:
 
-In GTP-U tunnel mode, PacketRusher performs control plane signaling procedures and then creates a GTP-U tunnel netif that allows user traffic through the PDU session.
-To use this mode, there must be exactly one UE (NetDef subscriber with `.count` equal to 1) connected to each gNB.
+* There is exactly one NetDef subscriber connected to each gNB.
+* Each subscriber must have a `.count` equal to 1.
 
-When using GTP-U tunnel mode, PacketRusher depends on gtp5g kernel module.
+Behavior:
+
+* PacketRusher performs control plane procedures including UE registration and PDU session establishment.
+* PacketRusher creates a GTP-U tunnel netif that allows user traffic through the PDU session.
+
+When using this mode, PacketRusher depends on gtp5g kernel module.
 See [free5GC README](../free5gc/README.md) for how to load this kernel module.
+
+### `--prush-tunnel=false`
+
+This choice disables GTP-U tunnels.
+
+Constraints:
+
+* There is exactly one NetDef subscriber connected to each gNB.
+* Each subscriber may have a `.count` greater than 1, in which case multiple UEs with consecutive SUPIs would be defined.
+
+Behavior:
+
+* PacketRusher performs control plane signaling procedures including UE registration and PDU session establishment.
+* It isn't possible to send user traffic through the PDU sessions.
+
+## Multi gNB Option
+
+### `--prush-multi=false`
+
+This choice (default) creates one container for each gNB and its UEs.
+
+Constraints:
+
+* No additional constraint.
+
+Behavior:
+
+* There is one container for each gNB and its UEs.
+
+### `--prush-multi=true`
+
+This choice puts all gNBs and UEs in the same container.
+
+Constraints:
+
+* gNBs must have consecutive gNB IDs.
+* Each subscriber must have a `.count` equal to 1.
+* Subscribers must have consecutive SUPIs and same K/OPC values.
+
+Behavior:
+
+* There is one container for all gNBs and UEs.
 
 ## UE Single DN Option
 

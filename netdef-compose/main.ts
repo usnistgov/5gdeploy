@@ -9,7 +9,7 @@ import * as netdef from "../netdef/mod.js";
 import { oaiCP, oaiOptions, oaiRAN, oaiUP, oaiUPvpp } from "../oai/mod.js";
 import { bessOptions, bessUP, gnbsimRAN } from "../omec/mod.js";
 import { o5CP, o5gOptions, o5UP } from "../open5gs/mod.js";
-import { packetrusherRAN } from "../packetrusher/ran.js";
+import { prushOptions, prushRAN } from "../packetrusher/ran.js";
 import { phoenixCP, phoenixOptions, phoenixRAN, phoenixUP } from "../phoenix/mod.js";
 import { srsOptions, srsRAN } from "../srsran/mod.js";
 import { ueransimOptions, ueransimRAN } from "../ueransim/netdef.js";
@@ -43,7 +43,7 @@ const upProviders: Record<string, UpProvider> = {
 const ranProviders: Record<string, Provider> = {
   gnbsim: gnbsimRAN,
   oai: oaiRAN,
-  packetrusher: packetrusherRAN,
+  packetrusher: prushRAN,
   phoenix: phoenixRAN,
   srsran: srsRAN,
   ueransim: ueransimRAN,
@@ -100,6 +100,7 @@ const args = await Yargs()
     ...oaiOptions,
     ...phoenixOptions,
     ...prometheusOptions,
+    ...prushOptions,
     ...srsOptions,
     ...ueransimOptions,
     ...useVmOptions,

@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import stringify from "json-stringify-deterministic";
+import { Netmask } from "netmask";
 import * as shlex from "shlex";
 import { sortBy } from "sort-by-typescript";
 
@@ -72,13 +73,14 @@ export namespace setCommandsFile {
  */
 export function* waitNetifs(s: ComposeService, {
   disableTxOffload = false,
+  ipCount = {},
 }: waitNetifs.Options = {}): Iterable<string> {
   s.cap_add.push("NET_ADMIN");
 
   const netifAnnotatePrefix = `${annotate.PREFIX}ip_`;
   const netifs = Object.entries(s.annotations ?? {})
     .filter(([k]) => k.startsWith(netifAnnotatePrefix))
-    .map(([k, v]) => [k.slice(netifAnnotatePrefix.length), v]);
+    .map(([k, v]): [string, string] => [k.slice(netifAnnotatePrefix.length), v]);
   netifs.sort(sortBy("0"));
   for (const [net, ip] of netifs) {
     if (annotate(s, `assume_net_${net}`)) {
@@ -98,6 +100,16 @@ export function* waitNetifs(s: ComposeService, {
     if (disableTxOffload) {
       yield `msg Disabling TX checksum offload on ${net}`;
       yield `ethtool --offload ${net} tx off || msg Cannot disable offload on ${net}, outgoing packets may get dropped`;
+    }
+
+    const intfIPCount = ipCount[net] ?? 1;
+    if (intfIPCount > 1) {
+      yield `msg Adding extra IPs on ${net}`;
+      let intfIP = new Netmask(ip, 32);
+      for (let i = 1; i < intfIPCount; ++i) {
+        intfIP = intfIP.next();
+        yield `ip addr replace ${intfIP.base}/24 dev ${net}`;
+      }
     }
   }
 
@@ -119,6 +131,8 @@ export namespace waitNetifs {
      * or TX offload cannot be disabled, a warning is logged but it's not a fatal error.
      */
     disableTxOffload?: boolean;
+
+    ipCount?: Record<string, number>;
   }
 }
 
