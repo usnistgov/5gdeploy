@@ -65,7 +65,7 @@ Constraints:
 Behavior:
 
 * There is one container for all gNBs and UEs.
-* 1 gNB + 1 UE is automatically changed to 2 gNBs + 1 UE for handover scenarios.
+* 1 gNB + 1 UE is automatically changed to 2 gNBs + 1 UE to make handover possible.
 
 ## UE Single DN Option
 

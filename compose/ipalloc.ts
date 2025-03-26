@@ -133,7 +133,7 @@ function allocOne(
   }
 
   for (const [i, value] of allValues!.entries()) {
-    m.set(i === 0 ? key : `key:${i}`, value);
+    m.set(i === 0 ? key : `${key}+${i}`, value);
   }
 
   return firstValue;
