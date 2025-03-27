@@ -1,6 +1,6 @@
 FROM golang:1.24-alpine3.21 AS build
 SHELL ["/bin/ash", "-c"]
-ADD https://github.com/HewlettPackard/PacketRusher/archive/542ddc649b5d3fcac85e8f2ee58d45d5fe07fa17.zip /PacketRusher.zip
+ADD https://github.com/HewlettPackard/PacketRusher/archive/bd440ebd8238d72ebaa610b9c692e2c7676ac1ef.zip /PacketRusher.zip
 
 RUN --mount=type=cache,id=go1.24-build,target=/root/.cache/go-build,sharing=locked \
 <<EOF

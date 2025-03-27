@@ -91,7 +91,7 @@ Notes on specific flags:
 * `--number-of-ues`, `--tunnel`, `--tunnel-vrf`, `--dedicatedGnb` must be omitted because they are derived from other 5gdeploy options.
 * `--pcap` is unusable due to lack of volume mounts.
 * `--timeBeforeNgapHandover`, `--timeBeforeXnHandover` are usable only with `--prush-multi=true`.
-* `--numPduSessions` is at most 15.
+* `--numPduSessions` is at most 16.
 * If `--prush-tunnel=true` is enabled, using `--timeBeforeDeregistration` and `--loop` together would cause a crash.
 
 Examples:

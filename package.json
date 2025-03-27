@@ -20,7 +20,7 @@
     "@types/dockerode": "^3.3.35",
     "@types/js-yaml": "^4.0.9",
     "@types/netmask": "^2.0.5",
-    "@types/node": "^22.13.13",
+    "@types/node": "^22.13.14",
     "@types/sql-tagged-template-literal": "^1.2.2",
     "@types/yargs": "^17.0.33",
     "ajv": "^8.17.1",
