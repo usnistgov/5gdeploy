@@ -5,10 +5,16 @@ import type { PartialDeep } from "type-fest";
 import { dependOnGtp5g, type F5Opts } from "../free5gc/mod.js";
 import { compose, netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, prush } from "../types/mod.js";
-import { assert, decPad, hexPad, YargsGroup, type YargsInfer } from "../util/mod.js";
+import { assert, decPad, hexPad, YargsGroup, type YargsInfer, YargsIntRange } from "../util/mod.js";
 
 /** Yargs options definition for PacketRusher. */
 export const prushOptions = YargsGroup("PacketRusher options:", {
+  "prush-log": YargsIntRange({
+    default: 4,
+    desc: "log level (higher number is more verbose)",
+    min: 1,
+    max: 6,
+  }),
   "prush-tunnel": {
     default: true,
     desc: "enable GTP-U tunnel",
@@ -75,6 +81,7 @@ function defineGnbUe(
     gnb: netdef.GNB,
     sub: netdef.Subscriber,
     {
+      "prush-log": logLevel,
       "prush-tunnel": tunnel,
       "prush-multi": multi,
       "prush-extra": extra,
@@ -101,12 +108,15 @@ function defineGnbUe(
     dependOnGtp5g(s, ctx.c, f5Opts);
   }
 
-  const [c, post] = makeConfigUpdate(ctx, s, gnb, sub, nGnbs, nUes);
+  const [c, post] = makeConfigUpdate(ctx, s, logLevel, gnb, sub, nGnbs, nUes);
 
   const filename = `/config.${gnb.name}.${sub.supi}.yml`;
   const flags = [`--config=${filename}`, "multi-ue", `-n=${nUes}`];
+  if (tunnel || multi) {
+    flags.push("-d");
+  }
   if (tunnel) {
-    flags.push("-d", "-t", "--tunnel-vrf=false");
+    flags.push("-t", "--tunnel-vrf=false");
   }
   if (extra) {
     flags.push(...shlex.split(extra));
@@ -126,7 +136,7 @@ function defineGnbUe(
 }
 
 function makeConfigUpdate(
-    ctx: NetDefComposeContext, s: ComposeService,
+    ctx: NetDefComposeContext, s: ComposeService, logLevel: number,
     gnb: netdef.GNB, sub: netdef.Subscriber,
     nGnbs: number, nUes: number,
 ): [c: PartialDeep<prush.Root>, post: string[]] {
@@ -134,6 +144,9 @@ function makeConfigUpdate(
   const plmn = netdef.splitPLMN(ctx.network.plmn);
 
   const c: PartialDeep<prush.Root> = {};
+  c.logs = {
+    level: logLevel as 1 | 2 | 3 | 4 | 5 | 6,
+  };
   c.amfif = Array.from(
     compose.listByNf(ctx.c, "amf"),
     (amf) => ({ ip: compose.getIP(amf, "n2"), port: 38412 }),
