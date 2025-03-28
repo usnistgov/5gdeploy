@@ -115,6 +115,7 @@ Currently, scrape targets include:
 
 * Open5GCore network functions
 * Open5GS network functions
+* eUPF
 * process-exporter on each host machine
   * gathering stats of Open5GCore processes
 

@@ -1,29 +1,44 @@
 
-import { compose, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
+import path from "node:path";
+
+import { compose, importGrafanaDashboard, type netdef, type NetDefComposeContext } from "../netdef-compose/mod.js";
 import type { ComposeService, EUPF } from "../types/mod.js";
 
 const eupfDockerImage = "5gdeploy.localhost/eupf";
 
 /** Build eUPF. */
 export async function eUPF(ctx: NetDefComposeContext, upf: netdef.UPF): Promise<void> {
-  const s = ctx.defineService(upf.name, eupfDockerImage, upf.nets);
+  const s = ctx.defineService(upf.name, eupfDockerImage, ["mgmt", ...upf.nets]);
   compose.annotate(s, "cpus", 1);
   s.environment.GIN_MODE = "release";
   s.privileged = true;
   s.sysctls["net.ipv4.conf.all.forwarding"] = 1;
 
+  await connectMetrics(ctx, s);
+
   ctx.finalize.push(async () => {
     const c = makeConfig(upf, s);
-    await ctx.writeFile(`up-cfg/${upf.name}.yaml`, c, {
+    await ctx.writeFile(`up-cfg/${upf.name}.yml`, c, {
       s, target: "/config.yml",
     });
     compose.setCommands(s, makeCommands(ctx, upf, s), { shell: "ash" });
   });
 }
 
+async function connectMetrics(ctx: NetDefComposeContext, s: ComposeService): Promise<void> {
+  const target = new URL("http://localhost:9091/metrics");
+  target.hostname = compose.getIP(s, "mgmt");
+  target.searchParams.set("job_name", "eupf");
+  target.searchParams.append("labels", `nf=${s.container_name}`);
+  compose.annotate(s, "prometheus_target", target.toString());
+
+  await importGrafanaDashboard(ctx, path.join(import.meta.dirname, "grafana/eupf.json"));
+}
+
 function makeConfig({ nets }: netdef.UPF, s: ComposeService): EUPF.Config {
   const c: EUPF.Config = {
     interface_name: [],
+    metrics_address: `${compose.getIP(s, "mgmt")}:9091`,
     n3_address: "127.0.0.1",
     n9_address: "127.0.0.1",
     heartbeat_interval: 60,

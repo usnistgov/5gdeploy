@@ -26,6 +26,7 @@ fi
 msg Installing 5gdeploy
 corepack pnpm install
 bash ./types/build-schema.sh
+bash ./eupf/download.sh
 bash ./free5gc/download.sh
 bash ./oai/download.sh
 bash ./open5gs/download.sh

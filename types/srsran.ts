@@ -28,7 +28,7 @@ export interface GnbConfig {
   test_mode?: unknown;
   log?: Log;
   pcap?: unknown;
-  metrics?: unknown;
+  metrics?: Metrics;
 }
 
 export interface CUCP {
@@ -111,4 +111,11 @@ export interface Log {
 }
 export namespace Log {
   export type Level = "none" | "error" | "warning" | "info" | "debug";
+}
+
+export interface Metrics {
+  addr?: string;
+  port?: number;
+  enable_json_metrics?: boolean;
+  [k: string]: unknown;
 }

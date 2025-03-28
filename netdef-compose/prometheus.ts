@@ -23,6 +23,11 @@ export const prometheusOptions = YargsGroup("Measurements options:", {
   },
 });
 
+const grafanaDatasource = {
+  type: "prometheus",
+  uid: "Prometheus",
+};
+
 class PromBuilder {
   constructor(
       private readonly ctx: NetDefComposeContext,
@@ -176,8 +181,8 @@ class PromBuilder {
     await this.ctx.writeFile("grafana-provisioning/datasources/prometheus.yml", {
       apiVersion: 1,
       datasources: [{
-        name: "Prometheus",
-        type: "prometheus",
+        name: grafanaDatasource.uid,
+        type: grafanaDatasource.type,
         url: promUrl.toString(),
         isDefault: true,
         access: "proxy",
@@ -200,7 +205,7 @@ class PromBuilder {
 const ctxBuilder = new DefaultWeakMap((ctx: NetDefComposeContext) => new PromBuilder(ctx));
 
 /** Define Prometheus and Grafana containers in the scenario. */
-export async function prometheus(ctx: NetDefComposeContext, opts: YargsInfer<typeof prometheusOptions>): Promise<void> {
+export async function buildPrometheus(ctx: NetDefComposeContext, opts: YargsInfer<typeof prometheusOptions>): Promise<void> {
   const b = ctxBuilder.get(ctx);
   await b.build(opts);
   ctx.finalize.push(() => b.finish());
@@ -235,12 +240,29 @@ export namespace setProcessExporterRule {
   }>;
 }
 
+const ctxDashboards = new DefaultWeakMap<NetDefComposeContext, Set<string>>(() => new Set());
+
 /**
  * Import a Grafana dashboard definition file.
  * @param filename - Dashboard definition filename.
  */
 export async function importGrafanaDashboard(ctx: NetDefComposeContext, filename: string): Promise<void> {
-  let def = await file_io.readText(filename);
-  def = def.replaceAll("${DS_PROMETHEUS}", "Prometheus"); // eslint-disable-line no-template-curly-in-string
-  await ctx.writeFile(path.join("grafana-dashboards", path.basename(filename)), def);
+  const id = path.basename(filename);
+  const imported = ctxDashboards.get(ctx);
+  if (imported.has(id)) {
+    return;
+  }
+
+  const defText = await file_io.readText(filename);
+  const def = JSON.parse(defText, (key, value) => {
+    if (key === "datasource" && value === "${DS_PROMETHEUS}") { // eslint-disable-line no-template-curly-in-string
+      value = grafanaDatasource;
+    } else if (typeof value === "object" && value?.datasource?.type === grafanaDatasource.type) {
+      value.datasource = grafanaDatasource;
+    }
+    return value;
+  });
+
+  await ctx.writeFile(path.join("grafana-dashboards", id), def);
+  imported.add(id);
 }

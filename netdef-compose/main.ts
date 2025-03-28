@@ -17,7 +17,7 @@ import { assert, file_io, Yargs, YargsCoercedArray } from "../util/mod.js";
 import { annotateVm, useVm, useVmOptions } from "../virt/middleware.js";
 import { NetDefComposeContext } from "./context.js";
 import { defineDNServices, dnOptions, setDNCommands } from "./dn.js";
-import { prometheus, prometheusOptions } from "./prometheus.js";
+import { buildPrometheus, prometheusOptions } from "./prometheus.js";
 
 type Provider = (ctx: NetDefComposeContext, opts: typeof args) => Promisable<void>;
 type UpProvider = (ctx: NetDefComposeContext, upf: netdef.UPF, opts: typeof args) => Promisable<void>;
@@ -121,7 +121,7 @@ setDNCommands(ctx);
 await cpProviders[args.cp]!(ctx, args);
 await ranProviders[args.ran]!(ctx, args);
 await compose.saveQoS(ctx, args);
-await prometheus(ctx, args);
+await buildPrometheus(ctx, args);
 await compose.defineBridge(ctx, args);
 compose.makeCpufreqService(ctx, args);
 compose.place(ctx.c, args);

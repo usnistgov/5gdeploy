@@ -1,5 +1,6 @@
 /.vscode
 /docker/ns3http/ns3http
+/eupf/grafana
 /free5gc/free5gc-compose
 /free5gc/webconsole-openapi
 /free5gc/webconsole.yaml

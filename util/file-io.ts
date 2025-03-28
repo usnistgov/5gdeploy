@@ -74,11 +74,11 @@ export async function readJSON(filename: string, opts: readText.Options = {}): P
  * Read file as UTF-8 text and parse as YAML.
  * @param filename - Filename, "-" for stdin.
  */
-export async function readYAML(filename: string, opts: readYAML.Options = {}): Promise<unknown> {
-  return yaml.load(await readText(filename, opts), {
-    filename,
-    schema: opts.schema,
-  });
+export async function readYAML(filename: string, { schema, ...textOpts }: readYAML.Options = {}): Promise<unknown> {
+  return yaml.load(
+    await readText(filename, textOpts),
+    { filename, schema },
+  );
 }
 export namespace readYAML {
   /** {@link readYAML} options. */
@@ -95,7 +95,10 @@ let tableDelim: string[] | undefined;
  * @remarks
  * Space delimited input files are supported, for up to 64 consecutive spaces.
  */
-export async function readTable(filename: string, opts: readTable.Options = {}): Promise<unknown> {
+export async function readTable(
+    filename: string,
+    { cast = false, columns = false, ...textOpts }: readTable.Options = {},
+): Promise<unknown> {
   if (!tableDelim) {
     tableDelim = [",", "\t"];
     for (let i = 64; i >= 1; --i) {
@@ -103,14 +106,17 @@ export async function readTable(filename: string, opts: readTable.Options = {}):
     }
   }
 
-  return csvParse(await readText(filename, opts), {
-    cast: opts.cast ?? false,
-    columns: opts.columns ?? false,
-    comment: "#",
-    delimiter: tableDelim,
-    skipEmptyLines: true,
-    trim: true,
-  });
+  return csvParse(
+    await readText(filename, textOpts),
+    {
+      cast,
+      columns,
+      comment: "#",
+      delimiter: tableDelim,
+      skipEmptyLines: true,
+      trim: true,
+    },
+  );
 }
 export namespace readTable {
   export interface Options extends readText.Options, Pick<csvParser.Options, "cast" | "columns"> {
