@@ -4,8 +4,10 @@ set -euo pipefail
 # This script inserts `build:` attribute to each Compose service that relies on a locally built
 # Docker image. The modified Compose file can run without installing 5gdeploy.
 # Usage:
-#   cd ~/compose/20230501
+#   cd ~/compose/20230601
 #   ~/5gdeploy/docker/pack.sh compose.yml
+#   rm -f netdef.json compose.sh
+#   tar czvf ~/20230601.tgz .
 
 INPUT="${1:-compose.yml}"
 DOCKER_DIR="$(dirname "${BASH_SOURCE[0]}")"

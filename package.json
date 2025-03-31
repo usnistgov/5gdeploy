@@ -17,7 +17,7 @@
   "dependencies": {
     "@nodelib/fs.walk": "^3.0.1",
     "@segment/ajv-human-errors": "^2.15.0",
-    "@types/dockerode": "^3.3.35",
+    "@types/dockerode": "^3.3.37",
     "@types/js-yaml": "^4.0.9",
     "@types/netmask": "^2.0.5",
     "@types/node": "^22.13.14",
@@ -26,7 +26,7 @@
     "ajv": "^8.17.1",
     "as-table": "^1.0.55",
     "csv": "^6.3.11",
-    "dockerode": "^4.0.4",
+    "dockerode": "^4.0.5",
     "execa": "^9.5.2",
     "fast-json-patch": "^3.1.1",
     "get-stdin": "^9.0.0",
