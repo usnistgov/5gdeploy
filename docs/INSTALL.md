@@ -1,6 +1,6 @@
 # Installation Guide
 
-5gdeploy supports Ubuntu 22.04 operating system only.
+5gdeploy supports Ubuntu 24.04 operating system only.
 
 ## Dependencies
 
@@ -53,19 +53,10 @@ Logout and login again, so that your account has the necessary group memberships
 ## Install 5gdeploy and Build Docker Images
 
 This repository must be cloned at `~/5gdeploy`.
-Open5GCore proprietary repository should be cloned at `~/phoenix-repo`.
-Open source 5G implementations will be pulled from Docker registries or source code repositories.
+To install 5gdeploy and build Docker images of open-source 5G implementations:
 
 ```bash
 cd ~/5gdeploy
-./install.sh
-```
-
-If you do not have access to Open5GCore proprietary repository, disable it with `NOPHOENIX` environ:
-
-```bash
-cd ~/5gdeploy
-export NOPHOENIX=1
 ./install.sh
 ```
 

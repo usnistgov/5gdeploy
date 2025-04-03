@@ -23,12 +23,10 @@ Example command:
 
 ```bash
 corepack pnpm netdef-compose --netdef=$HOME/netdef.json --out=$HOME/compose/example \
-  --cp=free5gc --up=free5gc --ran=ueransim
+  --cp=open5gs --up=open5gs --ran=srsran
 ```
 
-The default combination is `--cp=phoenix --up=phoenix --ran=phoenix` (subject to change).
-If you installed 5gdeploy with `NOPHOENIX=1` environ (Open5GCore disabled), you must explicitly choose other 5G implementations.
-
+The default combination is `--cp=free5gc --up=free5gc --ran=ueransim` (subject to change).
 These are some verified combinations, see [interoperability](../docs/interop.md) for more information:
 
 * `--cp=free5gc --up=free5gc --ran=packetrusher`
@@ -43,7 +41,7 @@ Example command:
 
 ```bash
 corepack pnpm netdef-compose \
-  --up='upf1=free5gc' --up='*=phoenix' \
+  --up='upf1=free5gc' --up='*=open5gs' \
   [other arguments]
 ```
 

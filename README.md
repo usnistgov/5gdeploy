@@ -24,12 +24,15 @@ It is in beta stage and will continue to be updated.
 * Define network topology, slices, subscribers in a JSON document
 * Independently choose 5GCN Control Plane, 5GCN User Plane, and Radio Access Network implementations
 * Generate configuration and startup scripts for supported implementations
+* Deploy network functions into KVM guests
+* Use both virtual and physical network interfaces to connect network functions
 
 5G network measurement
 
 * Perform UE registration and PDU session establishment through RAN simulators
 * Launch traffic generators over PDU sessions for end-to-end network measurement
-* Introduce traffic impairment on transport network
+* Configure traffic impairment on the transport network
+* Restrict CPU affinity for network functions
 
 ## Supported 5G implementations
 
@@ -43,14 +46,14 @@ It is in beta stage and will continue to be updated.
 
 * eUPF
 * free5GC
-* NDN-DPDK
+* NDN-DPDK: UPF functionality supports both NDN and IPv4 traffic
 * OAI-CN5G: userspace UPF, VPP-based UPF
 * Open5GS
 
 Radio Access Network
 
 * OMEC-gNBSim: signaling-only simulator
-* OpenAirInterface5G: radio simulator, USRP over-the-air
-* PacketRusher: simulator in either signaling-only mode or PDU session mode
-* srsRAN Project: radio simulator, USRP over-the-air
-* UERANSIM: simulator with PDU sessions
+* OpenAirInterface5G: radio simulator, over-the-air via software defined radio
+* PacketRusher: protocol simulator in either signaling-only mode or PDU session mode
+* srsRAN Project: radio simulator, over-the-air via software defined radio
+* UERANSIM: protocol simulator with PDU sessions

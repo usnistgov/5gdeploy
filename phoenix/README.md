@@ -5,6 +5,14 @@ Package **phoenix** reads and writes Open5GCore v7.4.3 configuration files.
 * `nf.ts`: edit network function JSON
 * `netdef.ts`: apply a [network definition](../netdef) to a scenario folder
 
+Open5GCore is proprietary software and is not automatically installed.
+To use Open5GCore, you must clone its repository at `~/phoenix-repo`, and build the Docker image:
+
+```bash
+cd ~/5gdeploy
+./docker/build.sh phoenix
+```
+
 This package offers these choices in the **netdef-compose** command:
 
 * `--cp=phoenix`

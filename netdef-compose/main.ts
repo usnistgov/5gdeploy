@@ -62,7 +62,7 @@ const args = await Yargs()
   })
   .option("cp", {
     choices: Object.keys(cpProviders),
-    default: "phoenix",
+    default: "free5gc",
     desc: "Control Plane provider",
     type: "string",
   })
@@ -75,13 +75,13 @@ const args = await Yargs()
       }
       return [new Minimatch(tokens[0]!), tokens[1]!];
     },
-    default: "phoenix",
+    default: "free5gc",
     desc: "User Plane provider",
     type: "string",
   }))
   .option("ran", {
     choices: Object.keys(ranProviders),
-    default: "phoenix",
+    default: "ueransim",
     desc: "Radio Access Network provider",
     type: "string",
   })
