@@ -22,6 +22,6 @@ EOF
 
 COPY --from=yasu /usr/local/bin/yasu /usr/local/bin/yasu
 ADD --chmod=755 https://github.com/0xef53/qmp-shell/releases/download/v2.0.1/qmp-shell /usr/local/bin/
-ADD --chmod=755 https://git.dpdk.org/dpdk/plain/usertools/dpdk-devbind.py?h=v23.11 /usr/local/bin/dpdk-devbind.py
+ADD --chmod=755 https://github.com/DPDK/dpdk/raw/refs/tags/v24.11/usertools/dpdk-devbind.py /usr/local/bin/dpdk-devbind.py
 COPY --from=gtp5g --chmod=644 /gtp5g.zip /
 COPY --from=gtp5g --chmod=755 /gtp5g-load.sh /
