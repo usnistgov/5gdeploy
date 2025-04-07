@@ -1,8 +1,8 @@
-FROM golang:1.23-alpine3.21 AS build
+FROM golang:1.24-alpine3.21 AS build
 SHELL ["/bin/ash", "-c"]
-ADD https://github.com/omec-project/gnbsim/archive/2a68db04223d3b371a78933568492630477ed8b8.zip /gnbsim.zip
+ADD https://github.com/omec-project/gnbsim/archive/f8620750996a966ffc5e674d54a014ef67a595ec.zip /gnbsim.zip
 
-RUN --mount=type=cache,id=go1.23-build,target=/root/.cache/go-build,sharing=locked \
+RUN --mount=type=cache,id=go1.24-build,target=/root/.cache/go-build,sharing=locked \
 <<EOF
   set -euxo pipefail
   cd /
