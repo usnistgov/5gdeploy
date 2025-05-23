@@ -45,6 +45,12 @@ corepack pnpm netdef-compose \
   [other arguments]
 ```
 
+### Disabling RAN
+
+`--ran=none` flag disables the Radio Access Network simulators.
+In this case, 5gdeploy will only provision the core network, ready for connections from physical gNBs.
+You'll also need to [define SIM cards](../replace-sims/README.md) and [expose n2,n3 networks on physical Ethernet ports](../docs/multi-host.md) so they are reachable from gNBs.
+
 ## IP Address Assignment
 
 5gdeploy assigns internal IPv4 addresses of 5G network functions in two parts:

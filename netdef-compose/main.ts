@@ -42,6 +42,7 @@ const upProviders: Record<string, UpProvider> = {
 
 const ranProviders: Record<string, Provider> = {
   gnbsim: gnbsimRAN,
+  none: () => undefined,
   oai: oaiRAN,
   packetrusher: prushRAN,
   phoenix: phoenixRAN,
