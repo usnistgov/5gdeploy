@@ -28,6 +28,11 @@ if (sims.length > 0) {
   network.plmn = `${supi.slice(0, 3)}-${supi.slice(3, 5)}`; // assume 2-digit MNC
 }
 
+// If no subscribers are defined, set them to the SIMs provided
+if (!Array.isArray(network.subscribers) || network.subscribers.length === 0) {
+  network.subscribers = sims.map(sim => ({ ...sim, count: 1 }));
+}
+
 network.subscribers = network.subscribers.flatMap((sub) => {
   const replaced: N.Subscriber[] = [];
   let supi = BigInt(sub.supi);
