@@ -147,7 +147,7 @@ class RANBuilder {
 
     compose.setCommands(s, [
       ...compose.waitNetifs(s, { disableTxOffload: true }),
-      ...compose.waitReachable("AMF", [amfIP]),
+      ...compose.waitReachable("AMF", [amfIP], { sleep: 10 }),
       "exec /opt/srsRAN_Project/target/bin/gnb -c /gnb.yml",
     ]);
   }
