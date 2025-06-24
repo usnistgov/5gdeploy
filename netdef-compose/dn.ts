@@ -62,7 +62,7 @@ export function setDNCommands({ c, network }: NetDefComposeContext): void {
       yield `msg Adding routes for ${shlex.quote(`${snssai}:${dnn}`)} toward UPFs`;
       for (const [upfName, cost] of netdef.listDataPathPeers(network, dn)) {
         assert(typeof upfName === "string");
-        yield `ip route add ${new Netmask(subnet!)} via ${compose.getIP(c, upfName, "n6")} metric ${cost}`;
+        yield `ip route replace ${new Netmask(subnet!)} via ${compose.getIP(c, upfName, "n6")} metric ${cost}`;
       }
 
       yield "msg Listing IP routes";
@@ -89,13 +89,13 @@ export function* makeUPFRoutes(
     const table = upfRouteTableBase + index;
     yield `msg Adding routes for ${shlex.quote(`${snssai}:${dnn}`)} toward DN in table ${table}`;
     yield `ip rule add from ${dest} priority ${upfRouteRulePriority} table ${table}`;
-    yield `ip route add default via ${compose.getIP(c, `dn_${dnn}`, "n6")} table ${table} metric ${cost}`;
+    yield `ip route replace default via ${compose.getIP(c, `dn_${dnn}`, "n6")} table ${table} metric ${cost}`;
     if (upfNetif) {
       if (upfNetifNeigh) {
         yield `ip neigh add ${dest.last} lladdr ${compose.ip2mac(dest.last)} nud permanent dev ${upfNetif}`;
-        yield `ip route add ${dest} via ${dest.last} dev ${upfNetif} onlink metric 0`;
+        yield `ip route replace ${dest} via ${dest.last} dev ${upfNetif} onlink metric 0`;
       } else {
-        yield `ip route add ${dest} dev ${upfNetif} metric 0`;
+        yield `ip route replace ${dest} dev ${upfNetif} metric 0`;
       }
     }
   }

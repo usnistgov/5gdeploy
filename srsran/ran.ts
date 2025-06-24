@@ -166,7 +166,7 @@ class RANBuilder {
       "ue_route() {",
       "  with_retry ip link show dev tun_srsue &>/dev/null",
       "  msg Setting default route from tun_srsue",
-      "  ip route add default dev tun_srsue",
+      "  ip route replace default dev tun_srsue",
       "  msg Listing IP routes",
       "  ip route list type unicast",
       "}",

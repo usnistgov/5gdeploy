@@ -112,7 +112,7 @@ class PhoenixUPBuilder extends PhoenixScenarioBuilder {
         "ip tuntap add mode tun user root name n6_tun",
         "ip link set n6_tun up",
       ] : []),
-      ...Array.from(peers.N6IPv4, ({ subnet }) => `ip route add ${subnet} dev n6_tun`),
+      ...Array.from(peers.N6IPv4, ({ subnet }) => `ip route replace ${subnet} dev n6_tun`),
       ...(peers.N6Ethernet.length > 0 ? [
         "ip link add name br-eth type bridge",
         "ip link set br-eth up",

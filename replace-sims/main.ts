@@ -30,7 +30,7 @@ if (sims.length > 0) {
 
 // If no subscribers are defined, set them to the SIMs provided
 if (!Array.isArray(network.subscribers) || network.subscribers.length === 0) {
-  network.subscribers = sims.map(sim => ({ ...sim, count: 1 }));
+  network.subscribers = sims.map((sim) => ({ ...sim, count: 1 }));
 }
 
 network.subscribers = network.subscribers.flatMap((sub) => {
