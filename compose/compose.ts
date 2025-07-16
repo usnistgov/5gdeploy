@@ -180,8 +180,10 @@ function createService(name: string, image: string): ComposeService {
         return;
       }
       delete s.hostname;
-      assert(Object.keys(s.networks).length === 0,
-        "cannot set ComposeService.network_mode with non-empty ComposeService.networks");
+      assert(
+        Object.keys(s.networks).length === 0,
+        "cannot set ComposeService.network_mode with non-empty ComposeService.networks",
+      );
       for (const key of Object.keys(s.sysctls)) {
         if (key.startsWith("net.")) {
           delete s.sysctls[key]; // eslint-disable-line @typescript-eslint/no-dynamic-delete
@@ -230,9 +232,7 @@ export namespace annotate {
  * @param c - Compose file, possibly readonly.
  * @param nf - Desired network function name.
  */
-export function listByNf<T extends Pick<ReadonlyDeep<ComposeService>, "container_name">>(
-    c: { readonly services: Record<string, T> }, nf: string,
-): Iterable<T> {
+export function listByNf<T extends Pick<ReadonlyDeep<ComposeService>, "container_name">>(c: { readonly services: Record<string, T> }, nf: string): Iterable<T> {
   return filter(Object.values(c.services), ({ container_name }) => nameToNf(container_name) === nf);
 }
 

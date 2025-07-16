@@ -7,7 +7,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import Dockerode from "dockerode";
 import { collect } from "streaming-iterables";
 
-let privateKey: Buffer | undefined;
+let privateKey: Buffer | undefined; // eslint-disable-line @typescript-eslint/no-restricted-types
 
 /**
  * Create handle to Docker Engine.
@@ -113,9 +113,9 @@ export async function execCommand(ct: Dockerode.Container, cmd: readonly string[
 export namespace execCommand {
   export interface Result {
     exitCode: number;
-    stdoutChunks: Buffer[];
+    stdoutChunks: Uint8Array[];
     stdout: string;
-    stderrChunks: Buffer[];
+    stderrChunks: Uint8Array[];
     stderr: string;
   }
 }

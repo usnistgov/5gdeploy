@@ -50,6 +50,6 @@ export type PSList = Record<string, PDUSession>;
 
 export interface PDUSession {
   apn: string;
-  address: string | null;
+  address: string | undefined;
   [k: string]: unknown;
 }

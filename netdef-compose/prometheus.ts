@@ -29,9 +29,7 @@ const grafanaDatasource = {
 };
 
 class PromBuilder {
-  constructor(
-      private readonly ctx: NetDefComposeContext,
-  ) {}
+  constructor(private readonly ctx: NetDefComposeContext) {}
 
   private opts = YargsDefaults(prometheusOptions);
   private readonly scrapeJobs = new Map<string, prom.ScrapeConfig>();
@@ -78,7 +76,7 @@ class PromBuilder {
     s.privileged = true;
 
     const cfg: process_exporter.Config = {
-      process_names: Array.from(this.processExporterRules.values(), ([names]) => names).flat(1),
+      process_names: Array.from(this.processExporterRules.values(), ([names]) => names).flat(),
     };
     await this.ctx.writeFile("process-exporter.yml", cfg, {
       s,
@@ -105,7 +103,7 @@ class PromBuilder {
       metric_relabel_configs: Array.from( // not relabel_configs, see https://stackoverflow.com/a/70359287
         this.processExporterRules.values(),
         ([, relabel]) => relabel,
-      ).flat(1),
+      ).flat(),
     });
   }
 

@@ -17,7 +17,7 @@ namespace iperf2csv {
   const floatCols = ["istart", "iend", "ttavg", "ttmin", "ttmax", "ttsdev"] as const;
 
   export type Row = Record<string, string> & SetRequired<
-  Partial<Record<typeof intCols[number] | typeof floatCols[number], number>>,
+    Partial<Record<typeof intCols[number] | typeof floatCols[number], number>>,
   typeof requiredCols[number]>;
 
   export async function readTable(filename: string): Promise<Row[]> {
@@ -167,16 +167,15 @@ for (const s of Object.values(c.services).filter(({ container_name: ct }) => /_i
 }
 table.sort(sortBy("0", "1", "2", "3", "4"));
 
-const sums = new DefaultMap(
-  (key: string) => [0, 0, ...key.split("|")] as [send: number, recv: number, group: string, dn: string, dir: string],
-);
+const sums = new DefaultMap((key: string) => [0, 0, ...key.split("|")] as [send: number, recv: number, group: string, dn: string, dir: string]);
 for (const row of table) {
   const [group, dn, dir] = row;
   const sum = sums.get([group, dn, dir].join("|"));
   sum[0] += row.at(7) as number;
   sum[1] += row.at(8) as number;
 }
-table.push(...map(sums.values(),
+table.push(...map(
+  sums.values(),
   ([send, recv, group, dn, dir]) => [group, dn, dir, "TOTAL", "*", "_", "_", send, recv, "_"],
 ));
 

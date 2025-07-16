@@ -155,7 +155,8 @@ export abstract class PhoenixScenarioBuilder {
   }
 
   private async updatePrometheus(): Promise<void> {
-    setProcessExporterRule(this.ctx, "phoenix",
+    setProcessExporterRule(
+      this.ctx, "phoenix",
       [{
         comm: ["phoenix"],
         cmdline: [/-j (?:[\w/]+\/)?(?<NF>\w+)\.json/],

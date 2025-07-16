@@ -276,9 +276,7 @@ export class ClientStartOpt {
 }
 
 /** Handle #text flag and save "docker logs" file extension. */
-export function handleTextOutputFlag(
-    s: ComposeService, flags: readonly string[], nonTextStatsExt: string,
-): [rFlags: string[], wantText: boolean] {
+export function handleTextOutputFlag(s: ComposeService, flags: readonly string[], nonTextStatsExt: string): [rFlags: string[], wantText: boolean] {
   const [rFlags, wantText] = extractPpFlag(flags, /^#text$/);
   if (!wantText) {
     compose.annotate(s, "tgcs_stats_ext", nonTextStatsExt);

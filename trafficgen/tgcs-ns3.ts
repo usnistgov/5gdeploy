@@ -93,6 +93,6 @@ export const ns3http: TrafficGen = {
   },
   *statsCommands() {
     yield "msg Counting successfully received webpages";
-    yield "grep -Hc 'HttpClient \\w* --> READING' ns3http_*-*-c.nslog";
+    yield String.raw`grep -Hc 'HttpClient \w* --> READING' ns3http_*-*-c.nslog`;
   },
 };

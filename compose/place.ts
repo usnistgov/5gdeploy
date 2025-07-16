@@ -64,9 +64,7 @@ export function place(c: ComposeFile, opts: YargsInfer<typeof placeOptions>): vo
     return;
   }
 
-  const services = new Map<string, ComposeService>(
-    Object.entries(c.services).filter(([, s]) => !annotate(s, "every_host")),
-  );
+  const services = new Map<string, ComposeService>(Object.entries(c.services).filter(([, s]) => !annotate(s, "every_host")));
   for (let { pattern, host, cpuset } of opts.place) {
     const assignCpus = cpuset === undefined ? undefined : new AssignCpuset(cpuset);
     host = opts["ssh-uri"]?.[host] ?? host;

@@ -117,6 +117,7 @@ class PhoenixRANBuilder extends PhoenixScenarioBuilder {
     });
 
     initCommands.push(
+      "",
       "touch /executor-version.txt", // used by ue-tunnel-mgmt.sh
     );
   }

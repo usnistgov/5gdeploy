@@ -86,6 +86,7 @@ export class PhoenixClientUDP implements PhoenixClient {
       sock.connect(this.port, this.host);
       await pEvent(sock, "connect", { timeout: 1000 });
       sock.send(`${cmd} ${args.join(" ")}`);
+      // eslint-disable-next-line @typescript-eslint/no-restricted-types
       const result = await pEvent(sock, "message", { timeout: 1000 }) as Buffer;
       return new CommandResult(result.toString("utf8"));
     } finally {
@@ -99,9 +100,7 @@ export let clientJ: PhoenixClientJSONRPC;
 export let clientU: PhoenixClientUDP;
 
 /** Assign {@link dockerContainer}, {@link clientJ}, {@link clientU} variables. */
-export async function createClients(
-    { host, jsonrpcPort, udpPort }: { host: string; jsonrpcPort: number; udpPort: number },
-): Promise<void> {
+export async function createClients({ host, jsonrpcPort, udpPort }: { host: string; jsonrpcPort: number; udpPort: number }): Promise<void> {
   let ip = "";
   try {
     ip2long(host);

@@ -174,9 +174,7 @@ function makeConfigUpdate(
     hplmn: plmn,
   };
   if (nUes > 1) {
-    post.push(
-      `.ue.msin line_comment="upto ${decPad(BigInt(c.ue.msin!) + BigInt(nUes - 1), c.ue.msin!.length)}"`,
-    );
+    post.push(`.ue.msin line_comment="upto ${decPad(BigInt(c.ue.msin!) + BigInt(nUes - 1), c.ue.msin!.length)}"`);
   }
 
   if (sub.requestedDN.length > 0) {

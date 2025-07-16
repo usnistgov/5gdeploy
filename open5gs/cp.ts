@@ -254,9 +254,7 @@ class O5CPBuilder {
       yield* this.waitMongo;
     }
     if (s.networks.cp && s.container_name !== "nrf") {
-      this.waitNrf ??= Array.from(compose.waitReachable(
-        "NRF", [compose.getIP(this.ctx.c, "nrf", "cp")], { mode: `tcp:${http2Port}`, sleep: 0 },
-      ));
+      this.waitNrf ??= Array.from(compose.waitReachable("NRF", [compose.getIP(this.ctx.c, "nrf", "cp")], { mode: `tcp:${http2Port}`, sleep: 0 }));
       yield* this.waitNrf;
     }
   }

@@ -119,9 +119,7 @@ class VppEnv {
       MNC: this.plmn.mnc,
       REALM: makeDnaiFqdn.realm,
       VPP_PLUGIN_PATH: "/usr/lib/x86_64-linux-gnu/vpp_plugins/",
-      PROFILE_SUIL: stringify(makeSUIL(
-        this.network, this.upf.peers, { sdFilled: true, withDnai: this.opts["oai-cn5g-pcf"] },
-      )),
+      PROFILE_SUIL: stringify(makeSUIL(this.network, this.upf.peers, { sdFilled: true, withDnai: this.opts["oai-cn5g-pcf"] })),
       SNSSAI_SST: 255, // overwritten by PROFILE_SUIL
       SNSSAI_SD: "000000", // overwritten by PROFILE_SUIL
       DNN: "default", // overwritten by PROFILE_SUIL

@@ -78,8 +78,7 @@ export async function bessUP(
       yield "iptables -I OUTPUT -p icmp --icmp-type port-unreachable -j DROP";
       yield "msg Starting bessd";
       yield "exec bessd -f -grpc-url=127.0.0.1:10514 -m=0";
-    })(),
-    );
+    })());
   });
 
   const pfcpiface = ctx.defineService(ct.replace(/^upf/, "upfpfcp"), pfcpifaceDockerImage, []);

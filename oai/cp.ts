@@ -238,9 +238,7 @@ class CPBuilder extends CN5GBuilder {
 }
 
 class NWDAFBuilder {
-  constructor(
-      protected readonly ctx: NetDefComposeContext,
-  ) {}
+  constructor(protected readonly ctx: NetDefComposeContext) {}
 
   private tplC!: ComposeFile;
   private ipRepl: Array<[string, string]> = [];

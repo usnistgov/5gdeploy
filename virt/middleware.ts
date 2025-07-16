@@ -36,7 +36,7 @@ export const useVmOptions = {
  * This is achieved by performing regex replacements on bridge flags.
  */
 export async function useVm(opts: WritableDeep<YargsInfer<typeof useVmOptions> &
-YargsInfer<typeof compose.placeOptions> & YargsInfer<typeof compose.bridgeOptions>>) {
+  YargsInfer<typeof compose.placeOptions> & YargsInfer<typeof compose.bridgeOptions>>) {
   opts["vm-list"] = {};
   if (!opts["use-vm"]) {
     return;

@@ -134,26 +134,34 @@ class BridgeModeEth extends BridgeMode {
         equal: Number.parseInt(m[5]!, 10),
         input: m[6] as "s" | "d",
       };
-      assert([1, 2, 4, 8, 16].includes(def.rss.equal),
-        `${errHdr}: +rss expects 1, 2, 4, 8, or 16 queues`);
+      assert(
+        [1, 2, 4, 8, 16].includes(def.rss.equal),
+        `${errHdr}: +rss expects 1, 2, 4, 8, or 16 queues`,
+      );
     }
 
     const ctPattern = param.slice(0, -m[0].length);
     const matched = minimatch.match(Array.from(cts), ctPattern);
     switch (def.op) {
       case "=": {
-        assert(matched.length <= hostifs.length,
-          `${errHdr}: cannot assign ${hostifs.length} hostifs to ${matched.length} containers`);
+        assert(
+          matched.length <= hostifs.length,
+          `${errHdr}: cannot assign ${hostifs.length} hostifs to ${matched.length} containers`,
+        );
         break;
       }
       case "~": {
-        assert(matched.length === 1,
-          `${errHdr}: exactly one container required for '~' operator`);
+        assert(
+          matched.length === 1,
+          `${errHdr}: exactly one container required for '~' operator`,
+        );
         // fallthrough
       }
       case "@": {
-        assert(hostifs.length === 1,
-          `${errHdr}: exactly one hostif required for '${def.op}' operator`);
+        assert(
+          hostifs.length === 1,
+          `${errHdr}: exactly one hostif required for '${def.op}' operator`,
+        );
         break;
       }
     }

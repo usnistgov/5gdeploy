@@ -67,8 +67,10 @@ function makeConfigUpdate(
     },
   };
 
-  const subs = netdef.listSubscribers(ctx.network,
-    { expandCount: false, gnb: gnb.name, singleDn: opts["ue-single-dn"] });
+  const subs = netdef.listSubscribers(
+    ctx.network,
+    { expandCount: false, gnb: gnb.name, singleDn: opts["ue-single-dn"] },
+  );
   const profiles: OMEC.gnbsim.Profile[] = [];
   for (const profile of PROFILES) {
     for (const sub of subs) {

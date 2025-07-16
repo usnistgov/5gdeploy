@@ -110,13 +110,16 @@ export function splitVbar<Min extends number, Max extends number>(
     max: NonNegativeInteger<Max>,
 ): splitVbar.Result<Min, Max> {
   const tokens = line.trim().split(/\s\|\s/.test(line) ? /\s+\|\s+/ : /\s*\|\s*/);
-  assert(tokens.length >= min && tokens.length <= max,
-    `bad ${joinVbar(name, tokens)} (expecting ${min}~${max} parts)`);
+  assert(
+    tokens.length >= min && tokens.length <= max,
+    `bad ${joinVbar(name, tokens)} (expecting ${min}~${max} parts)`,
+  );
   return tokens as any;
 }
 export namespace splitVbar {
   export type Result<Min extends number, Max extends number> =
     LessThan<Min, Max> extends true ? [...Result<Min, Subtract<Max, 1>>, string | undefined] :
+    // eslint-disable-next-line @typescript-eslint/no-restricted-types
     LessThan<Min, 1> extends true ? [] : [...Result<Subtract<Min, 1>, Subtract<Max, 1>>, string];
 }
 

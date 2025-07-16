@@ -34,7 +34,8 @@ for (const row of table) {
   const dn = row[5]!;
   counts.get(dn)[0] += 1;
 }
-table.push(...oblMap(counts.entries(),
+table.push(...oblMap(
+  counts.entries(),
   ([dn, [cnt]]) => ["COUNT", `${cnt}`, "_", "_", "_", dn, "_", "_"],
 ));
 

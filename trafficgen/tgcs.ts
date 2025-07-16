@@ -208,8 +208,10 @@ for (let {
 
   table.push([group, dn, dir, supi, port]);
   if (nPortsPerFlow) {
-    assert(tgFlow.nPorts <= nPortsPerFlow,
-      `flow ${group},${dn},${supi} needs ${tgFlow.nPorts} ports but only ${nPortsPerFlow} is allowed`);
+    assert(
+      tgFlow.nPorts <= nPortsPerFlow,
+      `flow ${group},${dn},${supi} needs ${tgFlow.nPorts} ports but only ${nPortsPerFlow} is allowed`,
+    );
     nextPort += nPortsPerFlow;
   } else {
     nextPort += tgFlow.nPorts;
@@ -263,7 +265,7 @@ await cmdOutput(path.join(args.dir, `${prefix}.sh`), (function*() { // eslint-di
   yield "if [[ -z $ACT ]] || [[ $ACT == clients ]]; then";
   if (Object.values(output.services).some((s) => s.environment.TGCS_T0)) {
     yield `  TGCS_T0=$(echo $(date -u +%s.%N) ${args["t0-delay"]} | awk '{ printf "%0.9f", $1+$2 }')`;
-    yield "  msg \\$TGCS_T0 is set to $TGCS_T0";
+    yield String.raw`  msg \$TGCS_T0 is set to $TGCS_T0`;
   }
   for (const { hostDesc, dockerH, names } of compose.classifyByHost(output, (ct) => ct.endsWith("_c"))) {
     yield `  msg Starting trafficgen clients on ${hostDesc}`;
@@ -354,7 +356,8 @@ for (const row of table) {
   const group = row[0]! as string;
   ++counts.get(group).cnt;
 }
-table.push(...map(counts.values(),
+table.push(...map(
+  counts.values(),
   ({ group, cnt }) => [group, "*", "*", "COUNT", cnt],
 ));
 const tTable = file_io.toTable(

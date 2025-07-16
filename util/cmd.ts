@@ -17,7 +17,7 @@ export const scriptHeadStrict = [
 /** Shell script heading with common shell functions. */
 export const scriptHead = [
   ...scriptHeadStrict,
-  "msg() { echo -ne \"\\e[35m[5gdeploy] \\e[94m\"; echo -n \"$*\"; echo -e \"\\e[0m\"; }",
+  String.raw`msg() { echo -ne "\e[35m[5gdeploy] \e[94m"; echo -n "$*"; echo -e "\e[0m"; }`,
   "die() { msg \"$*\"; exit 1; }",
   "with_retry() { while ! \"$@\"; do sleep 0.2; done }",
 ];

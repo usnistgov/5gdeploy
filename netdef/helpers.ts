@@ -458,8 +458,10 @@ export namespace listDataPathPeers {
       for (const [upf] of listDataPathPeers(network, gnb.name)) {
         myPeers.add(upf as string);
       }
-      assert(myPeers.size === peers.size && myPeers.isSubsetOf(peers),
-        `${gnb.name} has different N3 peers than other gNBs`);
+      assert(
+        myPeers.size === peers.size && myPeers.isSubsetOf(peers),
+        `${gnb.name} has different N3 peers than other gNBs`,
+      );
     }
     assert(peers, "no gNB");
     return peers;

@@ -1,4 +1,4 @@
-import { default as fastJsonPatch } from "fast-json-patch"; // eslint-disable-line import/no-named-default
+import fastJsonPatch from "fast-json-patch";
 import type { CommandModule } from "yargs";
 
 import { file_io, Yargs } from "../util/mod.js";

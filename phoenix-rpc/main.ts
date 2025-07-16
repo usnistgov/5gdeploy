@@ -21,7 +21,8 @@ await Yargs()
     type: "number",
   })
   .middleware(createClients)
-  .command("$0 <cmd> [args..]", "execute remote command",
+  .command(
+    "$0 <cmd> [args..]", "execute remote command",
     (yargs) => yargs
       .positional("cmd", {
         demandOption: true,
@@ -37,7 +38,8 @@ await Yargs()
       print(await clientU.executeCommand(cmd, args));
     },
   )
-  .command("introspect", "introspect remote commands",
+  .command(
+    "introspect", "introspect remote commands",
     (yargs) => yargs
       .option("json", {
         default: false,

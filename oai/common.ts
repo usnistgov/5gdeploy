@@ -94,9 +94,7 @@ export function makeSUIL(
     { sdFilled = false, withDnai = false }: makeSUIL.Options = {},
 ): CN5G.upf.SNSSAIInfo[] {
   const plmn = netdef.splitPLMN(network.plmn);
-  const dnaiN39: Record<string, string> = Object.fromEntries(
-    Array.from(peers.N9, (peer) => makeDnaiFqdn(peer, plmn)),
-  );
+  const dnaiN39: Record<string, string> = Object.fromEntries(Array.from(peers.N9, (peer) => makeDnaiFqdn(peer, plmn)));
   if (peers.N3.length > 0) {
     dnaiN39.access = makeDnaiFqdn.access;
   }

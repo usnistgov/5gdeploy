@@ -79,8 +79,8 @@ const dnDef = [
 ] as const satisfies ReadonlyArray<Pick<N.DataNetwork, "dnn" | "subnet">>;
 
 export type ScenarioOptions = Simplify<
-Record<`${ArrayValues<typeof dnDef>["dnn"]}SNSSAI`, N.SNSSAI> &
-Record<`${ArrayValues<typeof dnDef>["dnn"]}UPF`, string>
+  Record<`${ArrayValues<typeof dnDef>["dnn"]}SNSSAI`, N.SNSSAI> &
+  Record<`${ArrayValues<typeof dnDef>["dnn"]}UPF`, string>
 >;
 
 /** Build a network with phones and vehicles. */

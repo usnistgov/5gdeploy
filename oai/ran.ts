@@ -19,9 +19,7 @@ export async function oaiRAN(
   if (opts["oai-gnb-usrp"]) {
     return;
   }
-  for (const [ct, subscriber] of compose.suggestUENames(
-    netdef.listSubscribers(ctx.network, { singleDn: opts["ue-single-dn"] }),
-  )) {
+  for (const [ct, subscriber] of compose.suggestUENames(netdef.listSubscribers(ctx.network, { singleDn: opts["ue-single-dn"] }))) {
     await makeUE(ctx, opts, ct, subscriber);
   }
 }

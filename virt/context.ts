@@ -306,9 +306,7 @@ export class VirtComposeContext extends compose.ComposeContext {
         yield `PFNIC=$(basename $(readlink -f ${sysPci}/net/* | head -1))`;
         yield "LINK=$(ip -j link show $PFNIC)";
         for (const mac of vfs.values()) {
-          yield `VF=$(echo $LINK | jq -r ${shlex.quote(
-            `.[].vfinfo_list[] | select(.address=="${mac}") | .vf`,
-          )})`;
+          yield `VF=$(echo $LINK | jq -r ${shlex.quote(`.[].vfinfo_list[] | select(.address=="${mac}") | .vf`)})`;
           yield `VF${mac.replaceAll(":", "")}=$(basename $(readlink -f ${sysPci}/virtfn$VF))`;
         }
         yield "unset PFNIC LINK VF";
@@ -338,7 +336,8 @@ export class VirtComposeContext extends compose.ComposeContext {
     yield "    sleep 1";
     yield "    echo query-cpus-fast | qmp-shell ./qmp | jq -r '.[] | .[\"thread-id\"]' >qemu-threads.tsv";
     yield "  done";
-    yield `  yasu $RUNAS awk ${shlex.quote(Array.from(cores,
+    yield `  yasu $RUNAS awk ${shlex.quote(Array.from(
+      cores,
       (core, i) => `NR==${1 + i} { system("taskset -pc ${core} " $1) }`,
     ).join("\n"))} qemu-threads.tsv`;
     yield "}";

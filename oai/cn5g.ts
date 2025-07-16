@@ -53,7 +53,7 @@ export abstract class CN5GBuilder {
         }
       }
       if (typeof value === "string" && /^\d+$/.test(value) &&
-          !["sd", "mcc", "mnc", "amf_region_id", "amf_set_id", "amf_pointer", "dnn"].includes(key)) {
+        !["sd", "mcc", "mnc", "amf_region_id", "amf_set_id", "amf_pointer", "dnn"].includes(key)) {
         return Number.parseInt(value, 10);
       }
       return value;
