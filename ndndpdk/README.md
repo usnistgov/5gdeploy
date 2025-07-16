@@ -10,7 +10,7 @@ You must [build the `localhost/ndn-dpdk` container image](https://github.com/usn
 
 ## NDN-UPF
 
-NDN-DPDK has preliminary support for running as a 5G UPF, capable of carrying NDN traffic only.
+NDN-DPDK has preliminary support for running as a 5G UPF.
 The UPF terminates GTPv1U tunnels of IPv4 PDU sessions, where each PDU session is a face in the NDN-DPDK forwarder.
 UEs can then send/receive NDN packets, encapsulated in IPv4 and UDP, through the PDU sessions.
 

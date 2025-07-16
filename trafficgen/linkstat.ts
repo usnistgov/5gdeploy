@@ -123,7 +123,7 @@ const table = await pipeline(
           trim: true,
           ltrim: true,
           rtrim: true,
-        });
+        }) as unknown as ReadonlyArray<[string, number]>;
       }
 
       yield { ct, ifname, stats, ethStats };

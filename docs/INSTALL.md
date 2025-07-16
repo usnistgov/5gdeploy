@@ -43,7 +43,7 @@ jq -n '{
     "max-size": "10m",
     "max-file": "3"
   },
-  dns: ["1.1.1.1", "2606:4700:4700::1111"]
+  dns: ["1.1.1.1", "2606:4700:4700::1111", "8.8.8.8", "2001:4860:4860::8888"]
 }' | sudo tee /etc/docker/daemon.json
 sudo systemctl restart docker
 ```
