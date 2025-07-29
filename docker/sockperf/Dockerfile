@@ -1,6 +1,7 @@
 FROM buildpack-deps:bookworm AS build
 SHELL ["/bin/bash", "-c"]
-ADD https://github.com/Mellanox/sockperf/archive/19accb5229503dac7833f03713b978cb7fc48762.zip /sockperf.zip
+ARG TAG=19accb5229503dac7833f03713b978cb7fc48762
+ADD https://github.com/Mellanox/sockperf/archive/${TAG}.zip /sockperf.zip
 
 RUN <<EOF
   set -euxo pipefail

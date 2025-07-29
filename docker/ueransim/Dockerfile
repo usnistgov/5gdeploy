@@ -1,5 +1,6 @@
 FROM free5gc/ueransim
 SHELL ["/bin/bash", "-c"]
+ARG TAG=2fc85e3e422b9a981d330bf6ff945136bfae97f3
 
 RUN --mount=type=cache,id=bullseye-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=bullseye-apt-cache,target=/var/lib/apt,sharing=locked \
@@ -12,5 +13,5 @@ RUN --mount=type=cache,id=bullseye-apt-cache,target=/var/cache/apt,sharing=locke
 EOF
 
 ADD --chmod=755 https://github.com/mikefarah/yq/releases/download/v4.45.1/yq_linux_amd64 /usr/local/bin/yq
-ADD --chmod=644 https://github.com/aligungr/UERANSIM/raw/2fc85e3e422b9a981d330bf6ff945136bfae97f3/config/custom-gnb.yaml /ueransim/config/
-ADD --chmod=644 https://github.com/aligungr/UERANSIM/raw/2fc85e3e422b9a981d330bf6ff945136bfae97f3/config/custom-ue.yaml /ueransim/config/
+ADD --chmod=644 https://github.com/aligungr/UERANSIM/raw/${TAG}/config/custom-gnb.yaml /ueransim/config/
+ADD --chmod=644 https://github.com/aligungr/UERANSIM/raw/${TAG}/config/custom-ue.yaml /ueransim/config/

@@ -1,4 +1,5 @@
-FROM gradiant/srsran-5g:24_10_1
+ARG TAG=24_10_1
+FROM gradiant/srsran-5g:${TAG}
 SHELL ["/bin/bash", "-c"]
 
 RUN --mount=type=cache,id=jammy-apt-cache,target=/var/cache/apt,sharing=locked \

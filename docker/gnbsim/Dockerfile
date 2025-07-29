@@ -1,6 +1,7 @@
 FROM golang:1.24-alpine3.21 AS build
 SHELL ["/bin/ash", "-c"]
-ADD https://github.com/omec-project/gnbsim/archive/d3fce7e35a69b9f5d670242a93b7d1bee8842ecf.zip /gnbsim.zip
+ARG TAG=d3fce7e35a69b9f5d670242a93b7d1bee8842ecf
+ADD https://github.com/omec-project/gnbsim/archive/${TAG}.zip /gnbsim.zip
 
 RUN --mount=type=cache,id=go1.24-build,target=/root/.cache/go-build,sharing=locked \
 <<EOF

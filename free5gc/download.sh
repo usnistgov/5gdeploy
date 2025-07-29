@@ -1,7 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
-TAG=${1:-master}
+TAG=${1:-}
+TAG=${TAG:-master}
+TAG_WEBCONSOLE=${2:-f4932d569dd0045fc31baca062a05d7b34e3e8e0}
 
 if [[ -d free5gc-compose ]]; then
   git -C free5gc-compose fetch
@@ -11,7 +13,7 @@ else
   git clone --branch "${TAG}" https://github.com/free5gc/free5gc-compose.git
 fi
 
-curl -o webconsole.yaml -fsLS https://github.com/free5gc/webconsole/raw/f4932d569dd0045fc31baca062a05d7b34e3e8e0/frontend/webconsole.yaml
+curl -o webconsole.yaml -fsLS "https://github.com/free5gc/webconsole/raw/${TAG_WEBCONSOLE}/frontend/webconsole.yaml"
 docker run --rm --network none -v ./webconsole-openapi:/output -v ./webconsole.yaml:/webconsole.yaml:ro \
   openapitools/openapi-generator-cli generate -i /webconsole.yaml -g typescript-fetch -o /output
 docker run --rm -v ./webconsole-openapi:/output alpine:3.21 chown -R $(id -u):$(id -g) /output

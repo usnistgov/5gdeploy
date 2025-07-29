@@ -1,7 +1,7 @@
 FROM python:3.10-alpine3.21
 SHELL ["/bin/ash", "-c"]
-ARG branch=master
-ADD https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-nwdaf/-/archive/$branch/oai-cn5g-nwdaf-$branch.zip?path=cli /nwdaf.zip
+ARG TAG=http2_server_support
+ADD https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-nwdaf/-/archive/$TAG/oai-cn5g-nwdaf-$TAG.zip?path=cli /nwdaf.zip
 
 RUN <<EOF
   set -euxo pipefail
