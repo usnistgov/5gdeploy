@@ -37,9 +37,9 @@ declare -A TAGS=(
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --bridge-version)
+    --pipework-version)
       TAGS[bridge]="$2"
-      msg "Argument bridge-version = ${TAGS[bridge]}"
+      msg "Argument pipework-version = ${TAGS[bridge]}"
       shift 2
       ;;
     --eupf-version)
@@ -52,9 +52,9 @@ while [[ $# -gt 0 ]]; do
       msg "Argument free5gc-version = ${TAGS[free5gc]}"
       shift 2
       ;;
-    --free5gc-webclient-version)
+    --free5gc-webconsole-version)
       TAGS[free5gc-webclient]="$2"
-      msg "Argument free5gc-webclient-version = ${TAGS[free5gc-webclient]}"
+      msg "Argument free5gc-webconsole-version = ${TAGS[free5gc-webclient]}"
       shift 2
       ;;
     --gnbsim-version)
@@ -102,9 +102,9 @@ while [[ $# -gt 0 ]]; do
       msg "Argument ueransim-version = ${TAGS[ueransim]}"
       shift 2
       ;;
-    --virt-dpdk-version)
+    --dpdk-version)
       TAGS[virt]="$2"
-      msg "Argument virt-dpdk-version = ${TAGS[virt]}"
+      msg "Argument dpdk-version = ${TAGS[virt]}"
       shift 2
       ;;
     *)
@@ -128,11 +128,7 @@ bash ./open5gs/download.sh "${TAGS[open5gs]}"
 
 for IMG in bridge dn eupf free5gc-webclient gnbsim gtp5g iperf2 ns3http open5gs packetrusher sockperf srsran5g ueransim virt; do
   TAG=${TAGS[$IMG]:-}
-  if [[ -z "$TAG" ]]; then
-    msg "Building Docker image $IMG"
-  else
-    msg "Building Docker image $IMG with version $TAG"
-  fi
+  msg "Building Docker image $IMG"
   ./docker/build.sh $IMG $TAG
 done
 
