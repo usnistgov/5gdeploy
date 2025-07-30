@@ -1,6 +1,7 @@
+ARG TAG=2.7.2
 FROM crazymax/yasu AS yasu
 
-FROM gradiant/open5gs:2.7.2
+FROM gradiant/open5gs:${TAG}
 SHELL ["/bin/bash", "-c"]
 USER root:root
 COPY --from=yasu /usr/local/bin/yasu /usr/local/bin/yasu

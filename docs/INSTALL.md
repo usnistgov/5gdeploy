@@ -1,6 +1,6 @@
 # Installation Guide
 
-5gdeploy supports Ubuntu 24.04 operating system only.
+5gdeploy supports Linux distributions based on Ubuntu 20.04, 22.04, and 24.04.
 
 ## Dependencies
 
@@ -67,6 +67,23 @@ cd ~/5gdeploy
 ./docker/build.sh ueransim
 # change 'ueransim' to the image that you want to rebuild
 ```
+
+### Installation Options
+The following optional arguments can be passed to `./install.sh`:
+* `--pipework-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for Pipework (_default: [9ba97f1735022fb5f811d9c2a304dda33fae1ad1](https://github.com/jpetazzo/pipework)_)
+* `--eupf-version <version>`: Specify a **branch** or **commit hash** to use for eUPF (_default: [main](https://github.com/edgecomllc/eupf)_)
+* `--free5gc-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for free5GC (_default: [master](https://github.com/free5gc/free5gc-compose)_)
+* `--free5gc-webconsole-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for free5GC Web Console (_default: [f4932d569dd0045fc31baca062a05d7b34e3e8e0](https://github.com/free5gc/webconsole)_)
+* `--gnbsim-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for gNBSim (_default: [d3fce7e35a69b9f5d670242a93b7d1bee8842ecf](https://github.com/omec-project/gnbsim)_)
+* `--gtp5g-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for gtp5g (_default: [v0.9.13](https://github.com/free5gc/gtp5g)_)
+* `--oai-fed-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for OAI-CN5G (_default: [master](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed)_)
+* `--oai-nwdaf-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for OAI-CN5G-NWDAF (_default: [http2_server_support](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-nwdaf)_)
+* `--open5gs-version <version>`: Specify a **release** to use for Open5GS (_default: [2.7.2](https://hub.docker.com/r/gradiant/open5gs)_)
+* `--packetrusher-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for PacketRusher (_default: [80a7f4bc63d9563a8ec58ba126440d94018a35a2](https://github.com/HewlettPackard/PacketRusher)_)
+* `--sockperf-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for sockperf (_default: [19accb5229503dac7833f03713b978cb7fc48762](https://github.com/Mellanox/sockperf)_)
+* `--srsran5g-version <version>`: Specify a **release** to use for srsRAN Project (_default: [24_10_1](https://hub.docker.com/r/gradiant/srsran-5g)_)
+* `--ueransim-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for UERANSIM (_default: [2fc85e3e422b9a981d330bf6ff945136bfae97f3](https://github.com/aligungr/UERANSIM)_)
+* `--dpdk-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for DPDK (_default: [v24.11](https://github.com/DPDK/dpdk)_)
 
 ## Secondary Host
 

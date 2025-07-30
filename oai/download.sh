@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
-FED_TAG=${1:-master}
+FED_TAG=${1:-}
+FED_TAG=${FED_TAG:-master}
 NWDAF_TAG=${2:-master}
 
 mkdir -p fed
