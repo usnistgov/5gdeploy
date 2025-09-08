@@ -8,7 +8,9 @@ if [[ -d upf ]]; then
   git -C upf checkout "${TAG}"
   git -C upf pull || true
 else
-  git clone --branch "${TAG}" https://github.com/omec-project/upf.git
+  git clone https://github.com/omec-project/upf.git
+  cd upf
+  git checkout "${TAG}"
 fi
 
 make -C upf docker-build

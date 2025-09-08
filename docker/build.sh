@@ -36,7 +36,7 @@ build_oai_nwdaf_microservice() {
 }
 
 build_oai_nwdaf() {
-  if [[ -n "${TAG:-}" ]]; then
+  if [[ -z "${TAG:-}" ]]; then
     TAG=http2_server_support
     TAG_ARG=(--build-arg TAG="$TAG")
   fi

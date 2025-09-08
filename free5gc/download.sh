@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 TAG=${1:-}
-TAG=${TAG:-master}
+TAG=${TAG:-v4.0.1}
 TAG_WEBCONSOLE=${2:-f4932d569dd0045fc31baca062a05d7b34e3e8e0}
 
 if [[ -d free5gc-compose ]]; then
@@ -10,7 +10,10 @@ if [[ -d free5gc-compose ]]; then
   git -C free5gc-compose checkout "${TAG}"
   git -C free5gc-compose pull || true
 else
-  git clone --branch "${TAG}" https://github.com/free5gc/free5gc-compose.git
+  git clone https://github.com/free5gc/free5gc-compose.git
+  cd free5gc-compose
+  git checkout "${TAG}"
+  cd ..
 fi
 
 curl -o webconsole.yaml -fsLS "https://github.com/free5gc/webconsole/raw/${TAG_WEBCONSOLE}/frontend/webconsole.yaml"

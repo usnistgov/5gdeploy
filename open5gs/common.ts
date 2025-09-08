@@ -5,7 +5,7 @@ import type { ComposeService, O5G } from "../types/mod.js";
 import type { O5GOpts } from "./options.js";
 
 export const o5DockerImage = "5gdeploy.localhost/open5gs";
-export const webuiDockerImage = "gradiant/open5gs-webui:2.7.2";
+export const webuiDockerImage = "gradiant/open5gs-webui:2.7.6";
 
 export function makeSockNode(s: ComposeService, net: string, port?: number): O5G.SockNode {
   return {
