@@ -11,6 +11,7 @@ else
   git clone https://github.com/omec-project/upf.git
   cd upf
   git checkout "${TAG}"
+  cd ..
 fi
 
 make -C upf docker-build
