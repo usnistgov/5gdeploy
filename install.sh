@@ -30,6 +30,7 @@ declare -A TAGS=(
   [oai-fed]=""
   [oai-nwdaf]=""
   [open5gs]=""
+  [open5gs-dbctl]=""
   [packetrusher]=""
   [srsran5g]=""
   [ueransim]=""
@@ -82,6 +83,11 @@ while [[ $# -gt 0 ]]; do
       msg "Argument open5gs-version = ${TAGS[open5gs]}"
       shift 2
       ;;
+    --open5gs-dbctl-version)
+      TAGS[open5gs-dbctl]="$2"
+      msg "Argument open5gs-dbctl-version = ${TAGS[open5gs-dbctl]}"
+      shift 2
+      ;;
     --packetrusher-version)
       TAGS[packetrusher]="$2"
       msg "Argument packetrusher-version = ${TAGS[packetrusher]}"
@@ -124,7 +130,7 @@ bash ./types/build-schema.sh
 bash ./eupf/download.sh "${TAGS[eupf]}"
 bash ./free5gc/download.sh "${TAGS[free5gc]}" "${TAGS[free5gc-webclient]}"
 bash ./oai/download.sh "${TAGS[oai-fed]}" "${TAGS[oai-nwdaf]}"
-bash ./open5gs/download.sh "${TAGS[open5gs]}"
+bash ./open5gs/download.sh "${TAGS[open5gs-dbctl]}"
 
 for IMG in bridge dn eupf free5gc-webclient gnbsim gtp5g iperf2 ns3http open5gs packetrusher sockperf srsran5g ueransim virt; do
   TAG=${TAGS[$IMG]:-}
