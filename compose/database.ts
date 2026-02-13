@@ -89,13 +89,12 @@ export const mongo = {
     mongoUrl,
     initdb,
   }: mongo.Options = {}): ComposeService {
-    const s = ctx.defineService(ct, "bitnami/mongodb:7.0-debian-12", [net]);
-    s.environment.ALLOW_EMPTY_PASSWORD = "yes";
+    const s = ctx.defineService(ct, "mongo:7.0", [net]);
 
     if (mongoUrl) {
       assert(mongoUrl.protocol === "mongodb:");
       if (mongoUrl.pathname.length > 1) {
-        s.environment.MONGODB_DATABASE = mongoUrl.pathname.slice(1); // strip leading "/"
+        s.environment.MONGO_INITDB_DATABASE = mongoUrl.pathname.slice(1); // strip leading "/"
       }
       mongoUrl.hostname = getIP(s, net);
       mongoUrl.port = "27017";
