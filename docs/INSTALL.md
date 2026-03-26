@@ -66,10 +66,12 @@ If you need to rebuild a Docker image for any reason:
 cd ~/5gdeploy
 ./docker/build.sh ueransim
 # change 'ueransim' to the image that you want to rebuild
+# prepend BUILD_NETWORK=host if your environment requires host networking
 ```
 
 ### Installation Options
 The following optional arguments can be passed to `./install.sh`:
+* `--build-network <network>`: Specify a Docker network to use during `docker build` (e.g., `host`). By default, Docker's standard bridge network is used.
 * `--dpdk-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for DPDK (_default: [v24.11](https://github.com/DPDK/dpdk)_)
 * `--eupf-version <version>`: Specify a **branch** or **commit hash** to use for eUPF (_default: [54ed069](https://github.com/edgecomllc/eupf)_ [v0.7.0])
 * `--free5gc-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for free5GC (_default: [v4.2.1](https://github.com/free5gc/free5gc-compose)_)

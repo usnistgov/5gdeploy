@@ -261,8 +261,10 @@ class O5CPBuilder {
 }
 
 function* makeDbctlCommands(network: N.Network, dbUri: URL) {
+  const localDbUri = new URL(dbUri);
+  localDbUri.hostname = "127.0.0.1";
   yield* scriptHead;
-  yield `export DB_URI=${dbUri}`;
+  yield `export DB_URI=${localDbUri.href}`;
   yield `PATH=${compose.mongo.initdbPath}:$PATH`;
   for (const { supi, k, opc, subscribedNSSAI, dlAmbr, ulAmbr } of netdef.listSubscribers(network)) {
     yield `msg Creating subscriber ${supi}`;
