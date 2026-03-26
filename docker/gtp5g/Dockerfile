@@ -1,7 +1,7 @@
 ARG BUILDPACK_TAG=noble
 FROM buildpack-deps:$BUILDPACK_TAG
 SHELL ["/bin/bash", "-c"]
-ARG TAG=v0.9.13
+ARG TAG=v0.9.16
 
 RUN --mount=type=cache,id=gtp5g-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=gtp5g-apt-cache,target=/var/lib/apt,sharing=locked \

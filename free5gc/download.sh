@@ -2,8 +2,8 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 TAG=${1:-}
-TAG=${TAG:-v4.0.1}
-TAG_WEBCONSOLE=${2:-f4932d569dd0045fc31baca062a05d7b34e3e8e0}
+TAG=${TAG:-v4.2.1}
+TAG_WEBCONSOLE=${2:-v1.4.4}
 
 if [[ -d free5gc-compose ]]; then
   git -C free5gc-compose fetch
