@@ -146,7 +146,8 @@ class F5CPBuilder {
     for (const dnID of sub.subscribedDN) {
       const { dnn, snssai, sessionType, fiveQi, fiveQiPriorityLevel, arpLevel, ambr } = netdef.findDN(this.ctx.network, dnID);
       const { sst, sd = "" } = netdef.splitSNSSAI(snssai).hex;
-      const key = `${sst}${sd}`.toLowerCase();
+      const lowerSd = sd.toLowerCase();
+      const key = `${sst}${lowerSd === "ffffff" ? "" : lowerSd}`;
 
       let smData = smDatas[snssai];
       if (!smData) {
@@ -426,5 +427,7 @@ class F5CPBuilder {
 
 function convertSNSSAI(input: string): F5.SNSSAI {
   const { sst, sd } = netdef.splitSNSSAI(input).ih;
-  return { sst, sd: sd?.toLowerCase() };
+  const lowerSd = sd?.toLowerCase();
+  if (lowerSd === "ffffff") return { sst };
+  return { sst, sd: lowerSd };
 }
