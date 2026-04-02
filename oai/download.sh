@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 FED_TAG=${1:-}
-FED_TAG=${FED_TAG:-2024.w45}
+FED_TAG=${FED_TAG:-v2.2.0}
 NWDAF_TAG=${2:-6a1408c9be6f5cf0ddb6c1f1b527a04e36205471}
 
 mkdir -p fed

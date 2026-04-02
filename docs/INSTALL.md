@@ -66,17 +66,19 @@ If you need to rebuild a Docker image for any reason:
 cd ~/5gdeploy
 ./docker/build.sh ueransim
 # change 'ueransim' to the image that you want to rebuild
+# prepend BUILD_NETWORK=host if your environment requires host networking
 ```
 
 ### Installation Options
 The following optional arguments can be passed to `./install.sh`:
+* `--build-network <network>`: Specify a Docker network to use during `docker build` (e.g., `host`). By default, Docker's standard bridge network is used.
 * `--dpdk-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for DPDK (_default: [v24.11](https://github.com/DPDK/dpdk)_)
 * `--eupf-version <version>`: Specify a **branch** or **commit hash** to use for eUPF (_default: [54ed069](https://github.com/edgecomllc/eupf)_ [v0.7.0])
-* `--free5gc-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for free5GC (_default: [v4.0.1](https://github.com/free5gc/free5gc-compose)_)
-* `--free5gc-webconsole-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for free5GC Web Console (_default: [f4932d5](https://github.com/free5gc/webconsole)_)
+* `--free5gc-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for free5GC (_default: [v4.2.1](https://github.com/free5gc/free5gc-compose)_)
+* `--free5gc-webconsole-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for free5GC Web Console (_default: [v1.4.4](https://github.com/free5gc/webconsole)_)
 * `--gnbsim-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for gNBSim (_default: [d3fce7e](https://github.com/omec-project/gnbsim)_)
-* `--gtp5g-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for gtp5g (_default: [v0.9.13](https://github.com/free5gc/gtp5g)_)
-* `--oai-fed-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for OAI-CN5G (_default: [2024.w45](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed)_)
+* `--gtp5g-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for gtp5g (_default: [v0.9.16](https://github.com/free5gc/gtp5g)_)
+* `--oai-fed-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for OAI-CN5G (_default: [v2.2.0](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-fed)_)
 * `--oai-nwdaf-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for OAI-CN5G-NWDAF (_default: [6a1408c](https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-nwdaf)_)
 * `--open5gs-dbctl-version <version>`: Specify a **branch**, **tag**, or **commit hash** to use for Open5GS DBCTL (_default: [v2.7.6](https://github.com/open5gs/open5gs)_)
 * `--open5gs-version <version>`: Specify a **release** to use for Open5GS (_default: [2.7.6](https://hub.docker.com/r/gradiant/open5gs)_)

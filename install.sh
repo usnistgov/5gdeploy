@@ -38,6 +38,11 @@ declare -A TAGS=(
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --build-network)
+      export BUILD_NETWORK="$2"
+      msg "Argument build-network = $BUILD_NETWORK"
+      shift 2
+      ;;
     --pipework-version)
       TAGS[bridge]="$2"
       msg "Argument pipework-version = ${TAGS[bridge]}"

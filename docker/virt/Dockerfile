@@ -11,7 +11,7 @@ RUN --mount=type=cache,id=bookworm-apt-cache,target=/var/cache/apt,sharing=locke
   rm -f /etc/apt/apt.conf.d/docker-clean
   echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' >/etc/apt/apt.conf.d/keep-cache
   apt-get update
-  apt-get install -y --no-install-recommends gnupg guestfs-tools jq python3-minimal qemu-system-x86
+  apt-get install -y --no-install-recommends gnupg libguestfs-tools jq python3-minimal qemu-system-x86
 EOF
 
 RUN <<EOF

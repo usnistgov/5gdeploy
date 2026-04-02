@@ -16,6 +16,11 @@ if [[ ${NOPULL:-} -eq 1 ]]; then
   PULL=''
 fi
 
+BUILD_NETWORK_ARG=()
+if [[ -n "${BUILD_NETWORK:-}" ]]; then
+  BUILD_NETWORK_ARG=("--network=$BUILD_NETWORK")
+fi
+
 build_image() {
   local NAME=$1
   shift
@@ -23,14 +28,14 @@ build_image() {
   if grep -q localhost/ docker/$NAME/Dockerfile; then
     PULL1=''
   fi
-  docker build $PULL1 --progress=plain -t 5gdeploy.localhost/$NAME "$@" docker/$NAME "${TAG_ARG[@]}"
+  docker build "${BUILD_NETWORK_ARG[@]}" $PULL1 --progress=plain -t 5gdeploy.localhost/$NAME "$@" docker/$NAME "${TAG_ARG[@]}"
 }
 
 build_oai_nwdaf_microservice() {
   local MS=$1
   local TAG=$2
   shift 2
-  docker build $PULL --progress=plain -t 5gdeploy.localhost/oai-nwdaf-$MS \
+  docker build "${BUILD_NETWORK_ARG[@]}" $PULL --progress=plain -t 5gdeploy.localhost/oai-nwdaf-$MS \
     "$@" -f docker/Dockerfile.$MS \
     https://gitlab.eurecom.fr/oai/cn5g/oai-cn5g-nwdaf.git#$TAG:components/oai-nwdaf-$MS
 }
@@ -50,7 +55,7 @@ build_oai_nwdaf() {
 
   build_oai_nwdaf_microservice engine-ads "$TAG"
 
-  docker build $PULL --progress=plain -t 5gdeploy.localhost/oai-nwdaf-cli \
+  docker build "${BUILD_NETWORK_ARG[@]}" $PULL --progress=plain -t 5gdeploy.localhost/oai-nwdaf-cli \
     "${TAG_ARG[@]}" \
     docker/oai-nwdaf-cli
 }
@@ -64,7 +69,7 @@ build_phoenix() {
 
   pushd ../phoenix-repo/phoenix-src
   sed 's/cmake -G Ninja/\0 -DWITH_4G=OFF -DWITH_5G=ON/' deploy/docker/Dockerfile |
-    docker build $PULL --progress=plain -t localhost/phoenix-base \
+    docker build "${BUILD_NETWORK_ARG[@]}" $PULL --progress=plain -t localhost/phoenix-base \
       --build-arg UBUNTU_VERSION=22.04 \
       --build-arg CACHE_PREFIX= \
       -f - .
