@@ -5,7 +5,7 @@ It is primarily useful for running an emulated 5G network in Docker Compose envi
 
 ![5gdeploy logo](docs/5gdeploy-logo.svg)
 
-This software is developed at the [Smart Connected Systems Division](https://www.nist.gov/ctl/smart-connected-systems-division) of the [National Institute of Standards and Technology](https://www.nist.gov/).
+This software is developed at the [Communications Technology Laboratory](https://www.nist.gov/ctl) of the [National Institute of Standards and Technology](https://www.nist.gov/).
 It is no longer in development but may see occasional maintenance updates.
 
 ## Documentation
@@ -16,7 +16,7 @@ It is no longer in development but may see occasional maintenance updates.
 * [multi-host deployment](docs/multi-host.md)
 * [traffic generators](trafficgen/README.md)
 * [scenario](scenario/README.md): concrete scenarios
-* [FABRIC testbed notebooks](https://github.com/yoursunny/fabric/tree/main/5gdeploy)
+* [FABRIC testbed artifact](https://artifacts.fabric-testbed.net/artifacts/dbcb0b1f-fe8e-46db-9e43-913eb03a29b3)
 
 ## Features
 
