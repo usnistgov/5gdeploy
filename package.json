@@ -17,7 +17,7 @@
   "dependencies": {
     "@nodelib/fs.walk": "^3.0.1",
     "@segment/ajv-human-errors": "^2.16.0",
-    "@types/dockerode": "^3.3.47",
+    "@types/dockerode": "^4.0.1",
     "@types/js-yaml": "^4.0.9",
     "@types/netmask": "~2.0.6",
     "@types/node": "^24.12.2",
@@ -57,7 +57,7 @@
     "yargs": "^18.0.0"
   },
   "devDependencies": {
-    "@yoursunny/xo-config": "0.1001.1"
+    "@yoursunny/xo-config": "0.1002.0"
   },
   "engines": {
     "node": "^22.11.0"

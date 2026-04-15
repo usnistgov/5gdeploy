@@ -1,6 +1,7 @@
 onlyBuiltDependencies:
   - cpu-features
   - esbuild
+  - eslint-config-preact
   - protobufjs
   - ssh2
   - unrs-resolver
