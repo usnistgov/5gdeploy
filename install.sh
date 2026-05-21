@@ -30,6 +30,7 @@ declare -A TAGS=(
   [oai-fed]=""
   [oai-nwdaf]=""
   [open5gs]=""
+  [open5gs-webui]=""
   [open5gs-dbctl]=""
   [packetrusher]=""
   [srsran5g]=""
@@ -85,6 +86,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --open5gs-version)
       TAGS[open5gs]="$2"
+      TAGS[open5gs-webui]="$2"
       msg "Argument open5gs-version = ${TAGS[open5gs]}"
       shift 2
       ;;
@@ -137,7 +139,7 @@ bash ./free5gc/download.sh "${TAGS[free5gc]}" "${TAGS[free5gc-webclient]}"
 bash ./oai/download.sh "${TAGS[oai-fed]}" "${TAGS[oai-nwdaf]}"
 bash ./open5gs/download.sh "${TAGS[open5gs-dbctl]}"
 
-for IMG in bridge dn eupf free5gc-webclient gnbsim gtp5g iperf2 ns3http open5gs packetrusher sockperf srsran5g ueransim virt; do
+for IMG in bridge dn eupf free5gc-webclient gnbsim gtp5g iperf2 ns3http open5gs open5gs-webui packetrusher sockperf srsran5g ueransim virt; do
   TAG=${TAGS[$IMG]:-}
   msg "Building Docker image $IMG"
   ./docker/build.sh $IMG $TAG

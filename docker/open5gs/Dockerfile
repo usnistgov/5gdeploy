@@ -1,4 +1,4 @@
-ARG TAG=2.7.6
+ARG TAG=2.7.7
 FROM crazymax/yasu AS yasu
 
 FROM gradiant/open5gs:${TAG}
